@@ -1,0 +1,24 @@
+{
+  "project": "Grace House School System",
+  "phase": "foundation-fixed-students-complete",
+  "phase_description": "core + accounts foundation with all review fixes applied. Students module built and tested. Ready for academics.",
+  "completed_modules": ["core", "accounts", "students"],
+  "pending_modules": ["academics", "fees", "payroll", "examscribe"],
+  "fixes_applied": [
+    "bootstrap_school command (atomically creates School + superuser)",
+    "bootstrap_school guard (refuses to run if School exists)",
+    "User inherits TenantScopedModel (school FK from abstract base)",
+    "TenantScopedUserManager merges UserManager + TenantScopedManager (for_school works on User)"
+  ],
+  "test_count": 43,
+  "test_status": "all passing",
+  "database": "SQLite (dev), db.sqlite3 restored correctly",
+  "git_clean": true,
+  "commits": [
+    "4381a59 feat: core + accounts foundation module",
+    "99a13b8 feat: students module",
+    "3afa7b2 fix: bootstrap command + User inherits TenantScopedModel",
+    "a993c91 fix: merge UserManager with TenantScopedManager for for_school()"
+  ],
+  "timestamp": "2026-07-13T13:05:00Z"
+}
