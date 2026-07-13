@@ -1,0 +1,44 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div id="content-main">
+  <h1>{{ title }}</h1>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="generate_payroll_run" />
+    <input type="hidden" name="apply" value="1" />
+
+    <div style="padding: 20px; background: #f8f8f8; border: 1px solid #ddd; margin: 20px 0;">
+      <table>
+        <tr>
+          <td><label for="label" style="font-weight: bold;">{% trans "Label:" %}</label></td>
+          <td><input type="text" name="label" id="label" style="min-width: 300px; padding: 5px;" placeholder="e.g. July 2026" /></td>
+        </tr>
+        <tr>
+          <td><label for="period_start" style="font-weight: bold;">{% trans "Period Start:" %}</label></td>
+          <td><input type="date" name="period_start" id="period_start" style="padding: 5px;" /></td>
+        </tr>
+        <tr>
+          <td><label for="period_end" style="font-weight: bold;">{% trans "Period End:" %}</label></td>
+          <td><input type="date" name="period_end" id="period_end" style="padding: 5px;" /></td>
+        </tr>
+        <tr>
+          <td><label for="pay_date" style="font-weight: bold;">{% trans "Pay Date:" %}</label></td>
+          <td><input type="date" name="pay_date" id="pay_date" style="padding: 5px;" /></td>
+        </tr>
+        <tr>
+          <td><label for="staff_filter" style="font-weight: bold;">{% trans "Staff Filter (optional):" %}</label></td>
+          <td>
+            <input type="text" name="staff_filter" id="staff_filter" style="min-width: 300px; padding: 5px;" placeholder="{% trans 'Comma-separated employee IDs, leave blank for all active staff' %}" />
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="padding: 10px 0;">
+      <input type="submit" value="{% trans 'Generate Payroll Run' %}" class="default" style="padding: 10px 20px;" />
+    </div>
+  </form>
+</div>
+{% endblock %}

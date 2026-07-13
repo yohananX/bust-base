@@ -3,21 +3,21 @@
   "architecture": "modular monolith",
   "multi_tenancy": "school_id on every table from day one",
   "phase": "Phase 1 — MVP",
-  "completed_modules": ["core", "accounts", "students", "academics", "fees"],
-  "current_step": "6 — payroll (next)",
+  "completed_modules": ["core", "accounts", "students", "academics", "fees", "payroll"],
+  "current_step": "6 — payroll (implementation done)",
   "pending_modules": [
-    {"step": 6, "module": "payroll", "status": "next"},
     {"step": 7, "module": "deploy", "status": "pending"}
   ],
   "future_modules": ["finance", "notifications", "examscribe"],
-  "test_count": 90,
+  "test_count": 127,
   "test_status": "all passing",
   "test_breakdown": {
     "core": 11,
     "accounts": 18,
     "students": 14,
     "academics": 20,
-    "fees": 27
+    "fees": 27,
+    "payroll": 37
   },
   "fees_review_completed": {
     "webhook_signature": "HMAC-SHA256, timing-safe compare_digest ✅",
@@ -25,15 +25,51 @@
     "manual_walkthrough": "UNPAID → PARTIAL(20k) → PAID(60k) → PENDING ignored ✅",
     "decimal_check": "zero float in fees app ✅"
   },
+  "payroll_spec_approved": true,
+  "payroll_design_decisions": {
+    "role_agnostic_staff_profile": "Any User can have a StaffProfile, not limited by role",
+    "separate_salary_disbursement": "Money OUT model, not reusing fees.Payment",
+    "stored_totals_on_payslip": "gross_pay, net_pay stored as snapshots at generation time",
+    "computed_disbursement_status": "UNPAID/PARTIAL/PAID derived from SalaryDisbursement records",
+    "no_signals": "Generation is always an explicit admin action",
+    "idempotent_generation": "unique_together=(school, staff, payroll_run) on Payslip"
+  },
   "remote": "git@github.com:yohananX/bust-base.git",
   "branch": "main",
-  "pending_commit": "fees module",
-  "timestamp": "2026-07-13T17:30:00Z",
+  "pushed_commit": "a24786e",
+  "timestamp": "2026-07-13T18:20:00Z",
+  "session": {
+    "phase": "complete"
+  },
+  "status": "complete",
   "cleanup": {
     "last_cleanup": "2026-07-13",
-    "spec_agents_stubs_removed": ["commit-crafter-fees.json"],
-    "files_removed": 1,
-    "space_freed_bytes": 563,
-    "space_freed_human": "563 B"
+    "files_removed": 55,
+    "space_freed_bytes": 389120,
+    "space_freed_human": "380 KB",
+    "packages_removed": [],
+    "directories_scanned": [
+      ".spec/agents/",
+      "__pycache__",
+      "*.pyc",
+      "node_modules/.cache",
+      ".next/",
+      "dist/",
+      "build/",
+      "target/",
+      ".turbo/",
+      ".eslintcache",
+      ".cache/",
+      "House/",
+      "School/",
+      "System/"
+    ],
+    "items_removed": [
+      "House/ (empty directory — path splitting accident)",
+      "School/ (empty directory — path splitting accident)",
+      "System/ (empty directory skeleton — template path quoting accident)"
+    ],
+    "dry_run": false,
+    "timestamp": "2026-07-13T18:20:00Z"
   }
 }
