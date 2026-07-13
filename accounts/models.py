@@ -2,6 +2,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from core.models import TenantScopedModel
+
 
 class Roles:
     """Constants for user roles within the school system."""
@@ -18,17 +20,12 @@ class Roles:
     ]
 
 
-class User(AbstractUser):
+class User(AbstractUser, TenantScopedModel):
     """Custom user model with school tenancy and role.
 
-    This is the single user model for the entire system.
+    Inherits school FK from TenantScopedModel (abstract base).
     Role-specific profile data belongs in future modules.
     """
-    school = models.ForeignKey(
-        'core.School',
-        on_delete=models.CASCADE,
-        verbose_name=_('school'),
-    )
     role = models.CharField(
         max_length=20,
         choices=Roles.CHOICES,
