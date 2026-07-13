@@ -1,0 +1,58 @@
+{% extends "admin/base_site.html" %}
+{% load i18n l10n %}
+
+{% block content %}
+<div id="content-main">
+  <h1>{{ title }}</h1>
+  <p>{% trans "Select the target session and assign each student to a class." %}</p>
+
+  <form method="post">
+    {% csrf_token %}
+    {% for student in students %}
+      <input type="hidden" name="_selected_action" value="{{ student.pk|unlocalize }}">
+    {% endfor %}
+    <input type="hidden" name="action" value="{{ action }}">
+    <input type="hidden" name="select_across" value="{{ select_across }}">
+    <input type="hidden" name="apply" value="1">
+
+    <fieldset class="module aligned">
+      <h2>{% trans "Target Session" %}</h2>
+      <div class="form-row">
+        <label for="id_session">{% trans "Academic Session:" %}</label>
+        <select name="session" id="id_session" required>
+          <option value="">{% trans "---------" %}</option>
+          {% for session in sessions %}
+            <option value="{{ session.pk }}">{{ session.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </fieldset>
+
+    <fieldset class="module aligned">
+      <h2>{% trans "Students" %}</h2>
+      {% for student in students %}
+        <div class="form-row">
+          <label for="id_class_{{ student.pk }}">
+            {{ student }}:
+          </label>
+          <select name="class_{{ student.pk }}" id="id_class_{{ student.pk }}" required>
+            <option value="">{% trans "---------" %}</option>
+            {% for class_item in classes %}
+              <option value="{{ class_item.pk }}">{{ class_item.name }} ({{ class_item.level }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% empty %}
+        <p>{% trans "No eligible students selected (all may be withdrawn/graduated)." %}</p>
+      {% endfor %}
+    </fieldset>
+
+    <div class="submit-row">
+      <input type="submit" class="default" value="{% trans 'Promote' %}">
+      <a href="{% url 'admin:students_student_changelist' %}" class="button cancel-link">
+        {% trans "Cancel" %}
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
