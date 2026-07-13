@@ -1,24 +1,19 @@
 {
   "project": "Grace House School System",
-  "phase": "foundation-fixed-students-complete",
-  "phase_description": "core + accounts foundation with all review fixes applied. Students module built and tested. Ready for academics.",
+  "architecture": "modular monolith",
+  "multi_tenancy": "school_id on every table from day one",
+  "phase": "Phase 1 — MVP",
+  "phase_goal": "working core loop for one school, end to end",
   "completed_modules": ["core", "accounts", "students"],
-  "pending_modules": ["academics", "fees", "payroll", "examscribe"],
-  "fixes_applied": [
-    "bootstrap_school command (atomically creates School + superuser)",
-    "bootstrap_school guard (refuses to run if School exists)",
-    "User inherits TenantScopedModel (school FK from abstract base)",
-    "TenantScopedUserManager merges UserManager + TenantScopedManager (for_school works on User)"
+  "current_step": "3 — academics (subjects, teacher assignments, score entry, ranking)",
+  "pending_modules": [
+    {"step": 4, "module": "fees", "status": "pending"},
+    {"step": 5, "module": "deploy", "status": "pending"}
   ],
+  "future_modules": ["payroll", "finance", "notifications", "examscribe"],
   "test_count": 43,
   "test_status": "all passing",
-  "database": "SQLite (dev), db.sqlite3 restored correctly",
-  "git_clean": true,
-  "commits": [
-    "4381a59 feat: core + accounts foundation module",
-    "99a13b8 feat: students module",
-    "3afa7b2 fix: bootstrap command + User inherits TenantScopedModel",
-    "a993c91 fix: merge UserManager with TenantScopedManager for for_school()"
-  ],
-  "timestamp": "2026-07-13T13:05:00Z"
+  "remote": "git@github.com:yohananX/bust-base.git",
+  "branch": "main",
+  "timestamp": "2026-07-13T13:20:00Z"
 }

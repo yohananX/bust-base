@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'core',
     'accounts',
     'students',
+    'academics',
     # Django contrib
     'django.contrib.admin',
     'django.contrib.auth',
