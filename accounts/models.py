@@ -1,8 +1,8 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from core.models import TenantScopedModel
+from core.models import TenantScopedModel, TenantScopedManager
 
 
 class Roles:
@@ -20,12 +20,19 @@ class Roles:
     ]
 
 
+class TenantScopedUserManager(DjangoUserManager, TenantScopedManager):
+    """Combines Django's UserManager (create_user, create_superuser) 
+    with TenantScopedManager (for_school) for consistent tenant scoping."""
+    pass
+
+
 class User(AbstractUser, TenantScopedModel):
     """Custom user model with school tenancy and role.
 
     Inherits school FK from TenantScopedModel (abstract base).
     Role-specific profile data belongs in future modules.
     """
+    objects = TenantScopedUserManager()
     role = models.CharField(
         max_length=20,
         choices=Roles.CHOICES,
