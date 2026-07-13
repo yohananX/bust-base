@@ -15,6 +15,12 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **opts):
+        if School.objects.exists():
+            self.stdout.write(
+                self.style.WARNING('A School already exists. bootstrap_school can only be run on a fresh database.')
+            )
+            return
+
         school = School.objects.create(
             name=opts['school_name'],
             short_code=opts['school_name'].lower().replace(' ', '-'),
