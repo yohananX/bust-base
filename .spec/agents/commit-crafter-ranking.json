@@ -1,6 +1,0 @@
-{
-  "agent": "commit-crafter",
-  "commit_hash": "a5b90b1",
-  "files_committed": ["academics/ranking.py"],
-  "last_action": "fix(ranking): use total_score sorting and is_complete property instead of raw field filters"
-}

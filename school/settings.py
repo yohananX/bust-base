@@ -17,6 +17,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     # Local apps first
     'core',
+    'fees',
     'accounts',
     'students',
     'academics',

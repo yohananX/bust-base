@@ -3,17 +3,37 @@
   "architecture": "modular monolith",
   "multi_tenancy": "school_id on every table from day one",
   "phase": "Phase 1 — MVP",
-  "phase_goal": "working core loop for one school, end to end",
-  "completed_modules": ["core", "accounts", "students"],
-  "current_step": "3 — academics (subjects, teacher assignments, score entry, ranking)",
+  "completed_modules": ["core", "accounts", "students", "academics", "fees"],
+  "current_step": "6 — payroll (next)",
   "pending_modules": [
-    {"step": 4, "module": "fees", "status": "pending"},
-    {"step": 5, "module": "deploy", "status": "pending"}
+    {"step": 6, "module": "payroll", "status": "next"},
+    {"step": 7, "module": "deploy", "status": "pending"}
   ],
-  "future_modules": ["payroll", "finance", "notifications", "examscribe"],
-  "test_count": 43,
+  "future_modules": ["finance", "notifications", "examscribe"],
+  "test_count": 90,
   "test_status": "all passing",
+  "test_breakdown": {
+    "core": 11,
+    "accounts": 18,
+    "students": 14,
+    "academics": 20,
+    "fees": 27
+  },
+  "fees_review_completed": {
+    "webhook_signature": "HMAC-SHA256, timing-safe compare_digest ✅",
+    "duplicate_webhook_test": "select_for_update, CONFIRMED check, balance unchanged ✅",
+    "manual_walkthrough": "UNPAID → PARTIAL(20k) → PAID(60k) → PENDING ignored ✅",
+    "decimal_check": "zero float in fees app ✅"
+  },
   "remote": "git@github.com:yohananX/bust-base.git",
   "branch": "main",
-  "timestamp": "2026-07-13T13:20:00Z"
+  "pending_commit": "fees module",
+  "timestamp": "2026-07-13T17:30:00Z",
+  "cleanup": {
+    "last_cleanup": "2026-07-13",
+    "spec_agents_stubs_removed": ["commit-crafter-fees.json"],
+    "files_removed": 1,
+    "space_freed_bytes": 563,
+    "space_freed_human": "563 B"
+  }
 }
