@@ -1,4 +1,3 @@
-
 """
 URL configuration for school project.
 """
