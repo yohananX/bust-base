@@ -2,10 +2,10 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic.base import View
 from django.contrib import messages
-from django.db import transaction
+from django.db import transaction, IntegrityError
 
 from accounts.mixins import RoleRequiredMixin
-from accounts.models import Roles
+from accounts.models import Roles, User
 from students.models import Student, ClassEnrollment, StudentGuardianLink
 from fees.models import Invoice
 
@@ -92,6 +92,7 @@ class StudentDetailView(RoleRequiredMixin, View):
             'enrollments': enrollments,
             'guardian_links': guardian_links,
             'invoices': invoices,
+            'parents': User.objects.filter(school=school, role=Roles.PARENT, is_active=True),
         }
         return render(request, 'school_admin/student_detail.html', context)
 
@@ -118,3 +119,50 @@ class StudentCreateView(RoleRequiredMixin, View):
         # Delegate to the actual creation logic
         messages.info(request, 'Use the full student creation form in the admin panel for complete data entry.')
         return redirect('school_admin:student_list')
+
+
+class StudentGuardianLinkCreateView(RoleRequiredMixin, View):
+    """Link a guardian (parent) to a student."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request):
+        student_id = request.POST.get('student_id')
+        guardian_id = request.POST.get('guardian_id')
+        relationship = request.POST.get('relationship')
+        is_primary_contact = request.POST.get('is_primary_contact') == 'on'
+
+        student = get_object_or_404(Student, school=request.school, pk=student_id)
+        guardian = get_object_or_404(
+            User, school=request.school, role=Roles.PARENT,
+            pk=guardian_id, is_active=True,
+        )
+
+        try:
+            with transaction.atomic():
+                if is_primary_contact:
+                    StudentGuardianLink.objects.filter(student=student).update(is_primary_contact=False)
+                StudentGuardianLink.objects.create(
+                    student=student,
+                    guardian=guardian,
+                    relationship=relationship,
+                    is_primary_contact=is_primary_contact,
+                )
+            messages.success(request, 'Guardian linked successfully.')
+        except IntegrityError:
+            messages.warning(request, 'This guardian is already linked to this student.')
+
+        return redirect('school_admin:student_detail', pk=student_id)
+
+
+class StudentGuardianLinkDeleteView(RoleRequiredMixin, View):
+    """Remove a guardian link from a student."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk):
+        link = get_object_or_404(StudentGuardianLink, pk=pk, student__school=request.school)
+        student_id = link.student_id
+        link.delete()
+        messages.success(request, 'Guardian link removed.')
+        return redirect('school_admin:student_detail', pk=student_id)

@@ -1,5 +1,8 @@
 from .dashboard import DashboardView
-from .students import StudentListView, StudentCreateView, StudentDetailView
+from .students import (
+    StudentListView, StudentCreateView, StudentDetailView,
+    StudentGuardianLinkCreateView, StudentGuardianLinkDeleteView,
+)
 from .staff import StaffListView, StaffCreateView
 from .academics import SubjectListView, TeacherAssignmentListView, ScoreAdminView
 from .fees import (

@@ -76,6 +76,7 @@
             <th class="pb-2">Name</th>
             <th class="pb-2">Relationship</th>
             <th class="pb-2">Primary</th>
+            <th class="pb-2">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -90,6 +91,12 @@
                 <span class="text-gray-400">No</span>
               {% endif %}
             </td>
+            <td class="py-2">
+              <form method="post" action="{% url 'school_admin:student_delete_guardian' g.pk %}" onsubmit="return confirm('Remove this guardian link?')">
+                {% csrf_token %}
+                <button type="submit" class="text-red-600 hover:text-red-800 text-xs underline">Remove</button>
+              </form>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -97,6 +104,38 @@
       {% else %}
       <p class="text-gray-400 text-sm">No guardians linked.</p>
       {% endif %}
+
+      <!-- Add Guardian Form -->
+      <div class="mt-4 pt-4 border-t border-gray-100">
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">Link a Guardian</h4>
+        <form method="post" action="{% url 'school_admin:student_add_guardian' %}" class="flex flex-wrap items-end gap-3">
+          {% csrf_token %}
+          <input type="hidden" name="student_id" value="{{ student.pk }}">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Parent</label>
+            <select name="guardian_id" required class="text-sm border border-gray-300 rounded px-3 py-2 bg-white min-w-[180px]">
+              <option value="">— Select —</option>
+              {% for p in parents %}
+                <option value="{{ p.pk }}">{{ p.get_full_name|default:p.username }} ({{ p.email }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Relationship</label>
+            <select name="relationship" required class="text-sm border border-gray-300 rounded px-3 py-2 bg-white">
+              <option value="FATHER">Father</option>
+              <option value="MOTHER">Mother</option>
+              <option value="GUARDIAN">Guardian</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-1 pb-1">
+            <input type="checkbox" name="is_primary_contact" id="is_primary" value="on" class="rounded border-gray-300">
+            <label for="is_primary" class="text-xs text-gray-600">Primary</label>
+          </div>
+          <button type="submit" class="bg-[#1B2430] text-white text-sm px-4 py-2 rounded hover:bg-[#2a3648] transition-colors">Link Guardian</button>
+        </form>
+      </div>
     </div>
   </div>
 
