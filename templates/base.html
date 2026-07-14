@@ -1,0 +1,168 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Grace House School System{% endblock %}</title>
+  
+  {# Google Fonts #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
+  
+  {# Tailwind CSS via CDN #}
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  {# CSS Tokens #}
+  <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+  
+  {# HTMX #}
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+
+  {# Status Stamp & Tag Styles #}
+  <style>
+    /* Status Stamp — rotated rect badge for definitive states */
+    .status-stamp {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border: 2px solid currentColor;
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transform: rotate(-2deg);
+    }
+    .status-stamp--paid,
+    .status-stamp--pass,
+    .status-stamp--results\ published {
+      color: var(--color-status-green);
+      border-color: var(--color-status-green);
+    }
+
+    /* Status Tag — flat pill for non-definitive states */
+    .status-tag {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      border-radius: 9999px;
+      background-color: #F3F4F6;
+      color: #6B7280;
+    }
+    .status-tag--pending { background-color: #FEF3C7; color: #B8863A; }
+    .status-tag--fail    { background-color: #FEE2E2; color: #A63A2E; }
+    .status-tag--active  { background-color: #D1FAE5; color: #2F6E4F; }
+  </style>
+  
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="font-[var(--font-body)] bg-[var(--color-paper)] text-[var(--color-ink)] antialiased">
+  
+  {# Mobile sidebar toggle #}
+  <button id="sidebar-toggle" class="lg:hidden fixed top-4 left-4 z-50 p-2 bg-[#1B2430] text-white rounded-md shadow-md">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  </button>
+
+  <div class="flex min-h-screen">
+    {# ===== SIDEBAR NAV ===== #}
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-[#1B2430] text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col">
+      
+      {# School name in sidebar #}
+      <div class="px-6 py-6 border-b border-white/10">
+        <h1 class="font-[var(--font-display)] text-xl font-semibold">Grace House</h1>
+        <p class="text-sm text-white/60 mt-1">School System</p>
+      </div>
+      
+      {# Navigation links — scoped by role #}
+      <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        {% if user.is_authenticated %}
+          {% if user.role == 'ADMIN' %}
+            <a href="/admin/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Dashboard</a>
+            <a href="/admin/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Admin Panel</a>
+          
+          {% elif user.role == 'TEACHER' %}
+            <a href="/teacher/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Dashboard</a>
+            <a href="/teacher/assignments/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">My Assignments</a>
+            <a href="/teacher/payslips/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">My Payslips</a>
+          
+          {% elif user.role == 'STUDENT' %}
+            <a href="/student/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Dashboard</a>
+            <a href="/student/results/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">My Results</a>
+            <a href="/student/invoices/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">My Invoices</a>
+          
+          {% elif user.role == 'PARENT' %}
+            <a href="/parent/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Dashboard</a>
+            <a href="/parent/children/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">My Children</a>
+          {% endif %}
+        {% endif %}
+      </nav>
+      
+      {# Bottom section with logout #}
+      <div class="px-4 py-4 border-t border-white/10">
+        {% if user.is_authenticated %}
+          <div class="mb-3 px-3 py-2 text-sm text-white/60 truncate">
+            {{ user.get_full_name|default:user.username }}
+          </div>
+          <a href="{% url 'logout' %}" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+            Logout
+          </a>
+        {% else %}
+          <a href="{% url 'login' %}" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+            Login
+          </a>
+        {% endif %}
+      </div>
+    </aside>
+
+    {# Overlay for mobile sidebar #}
+    <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-black/50 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+    {# ===== MAIN CONTENT ===== #}
+    <div class="flex-1 lg:ml-64">
+      
+      {# Top bar #}
+      <header class="bg-[var(--color-surface)] border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="text-sm text-gray-500">{% block page_header %}Dashboard{% endblock %}</span>
+        </div>
+        <div class="flex items-center gap-4">
+          {% if user.is_authenticated %}
+            <span class="text-sm text-gray-600 hidden sm:block">{{ user.get_full_name|default:user.username }}</span>
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full 
+              {% if user.role == 'ADMIN' %}bg-purple-100 text-purple-700
+              {% elif user.role == 'TEACHER' %}bg-blue-100 text-blue-700
+              {% elif user.role == 'STUDENT' %}bg-green-100 text-green-700
+              {% elif user.role == 'PARENT' %}bg-amber-100 text-amber-700
+              {% endif %}">
+              {{ user.get_role_display }}
+            </span>
+          {% endif %}
+        </div>
+      </header>
+
+      {# Page content #}
+      <main class="p-6">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  {# Mobile sidebar toggle script #}
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      sidebar.classList.toggle('-translate-x-full');
+      overlay.classList.toggle('hidden');
+    }
+    document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebar);
+    document.getElementById('sidebar-overlay')?.addEventListener('click', toggleSidebar);
+  </script>
+  
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

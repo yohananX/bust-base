@@ -1,107 +1,65 @@
-"""REST-like JSON endpoints for payroll status and self-service."""
+"""HTML views for payroll — payslip list, detail, and run overview."""
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import render, get_object_or_404
+from django.utils.decorators import method_decorator
+from django.views.generic import ListView, DetailView
 
-from .models import Payslip, SalaryDisbursement, StaffProfile
+from accounts.mixins import RoleRequiredMixin
+from accounts.models import Roles
+from .models import Payslip, PayrollRun, PayslipLineItem
+
+
+class PayslipListView(RoleRequiredMixin, ListView):
+    """List payslips — staff see their own, admins see all."""
+    model = Payslip
+    template_name = 'payroll/payslip_list.html'
+    context_object_name = 'payslips'
+    allowed_roles = [Roles.TEACHER, Roles.ADMIN]
+
+    def get_queryset(self):
+        qs = Payslip.objects.select_related(
+            'payroll_run', 'staff__user'
+        ).filter(school=self.request.user.school)
+
+        if self.request.user.role != Roles.ADMIN:
+            qs = qs.filter(staff__user=self.request.user)
+
+        return qs
 
 
 @login_required
-@require_GET
 def payslip_detail(request, payslip_id):
-    """Return payslip details as JSON.
-
-    Staff see their own payslips; admins see all.
-    """
+    """Full payslip breakdown — staff see own, admins see all."""
     payslip = get_object_or_404(Payslip, pk=payslip_id)
 
     user = request.user
     if user.role != 'ADMIN':
         staff_profile = getattr(user, 'staff_profile', None)
         if not staff_profile or payslip.staff != staff_profile:
-            return JsonResponse({'error': 'Forbidden'}, status=403)
+            raise PermissionDenied('You do not have access to this payslip.')
 
-    line_items = list(payslip.line_items.all().values('label', 'amount', 'line_type'))
-    disbursements = list(
-        payslip.disbursements.all().values('amount', 'method', 'reference', 'status', 'disbursed_on')
-    )
+    line_items = payslip.line_items.all()
+    allowances = line_items.filter(line_type=PayslipLineItem.LineType.ALLOWANCE)
+    deductions = line_items.filter(line_type=PayslipLineItem.LineType.DEDUCTION)
+    disbursements = payslip.disbursements.select_related('recorded_by').all()
 
-    return JsonResponse({
-        'id': payslip.id,
-        'staff': str(payslip.staff),
-        'payroll_run': str(payslip.payroll_run),
-        'base_salary': str(payslip.base_salary),
-        'total_allowances': str(payslip.total_allowances),
-        'total_deductions': str(payslip.total_deductions),
-        'gross_pay': str(payslip.gross_pay),
-        'net_pay': str(payslip.net_pay),
-        'amount_disbursed': str(payslip.amount_disbursed),
-        'balance': str(payslip.balance),
-        'disbursement_status': payslip.disbursement_status,
-        'line_items': line_items,
+    return render(request, 'payroll/payslip_detail.html', {
+        'payslip': payslip,
+        'allowances': allowances,
+        'deductions': deductions,
         'disbursements': disbursements,
     })
 
 
-@login_required
-@require_GET
-def my_payslips(request):
-    """Return all payslips for the current user's staff profile."""
-    user = request.user
-    staff_profile = getattr(user, 'staff_profile', None)
-    if not staff_profile:
-        return JsonResponse({'error': 'No staff profile found'}, status=404)
+class PayrollRunDetailView(RoleRequiredMixin, DetailView):
+    """Payroll run summary with all payslips (admin only)."""
+    model = PayrollRun
+    template_name = 'payroll/run_detail.html'
+    context_object_name = 'run'
+    allowed_roles = [Roles.ADMIN]
 
-    payslips = Payslip.objects.filter(staff=staff_profile).select_related('payroll_run')
-    data = []
-    for p in payslips:
-        data.append({
-            'id': p.id,
-            'payroll_run': str(p.payroll_run),
-            'gross_pay': str(p.gross_pay),
-            'net_pay': str(p.net_pay),
-            'disbursement_status': p.disbursement_status,
-            'balance': str(p.balance),
-        })
-
-    return JsonResponse({'payslips': data})
-
-
-@login_required
-@require_GET
-def payroll_run_detail(request, run_id):
-    """Return payroll run summary with all constituent payslips (admin only)."""
-    if request.user.role != 'ADMIN':
-        return JsonResponse({'error': 'Forbidden'}, status=403)
-
-    from .models import PayrollRun
-    run = get_object_or_404(PayrollRun, pk=run_id, school=request.user.school)
-
-    payslips_data = []
-    for ps in run.payslips.select_related('staff__user').all():
-        payslips_data.append({
-            'id': ps.id,
-            'staff': str(ps.staff),
-            'gross_pay': str(ps.gross_pay),
-            'net_pay': str(ps.net_pay),
-            'disbursement_status': ps.disbursement_status,
-            'balance': str(ps.balance),
-        })
-
-    return JsonResponse({
-        'id': run.id,
-        'label': run.label,
-        'period_start': run.period_start.isoformat(),
-        'period_end': run.period_end.isoformat(),
-        'pay_date': run.pay_date.isoformat(),
-        'total_gross_pay': str(run.total_gross_pay),
-        'total_net_pay': str(run.total_net_pay),
-        'total_disbursed': str(run.total_disbursed),
-        'staff_count': run.staff_count,
-        'payslips': payslips_data,
-    })
+    def get_queryset(self):
+        return PayrollRun.objects.filter(school=self.request.user.school)

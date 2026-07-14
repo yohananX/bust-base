@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}My Children - Grace House{% endblock %}
+{% block page_header %}My Children{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-display text-[#1B2430] mb-6">My Children</h1>
+<div class="grid gap-4">
+  {% for link in guardian_links %}
+  <div class="bg-white rounded-lg shadow-sm p-4">
+    <div class="flex justify-between items-start">
+      <div>
+        <h2 class="font-semibold text-lg">{{ link.student.user.first_name }} {{ link.student.user.last_name }}</h2>
+        <p class="text-sm text-gray-600">Class: {{ link.student.school_class.name|default:"Not assigned" }}</p>
+      </div>
+      {% if link.student.has_published_results %}
+        {% include 'components/status_stamp.html' with status='RESULTS PUBLISHED' %}
+      {% endif %}
+    </div>
+    <div class="mt-3 text-sm">
+      <span class="text-gray-500">Balance: </span>
+      <span class="font-semibold tabular-nums">₦{{ link.student.invoice_balance|floatformat:2 }}</span>
+    </div>
+    <a href="{% url 'parent-child-detail' link.student.pk %}" class="inline-block mt-3 text-[#B8863A] hover:underline font-medium">View Details →</a>
+  </div>
+  {% empty %}
+  <div class="bg-white rounded-lg shadow-sm p-6 text-center">
+    <p class="text-gray-500">No children linked to your account.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

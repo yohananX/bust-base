@@ -1,16 +1,16 @@
 [
   {
-    "session_id": "manual-cleanup-2026-07-14",
-    "start_time": "2026-07-14T12:25:00Z",
-    "end_time": "2026-07-14T12:30:00Z",
-    "description": "Manual cleanup of broken venv, audit_env, stray pycache, and project pycache dirs",
+    "session_id": "parent_portal_session",
+    "start_time": "2026-07-14T08:15:00Z",
+    "end_time": "2026-07-14T13:22:00Z",
+    "description": "Phase 1 — MVP: parent portal batch",
     "agent_count": 1,
-    "agents_used": ["cleanup-agent"],
-    "files_created": 0,
+    "agents_used": ["commit-crafter"],
+    "files_created": 4,
     "packages_installed": [],
     "packages_removed": [],
-    "files_removed": 4,
-    "space_freed_bytes": 134242304,
+    "files_removed": 1,
+    "space_freed_bytes": 210,
     "status": "cleaned"
   }
 ]

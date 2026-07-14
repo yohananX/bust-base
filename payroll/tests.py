@@ -881,10 +881,74 @@ class CrossStaffPayslipIsolationTest(BasePayrollTest):
         client.login(username='teacher1', password='testpass123')
 
         # Staff A should be able to access their own payslip
-        response_own = client.get('/payroll/api/payslip/{}/'.format(staff_a_payslip.id))
+        response_own = client.get('/payroll/payslip/{}/'.format(staff_a_payslip.id))
         self.assertEqual(response_own.status_code, 200)
 
         # Staff A should NOT be able to access staff B's payslip
-        response_other = client.get('/payroll/api/payslip/{}/'.format(staff_b_payslip.id))
+        response_other = client.get('/payroll/payslip/{}/'.format(staff_b_payslip.id))
         self.assertEqual(response_other.status_code, 403)
-        self.assertEqual(response_other.json(), {'error': 'Forbidden'})
+
+    def test_admin_can_access_any_payslip(self):
+        """Admin should be able to access any staff's payslip."""
+        from django.test import Client
+
+        run, _ = generate_payroll_run(
+            school=self.school,
+            label='Admin Access Test',
+            period_start=date(2026, 2, 1),
+            period_end=date(2026, 2, 28),
+            pay_date=date(2026, 2, 28),
+            generated_by=self.admin_user,
+        )
+
+        staff_b_payslip = Payslip.objects.get(payroll_run=run, staff=self.staff2)
+        client = Client()
+        client.login(username='admin1', password='testpass123')
+
+        response = client.get('/payroll/payslip/{}/'.format(staff_b_payslip.id))
+        self.assertEqual(response.status_code, 200)
+
+    def test_payslip_list_shows_only_own_payslips_for_staff(self):
+        """Staff user should only see their own payslips in the list."""
+        from django.test import Client
+
+        run, _ = generate_payroll_run(
+            school=self.school,
+            label='List Isolation Test',
+            period_start=date(2026, 3, 1),
+            period_end=date(2026, 3, 31),
+            pay_date=date(2026, 3, 31),
+            generated_by=self.admin_user,
+        )
+
+        client = Client()
+        client.login(username='teacher1', password='testpass123')
+
+        response = client.get('/payroll/payslips/')
+        self.assertEqual(response.status_code, 200)
+
+        # Should see staff1's gross pay (180000.00) but NOT staff2's (115000.00)
+        self.assertContains(response, '180000.00')  # staff1's gross pay
+        self.assertNotContains(response, '115000.00')  # staff2's gross pay
+
+    def test_admin_sees_all_payslips_in_list(self):
+        """Admin should see all payslips in the list."""
+        from django.test import Client
+
+        run, _ = generate_payroll_run(
+            school=self.school,
+            label='Admin List Test',
+            period_start=date(2026, 4, 1),
+            period_end=date(2026, 4, 30),
+            pay_date=date(2026, 4, 30),
+            generated_by=self.admin_user,
+        )
+
+        client = Client()
+        client.login(username='admin1', password='testpass123')
+
+        response = client.get('/payroll/payslips/')
+        self.assertEqual(response.status_code, 200)
+        # Should see BOTH staff's gross pay amounts
+        self.assertContains(response, '180000.00')  # staff1's gross pay
+        self.assertContains(response, '115000.00')  # staff2's gross pay

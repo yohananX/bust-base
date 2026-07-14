@@ -105,3 +105,32 @@ def record_cash_payment(request, invoice_id):
         'status': payment.status,
         'new_balance': str(invoice.balance),
     })
+
+
+@login_required
+@require_GET
+def invoice_status_partial(request, invoice_id):
+    """Return an HTML snippet with the current invoice status for htmx polling.
+
+    Used by the parent portal to show live invoice status updates.
+    """
+    from django.http import HttpResponseForbidden
+    from django.shortcuts import render, get_object_or_404
+    from .models import Invoice
+
+    invoice = get_object_or_404(Invoice, pk=invoice_id)
+    user = request.user
+
+    # Permission check — same pattern as invoice_detail
+    if user.role == 'STUDENT':
+        if invoice.student.user != user:
+            return HttpResponseForbidden()
+    elif user.role == 'PARENT':
+        if not invoice.student.guardian_links.filter(guardian=user).exists():
+            return HttpResponseForbidden()
+    elif user.role != 'ADMIN':
+        return HttpResponseForbidden()
+
+    return render(request, 'fees/partials/invoice_status.html', {
+        'invoice': invoice,
+    })

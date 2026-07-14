@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-2xl font-display text-[#1B2430] mb-6">My Assignments</h1>
+<div class="grid gap-4">
+  {% for a in assignments %}
+  <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-[#B8863A]">
+    <h2 class="font-semibold text-lg">{{ a.subject.name }}</h2>
+    <p class="text-sm text-gray-600">{{ a.school_class.name }} — {{ a.session.name }}</p>
+    <a href="{% url 'score_grid' a.pk %}" class="inline-block mt-2 text-[#B8863A] hover:underline font-medium">Enter Scores →</a>
+  </div>
+  {% empty %}
+  <p class="text-gray-500">No assignments for the current session.</p>
+  {% endfor %}
+</div>
+<div class="mt-8 pt-4 border-t">
+  <a href="/payroll/payslips/" class="text-[#B8863A] hover:underline">View My Payslips →</a>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-display text-[#1B2430]">{{ assignment.subject.name }}</h1>
+    <p class="text-sm text-gray-600">{{ assignment.school_class.name }} — {{ assignment.session.name }} — {{ term.name }}</p>
+  </div>
+  <a href="{% url 'assignment_list' %}" class="text-sm text-[#B8863A] hover:underline">← Back to Assignments</a>
+</div>
+
+<div class="overflow-x-auto bg-white rounded-lg shadow-sm">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="bg-[#1B2430] text-white">
+        <th class="px-3 py-2 text-left font-medium w-12">S/N</th>
+        <th class="px-3 py-2 text-left font-medium">Student Name</th>
+        <th class="px-3 py-2 text-center font-medium w-20">Test 1<br><span class="text-[10px] font-normal opacity-70">/10</span></th>
+        <th class="px-3 py-2 text-center font-medium w-20">Test 2<br><span class="text-[10px] font-normal opacity-70">/10</span></th>
+        <th class="px-3 py-2 text-center font-medium w-20">Test 3<br><span class="text-[10px] font-normal opacity-70">/10</span></th>
+        <th class="px-3 py-2 text-center font-medium w-20">Exam<br><span class="text-[10px] font-normal opacity-70">/70</span></th>
+        <th class="px-3 py-2 text-center font-medium w-16">Total<br><span class="text-[10px] font-normal opacity-70">/100</span></th>
+        <th class="px-3 py-2 text-center font-medium w-16">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for score in scores %}
+      <tr class="border-t border-gray-100 hover:bg-gray-50">
+        <td class="px-3 py-2 text-gray-500">{{ forloop.counter }}</td>
+        <td class="px-3 py-2 font-medium">{{ score.student.user.get_full_name|default:score.student.user.username }}</td>
+        
+        {# Test 1 #}
+        <td class="px-1 py-1 text-center">
+          <input type="number" min="0" max="10" value="{{ score.test_1|default:'' }}"
+                 hx-post="{% url 'score_update' assignment.pk score.pk %}"
+                 hx-trigger="blur" hx-target="closest td"
+                 name="test_1"
+                 class="w-14 text-center border border-gray-300 rounded px-1 py-1 tabular-nums text-sm focus:border-[#B8863A] focus:ring-1 focus:ring-[#B8863A] outline-none">
+        </td>
+        
+        {# Test 2 #}
+        <td class="px-1 py-1 text-center">
+          <input type="number" min="0" max="10" value="{{ score.test_2|default:'' }}"
+                 hx-post="{% url 'score_update' assignment.pk score.pk %}"
+                 hx-trigger="blur" hx-target="closest td"
+                 name="test_2"
+                 class="w-14 text-center border border-gray-300 rounded px-1 py-1 tabular-nums text-sm focus:border-[#B8863A] focus:ring-1 focus:ring-[#B8863A] outline-none">
+        </td>
+        
+        {# Test 3 #}
+        <td class="px-1 py-1 text-center">
+          <input type="number" min="0" max="10" value="{{ score.test_3|default:'' }}"
+                 hx-post="{% url 'score_update' assignment.pk score.pk %}"
+                 hx-trigger="blur" hx-target="closest td"
+                 name="test_3"
+                 class="w-14 text-center border border-gray-300 rounded px-1 py-1 tabular-nums text-sm focus:border-[#B8863A] focus:ring-1 focus:ring-[#B8863A] outline-none">
+        </td>
+        
+        {# Exam #}
+        <td class="px-1 py-1 text-center">
+          <input type="number" min="0" max="70" value="{{ score.exam_score|default:'' }}"
+                 hx-post="{% url 'score_update' assignment.pk score.pk %}"
+                 hx-trigger="blur" hx-target="closest td"
+                 name="exam_score"
+                 class="w-14 text-center border border-gray-300 rounded px-1 py-1 tabular-nums text-sm focus:border-[#B8863A] focus:ring-1 focus:ring-[#B8863A] outline-none">
+        </td>
+        
+        {# Total #}
+        <td class="px-3 py-2 text-center tabular-nums font-medium">
+          <span>{{ score.total_score }}</span>
+        </td>
+        
+        {# Status #}
+        <td class="px-3 py-2 text-center">
+          {% if score.passed is None %}
+            <span class="status-tag status-tag--pending">Pending</span>
+          {% elif score.passed %}
+            <span class="status-stamp status-stamp--pass">Pass</span>
+          {% else %}
+            <span class="status-tag status-tag--fail">Fail</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8" class="px-3 py-8 text-center text-gray-500">No students enrolled in this class.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Auto-focus next input on Enter key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type === 'number') {
+      e.preventDefault();
+      var inputs = Array.from(document.querySelectorAll('input[type="number"]'));
+      var idx = inputs.indexOf(e.target);
+      if (idx > -1 && idx < inputs.length - 1) {
+        inputs[idx + 1].focus();
+      }
+    }
+  });
+</script>
+{% endblock %}

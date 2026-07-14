@@ -1,0 +1,5 @@
+{% if status in 'PAID PASS RESULTS PUBLISHED' %}
+  <span class="status-stamp status-stamp--{{ status|lower }}">{{ status }}</span>
+{% else %}
+  <span class="status-tag">{{ status }}</span>
+{% endif %}

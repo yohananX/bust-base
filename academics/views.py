@@ -54,7 +54,7 @@ class TeacherScoreGridView(RoleRequiredMixin, View):
             is_current=True,
         ).select_related('student', 'student__user')
 
-        scores_data = []
+        scores = []
         for enrollment in enrollments:
             score, created = Score.objects.get_or_create(
                 student=enrollment.student,
@@ -65,13 +65,13 @@ class TeacherScoreGridView(RoleRequiredMixin, View):
                     'entered_by': request.user,
                 },
             )
-            scores_data.append((enrollment, score))
+            scores.append(score)
 
-        scores_data.sort(key=lambda x: x[0].student.admission_number)
+        scores.sort(key=lambda s: s.student.admission_number)
 
         return render(request, 'academics/teacher/score_grid.html', {
             'assignment': assignment,
-            'scores': scores_data,
+            'scores': scores,
             'term': current_term,
         })
 

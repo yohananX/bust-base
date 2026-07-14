@@ -1,0 +1,13 @@
+:root {
+  --color-ink: #1B2430;
+  --color-paper: #F6F6F4;
+  --color-surface: #FFFFFF;
+  --color-signal-gold: #B8863A;
+  --color-status-green: #2F6E4F;
+  --color-status-red: #A63A2E;
+  --color-status-amber: #B8863A;
+  --font-display: 'Source Serif 4', Georgia, serif;
+  --font-body: 'Public Sans', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --transition-fast: 150ms ease;
+}

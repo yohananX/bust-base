@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}My Payslips{% endblock %}
+
+{% block page_header %}Payslips{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
+            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Gross Pay</th>
+            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Net Pay</th>
+            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          {% for payslip in payslips %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              {{ payslip.payroll_run.label }}
+              <div class="text-xs text-gray-500">
+                {{ payslip.payroll_run.period_start|date:"M d, Y" }} — {{ payslip.payroll_run.period_end|date:"M d, Y" }}
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
+              {{ payslip.gross_pay|floatformat:2 }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
+              {{ payslip.net_pay|floatformat:2 }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              {% include 'components/status_stamp.html' with status=payslip.disbursement_status %}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
+              {{ payslip.balance|floatformat:2 }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <a href="{% url 'payroll:payslip-detail' payslip.id %}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary)]/10 rounded-md hover:bg-[var(--color-primary)]/20 transition-colors">
+                View Details
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="px-6 py-12 text-center text-sm text-gray-500">
+              No payslips found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

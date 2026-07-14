@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}Payslip — {{ payslip.payroll_run.label }}{% endblock %}
+
+{% block page_header %}Payslip Details{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+  {# ─── Payslip Summary Card ─── #}
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-200 p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-900">{{ payslip.payroll_run.label }}</h2>
+        <p class="text-sm text-gray-500 mt-1">
+          {{ payslip.payroll_run.period_start|date:"M d, Y" }} — {{ payslip.payroll_run.period_end|date:"M d, Y" }}
+        </p>
+        <p class="text-sm text-gray-600 mt-1">
+          {{ payslip.staff.user.get_full_name }}
+        </p>
+      </div>
+      <div class="flex-shrink-0">
+        {% include 'components/status_stamp.html' with status=payslip.disbursement_status %}
+      </div>
+    </div>
+  </div>
+
+  {# ─── Earnings Section ─── #}
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <h3 class="text-base font-semibold text-gray-900">Earnings</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr class="bg-gray-50/50">
+            <td class="px-6 py-3 text-sm font-medium text-gray-900">Base Salary</td>
+            <td class="px-6 py-3 text-sm text-gray-900 text-right font-mono">{{ payslip.base_salary|floatformat:2 }}</td>
+          </tr>
+          {% for allowance in allowances %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-3 text-sm text-gray-700">{{ allowance.label }}</td>
+            <td class="px-6 py-3 text-sm text-gray-900 text-right font-mono">{{ allowance.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="2" class="px-6 py-3 text-sm text-gray-400 italic">No allowances for this period.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="bg-gray-50">
+          <tr>
+            <td class="px-6 py-3 text-sm font-semibold text-gray-900">Total Earnings</td>
+            <td class="px-6 py-3 text-sm font-semibold text-gray-900 text-right font-mono">{{ payslip.gross_pay|floatformat:2 }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  {# ─── Deductions Section ─── #}
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <h3 class="text-base font-semibold text-gray-900">Deductions</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          {% for deduction in deductions %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-3 text-sm text-gray-700">{{ deduction.label }}</td>
+            <td class="px-6 py-3 text-sm text-gray-900 text-right font-mono">{{ deduction.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="2" class="px-6 py-3 text-sm text-gray-400 italic">No deductions for this period.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="bg-gray-50">
+          <tr>
+            <td class="px-6 py-3 text-sm font-semibold text-gray-900">Total Deductions</td>
+            <td class="px-6 py-3 text-sm font-semibold text-gray-900 text-right font-mono">{{ payslip.total_deductions|floatformat:2 }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  {# ─── Net Pay Summary ─── #}
+  <div class="bg-[var(--color-primary)]/5 border-2 border-[var(--color-primary)]/20 rounded-lg p-6 text-center">
+    <p class="text-sm font-medium text-[var(--color-primary)]/70 uppercase tracking-wider">Net Pay</p>
+    <p class="text-3xl font-bold text-[var(--color-primary)] mt-1 font-mono">{{ payslip.net_pay|floatformat:2 }}</p>
+  </div>
+
+  {# ─── Disbursement History ─── #}
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <h3 class="text-base font-semibold text-gray-900">Disbursement History</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          {% for d in disbursements %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ d.disbursed_on|date:"M d, Y" }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">{{ d.amount|floatformat:2 }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ d.get_method_display }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">{{ d.reference }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              {% include 'components/status_stamp.html' with status=d.status %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">No disbursements recorded yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

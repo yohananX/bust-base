@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ student.user.get_full_name }} - Grace House{% endblock %}
+{% block page_header %}{{ student.user.get_full_name }}{% endblock %}
+{% block content %}
+
+{# ===== Current Enrollment ===== #}
+<section class="mb-8">
+  <h2 class="text-xl font-display font-semibold text-[#1B2430] mb-3 border-b border-gray-200 pb-2">Current Enrollment</h2>
+  {% if current_enrollment %}
+  <div class="bg-white rounded-lg shadow-sm p-4">
+    <div class="grid grid-cols-2 gap-4 text-sm">
+      <div><span class="text-gray-500">Class:</span> <span class="font-medium">{{ current_enrollment.school_class.name }}</span></div>
+      <div><span class="text-gray-500">Session:</span> <span class="font-medium">{{ current_enrollment.session.name }}</span></div>
+      {% if current_term %}
+      <div><span class="text-gray-500">Current Term:</span> <span class="font-medium">{{ current_term.name }}</span></div>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-lg shadow-sm p-4 text-gray-500 text-sm">Not currently enrolled in any class.</div>
+  {% endif %}
+</section>
+
+{# ===== Invoices ===== #}
+<section class="mb-8">
+  <h2 class="text-xl font-display font-semibold text-[#1B2430] mb-3 border-b border-gray-200 pb-2">Invoices</h2>
+  {% if invoices %}
+  <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left">
+          <th class="px-4 py-3 font-medium text-gray-600">Date</th>
+          <th class="px-4 py-3 font-medium text-gray-600">Description</th>
+          <th class="px-4 py-3 font-medium text-gray-600 text-right tabular-nums">Amount</th>
+          <th class="px-4 py-3 font-medium text-gray-600 text-right tabular-nums">Balance</th>
+          <th class="px-4 py-3 font-medium text-gray-600">Status</th>
+          <th class="px-4 py-3 font-medium text-gray-600">Action</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for invoice in invoices %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 tabular-nums">{{ invoice.generated_on|date:"d/m/Y" }}</td>
+          <td class="px-4 py-3">{{ invoice.term.name }} Fees</td>
+          <td class="px-4 py-3 text-right tabular-nums">₦{{ invoice.total_amount|floatformat:2 }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">₦{{ invoice.balance|floatformat:2 }}</td>
+          <td class="px-4 py-3">{% include 'components/status_stamp.html' with status=invoice.status %}</td>
+          <td class="px-4 py-3">
+            {% if invoice.status == 'UNPAID' or invoice.status == 'PARTIAL' %}
+            <a href="#" class="text-[#B8863A] hover:underline font-medium">Pay Now</a>
+            {% else %}
+            <span class="text-gray-400">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-lg shadow-sm p-4 text-gray-500 text-sm">No invoices found.</div>
+  {% endif %}
+</section>
+
+{# ===== Results ===== #}
+<section class="mb-8">
+  <h2 class="text-xl font-display font-semibold text-[#1B2430] mb-3 border-b border-gray-200 pb-2">Results</h2>
+  {% if scores %}
+  <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left">
+          <th class="px-4 py-3 font-medium text-gray-600">Subject</th>
+          <th class="px-4 py-3 font-medium text-gray-600 text-right tabular-nums">Test 1</th>
+          <th class="px-4 py-3 font-medium text-gray-600 text-right tabular-nums">Test 2</th>
+          <th class="px-4 py-3 font-medium text-gray-600 text-right tabular-nums">Test 3</th>
+          <th class="px-4 py-3 font-medium text-gray-600 text-right tabular-nums">Exam</th>
+          <th class="px-4 py-3 font-medium text-gray-600 text-right tabular-nums">Total</th>
+          <th class="px-4 py-3 font-medium text-gray-600">Pass/Fail</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for score in scores %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 font-medium">{{ score.subject.name }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ score.test_1|default:"—" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ score.test_2|default:"—" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ score.test_3|default:"—" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ score.exam_score|default:"—" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ score.total_score }}</td>
+          <td class="px-4 py-3">
+            {% if score.passed is True %}
+              <span class="text-green-600 font-semibold">Pass</span>
+            {% elif score.passed is False %}
+              <span class="text-red-600 font-semibold">Fail</span>
+            {% else %}
+              <span class="text-gray-400">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-lg shadow-sm p-4 text-gray-500 text-sm">No results available yet.</div>
+  {% endif %}
+</section>
+
+{% endblock %}

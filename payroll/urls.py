@@ -4,7 +4,7 @@ from . import views
 app_name = 'payroll'
 
 urlpatterns = [
-    path('api/payslip/<int:payslip_id>/', views.payslip_detail, name='payslip-detail'),
-    path('api/my-payslips/', views.my_payslips, name='my-payslips'),
-    path('api/run/<int:run_id>/', views.payroll_run_detail, name='payroll-run-detail'),
+    path('payslips/', views.PayslipListView.as_view(), name='payslip-list'),
+    path('payslip/<int:payslip_id>/', views.payslip_detail, name='payslip-detail'),
+    path('run/<int:pk>/', views.PayrollRunDetailView.as_view(), name='payroll-run-detail'),
 ]

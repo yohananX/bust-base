@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-2xl font-display text-[#1B2430] mb-6">My Dashboard</h1>
+
+{% if enrollment %}
+<div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+  <h2 class="font-semibold text-lg mb-2">Current Enrollment</h2>
+  <p class="text-sm text-gray-600">Class: <span class="font-medium">{{ enrollment.school_class.name }}</span></p>
+  <p class="text-sm text-gray-600">Session: {{ enrollment.session.name }}</p>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="bg-white rounded-lg shadow-sm p-4">
+    <h2 class="font-semibold text-lg mb-3">Invoices</h2>
+    {% if invoices %}
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-gray-500 border-b">
+          <th class="pb-2">Term</th>
+          <th class="pb-2 tabular-nums">Amount</th>
+          <th class="pb-2 tabular-nums">Balance</th>
+          <th class="pb-2">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in invoices %}
+        <tr class="border-b last:border-0">
+          <td class="py-2">{{ invoice.term.name }}</td>
+          <td class="py-2 tabular-nums">₦{{ invoice.total_amount }}</td>
+          <td class="py-2 tabular-nums">₦{{ invoice.balance }}</td>
+          <td class="py-2">{% include 'components/status_stamp.html' with status=invoice.status %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-gray-500 text-sm">No invoices.</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-white rounded-lg shadow-sm p-4">
+    <h2 class="font-semibold text-lg mb-3">Recent Results</h2>
+    {% if scores %}
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-gray-500 border-b">
+          <th class="pb-2">Subject</th>
+          <th class="pb-2 tabular-nums">Total</th>
+          <th class="pb-2">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for score in scores %}
+        <tr class="border-b last:border-0">
+          <td class="py-2">{{ score.subject.name }}</td>
+          <td class="py-2 tabular-nums">{{ score.total_score|default:"—" }}</td>
+          <td class="py-2">
+            {% if score.is_complete %}
+              {% include 'components/status_stamp.html' with status=score.passed|yesno:"PASS,FAIL" %}
+            {% else %}
+              <span class="text-gray-400">Incomplete</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-gray-500 text-sm">No results available yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
