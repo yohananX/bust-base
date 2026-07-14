@@ -108,7 +108,7 @@
       <!-- Add Guardian Form -->
       <div class="mt-4 pt-4 border-t border-gray-100">
         <h4 class="text-sm font-semibold text-gray-700 mb-2">Link a Guardian</h4>
-        <form method="post" action="{% url 'school_admin:student_add_guardian' %}" class="flex flex-wrap items-end gap-3">
+        <form method="post" action="{% url 'school_admin:student_add_guardian' student.pk %}" class="flex flex-wrap items-end gap-3">
           {% csrf_token %}
           <input type="hidden" name="student_id" value="{{ student.pk }}">
           <div>
