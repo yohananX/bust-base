@@ -12,5 +12,19 @@
     "files_removed": 1,
     "space_freed_bytes": 210,
     "status": "cleaned"
+  },
+  {
+    "session_id": "admin-fix-and-refinement",
+    "start_time": "2026-07-14T15:00:00Z",
+    "end_time": "2026-07-14T16:52:00Z",
+    "description": "Admin fix and refinement session — stub cleanup",
+    "agent_count": 0,
+    "agents_used": ["cleanup-agent"],
+    "files_created": 0,
+    "packages_installed": [],
+    "packages_removed": [],
+    "files_removed": 6,
+    "space_freed_bytes": 2098,
+    "status": "cleaned"
   }
 ]

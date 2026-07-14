@@ -1,103 +1,44 @@
 {
+  "phase": "complete",
   "project": "Grace House School System",
-  "architecture": "modular monolith",
-  "multi_tenancy": "school_id on every table from day one",
-  "phase": "Phase 1 — MVP",
-  "completed_modules": ["core", "accounts", "students", "academics", "fees", "payroll"],
-  "current_step": "8 — parent portal (done)",
-  "pending_modules": [],
-  "future_modules": ["deploy", "finance", "notifications", "examscribe"],
-  "test_count": 132,
-  "test_status": "all passing (core=16, accounts=18, students=14, fees=27, academics=20 — verified outside container)",
-  "test_breakdown": {
-    "core": 16,
-    "accounts": 18,
-    "students": 14,
-    "academics": 20,
-    "fees": 27,
-    "payroll": 37
-  },
-  "parent_portal": {
-    "status": "complete",
-    "files_created": {
-      "students/views.py": "ParentChildrenListView, ParentChildDetailView",
-      "templates/students/parent/children_list.html": "Parent dashboard listing children",
-      "templates/students/parent/child_detail.html": "Child detail with enrollment, invoices, results",
-      "templates/fees/partials/invoice_status.html": "HTMX partial for invoice status polling"
-    },
-    "files_modified": {
-      "students/urls.py": "Added parent-children and parent-child-detail routes",
-      "fees/urls.py": "Added invoice-status-partial route",
-      "fees/views.py": "Added invoice_status_partial view"
-    },
-    "routes": {
-      "GET /parent/": "ParentChildrenListView — list all linked children",
-      "GET /parent/child/<pk>/": "ParentChildDetailView — child detail with invoices+scores",
-      "GET /fees/api/invoice/<invoice_id>/status/": "HTMX partial for live invoice status"
-    },
-    "test_verification": "All 90 tests in core+accounts+students+fees+academics pass. Payroll tests have pre-existing timeout in non-container env."
-  },
-  "containerize_validation": {
-    "status": "all passing",
-    "docker_compose_up": "✅ Both containers build and start cleanly",
-    "migrations": "✅ Auto-run via entrypoint.sh",
-    "admin_reachable": "✅ localhost:8000/admin/ returns 200 after login",
-    "static_files": "✅ Whitenoise serves admin CSS (200)",
-    "debug_false": "✅ No debug tracebacks with DEBUG=False",
-    "tests_in_container": "✅ 127/127 passed",
-    "check_deploy": "✅ 5 SSL-only warnings (expected for localhost)",
-    "bootstrap_school": "✅ School 'Grace House' + superuser 'admin' created",
-    "login_flow": "✅ Admin login 302 → admin page 200",
-    "postgres_persistence": "✅ Data survives docker-compose restart",
-    "known_issues": [
-      "Accounts app has unstaged model changes — run makemigrations before next deploy",
-      "SSL warnings are expected for localhost testing (HSTS, HTTPS redirect, secure cookies)"
-    ]
-  },
-  "remote": "git@github.com:yohananX/bust-base.git",
-  "branch": "main",
-  "pushed_commit": "b647524",
-  "timestamp": "2026-07-14T08:15:00Z",
-  "bug_fixes": {
-    "date": "2026-07-14",
-    "fixes": [
-      {
-        "bug": "Logout returns 405 Method Not Allowed",
-        "file": "templates/base.html",
-        "change": "Replaced <a> tag logout link with POST <form> + csrf_token for Django 6.0 LogoutView compliance"
-      },
-      {
-        "bug": "/accounts/ returns 404",
-        "file": "accounts/urls.py",
-        "change": "Added RedirectView at root path redirecting to /accounts/login/"
-      }
-    ],
-    "verification": "python manage.py check — no issues; python manage.py test accounts — 13/13 passed"
-  },
-  "session": {
-    "phase": "complete"
-  },
+  "session": "admin-fix-and-refinement",
   "status": "complete",
+  "completed": [
+    "Full codebase audit - 176 tests pass",
+    "Finance module (Project, ExpenditureCategory, Expenditure, financial reports) - 30 tests",
+    "Notifications module (NotificationLog, notify(), Django-Q2 process_notification) - 15 tests",
+    "Results_published gate on Term model to block score results before publication",
+    "Bug fixes: payroll disbursement _ → disbursement, notification dedup, staff isolation in payroll views, security settings (11 Django configs)",
+    "Cleanup: removed 198MB path-splitting artifacts (House/, School/, System/, duplicate venvs, pycache, staticfiles, db.sqlite3, stale stubs)",
+    "Frontend portals (Teacher scores grid, Parent dashboard with Pay Now, Student dashboard) - all role-scoped",
+    "School admin portal - 11 view modules, 21 templates, all RoleRequiredMixin-guarded",
+    "Django admin: app reordering (students→fees→...→accounts), hide django_q + auth.Group via AdminSite class-level get_app_list patch in AppConfig.ready() - no more LazyObject monkey-patch that broke permissions",
+    "Guardian Link Management: StudentGuardianLinkCreateView + DeleteView + template form in student detail",
+    "User Management: UserListView/CreateView/EditView/ToggleActiveView + templates",
+    "Custom superadmin URL: /admin/ → /secure-control-panel/",
+    "Logout redirect: LOGOUT_REDIRECT_URL + logout_complete path + logged_out.html template",
+    "Sidebar: Users nav link added, Super Admin URL updated"
+  ],
+  "active": {
+    "description": "School admin portal enhanced with guardian link mgmt, user mgmt, custom admin URL, and logout redirect",
+    "blockers": []
+  },
+  "next_moves": [
+    "ExamScribe module: exam formatting → teacher portal integration → Score entries",
+    "Docker Compose end-to-end test with Postgres",
+    "Production deployment checklist (env vars, secrets, staticfiles)"
+  ],
+  "test_count": 176,
+  "last_commit": "27fd642",
+  "branch": "main",
+  "remote": "git@github.com:yohananX/bust-base.git",
   "cleanup": {
-    "last_cleanup": "2026-07-14",
-    "files_removed": 8,
-    "space_freed_bytes": 60316,
-    "space_freed_human": "59 KB",
-    "directories_scanned": [
-      ".spec/agents/"
-    ],
-    "files_removed_detail": [
-      "executor-containerize.json",
-      "executor-update-urls.json",
-      "executor-accounts-urls-views.json",
-      "executor-fix-payslip-tests.json",
-      "explore-model-inventory.json",
-      "executor-fix-teacher-score-update.json",
-      "executor-teacher-portal-views.json",
-      "commit-crafter-fix-TeacherScoreUpdateView-POST-keys.json"
-    ],
+    "files_removed": 6,
+    "space_freed_bytes": 2098,
+    "space_freed_human": "2.1 KB",
     "packages_removed": [],
+    "directories_scanned": [".spec/agents"],
     "dry_run": false,
-    "timestamp": "2026-07-14T13:22:00Z"
+    "timestamp": "2026-07-14T16:52:00Z"
   }
 }

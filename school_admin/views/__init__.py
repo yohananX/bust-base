@@ -20,3 +20,6 @@ from .finance import (
 )
 from .results import PublishResultsView
 from .notifications import NotificationLogView
+from .users import (
+    UserListView, UserCreateView, UserEditView, UserToggleActiveView,
+)

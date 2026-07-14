@@ -7,6 +7,7 @@ from django.urls import path
 from school_admin.views import (
     DashboardView,
     StudentListView, StudentCreateView, StudentDetailView,
+    StudentGuardianLinkCreateView, StudentGuardianLinkDeleteView,
     StaffListView, StaffCreateView,
     SubjectListView, TeacherAssignmentListView, ScoreAdminView,
     FeeCategoryListView, FeeStructureListView,
@@ -18,6 +19,7 @@ from school_admin.views import (
     ExpenditureListView, FinancialReportView,
     PublishResultsView,
     NotificationLogView,
+    UserListView, UserCreateView, UserEditView, UserToggleActiveView,
 )
 
 app_name = 'school_admin'
@@ -30,6 +32,8 @@ urlpatterns = [
     path('students/', StudentListView.as_view(), name='student_list'),
     path('students/new/', StudentCreateView.as_view(), name='student_create'),
     path('students/<int:pk>/', StudentDetailView.as_view(), name='student_detail'),
+    path('students/<int:pk>/add-guardian/', StudentGuardianLinkCreateView.as_view(), name='student_add_guardian'),
+    path('students/guardian/<int:pk>/delete/', StudentGuardianLinkDeleteView.as_view(), name='student_delete_guardian'),
 
     # Staff
     path('staff/', StaffListView.as_view(), name='staff_list'),
@@ -66,4 +70,10 @@ urlpatterns = [
 
     # Notifications
     path('notifications/', NotificationLogView.as_view(), name='notification_log'),
+
+    # User Management
+    path('users/', UserListView.as_view(), name='user_list'),
+    path('users/new/', UserCreateView.as_view(), name='user_create'),
+    path('users/<int:pk>/edit/', UserEditView.as_view(), name='user_edit'),
+    path('users/<int:pk>/toggle-active/', UserToggleActiveView.as_view(), name='user_toggle_active'),
 ]

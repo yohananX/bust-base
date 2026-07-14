@@ -1,0 +1,74 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}Edit User{% else %}Add User{% endif %}{% endblock %}
+{% block page_header %}{% if is_edit %}Edit User{% else %}Add User{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+          <input type="text" name="first_name" value="{{ user_obj.first_name|default:'' }}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+          <input type="text" name="last_name" value="{{ user_obj.last_name|default:'' }}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Username <span class="text-red-500">*</span></label>
+        {% if is_edit %}
+          <input type="text" value="{{ user_obj.username }}" disabled class="w-full border border-gray-200 rounded px-3 py-2 text-sm bg-gray-50 text-gray-500">
+          <p class="text-xs text-gray-400 mt-1">Username cannot be changed.</p>
+        {% else %}
+          <input type="text" name="username" value="" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        {% endif %}
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
+          <input type="email" name="email" value="{{ user_obj.email|default:'' }}" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+          <input type="text" name="phone_number" value="{{ user_obj.phone_number|default:'' }}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Role <span class="text-red-500">*</span></label>
+        <select name="role" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+          <option value="">— Select —</option>
+          {% for val, label in roles %}
+            <option value="{{ val }}" {% if user_obj.role == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          Password {% if not is_edit %}<span class="text-red-500">*</span>{% endif %}
+        </label>
+        <input type="password" name="password" value="" {% if not is_edit %}required{% endif %} class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        {% if is_edit %}
+          <p class="text-xs text-gray-400 mt-1">Leave blank to keep current password.</p>
+        {% endif %}
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button type="submit" class="bg-[#1B2430] text-white text-sm px-6 py-2 rounded hover:bg-[#2a3648] transition-colors">
+          {% if is_edit %}Update User{% else %}Create User{% endif %}
+        </button>
+        <a href="{% url 'school_admin:user_list' %}" class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
