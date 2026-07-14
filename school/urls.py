@@ -1,3 +1,5 @@
+import school.admin_setup  # noqa: applies admin ordering and model hiding
+
 """
 URL configuration for school project.
 """
@@ -15,5 +17,6 @@ urlpatterns = [
     path('payroll/', include('payroll.urls')),
     path('finance/', include('finance.urls')),
     path('notifications/', include('notifications.urls')),
+    path('school-admin/', include('school_admin.urls')),
     path('', RedirectView.as_view(url='/accounts/redirect/', permanent=False), name='home'),
 ]
