@@ -7,6 +7,7 @@ from django.urls import path, include
 from django.views.generic.base import RedirectView
 
 urlpatterns = [
+    path('admin/', RedirectView.as_view(url='/secure-control-panel/', permanent=False), name='admin_redirect'),
     path('secure-control-panel/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
     path('teacher/', include('academics.urls')),
