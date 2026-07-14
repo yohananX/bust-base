@@ -81,8 +81,37 @@
       <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
         {% if user.is_authenticated %}
           {% if user.role == 'ADMIN' %}
-            <a href="/admin/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Dashboard</a>
-            <a href="/admin/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Admin Panel</a>
+            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-2 pb-1">School Admin</div>
+            <a href="/school-admin/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Dashboard</a>
+            <a href="/school-admin/students/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Students</a>
+            <a href="/school-admin/staff/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Staff</a>
+
+            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Academics</div>
+            <a href="/school-admin/subjects/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Subjects</a>
+            <a href="/school-admin/assignments/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Assignments</a>
+            <a href="/school-admin/scores/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Scores</a>
+
+            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Fees</div>
+            <a href="/school-admin/fees/categories/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Categories</a>
+            <a href="/school-admin/fees/structures/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Structures</a>
+            <a href="/school-admin/invoices/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Invoices</a>
+
+            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Payroll</div>
+            <a href="/school-admin/payroll/grades/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Pay Grades</a>
+            <a href="/school-admin/payroll/allowances/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Allowances</a>
+            <a href="/school-admin/payroll/runs/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Payroll Runs</a>
+
+            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Finance</div>
+            <a href="/school-admin/finance/projects/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Projects</a>
+            <a href="/school-admin/finance/expenditures/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Expenditures</a>
+            <a href="/school-admin/finance/report/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Financial Report</a>
+
+            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Other</div>
+            <a href="/school-admin/results/publish/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Results</a>
+            <a href="/school-admin/notifications/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Notifications</a>
+
+            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Django Admin</div>
+            <a href="/admin/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Super Admin</a>
           
           {% elif user.role == 'TEACHER' %}
             <a href="/teacher/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Dashboard</a>
@@ -107,9 +136,12 @@
           <div class="mb-3 px-3 py-2 text-sm text-white/60 truncate">
             {{ user.get_full_name|default:user.username }}
           </div>
-          <a href="{% url 'logout' %}" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">
-            Logout
-          </a>
+           <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="w-full flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+              Logout
+            </button>
+          </form>
         {% else %}
           <a href="{% url 'login' %}" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">
             Login

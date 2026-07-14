@@ -1,0 +1,46 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Record Disbursement — School Admin{% endblock %}
+{% block page_header %}Record Salary Disbursement{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg p-8 shadow-sm border border-gray-100">
+    <div class="mb-6">
+      <p class="text-sm text-gray-600">
+        <strong>Staff:</strong> {{ payslip.staff.user.get_full_name|default:payslip.staff.user.username }}<br>
+        <strong>Net Pay:</strong> NGN {{ payslip.net_pay|floatformat:2 }}<br>
+        <strong>Balance:</strong> NGN {{ payslip.balance|floatformat:2 }}
+      </p>
+    </div>
+
+    <form method="POST" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Amount (NGN)</label>
+        <input type="number" name="amount" step="0.01" max="{{ payslip.balance }}" value="{{ payslip.balance }}" class="border border-gray-300 rounded px-3 py-2 text-sm w-full" required>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Method</label>
+        <select name="method" class="border border-gray-300 rounded px-3 py-2 text-sm w-full" required>
+          <option value="">— Select —</option>
+          <option value="BANK_TRANSFER">Bank Transfer</option>
+          <option value="CASH">Cash</option>
+          <option value="CHEQUE">Cheque</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Reference</label>
+        <input type="text" name="reference" class="border border-gray-300 rounded px-3 py-2 text-sm w-full" placeholder="e.g. TRANS-001" required>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Disbursed On</label>
+        <input type="datetime-local" name="disbursed_on" class="border border-gray-300 rounded px-3 py-2 text-sm w-full" required>
+      </div>
+      <button type="submit" class="px-6 py-3 bg-[var(--color-status-green)] text-white rounded text-sm font-medium hover:opacity-90">Record Disbursement</button>
+      <a href="{% url 'school_admin:payroll_run_detail' payslip.payroll_run.pk %}" class="ml-4 text-sm text-gray-500 hover:underline">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

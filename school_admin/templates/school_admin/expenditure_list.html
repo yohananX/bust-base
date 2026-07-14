@@ -1,0 +1,71 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Expenditures — School Admin{% endblock %}
+{% block page_header %}Finance — Expenditures{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Category</label>
+        <select name="category_id" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All Categories</option>
+          {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if filter_category == cat.id|stringformat:'s' %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Project</label>
+        <select name="project_id" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All Projects</option>
+          {% for p in projects %}
+            <option value="{{ p.id }}" {% if filter_project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
+      <a href="{% url 'school_admin:expenditure_list' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
+    </form>
+  </div>
+
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-gray-600">
+          <th class="px-4 py-3 font-medium">Date</th>
+          <th class="px-4 py-3 font-medium">Category</th>
+          <th class="px-4 py-3 font-medium">Description</th>
+          <th class="px-4 py-3 font-medium">Project</th>
+          <th class="px-4 py-3 font-medium">Amount</th>
+          <th class="px-4 py-3 font-medium">Recorded By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in expenditures %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50">
+          <td class="px-4 py-3">{{ e.date|date:'M d, Y' }}</td>
+          <td class="px-4 py-3">{{ e.category.name }}</td>
+          <td class="px-4 py-3 max-w-xs truncate">{{ e.description }}</td>
+          <td class="px-4 py-3">
+            {% if e.project %}
+              <a href="{% url 'school_admin:project_detail' e.project.pk %}" class="text-blue-600 hover:underline">{{ e.project.name }}</a>
+            {% else %}
+              <span class="text-gray-400">—</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 font-medium">NGN {{ e.amount|floatformat:2 }}</td>
+          <td class="px-4 py-3 text-gray-500">{{ e.recorded_by.get_full_name|default:e.recorded_by.username }}</td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-100">
+          <td colspan="6" class="px-4 py-8 text-center text-gray-400">No expenditures found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

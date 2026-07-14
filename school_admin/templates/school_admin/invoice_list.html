@@ -1,0 +1,82 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Invoices — School Admin{% endblock %}
+{% block page_header %}Invoice Management{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Search Student</label>
+        <input type="text" name="q" value="{{ q }}" placeholder="Student name" class="border border-gray-300 rounded px-3 py-2 text-sm w-48">
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Term</label>
+        <select name="term_id" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All Terms</option>
+          {% for t in terms %}
+            <option value="{{ t.id }}" {% if filter_term == t.id|stringformat:'s' %}selected{% endif %}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Status</label>
+        <select name="status" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All</option>
+          <option value="PAID" {% if filter_status == 'PAID' %}selected{% endif %}>Paid</option>
+          <option value="PARTIAL" {% if filter_status == 'PARTIAL' %}selected{% endif %}>Partial</option>
+          <option value="UNPAID" {% if filter_status == 'UNPAID' %}selected{% endif %}>Unpaid</option>
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
+      <a href="{% url 'school_admin:invoice_list' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
+      <a href="{% url 'school_admin:generate_invoices' %}" class="px-4 py-2 bg-[var(--color-signal-gold)] text-white rounded text-sm hover:opacity-90 ml-auto">+ Generate Invoices</a>
+    </form>
+  </div>
+
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-gray-600">
+          <th class="px-4 py-3 font-medium">Student</th>
+          <th class="px-4 py-3 font-medium">Term</th>
+          <th class="px-4 py-3 font-medium">Total</th>
+          <th class="px-4 py-3 font-medium">Paid</th>
+          <th class="px-4 py-3 font-medium">Balance</th>
+          <th class="px-4 py-3 font-medium">Status</th>
+          <th class="px-4 py-3 font-medium">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50">
+          <td class="px-4 py-3">{{ inv.student.user.get_full_name|default:inv.student.user.username }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ inv.term.name }}</td>
+          <td class="px-4 py-3">NGN {{ inv.total_amount|floatformat:2 }}</td>
+          <td class="px-4 py-3">NGN {{ inv.amount_paid|floatformat:2 }}</td>
+          <td class="px-4 py-3 font-medium">NGN {{ inv.balance|floatformat:2 }}</td>
+          <td class="px-4 py-3">
+            {% if inv.status == 'PAID' %}
+              <span class="status-stamp status-stamp--paid">{{ inv.status }}</span>
+            {% elif inv.status == 'PARTIAL' %}
+              <span class="status-tag status-tag--pending">{{ inv.status }}</span>
+            {% else %}
+              <span class="status-tag">{{ inv.status }}</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3">
+            <a href="{% url 'school_admin:invoice_detail' inv.pk %}" class="text-blue-600 hover:underline">View</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-100">
+          <td colspan="7" class="px-4 py-8 text-center text-gray-400">No invoices found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

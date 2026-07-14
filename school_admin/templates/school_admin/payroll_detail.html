@@ -1,0 +1,88 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}{{ run.label }} — Payroll Run{% endblock %}
+{% block page_header %}Payroll Run: {{ run.label }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <!-- Run Summary -->
+  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div>
+        <span class="text-xs text-gray-500 block">Period</span>
+        <span class="font-medium">{{ run.period_start|date:'M d' }} — {{ run.period_end|date:'M d, Y' }}</span>
+      </div>
+      <div>
+        <span class="text-xs text-gray-500 block">Pay Date</span>
+        <span class="font-medium">{{ run.pay_date|date:'M d, Y' }}</span>
+      </div>
+      <div>
+        <span class="text-xs text-gray-500 block">Staff Count</span>
+        <span class="font-medium">{{ run.staff_count }}</span>
+      </div>
+      <div>
+        <span class="text-xs text-gray-500 block">Gross Pay</span>
+        <span class="font-medium">NGN {{ run.total_gross_pay|floatformat:2 }}</span>
+      </div>
+      <div>
+        <span class="text-xs text-gray-500 block">Net Pay</span>
+        <span class="font-semibold text-lg">NGN {{ run.total_net_pay|floatformat:2 }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payslips -->
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-4 py-3 bg-gray-50 border-b font-medium text-sm">Payslips</div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-gray-600 border-b">
+          <th class="px-4 py-2">Staff</th>
+          <th class="px-4 py-2">Base Salary</th>
+          <th class="px-4 py-2">Allowances</th>
+          <th class="px-4 py-2">Deductions</th>
+          <th class="px-4 py-2">Gross</th>
+          <th class="px-4 py-2">Net</th>
+          <th class="px-4 py-2">Disbursed</th>
+          <th class="px-4 py-2">Status</th>
+          <th class="px-4 py-2">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in payslips %}
+        <tr class="border-t border-gray-50 hover:bg-gray-50">
+          <td class="px-4 py-2">{{ p.staff.user.get_full_name|default:p.staff.user.username }}</td>
+          <td class="px-4 py-2">NGN {{ p.base_salary|floatformat:2 }}</td>
+          <td class="px-4 py-2">NGN {{ p.total_allowances|floatformat:2 }}</td>
+          <td class="px-4 py-2">(NGN {{ p.total_deductions|floatformat:2 }})</td>
+          <td class="px-4 py-2">NGN {{ p.gross_pay|floatformat:2 }}</td>
+          <td class="px-4 py-2 font-medium">NGN {{ p.net_pay|floatformat:2 }}</td>
+          <td class="px-4 py-2">NGN {{ p.amount_disbursed|floatformat:2 }}</td>
+          <td class="px-4 py-2">
+            {% if p.disbursement_status == 'PAID' %}
+              <span class="status-stamp status-stamp--paid">{{ p.disbursement_status }}</span>
+            {% elif p.disbursement_status == 'PARTIAL' %}
+              <span class="status-tag status-tag--pending">{{ p.disbursement_status }}</span>
+            {% else %}
+              <span class="status-tag">{{ p.disbursement_status }}</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-2">
+            {% if p.disbursement_status != 'PAID' %}
+              <a href="{% url 'school_admin:record_disbursement' p.pk %}" class="text-blue-600 hover:underline text-xs">Disburse</a>
+            {% else %}
+              <span class="text-gray-400 text-xs">Paid</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-50">
+          <td colspan="9" class="px-4 py-8 text-center text-gray-400">No payslips in this run.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Staff — School Admin{% endblock %}
+{% block page_header %}Staff Management{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <!-- Filters -->
+  <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Search</label>
+        <input type="text" name="q" value="{{ q }}" placeholder="Name or employee ID" class="border border-gray-300 rounded px-3 py-2 text-sm w-64">
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Status</label>
+        <select name="status" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All Statuses</option>
+          {% for code, label in status_choices %}
+            <option value="{{ code }}" {% if filter_status == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
+      <a href="{% url 'school_admin:staff_list' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
+    </form>
+  </div>
+
+  <!-- Staff Table -->
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-gray-600">
+          <th class="px-4 py-3 font-medium">Name</th>
+          <th class="px-4 py-3 font-medium">Employee ID</th>
+          <th class="px-4 py-3 font-medium">Pay Grade</th>
+          <th class="px-4 py-3 font-medium">Status</th>
+          <th class="px-4 py-3 font-medium">Hire Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in staff_list %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50">
+          <td class="px-4 py-3">{{ s.user.get_full_name|default:s.user.username }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ s.employee_id }}</td>
+          <td class="px-4 py-3">{{ s.pay_grade.name|default:'—' }}</td>
+          <td class="px-4 py-3">
+            {% if s.status == 'ACTIVE' %}
+              <span class="status-tag status-tag--active">{{ s.get_status_display }}</span>
+            {% elif s.status == 'SUSPENDED' %}
+              <span class="status-tag status-tag--pending">{{ s.get_status_display }}</span>
+            {% else %}
+              <span class="status-tag status-tag--fail">{{ s.get_status_display }}</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3">{{ s.hire_date|date:'M d, Y' }}</td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-100">
+          <td colspan="5" class="px-4 py-8 text-center text-gray-400">No staff found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

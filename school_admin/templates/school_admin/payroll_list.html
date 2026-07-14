@@ -1,0 +1,194 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Payroll — School Admin{% endblock %}
+{% block page_header %}Payroll Management{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <!-- Tab navigation -->
+  <div class="flex gap-2 mb-6">
+    <a href="?section=pay_grades" class="px-4 py-2 rounded text-sm {% if section == 'pay_grades' %}bg-[#1B2430] text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Pay Grades</a>
+    <a href="?section=allowances" class="px-4 py-2 rounded text-sm {% if section == 'allowances' %}bg-[#1B2430] text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Allowances & Deductions</a>
+    <a href="?section=runs" class="px-4 py-2 rounded text-sm {% if section == 'runs' %}bg-[#1B2430] text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Payroll Runs</a>
+    <a href="{% url 'school_admin:generate_payroll' %}" class="px-4 py-2 bg-[var(--color-signal-gold)] text-white rounded text-sm hover:opacity-90">+ New Run</a>
+  </div>
+
+  {% if section == 'pay_grades' %}
+    <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-gray-600">
+            <th class="px-4 py-3 font-medium">Name</th>
+            <th class="px-4 py-3 font-medium">Role Filter</th>
+            <th class="px-4 py-3 font-medium">Base Salary</th>
+            <th class="px-4 py-3 font-medium">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in pay_grades %}
+          <tr class="border-t border-gray-100 hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium">{{ g.name }}</td>
+            <td class="px-4 py-3">{{ g.get_role_filter_display|default:'All' }}</td>
+            <td class="px-4 py-3 font-medium">NGN {{ g.base_salary|floatformat:2 }}</td>
+            <td class="px-4 py-3 text-gray-500">{{ g.description|truncatewords:15 }}</td>
+          </tr>
+          {% empty %}
+          <tr class="border-t border-gray-100">
+            <td colspan="4" class="px-4 py-8 text-center text-gray-400">No pay grades found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {% elif section == 'allowances' %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b font-medium text-sm">Allowance Definitions</div>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-600">
+              <th class="px-4 py-2">Name</th>
+              <th class="px-4 py-2">Amount</th>
+              <th class="px-4 py-2">Scope</th>
+              <th class="px-4 py-2">Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in allowances %}
+            <tr class="border-t border-gray-50">
+              <td class="px-4 py-2">{{ a.name }}</td>
+              <td class="px-4 py-2">NGN {{ a.amount|floatformat:2 }}</td>
+              <td class="px-4 py-2 text-gray-500">{{ a.pay_grade.name|default:a.target_staff|default:'All' }}</td>
+              <td class="px-4 py-2">
+                {% if a.is_active %}
+                  <span class="status-tag status-tag--active">Active</span>
+                {% else %}
+                  <span class="status-tag">Inactive</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr class="border-t border-gray-50">
+              <td colspan="4" class="px-4 py-4 text-center text-gray-400">No allowances defined.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b font-medium text-sm">Deduction Definitions</div>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-600">
+              <th class="px-4 py-2">Name</th>
+              <th class="px-4 py-2">Amount</th>
+              <th class="px-4 py-2">Scope</th>
+              <th class="px-4 py-2">Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in deductions %}
+            <tr class="border-t border-gray-50">
+              <td class="px-4 py-2">{{ d.name }}</td>
+              <td class="px-4 py-2">NGN {{ d.amount|floatformat:2 }}</td>
+              <td class="px-4 py-2 text-gray-500">{{ d.pay_grade.name|default:d.target_staff|default:'All' }}</td>
+              <td class="px-4 py-2">
+                {% if d.is_active %}
+                  <span class="status-tag status-tag--active">Active</span>
+                {% else %}
+                  <span class="status-tag">Inactive</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr class="border-t border-gray-50">
+              <td colspan="4" class="px-4 py-4 text-center text-gray-400">No deductions defined.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  {% elif section == 'runs' %}
+    <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+      <form method="GET" class="flex gap-4 items-end">
+        <input type="hidden" name="section" value="runs">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Status</label>
+          <select name="status" class="border border-gray-300 rounded px-3 py-2 text-sm">
+            <option value="active" {% if filter_status == 'active' or not filter_status %}selected{% endif %}>Active</option>
+            <option value="cancelled" {% if filter_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+          </select>
+        </div>
+        <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
+      </form>
+    </div>
+
+    <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-gray-600">
+            <th class="px-4 py-3 font-medium">Label</th>
+            <th class="px-4 py-3 font-medium">Period</th>
+            <th class="px-4 py-3 font-medium">Pay Date</th>
+            <th class="px-4 py-3 font-medium">Staff</th>
+            <th class="px-4 py-3 font-medium">Gross Pay</th>
+            <th class="px-4 py-3 font-medium">Net Pay</th>
+            <th class="px-4 py-3 font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in runs %}
+          <tr class="border-t border-gray-100 hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium">{{ r.label }}</td>
+            <td class="px-4 py-3 text-gray-600">{{ r.period_start|date:'M d' }} — {{ r.period_end|date:'M d, Y' }}</td>
+            <td class="px-4 py-3">{{ r.pay_date|date:'M d, Y' }}</td>
+            <td class="px-4 py-3">{{ r.staff_count }}</td>
+            <td class="px-4 py-3">NGN {{ r.total_gross_pay|floatformat:2 }}</td>
+            <td class="px-4 py-3 font-medium">NGN {{ r.total_net_pay|floatformat:2 }}</td>
+            <td class="px-4 py-3">
+              <a href="{% url 'school_admin:payroll_run_detail' r.pk %}" class="text-blue-600 hover:underline">View</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr class="border-t border-gray-100">
+            <td colspan="7" class="px-4 py-8 text-center text-gray-400">No payroll runs found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% elif section == 'generate' %}
+    <div class="bg-[var(--color-surface)] rounded-lg p-8 shadow-sm border border-gray-100 max-w-2xl">
+      <h3 class="font-[var(--font-display)] font-semibold text-lg mb-6">Generate Payroll Run</h3>
+      <form method="POST" class="space-y-4">
+        {% csrf_token %}
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Label</label>
+          <input type="text" name="label" class="border border-gray-300 rounded px-3 py-2 text-sm w-full" placeholder="e.g. July 2026" required>
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Period Start</label>
+            <input type="date" name="period_start" class="border border-gray-300 rounded px-3 py-2 text-sm w-full" required>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Period End</label>
+            <input type="date" name="period_end" class="border border-gray-300 rounded px-3 py-2 text-sm w-full" required>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Pay Date</label>
+            <input type="date" name="pay_date" class="border border-gray-300 rounded px-3 py-2 text-sm w-full" required>
+          </div>
+        </div>
+        <button type="submit" class="px-6 py-3 bg-[var(--color-signal-gold)] text-white rounded text-sm font-medium hover:opacity-90">Generate Payroll Run</button>
+        <a href="{% url 'school_admin:payroll_run_list' %}" class="ml-4 text-sm text-gray-500 hover:underline">Cancel</a>
+      </form>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Fees — School Admin{% endblock %}
+{% block page_header %}Fee Management{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <!-- Tab navigation -->
+  <div class="flex gap-2 mb-6">
+    <a href="?section=categories" class="px-4 py-2 rounded text-sm {% if section == 'categories' %}bg-[#1B2430] text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Categories</a>
+    <a href="?section=structures" class="px-4 py-2 rounded text-sm {% if section == 'structures' %}bg-[#1B2430] text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Fee Structures</a>
+  </div>
+
+  {% if section == 'categories' %}
+    <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-gray-600">
+            <th class="px-4 py-3 font-medium">Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cat in categories %}
+          <tr class="border-t border-gray-100 hover:bg-gray-50">
+            <td class="px-4 py-3">{{ cat.name }}</td>
+          </tr>
+          {% empty %}
+          <tr class="border-t border-gray-100">
+            <td class="px-4 py-8 text-center text-gray-400">No fee categories found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {% elif section == 'structures' %}
+    <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+      <form method="GET" class="flex flex-wrap gap-4 items-end">
+        <input type="hidden" name="section" value="structures">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Class</label>
+          <select name="class_id" class="border border-gray-300 rounded px-3 py-2 text-sm">
+            <option value="">All Classes</option>
+            {% for c in classes %}
+              <option value="{{ c.id }}" {% if filter_class == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Term</label>
+          <select name="term_id" class="border border-gray-300 rounded px-3 py-2 text-sm">
+            <option value="">All Terms</option>
+            {% for t in terms %}
+              <option value="{{ t.id }}" {% if filter_term == t.id|stringformat:'s' %}selected{% endif %}>{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
+        <a href="{% url 'school_admin:fee_structure_list' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
+      </form>
+    </div>
+
+    <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-gray-600">
+            <th class="px-4 py-3 font-medium">Class</th>
+            <th class="px-4 py-3 font-medium">Term</th>
+            <th class="px-4 py-3 font-medium">Category</th>
+            <th class="px-4 py-3 font-medium">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fs in structures %}
+          <tr class="border-t border-gray-100 hover:bg-gray-50">
+            <td class="px-4 py-3">{{ fs.school_class.name }}</td>
+            <td class="px-4 py-3">{{ fs.term.name }}</td>
+            <td class="px-4 py-3">{{ fs.category.name }}</td>
+            <td class="px-4 py-3 font-medium">NGN {{ fs.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr class="border-t border-gray-100">
+            <td colspan="4" class="px-4 py-8 text-center text-gray-400">No fee structures found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

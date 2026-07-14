@@ -1,0 +1,60 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Publish Results — School Admin{% endblock %}
+{% block page_header %}Results Publication{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-gray-600">
+          <th class="px-4 py-3 font-medium">Term</th>
+          <th class="px-4 py-3 font-medium">Session</th>
+          <th class="px-4 py-3 font-medium">Period</th>
+          <th class="px-4 py-3 font-medium">Status</th>
+          <th class="px-4 py-3 font-medium">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for term in terms %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50">
+          <td class="px-4 py-3 font-medium">{{ term.name }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ term.session.name }}</td>
+          <td class="px-4 py-3 text-gray-500">{{ term.start_date|date:'M d' }} — {{ term.end_date|date:'M d, Y' }}</td>
+          <td class="px-4 py-3">
+            {% if term.results_published %}
+              <span class="status-stamp status-stamp--results\ published">Published</span>
+            {% else %}
+              <span class="status-tag status-tag--pending">Not Published</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3">
+            <form method="POST" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="term_id" value="{{ term.id }}">
+              {% if term.results_published %}
+                <button type="submit" name="action" value="unpublish" class="px-3 py-1.5 bg-[var(--color-status-red)] text-white rounded text-xs hover:opacity-90"
+                  onclick="return confirm('Unpublish results for {{ term.name }}?')">
+                  Unpublish
+                </button>
+              {% else %}
+                <button type="submit" name="action" value="publish" class="px-3 py-1.5 bg-[var(--color-status-green)] text-white rounded text-xs hover:opacity-90"
+                  onclick="return confirm('Publish results for {{ term.name }}? This will notify guardians.')">
+                  Publish
+                </button>
+              {% endif %}
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-100">
+          <td colspan="5" class="px-4 py-8 text-center text-gray-400">No terms found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

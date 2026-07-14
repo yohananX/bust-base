@@ -1,0 +1,70 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Teacher Assignments — School Admin{% endblock %}
+{% block page_header %}Teacher Assignments{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Teacher</label>
+        <select name="teacher_id" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All Teachers</option>
+          {% for t in teachers %}
+            <option value="{{ t.id }}" {% if filter_teacher == t.id|stringformat:'s' %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Class</label>
+        <select name="class_id" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All Classes</option>
+          {% for c in classes %}
+            <option value="{{ c.id }}" {% if filter_class == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Session</label>
+        <select name="session_id" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All Sessions</option>
+          {% for s in sessions %}
+            <option value="{{ s.id }}" {% if filter_session == s.id|stringformat:'s' %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
+      <a href="{% url 'school_admin:assignment_list' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
+    </form>
+  </div>
+
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-gray-600">
+          <th class="px-4 py-3 font-medium">Teacher</th>
+          <th class="px-4 py-3 font-medium">Subject</th>
+          <th class="px-4 py-3 font-medium">Class</th>
+          <th class="px-4 py-3 font-medium">Session</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in assignments %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50">
+          <td class="px-4 py-3">{{ a.teacher.get_full_name|default:a.teacher.username }}</td>
+          <td class="px-4 py-3">{{ a.subject.name }}</td>
+          <td class="px-4 py-3">{{ a.school_class.name }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ a.session.name }}</td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-100">
+          <td colspan="4" class="px-4 py-8 text-center text-gray-400">No assignments found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

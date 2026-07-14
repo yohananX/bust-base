@@ -58,6 +58,22 @@
   "branch": "main",
   "pushed_commit": "b647524",
   "timestamp": "2026-07-14T08:15:00Z",
+  "bug_fixes": {
+    "date": "2026-07-14",
+    "fixes": [
+      {
+        "bug": "Logout returns 405 Method Not Allowed",
+        "file": "templates/base.html",
+        "change": "Replaced <a> tag logout link with POST <form> + csrf_token for Django 6.0 LogoutView compliance"
+      },
+      {
+        "bug": "/accounts/ returns 404",
+        "file": "accounts/urls.py",
+        "change": "Added RedirectView at root path redirecting to /accounts/login/"
+      }
+    ],
+    "verification": "python manage.py check — no issues; python manage.py test accounts — 13/13 passed"
+  },
   "session": {
     "phase": "complete"
   },

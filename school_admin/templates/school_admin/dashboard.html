@@ -1,0 +1,76 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}School Admin Dashboard — Grace House{% endblock %}
+{% block page_header %}School Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    
+    <!-- Total Students -->
+    <div class="summary-card">
+      <div class="label">Total Active Students</div>
+      <div class="value">{{ total_students }}</div>
+      <div class="sub">Currently enrolled</div>
+    </div>
+
+    <!-- Outstanding Fees -->
+    <div class="summary-card">
+      <div class="label">Outstanding Fees</div>
+      <div class="value">NGN {{ outstanding_fees|floatformat:2 }}</div>
+      <div class="sub">Unpaid / partially paid invoices</div>
+    </div>
+
+    <!-- Pending Payroll -->
+    <div class="summary-card">
+      <div class="label">Payroll Runs</div>
+      <div class="value">{{ pending_payroll }}</div>
+      <div class="sub">Total payroll runs created</div>
+    </div>
+
+    <!-- Published Results -->
+    <div class="summary-card">
+      <div class="label">Results Published</div>
+      <div class="value">
+        {% if results_published %}
+          <span class="status-stamp status-stamp--results\ published">Published</span>
+        {% else %}
+          <span class="status-tag status-tag--pending">Not Published</span>
+        {% endif %}
+      </div>
+      <div class="sub">Current term</div>
+    </div>
+
+    <!-- Active Projects -->
+    <div class="summary-card">
+      <div class="label">Active Projects</div>
+      <div class="value">{{ total_projects }}</div>
+      <div class="sub">Proposed / In Progress / Approved</div>
+    </div>
+
+  </div>
+
+  <!-- Quick Links -->
+  <div class="mt-10">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4 font-[var(--font-display)]">Quick Actions</h2>
+    <div class="flex flex-wrap gap-4">
+      <a href="{% url 'school_admin:student_list' %}" class="px-4 py-2 bg-[var(--color-surface)] border border-gray-200 rounded-lg text-sm hover:shadow-sm transition-shadow">
+        View Students
+      </a>
+      <a href="{% url 'school_admin:invoice_list' %}" class="px-4 py-2 bg-[var(--color-surface)] border border-gray-200 rounded-lg text-sm hover:shadow-sm transition-shadow">
+        View Invoices
+      </a>
+      <a href="{% url 'school_admin:payroll_run_list' %}" class="px-4 py-2 bg-[var(--color-surface)] border border-gray-200 rounded-lg text-sm hover:shadow-sm transition-shadow">
+        Payroll Runs
+      </a>
+      <a href="{% url 'school_admin:generate_invoices' %}" class="px-4 py-2 bg-[var(--color-surface)] border border-gray-200 rounded-lg text-sm hover:shadow-sm transition-shadow">
+        Generate Invoices
+      </a>
+      <a href="{% url 'school_admin:publish_results' %}" class="px-4 py-2 bg-[var(--color-surface)] border border-gray-200 rounded-lg text-sm hover:shadow-sm transition-shadow">
+        Publish Results
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

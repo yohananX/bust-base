@@ -1,0 +1,49 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Financial Report — School Admin{% endblock %}
+{% block page_header %}Financial Report{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <!-- Date Range Filter -->
+  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100 mb-6">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Start Date</label>
+        <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" class="border border-gray-300 rounded px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">End Date</label>
+        <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" class="border border-gray-300 rounded px-3 py-2 text-sm">
+      </div>
+      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Update</button>
+    </form>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
+      <div class="label text-xs text-gray-500 mb-1">Fees Collected</div>
+      <div class="font-[var(--font-display)] text-2xl font-semibold text-[var(--color-status-green)]">NGN {{ fees_total|floatformat:2 }}</div>
+    </div>
+    <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
+      <div class="label text-xs text-gray-500 mb-1">Salaries Disbursed</div>
+      <div class="font-[var(--font-display)] text-2xl font-semibold text-[var(--color-status-red)]">NGN {{ salaries_total|floatformat:2 }}</div>
+    </div>
+    <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
+      <div class="label text-xs text-gray-500 mb-1">Expenditure</div>
+      <div class="font-[var(--font-display)] text-2xl font-semibold text-[var(--color-status-red)]">NGN {{ expenditure_total|floatformat:2 }}</div>
+    </div>
+    <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
+      <div class="label text-xs text-gray-500 mb-1">Net Position</div>
+      <div class="font-[var(--font-display)] text-2xl font-semibold {% if net >= 0 %}text-[var(--color-status-green)]{% else %}text-[var(--color-status-red)]{% endif %}">NGN {{ net|floatformat:2 }}</div>
+    </div>
+  </div>
+
+  <!-- Period info -->
+  <div class="text-sm text-gray-500 text-center">
+    Report period: {{ start_date|date:'M d, Y' }} — {{ end_date|date:'M d, Y' }}
+  </div>
+</div>
+{% endblock %}

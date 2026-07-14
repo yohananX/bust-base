@@ -1,0 +1,63 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Projects — School Admin{% endblock %}
+{% block page_header %}Finance — Projects{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+    <form method="GET" class="flex gap-4 items-end">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Status</label>
+        <select name="status" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All Statuses</option>
+          {% for code, label in status_choices %}
+            <option value="{{ code }}" {% if filter_status == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
+      <a href="{% url 'school_admin:project_list' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
+    </form>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for p in projects %}
+    <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+      <div class="flex items-start justify-between mb-3">
+        <h3 class="font-[var(--font-display)] font-semibold">
+          <a href="{% url 'school_admin:project_detail' p.pk %}" class="text-[var(--color-signal-gold)] hover:underline">{{ p.name }}</a>
+        </h3>
+        <span class="status-tag 
+          {% if p.status == 'APPROVED' or p.status == 'IN_PROGRESS' %}status-tag--active
+          {% elif p.status == 'COMPLETED' %}status-tag--active
+          {% elif p.status == 'CANCELLED' %}status-tag--fail
+          {% else %}status-tag--pending{% endif %}">
+          {{ p.get_status_display }}
+        </span>
+      </div>
+      <p class="text-sm text-gray-500 mb-4">{{ p.description|truncatewords:20 }}</p>
+      <div class="flex justify-between text-sm">
+        <div>
+          <span class="text-xs text-gray-400 block">Target</span>
+          <span class="font-medium">NGN {{ p.target_amount|floatformat:2 }}</span>
+        </div>
+        <div>
+          <span class="text-xs text-gray-400 block">Spent</span>
+          <span class="font-medium">NGN {{ p.spent|floatformat:2 }}</span>
+        </div>
+        <div>
+          <span class="text-xs text-gray-400 block">Remaining</span>
+          <span class="font-medium {% if p.remaining < 0 %}text-red-600{% endif %}">NGN {{ p.remaining|floatformat:2 }}</span>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-span-3 text-center py-12 text-gray-400">
+      <p>No projects found.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

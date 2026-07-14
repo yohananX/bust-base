@@ -1,0 +1,142 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}{{ student.user.get_full_name }} — Student Detail{% endblock %}
+{% block page_header %}{{ student.user.get_full_name|default:student.user.username }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <!-- Student Info -->
+  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div>
+        <span class="text-xs text-gray-500 block">Admission Number</span>
+        <span class="font-medium">{{ student.admission_number }}</span>
+      </div>
+      <div>
+        <span class="text-xs text-gray-500 block">Date of Birth</span>
+        <span class="font-medium">{{ student.date_of_birth|date:'M d, Y' }}</span>
+      </div>
+      <div>
+        <span class="text-xs text-gray-500 block">Gender</span>
+        <span class="font-medium">{{ student.get_gender_display }}</span>
+      </div>
+      <div>
+        <span class="text-xs text-gray-500 block">Status</span>
+        {% if student.status == 'ACTIVE' %}
+          <span class="status-tag status-tag--active">{{ student.get_status_display }}</span>
+        {% else %}
+          <span class="status-tag">{{ student.get_status_display }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Enrollment History -->
+    <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
+      <h3 class="font-[var(--font-display)] font-semibold text-lg mb-4">Enrollment History</h3>
+      {% if enrollments %}
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-600 border-b">
+            <th class="pb-2">Session</th>
+            <th class="pb-2">Class</th>
+            <th class="pb-2">Current</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in enrollments %}
+          <tr class="border-t border-gray-50">
+            <td class="py-2">{{ e.session.name }}</td>
+            <td class="py-2">{{ e.school_class.name }}</td>
+            <td class="py-2">
+              {% if e.is_current %}
+                <span class="status-tag status-tag--active">Yes</span>
+              {% else %}
+                <span class="text-gray-400">No</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-gray-400 text-sm">No enrollment history.</p>
+      {% endif %}
+    </div>
+
+    <!-- Guardian Links -->
+    <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
+      <h3 class="font-[var(--font-display)] font-semibold text-lg mb-4">Guardians</h3>
+      {% if guardian_links %}
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-600 border-b">
+            <th class="pb-2">Name</th>
+            <th class="pb-2">Relationship</th>
+            <th class="pb-2">Primary</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in guardian_links %}
+          <tr class="border-t border-gray-50">
+            <td class="py-2">{{ g.guardian.get_full_name|default:g.guardian.username }}</td>
+            <td class="py-2">{{ g.get_relationship_display }}</td>
+            <td class="py-2">
+              {% if g.is_primary_contact %}
+                <span class="status-tag status-tag--active">Yes</span>
+              {% else %}
+                <span class="text-gray-400">No</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-gray-400 text-sm">No guardians linked.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Invoices -->
+  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100 mt-6">
+    <h3 class="font-[var(--font-display)] font-semibold text-lg mb-4">Invoice History</h3>
+    {% if invoices %}
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-gray-600 border-b">
+          <th class="pb-2">Term</th>
+          <th class="pb-2">Total</th>
+          <th class="pb-2">Paid</th>
+          <th class="pb-2">Balance</th>
+          <th class="pb-2">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr class="border-t border-gray-50">
+          <td class="py-2">{{ inv.term.name }}</td>
+          <td class="py-2">NGN {{ inv.total_amount|floatformat:2 }}</td>
+          <td class="py-2">NGN {{ inv.amount_paid|floatformat:2 }}</td>
+          <td class="py-2">NGN {{ inv.balance|floatformat:2 }}</td>
+          <td class="py-2">
+            {% if inv.status == 'PAID' %}
+              <span class="status-stamp status-stamp--paid">{{ inv.status }}</span>
+            {% elif inv.status == 'PARTIAL' %}
+              <span class="status-tag status-tag--pending">{{ inv.status }}</span>
+            {% else %}
+              <span class="status-tag">{{ inv.status }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-gray-400 text-sm">No invoices found.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

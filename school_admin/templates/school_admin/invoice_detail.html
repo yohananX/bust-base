@@ -1,0 +1,114 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Invoice #{{ invoice.id }} — School Admin{% endblock %}
+{% block page_header %}Invoice #{{ invoice.id }} — {{ invoice.student.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <!-- Summary -->
+  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div>
+        <span class="text-xs text-gray-500 block">Student</span>
+        <span class="font-medium">{{ invoice.student.user.get_full_name|default:invoice.student.user.username }}</span>
+      </div>
+      <div>
+        <span class="text-xs text-gray-500 block">Term</span>
+        <span class="font-medium">{{ invoice.term.name }}</span>
+      </div>
+      <div>
+        <span class="text-xs text-gray-500 block">Status</span>
+        <span>{% include 'components/status_stamp.html' with status=invoice.status %}</span>
+      </div>
+      <div>
+        <span class="text-xs text-gray-500 block">Balance</span>
+        <span class="font-semibold text-lg">NGN {{ invoice.balance|floatformat:2 }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Line Items -->
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
+    <div class="px-4 py-3 bg-gray-50 border-b font-medium text-sm">Fee Breakdown</div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-gray-600 border-b">
+          <th class="px-4 py-2">Category</th>
+          <th class="px-4 py-2">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for li in line_items %}
+        <tr class="border-t border-gray-50">
+          <td class="px-4 py-2">{{ li.category.name }}</td>
+          <td class="px-4 py-2">NGN {{ li.amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="border-t font-medium">
+          <td class="px-4 py-2">Total</td>
+          <td class="px-4 py-2">NGN {{ invoice.total_amount|floatformat:2 }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Payments & Cash Payment Form -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+      <div class="px-4 py-3 bg-gray-50 border-b font-medium text-sm">Payment History</div>
+      {% if payments %}
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-600 border-b">
+            <th class="px-4 py-2">Amount</th>
+            <th class="px-4 py-2">Method</th>
+            <th class="px-4 py-2">Date</th>
+            <th class="px-4 py-2">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in payments %}
+          <tr class="border-t border-gray-50">
+            <td class="px-4 py-2">NGN {{ p.amount|floatformat:2 }}</td>
+            <td class="px-4 py-2">{{ p.get_method_display }}</td>
+            <td class="px-4 py-2">{{ p.paid_on|date:'M d, Y H:i' }}</td>
+            <td class="px-4 py-2">
+              {% if p.status == 'CONFIRMED' %}
+                <span class="status-tag status-tag--active">{{ p.get_status_display }}</span>
+              {% else %}
+                <span class="status-tag status-tag--pending">{{ p.get_status_display }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="px-4 py-4 text-sm text-gray-400">No payments recorded.</p>
+      {% endif %}
+    </div>
+
+    <!-- Record Cash Payment -->
+    <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 p-6">
+      <h3 class="font-medium text-sm mb-4">Record Cash Payment</h3>
+      {% if invoice.balance > 0 %}
+      <form method="POST" class="space-y-4">
+        {% csrf_token %}
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Amount (NGN)</label>
+          <input type="number" name="amount" step="0.01" max="{{ invoice.balance }}" class="border border-gray-300 rounded px-3 py-2 text-sm w-full" required>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Reference (optional)</label>
+          <input type="text" name="reference" class="border border-gray-300 rounded px-3 py-2 text-sm w-full" placeholder="Receipt #">
+        </div>
+        <button type="submit" class="px-4 py-2 bg-[var(--color-status-green)] text-white rounded text-sm hover:opacity-90">Record Payment</button>
+      </form>
+      {% else %}
+      <p class="text-sm text-gray-400">This invoice is fully paid.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

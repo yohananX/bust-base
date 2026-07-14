@@ -1,0 +1,80 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Notification Log — School Admin{% endblock %}
+{% block page_header %}Notification Log{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Search</label>
+        <input type="text" name="q" value="{{ q }}" placeholder="Subject or email" class="border border-gray-300 rounded px-3 py-2 text-sm w-48">
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Status</label>
+        <select name="status" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All</option>
+          <option value="QUEUED" {% if filter_status == 'QUEUED' %}selected{% endif %}>Queued</option>
+          <option value="SENT" {% if filter_status == 'SENT' %}selected{% endif %}>Sent</option>
+          <option value="FAILED" {% if filter_status == 'FAILED' %}selected{% endif %}>Failed</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Channel</label>
+        <select name="channel" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All</option>
+          <option value="EMAIL" {% if filter_channel == 'EMAIL' %}selected{% endif %}>Email</option>
+          <option value="SMS" {% if filter_channel == 'SMS' %}selected{% endif %}>SMS</option>
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
+      <a href="{% url 'school_admin:notification_log' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
+    </form>
+  </div>
+
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-gray-600">
+            <th class="px-4 py-3 font-medium">Date</th>
+            <th class="px-4 py-3 font-medium">Recipient</th>
+            <th class="px-4 py-3 font-medium">Channel</th>
+            <th class="px-4 py-3 font-medium">Subject</th>
+            <th class="px-4 py-3 font-medium">Reference</th>
+            <th class="px-4 py-3 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr class="border-t border-gray-100 hover:bg-gray-50">
+            <td class="px-4 py-3 text-gray-500 whitespace-nowrap">{{ log.created_at|date:'M d, Y H:i' }}</td>
+            <td class="px-4 py-3">{{ log.recipient.get_full_name|default:log.recipient.username }}<br><span class="text-xs text-gray-400">{{ log.recipient.email }}</span></td>
+            <td class="px-4 py-3">
+              <span class="status-tag {% if log.channel == 'EMAIL' %}status-tag--active{% endif %}">{{ log.get_channel_display }}</span>
+            </td>
+            <td class="px-4 py-3 max-w-xs truncate">{{ log.subject|default:'—' }}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">{{ log.reference|default:'—' }}</td>
+            <td class="px-4 py-3">
+              {% if log.status == 'SENT' %}
+                <span class="status-tag status-tag--active">Sent</span>
+              {% elif log.status == 'FAILED' %}
+                <span class="status-tag status-tag--fail">Failed</span>
+              {% else %}
+                <span class="status-tag status-tag--pending">Queued</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr class="border-t border-gray-100">
+            <td colspan="6" class="px-4 py-8 text-center text-gray-400">No notifications found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
