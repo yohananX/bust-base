@@ -48,3 +48,7 @@ htmlcov/
 
 # Mypy
 .mypy_cache/
+
+# Docker / env
+.env
+staticfiles/
