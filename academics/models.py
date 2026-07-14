@@ -74,6 +74,24 @@ class TeacherAssignment(TenantScopedModel):
         super().save(*args, **kwargs)
 
 
+class ScoreQuerySet(models.QuerySet):
+    """Custom queryset with tenant scoping and results-published filtering."""
+
+    def for_school(self, school):
+        """Return queryset filtered to a specific school."""
+        return self.filter(school=school)
+
+    def visible_to_user(self, user):
+        """Filter scores based on user role and term publication status.
+
+        Admins/teachers: all scores
+        Students/parents: only scores for terms with results_published=True
+        """
+        if user.is_staff or getattr(user, 'role', None) in [Roles.ADMIN, Roles.TEACHER]:
+            return self
+        return self.filter(term__results_published=True)
+
+
 class Score(TenantScopedModel):
     """Stores assessment scores for a student in a subject within a term."""
 
@@ -127,6 +145,8 @@ class Score(TenantScopedModel):
         verbose_name=_('entered by'),
     )
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('updated at'))
+
+    objects = ScoreQuerySet.as_manager()
 
     class Meta:
         verbose_name = _('score')

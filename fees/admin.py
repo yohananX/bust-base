@@ -211,6 +211,26 @@ class InvoiceAdmin(admin.ModelAdmin):
 
                 generated += 1
 
+                # Send notification to primary-contact guardian
+                guardian_link = student.guardian_links.filter(
+                    is_primary_contact=True
+                ).first()
+                if guardian_link:
+                    from notifications.utils import notify
+                    notify(
+                        recipient=guardian_link.guardian,
+                        channel='EMAIL',
+                        subject=_('New invoice for {first} {last}').format(
+                            first=student.user.first_name,
+                            last=student.user.last_name,
+                        ),
+                        message=_(
+                            'A new invoice for {term} has been generated. '
+                            'Amount: NGN{amount}'
+                        ).format(term=term.name, amount=invoice.total_amount),
+                        reference='invoice:{}'.format(invoice.id),
+                    )
+
             msg = _('Generated {} invoice(s). {} already existed (skipped). {} students without current enrollment (skipped).').format(
                 generated, skipped_already, skipped_inactive
             )

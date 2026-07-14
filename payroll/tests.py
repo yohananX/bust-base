@@ -850,3 +850,41 @@ class PayrollRunNoStatusFieldTest(BasePayrollTest):
         expected = ['ACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']
         for status in expected:
             self.assertIn(status, [s[0] for s in StaffProfile.STATUS_CHOICES])
+
+
+
+# --- Cross-Staff Payslip Isolation Test ---
+
+class CrossStaffPayslipIsolationTest(BasePayrollTest):
+    """Test that staff users cannot access each other's payslips."""
+
+    def test_staff_cannot_access_other_staff_payslip(self):
+        """Staff user A should get 403 when accessing staff user B's payslip."""
+        from django.test import Client
+
+        # Create a payroll run and payslips for both staff
+        run, _ = generate_payroll_run(
+            school=self.school,
+            label='Isolation Test Run',
+            period_start=date(2026, 1, 1),
+            period_end=date(2026, 1, 31),
+            pay_date=date(2026, 1, 31),
+            generated_by=self.admin_user,
+        )
+
+        staff_a_payslip = Payslip.objects.get(payroll_run=run, staff=self.staff1)
+        staff_b_payslip = Payslip.objects.get(payroll_run=run, staff=self.staff2)
+
+        client = Client()
+
+        # Log in as staff user A (teacher_user)
+        client.login(username='teacher1', password='testpass123')
+
+        # Staff A should be able to access their own payslip
+        response_own = client.get('/payroll/api/payslip/{}/'.format(staff_a_payslip.id))
+        self.assertEqual(response_own.status_code, 200)
+
+        # Staff A should NOT be able to access staff B's payslip
+        response_other = client.get('/payroll/api/payslip/{}/'.format(staff_b_payslip.id))
+        self.assertEqual(response_other.status_code, 403)
+        self.assertEqual(response_other.json(), {'error': 'Forbidden'})

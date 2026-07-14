@@ -84,6 +84,7 @@ class Term(TenantScopedModel):
     start_date = models.DateField(verbose_name=_('start date'))
     end_date = models.DateField(verbose_name=_('end date'))
     is_current = models.BooleanField(default=False, verbose_name=_('current'))
+    results_published = models.BooleanField(default=False, verbose_name=_('results published'))
 
     class Meta:
         verbose_name = _('term')

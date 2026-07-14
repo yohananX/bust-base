@@ -1,0 +1,1963 @@
+{
+  "agent": "explore",
+  "status": "complete",
+  "inventory": {
+    "base_classes_and_managers": [
+      {
+        "class": "TenantScopedManager",
+        "file": "core/models.py",
+        "line": 5,
+        "type": "Custom Manager",
+        "inherits": "models.Manager",
+        "methods": [
+          "for_school(school) - returns queryset filtered to a specific school"
+        ]
+      },
+      {
+        "class": "TenantScopedModel",
+        "file": "core/models.py",
+        "line": 13,
+        "type": "Abstract Base Model",
+        "inherits": "models.Model",
+        "fields": [
+          {
+            "name": "school",
+            "type": "ForeignKey('core.School')",
+            "attrs": {
+              "on_delete": "CASCADE"
+            }
+          }
+        ],
+        "managers": [
+          "objects = TenantScopedManager()"
+        ],
+        "meta": {
+          "abstract": true
+        }
+      },
+      {
+        "class": "TenantScopedUserManager",
+        "file": "accounts/models.py",
+        "line": 23,
+        "type": "Custom Manager",
+        "inherits": "DjangoUserManager, TenantScopedManager",
+        "methods": [
+          "inherits create_user/create_superuser from DjangoUserManager",
+          "inherits for_school(school) from TenantScopedManager"
+        ]
+      },
+      {
+        "class": "Roles",
+        "file": "accounts/models.py",
+        "line": 8,
+        "type": "Constants Class",
+        "constants": [
+          "ADMIN",
+          "TEACHER",
+          "STUDENT",
+          "PARENT"
+        ],
+        "choices": "Roles.CHOICES"
+      }
+    ],
+    "apps": {
+      "core": {
+        "file": "core/models.py",
+        "models": [
+          {
+            "name": "School",
+            "line": 27,
+            "inherits": "models.Model (NOT tenant-scoped)",
+            "fields": [
+              {
+                "name": "name",
+                "type": "CharField(255)"
+              },
+              {
+                "name": "short_code",
+                "type": "SlugField(50)",
+                "attrs": {
+                  "unique": true
+                }
+              },
+              {
+                "name": "address",
+                "type": "CharField(500)",
+                "attrs": {
+                  "blank": true
+                }
+              },
+              {
+                "name": "phone",
+                "type": "CharField(50)",
+                "attrs": {
+                  "blank": true
+                }
+              },
+              {
+                "name": "email",
+                "type": "EmailField",
+                "attrs": {
+                  "blank": true
+                }
+              },
+              {
+                "name": "is_active",
+                "type": "BooleanField",
+                "attrs": {
+                  "default": true
+                }
+              },
+              {
+                "name": "created_at",
+                "type": "DateTimeField",
+                "attrs": {
+                  "auto_now_add": true
+                }
+              }
+            ],
+            "meta": {
+              "verbose_name": "school",
+              "verbose_name_plural": "schools",
+              "ordering": [
+                "name"
+              ]
+            },
+            "str_returns": "self.name"
+          },
+          {
+            "name": "AcademicSession",
+            "line": 51,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "name",
+                "type": "CharField(100)"
+              },
+              {
+                "name": "start_date",
+                "type": "DateField"
+              },
+              {
+                "name": "end_date",
+                "type": "DateField"
+              },
+              {
+                "name": "is_current",
+                "type": "BooleanField",
+                "attrs": {
+                  "default": false
+                }
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "name"
+              ],
+              "ordering": [
+                "-start_date"
+              ]
+            },
+            "overridden_methods": [
+              "save - ensures only one is_current per school"
+            ],
+            "str_returns": "{self.name} ({self.school.name})"
+          },
+          {
+            "name": "Term",
+            "line": 75,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "session",
+                "type": "ForeignKey(AcademicSession)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "terms"
+                }
+              },
+              {
+                "name": "name",
+                "type": "CharField(100)"
+              },
+              {
+                "name": "start_date",
+                "type": "DateField"
+              },
+              {
+                "name": "end_date",
+                "type": "DateField"
+              },
+              {
+                "name": "is_current",
+                "type": "BooleanField",
+                "attrs": {
+                  "default": false
+                }
+              },
+              {
+                "name": "results_published",
+                "type": "BooleanField",
+                "attrs": {
+                  "default": false
+                }
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "session",
+                "name"
+              ],
+              "ordering": [
+                "start_date"
+              ]
+            },
+            "overridden_methods": [
+              "save - ensures only one is_current per school"
+            ],
+            "str_returns": "{self.name} ({self.session.name} - {self.school.name})"
+          }
+        ]
+      },
+      "accounts": {
+        "file": "accounts/models.py",
+        "models": [
+          {
+            "name": "User",
+            "line": 29,
+            "inherits": "AbstractUser, TenantScopedModel",
+            "fields_from_abstractuser": [
+              "username",
+              "password",
+              "first_name",
+              "last_name",
+              "email",
+              "is_staff",
+              "is_active",
+              "is_superuser",
+              "last_login",
+              "date_joined"
+            ],
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "role",
+                "type": "CharField(20)",
+                "attrs": {
+                  "choices": "Roles.CHOICES"
+                }
+              },
+              {
+                "name": "phone_number",
+                "type": "CharField(30)",
+                "attrs": {
+                  "blank": true
+                }
+              }
+            ],
+            "managers": [
+              "objects = TenantScopedUserManager()"
+            ],
+            "required_fields": [
+              "email",
+              "school",
+              "role"
+            ],
+            "meta": {
+              "verbose_name": "user",
+              "verbose_name_plural": "users"
+            },
+            "str_returns": "get_full_name() or username"
+          }
+        ]
+      },
+      "students": {
+        "file": "students/models.py",
+        "models": [
+          {
+            "name": "SchoolClass",
+            "line": 9,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "name",
+                "type": "CharField(100)"
+              },
+              {
+                "name": "level",
+                "type": "CharField(100)",
+                "attrs": {
+                  "help_text": "e.g. JSS1, Primary 3"
+                }
+              },
+              {
+                "name": "is_active",
+                "type": "BooleanField",
+                "attrs": {
+                  "default": true
+                }
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "name"
+              ],
+              "ordering": [
+                "level",
+                "name"
+              ]
+            },
+            "str_returns": "self.name"
+          },
+          {
+            "name": "Student",
+            "line": 30,
+            "inherits": "TenantScopedModel",
+            "constants": {
+              "GENDER_CHOICES": [
+                [
+                  "MALE",
+                  "Male"
+                ],
+                [
+                  "FEMALE",
+                  "Female"
+                ]
+              ],
+              "STATUS_CHOICES": [
+                [
+                  "ACTIVE",
+                  "Active"
+                ],
+                [
+                  "GRADUATED",
+                  "Graduated"
+                ],
+                [
+                  "WITHDRAWN",
+                  "Withdrawn"
+                ],
+                [
+                  "SUSPENDED",
+                  "Suspended"
+                ]
+              ]
+            },
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "user",
+                "type": "OneToOneField('accounts.User')",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "student_profile",
+                  "limit_choices_to": "{'role': Roles.STUDENT}"
+                }
+              },
+              {
+                "name": "admission_number",
+                "type": "CharField(50)"
+              },
+              {
+                "name": "date_of_birth",
+                "type": "DateField"
+              },
+              {
+                "name": "gender",
+                "type": "CharField(10)",
+                "attrs": {
+                  "choices": "GENDER_CHOICES"
+                }
+              },
+              {
+                "name": "admission_date",
+                "type": "DateField"
+              },
+              {
+                "name": "status",
+                "type": "CharField(20)",
+                "attrs": {
+                  "choices": "STATUS_CHOICES",
+                  "default": "ACTIVE"
+                }
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "admission_number"
+              ]
+            },
+            "methods": [
+              "clean() - validates user.role == STUDENT",
+              "save() - calls clean() then super().save()",
+              "promote_to(session, school_class) - creates new ClassEnrollment"
+            ],
+            "str_returns": "name (class_name) or bare name"
+          },
+          {
+            "name": "ClassEnrollment",
+            "line": 114,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "student",
+                "type": "ForeignKey(Student)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "enrollments"
+                }
+              },
+              {
+                "name": "school_class",
+                "type": "ForeignKey(SchoolClass)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "enrollments"
+                }
+              },
+              {
+                "name": "session",
+                "type": "ForeignKey('core.AcademicSession')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "enrolled_on",
+                "type": "DateField",
+                "attrs": {
+                  "auto_now_add": true
+                }
+              },
+              {
+                "name": "is_current",
+                "type": "BooleanField",
+                "attrs": {
+                  "default": true
+                }
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "student",
+                "session"
+              ],
+              "ordering": [
+                "-session__start_date"
+              ]
+            },
+            "overridden_methods": [
+              "save - ensures only one is_current per student"
+            ],
+            "str_returns": "{student} -> {class.name} ({session.name})"
+          },
+          {
+            "name": "StudentGuardianLink",
+            "line": 154,
+            "inherits": "TenantScopedModel",
+            "constants": {
+              "RELATIONSHIP_CHOICES": [
+                [
+                  "FATHER",
+                  "Father"
+                ],
+                [
+                  "MOTHER",
+                  "Mother"
+                ],
+                [
+                  "GUARDIAN",
+                  "Guardian"
+                ],
+                [
+                  "OTHER",
+                  "Other"
+                ]
+              ]
+            },
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "student",
+                "type": "ForeignKey(Student)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "guardian_links"
+                }
+              },
+              {
+                "name": "guardian",
+                "type": "ForeignKey('accounts.User')",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "student_links",
+                  "limit_choices_to": "{'role': Roles.PARENT}"
+                }
+              },
+              {
+                "name": "relationship",
+                "type": "CharField(20)",
+                "attrs": {
+                  "choices": "RELATIONSHIP_CHOICES"
+                }
+              },
+              {
+                "name": "is_primary_contact",
+                "type": "BooleanField",
+                "attrs": {
+                  "default": false
+                }
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "student",
+                "guardian"
+              ]
+            },
+            "methods": [
+              "clean() - validates guardian.role == PARENT",
+              "save() - calls clean() then super().save()"
+            ],
+            "str_returns": "{student_name}'s {relationship_lower}"
+          }
+        ]
+      },
+      "academics": {
+        "file": "academics/models.py",
+        "querysets": [
+          {
+            "name": "ScoreQuerySet",
+            "line": 77,
+            "inherits": "models.QuerySet",
+            "methods": [
+              "for_school(school) - filter by school",
+              "visible_to_user(user) - role-based filtering (admins/teachers see all; students/parents see only published)"
+            ]
+          }
+        ],
+        "models": [
+          {
+            "name": "Subject",
+            "line": 11,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "name",
+                "type": "CharField(200)"
+              },
+              {
+                "name": "code",
+                "type": "CharField(20)"
+              },
+              {
+                "name": "pass_mark",
+                "type": "PositiveSmallIntegerField",
+                "attrs": {
+                  "default": 40
+                }
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "code"
+              ],
+              "ordering": [
+                "name"
+              ]
+            },
+            "str_returns": "self.name"
+          },
+          {
+            "name": "TeacherAssignment",
+            "line": 28,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "teacher",
+                "type": "ForeignKey(settings.AUTH_USER_MODEL)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "limit_choices_to": "{'role': Roles.TEACHER}",
+                  "related_name": "teacher_assignments"
+                }
+              },
+              {
+                "name": "subject",
+                "type": "ForeignKey(Subject)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "teacher_assignments"
+                }
+              },
+              {
+                "name": "school_class",
+                "type": "ForeignKey('students.SchoolClass')",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "teacher_assignments"
+                }
+              },
+              {
+                "name": "session",
+                "type": "ForeignKey('core.AcademicSession')",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "teacher_assignments"
+                }
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "teacher",
+                "subject",
+                "school_class",
+                "session"
+              ]
+            },
+            "methods": [
+              "clean() - validates teacher.role == TEACHER",
+              "save() - calls clean() then super().save()"
+            ],
+            "str_returns": "{teacher} - {subject} ({school_class}, {session})"
+          },
+          {
+            "name": "Score",
+            "line": 95,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "student",
+                "type": "ForeignKey('students.Student')",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "scores"
+                }
+              },
+              {
+                "name": "subject",
+                "type": "ForeignKey(Subject)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "scores"
+                }
+              },
+              {
+                "name": "term",
+                "type": "ForeignKey('core.Term')",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "scores"
+                }
+              },
+              {
+                "name": "test_1",
+                "type": "PositiveSmallIntegerField",
+                "attrs": {
+                  "null": true,
+                  "blank": true,
+                  "validators": "[MinValueValidator(0), MaxValueValidator(10)]"
+                }
+              },
+              {
+                "name": "test_2",
+                "type": "PositiveSmallIntegerField",
+                "attrs": {
+                  "null": true,
+                  "blank": true,
+                  "validators": "[MinValueValidator(0), MaxValueValidator(10)]"
+                }
+              },
+              {
+                "name": "test_3",
+                "type": "PositiveSmallIntegerField",
+                "attrs": {
+                  "null": true,
+                  "blank": true,
+                  "validators": "[MinValueValidator(0), MaxValueValidator(10)]"
+                }
+              },
+              {
+                "name": "exam_score",
+                "type": "PositiveSmallIntegerField",
+                "attrs": {
+                  "null": true,
+                  "blank": true,
+                  "validators": "[MinValueValidator(0), MaxValueValidator(70)]"
+                }
+              },
+              {
+                "name": "position",
+                "type": "PositiveIntegerField",
+                "attrs": {
+                  "null": true,
+                  "blank": true
+                }
+              },
+              {
+                "name": "entered_by",
+                "type": "ForeignKey(settings.AUTH_USER_MODEL)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "null": true
+                }
+              },
+              {
+                "name": "updated_at",
+                "type": "DateTimeField",
+                "attrs": {
+                  "auto_now": true
+                }
+              }
+            ],
+            "managers": [
+              "objects = ScoreQuerySet.as_manager()"
+            ],
+            "meta": {
+              "unique_together": [
+                "student",
+                "subject",
+                "term"
+              ],
+              "ordering": [
+                "student__admission_number"
+              ]
+            },
+            "properties": [
+              "total_score - sum of test_1 + test_2 + test_3 + exam_score (treats None as 0)",
+              "is_complete - True if all 4 scores are not None",
+              "passed - total_score >= subject.pass_mark (None if incomplete)"
+            ],
+            "str_returns": "{student} - {subject} ({term})"
+          }
+        ]
+      },
+      "fees": {
+        "file": "fees/models.py",
+        "models": [
+          {
+            "name": "FeeCategory",
+            "line": 9,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "name",
+                "type": "CharField(200)"
+              }
+            ],
+            "meta": {
+              "ordering": [
+                "name"
+              ]
+            },
+            "str_returns": "self.name"
+          },
+          {
+            "name": "FeeStructure",
+            "line": 21,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "school_class",
+                "type": "ForeignKey('students.SchoolClass')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "term",
+                "type": "ForeignKey('core.Term')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "category",
+                "type": "ForeignKey(FeeCategory)",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "amount",
+                "type": "DecimalField(10, 2)"
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "school_class",
+                "term",
+                "category"
+              ],
+              "ordering": [
+                "school_class",
+                "category"
+              ]
+            },
+            "str_returns": "{school_class} - {term} - {category}: {amount}"
+          },
+          {
+            "name": "Invoice",
+            "line": 53,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "student",
+                "type": "ForeignKey('students.Student')",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "invoices"
+                }
+              },
+              {
+                "name": "term",
+                "type": "ForeignKey('core.Term')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "generated_on",
+                "type": "DateTimeField",
+                "attrs": {
+                  "auto_now_add": true
+                }
+              },
+              {
+                "name": "total_amount",
+                "type": "DecimalField(12, 2)"
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "student",
+                "term"
+              ],
+              "ordering": [
+                "-generated_on"
+              ]
+            },
+            "properties": [
+              "amount_paid - Sum of confirmed payment amounts (aggregate query)",
+              "balance - total_amount - amount_paid",
+              "status - returns PAID (balance <= 0), PARTIAL (amount_paid > 0), or UNPAID"
+            ],
+            "str_returns": "{student} - {term} ({total_amount})"
+          },
+          {
+            "name": "InvoiceLineItem",
+            "line": 102,
+            "inherits": "models.Model (NOT TenantScopedModel)",
+            "fields": [
+              {
+                "name": "invoice",
+                "type": "ForeignKey(Invoice)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "line_items"
+                }
+              },
+              {
+                "name": "category",
+                "type": "ForeignKey(FeeCategory)",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "amount",
+                "type": "DecimalField(10, 2)"
+              }
+            ],
+            "str_returns": "{category}: {amount}"
+          },
+          {
+            "name": "Payment",
+            "line": 128,
+            "inherits": "TenantScopedModel",
+            "inner_classes": {
+              "Method": {
+                "type": "models.TextChoices",
+                "choices": [
+                  "CASH",
+                  "BANK_TRANSFER",
+                  "CARD",
+                  "USSD",
+                  "PAYSTACK",
+                  "OTHER"
+                ]
+              },
+              "Status": {
+                "type": "models.TextChoices",
+                "choices": [
+                  "PENDING",
+                  "CONFIRMED",
+                  "FAILED"
+                ]
+              }
+            },
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "invoice",
+                "type": "ForeignKey(Invoice)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "payments"
+                }
+              },
+              {
+                "name": "amount",
+                "type": "DecimalField(10, 2)"
+              },
+              {
+                "name": "method",
+                "type": "CharField(20)",
+                "attrs": {
+                  "choices": "Method.choices"
+                }
+              },
+              {
+                "name": "reference",
+                "type": "CharField(255)",
+                "attrs": {
+                  "blank": true,
+                  "null": true
+                }
+              },
+              {
+                "name": "status",
+                "type": "CharField(20)",
+                "attrs": {
+                  "choices": "Status.choices",
+                  "default": "Status.PENDING"
+                }
+              },
+              {
+                "name": "paid_on",
+                "type": "DateTimeField"
+              },
+              {
+                "name": "recorded_by",
+                "type": "ForeignKey('accounts.User')",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "null": true,
+                  "blank": true
+                }
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "reference"
+              ],
+              "ordering": [
+                "-paid_on"
+              ]
+            },
+            "methods": [
+              "clean() - validates reference is required for PAYSTACK method",
+              "save() - calls clean() then super().save()"
+            ],
+            "str_returns": "{invoice} - {amount} ({status_display})"
+          }
+        ]
+      },
+      "payroll": {
+        "file": "payroll/models.py",
+        "models": [
+          {
+            "name": "StaffProfile",
+            "line": 15,
+            "inherits": "TenantScopedModel",
+            "constants": {
+              "STATUS_CHOICES": [
+                [
+                  "ACTIVE",
+                  "Active"
+                ],
+                [
+                  "SUSPENDED",
+                  "Suspended"
+                ],
+                [
+                  "RESIGNED",
+                  "Resigned"
+                ],
+                [
+                  "TERMINATED",
+                  "Terminated"
+                ]
+              ]
+            },
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "user",
+                "type": "OneToOneField('accounts.User')",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "staff_profile"
+                }
+              },
+              {
+                "name": "employee_id",
+                "type": "CharField(50)"
+              },
+              {
+                "name": "bank_name",
+                "type": "CharField(200)"
+              },
+              {
+                "name": "bank_account_number",
+                "type": "CharField(50)"
+              },
+              {
+                "name": "bank_account_name",
+                "type": "CharField(200)"
+              },
+              {
+                "name": "hire_date",
+                "type": "DateField"
+              },
+              {
+                "name": "status",
+                "type": "CharField(20)",
+                "attrs": {
+                  "choices": "STATUS_CHOICES",
+                  "default": "ACTIVE"
+                }
+              },
+              {
+                "name": "pay_grade",
+                "type": "ForeignKey(PayGrade)",
+                "attrs": {
+                  "on_delete": "SET_NULL",
+                  "null": true,
+                  "blank": true,
+                  "related_name": "staff_profiles"
+                }
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "employee_id"
+              ]
+            },
+            "str_returns": "{name} ({employee_id})"
+          },
+          {
+            "name": "PayGrade",
+            "line": 84,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "name",
+                "type": "CharField(200)"
+              },
+              {
+                "name": "role_filter",
+                "type": "CharField(20)",
+                "attrs": {
+                  "choices": "Roles.CHOICES",
+                  "null": true,
+                  "blank": true
+                }
+              },
+              {
+                "name": "base_salary",
+                "type": "DecimalField(10, 2)"
+              },
+              {
+                "name": "description",
+                "type": "TextField",
+                "attrs": {
+                  "blank": true
+                }
+              }
+            ],
+            "meta": {
+              "ordering": [
+                "name"
+              ]
+            },
+            "str_returns": "self.name"
+          },
+          {
+            "name": "AllowanceDefinition",
+            "line": 115,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "name",
+                "type": "CharField(200)"
+              },
+              {
+                "name": "amount",
+                "type": "DecimalField(10, 2)"
+              },
+              {
+                "name": "is_active",
+                "type": "BooleanField",
+                "attrs": {
+                  "default": true
+                }
+              },
+              {
+                "name": "pay_grade",
+                "type": "ForeignKey(PayGrade)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "null": true,
+                  "blank": true,
+                  "related_name": "allowance_definitions"
+                }
+              },
+              {
+                "name": "target_staff",
+                "type": "ForeignKey(StaffProfile)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "null": true,
+                  "blank": true,
+                  "related_name": "allowance_definitions"
+                }
+              }
+            ],
+            "methods": [
+              "clean() - validates XOR: exactly one of pay_grade or target_staff must be set",
+              "save() - calls clean() then super().save()"
+            ],
+            "str_returns": "{name} ({amount}) - {scope}"
+          },
+          {
+            "name": "DeductionDefinition",
+            "line": 165,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "name",
+                "type": "CharField(200)"
+              },
+              {
+                "name": "amount",
+                "type": "DecimalField(10, 2)"
+              },
+              {
+                "name": "is_active",
+                "type": "BooleanField",
+                "attrs": {
+                  "default": true
+                }
+              },
+              {
+                "name": "pay_grade",
+                "type": "ForeignKey(PayGrade)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "null": true,
+                  "blank": true,
+                  "related_name": "deduction_definitions"
+                }
+              },
+              {
+                "name": "target_staff",
+                "type": "ForeignKey(StaffProfile)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "null": true,
+                  "blank": true,
+                  "related_name": "deduction_definitions"
+                }
+              }
+            ],
+            "methods": [
+              "clean() - validates XOR: exactly one of pay_grade or target_staff must be set",
+              "save() - calls clean() then super().save()"
+            ],
+            "str_returns": "{name} ({amount}) - {scope}"
+          },
+          {
+            "name": "PayrollRun",
+            "line": 218,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "label",
+                "type": "CharField(200)"
+              },
+              {
+                "name": "period_start",
+                "type": "DateField"
+              },
+              {
+                "name": "period_end",
+                "type": "DateField"
+              },
+              {
+                "name": "pay_date",
+                "type": "DateField"
+              },
+              {
+                "name": "generated_on",
+                "type": "DateTimeField",
+                "attrs": {
+                  "auto_now_add": true
+                }
+              },
+              {
+                "name": "generated_by",
+                "type": "ForeignKey('accounts.User')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "cancelled_at",
+                "type": "DateTimeField",
+                "attrs": {
+                  "null": true,
+                  "blank": true
+                }
+              }
+            ],
+            "meta": {
+              "ordering": [
+                "-generated_on"
+              ]
+            },
+            "properties": [
+              "total_gross_pay - Sum of all payslips.gross_pay in this run",
+              "total_net_pay - Sum of all payslips.net_pay in this run",
+              "total_disbursed - Sum of CONFIRMED SalaryDisbursement amounts for this run",
+              "staff_count - count of payslips in this run"
+            ],
+            "str_returns": "{label} ({period_start} - {period_end})"
+          },
+          {
+            "name": "Payslip",
+            "line": 273,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "staff",
+                "type": "ForeignKey(StaffProfile)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "payslips"
+                }
+              },
+              {
+                "name": "payroll_run",
+                "type": "ForeignKey(PayrollRun)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "payslips"
+                }
+              },
+              {
+                "name": "base_salary",
+                "type": "DecimalField(10, 2)"
+              },
+              {
+                "name": "total_allowances",
+                "type": "DecimalField(10, 2)"
+              },
+              {
+                "name": "total_deductions",
+                "type": "DecimalField(10, 2)"
+              },
+              {
+                "name": "gross_pay",
+                "type": "DecimalField(12, 2)"
+              },
+              {
+                "name": "net_pay",
+                "type": "DecimalField(12, 2)"
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "staff",
+                "payroll_run"
+              ]
+            },
+            "properties": [
+              "amount_disbursed - Sum of CONFIRMED SalaryDisbursement amounts for this payslip",
+              "balance - net_pay - amount_disbursed",
+              "disbursement_status - returns UNPAID, PARTIAL, or PAID based on amount_disbursed vs net_pay"
+            ],
+            "str_returns": "{staff} - {payroll_run.label} ({net_pay})"
+          },
+          {
+            "name": "PayslipLineItem",
+            "line": 354,
+            "inherits": "models.Model (NOT TenantScopedModel)",
+            "inner_classes": {
+              "LineType": {
+                "type": "models.TextChoices",
+                "choices": [
+                  "ALLOWANCE",
+                  "DEDUCTION"
+                ]
+              }
+            },
+            "fields": [
+              {
+                "name": "payslip",
+                "type": "ForeignKey(Payslip)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "line_items"
+                }
+              },
+              {
+                "name": "label",
+                "type": "CharField(255)"
+              },
+              {
+                "name": "amount",
+                "type": "DecimalField(10, 2)"
+              },
+              {
+                "name": "line_type",
+                "type": "CharField(20)",
+                "attrs": {
+                  "choices": "LineType.choices"
+                }
+              }
+            ],
+            "str_returns": "{label}: {amount} ({line_type_display})"
+          },
+          {
+            "name": "SalaryDisbursement",
+            "line": 392,
+            "inherits": "TenantScopedModel",
+            "inner_classes": {
+              "Method": {
+                "type": "models.TextChoices",
+                "choices": [
+                  "BANK_TRANSFER",
+                  "CASH",
+                  "CHEQUE"
+                ]
+              },
+              "Status": {
+                "type": "models.TextChoices",
+                "choices": [
+                  "PENDING",
+                  "CONFIRMED",
+                  "FAILED"
+                ]
+              }
+            },
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "payslip",
+                "type": "ForeignKey(Payslip)",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "disbursements"
+                }
+              },
+              {
+                "name": "amount",
+                "type": "DecimalField(10, 2)"
+              },
+              {
+                "name": "method",
+                "type": "CharField(20)",
+                "attrs": {
+                  "choices": "Method.choices"
+                }
+              },
+              {
+                "name": "reference",
+                "type": "CharField(255)"
+              },
+              {
+                "name": "status",
+                "type": "CharField(20)",
+                "attrs": {
+                  "choices": "Status.choices",
+                  "default": "Status.PENDING"
+                }
+              },
+              {
+                "name": "disbursed_on",
+                "type": "DateTimeField"
+              },
+              {
+                "name": "recorded_by",
+                "type": "ForeignKey('accounts.User')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "reference"
+              ],
+              "ordering": [
+                "-disbursed_on"
+              ]
+            },
+            "str_returns": "{payslip} - {amount} ({status_display})"
+          }
+        ]
+      },
+      "finance": {
+        "file": "finance/models.py",
+        "models": [
+          {
+            "name": "Project",
+            "line": 9,
+            "inherits": "TenantScopedModel",
+            "inner_classes": {
+              "Status": {
+                "type": "models.TextChoices",
+                "choices": [
+                  "PROPOSED",
+                  "APPROVED",
+                  "IN_PROGRESS",
+                  "COMPLETED",
+                  "CANCELLED"
+                ]
+              }
+            },
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "name",
+                "type": "CharField(255)"
+              },
+              {
+                "name": "description",
+                "type": "TextField",
+                "attrs": {
+                  "blank": true
+                }
+              },
+              {
+                "name": "target_amount",
+                "type": "DecimalField(12, 2)"
+              },
+              {
+                "name": "status",
+                "type": "CharField(20)",
+                "attrs": {
+                  "choices": "Status.choices",
+                  "default": "Status.PROPOSED"
+                }
+              },
+              {
+                "name": "start_date",
+                "type": "DateField",
+                "attrs": {
+                  "null": true,
+                  "blank": true
+                }
+              },
+              {
+                "name": "target_end_date",
+                "type": "DateField",
+                "attrs": {
+                  "null": true,
+                  "blank": true
+                }
+              },
+              {
+                "name": "created_by",
+                "type": "ForeignKey('accounts.User')",
+                "attrs": {
+                  "on_delete": "PROTECT",
+                  "related_name": "projects"
+                }
+              }
+            ],
+            "meta": {
+              "ordering": [
+                "-start_date",
+                "name"
+              ]
+            },
+            "properties": [
+              "spent - Sum of all Expenditure.amount for this project",
+              "remaining - target_amount - spent"
+            ],
+            "str_returns": "self.name"
+          },
+          {
+            "name": "ExpenditureCategory",
+            "line": 71,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "name",
+                "type": "CharField(200)"
+              }
+            ],
+            "meta": {
+              "unique_together": [
+                "school",
+                "name"
+              ],
+              "ordering": [
+                "name"
+              ]
+            },
+            "str_returns": "self.name"
+          },
+          {
+            "name": "Expenditure",
+            "line": 86,
+            "inherits": "TenantScopedModel",
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "project",
+                "type": "ForeignKey(Project)",
+                "attrs": {
+                  "on_delete": "SET_NULL",
+                  "null": true,
+                  "blank": true,
+                  "related_name": "expenditures"
+                }
+              },
+              {
+                "name": "category",
+                "type": "ForeignKey(ExpenditureCategory)",
+                "attrs": {
+                  "on_delete": "PROTECT",
+                  "related_name": "expenditures"
+                }
+              },
+              {
+                "name": "amount",
+                "type": "DecimalField(12, 2)"
+              },
+              {
+                "name": "description",
+                "type": "CharField(500)"
+              },
+              {
+                "name": "date",
+                "type": "DateField"
+              },
+              {
+                "name": "recorded_by",
+                "type": "ForeignKey('accounts.User')",
+                "attrs": {
+                  "on_delete": "PROTECT",
+                  "related_name": "recorded_expenditures"
+                }
+              }
+            ],
+            "meta": {
+              "ordering": [
+                "-date"
+              ],
+              "constraints": [
+                "CheckConstraint(amount__gte=0.01, name='expenditure_amount_positive')"
+              ]
+            },
+            "str_returns": "{description}: {amount} ({project.name})"
+          }
+        ]
+      },
+      "notifications": {
+        "file": "notifications/models.py",
+        "models": [
+          {
+            "name": "NotificationLog",
+            "line": 7,
+            "inherits": "TenantScopedModel",
+            "inner_classes": {
+              "Channel": {
+                "type": "models.TextChoices",
+                "choices": [
+                  "EMAIL",
+                  "SMS"
+                ]
+              },
+              "Status": {
+                "type": "models.TextChoices",
+                "choices": [
+                  "QUEUED",
+                  "SENT",
+                  "FAILED"
+                ]
+              }
+            },
+            "fields": [
+              {
+                "name": "school",
+                "inherited": true,
+                "type": "ForeignKey('core.School')",
+                "attrs": {
+                  "on_delete": "CASCADE"
+                }
+              },
+              {
+                "name": "recipient",
+                "type": "ForeignKey('accounts.User')",
+                "attrs": {
+                  "on_delete": "CASCADE",
+                  "related_name": "notifications"
+                }
+              },
+              {
+                "name": "channel",
+                "type": "CharField(10)",
+                "attrs": {
+                  "choices": "Channel.choices"
+                }
+              },
+              {
+                "name": "subject",
+                "type": "CharField(255)",
+                "attrs": {
+                  "blank": true
+                }
+              },
+              {
+                "name": "message",
+                "type": "TextField"
+              },
+              {
+                "name": "reference",
+                "type": "CharField(100)",
+                "attrs": {
+                  "blank": true,
+                  "db_index": true
+                }
+              },
+              {
+                "name": "status",
+                "type": "CharField(10)",
+                "attrs": {
+                  "choices": "Status.choices",
+                  "default": "Status.QUEUED"
+                }
+              },
+              {
+                "name": "error_message",
+                "type": "TextField",
+                "attrs": {
+                  "blank": true
+                }
+              },
+              {
+                "name": "created_at",
+                "type": "DateTimeField",
+                "attrs": {
+                  "auto_now_add": true
+                }
+              },
+              {
+                "name": "sent_at",
+                "type": "DateTimeField",
+                "attrs": {
+                  "null": true,
+                  "blank": true
+                }
+              }
+            ],
+            "meta": {
+              "ordering": [
+                "-created_at"
+              ]
+            },
+            "str_returns": "{channel_display} to {recipient} [{status_display}]"
+          }
+        ]
+      }
+    }
+  },
+  "summary": {
+    "total_apps": 8,
+    "total_models": 28,
+    "total_custom_managers": 2,
+    "total_custom_querysets": 1,
+    "total_computed_properties": 15,
+    "models_with_validation_clean": 6,
+    "models_with_xor_validation": 2,
+    "tenant_scoped_models": 23,
+    "plain_models": 3,
+    "abstract_models": 1,
+    "model_breakdown_by_app": {
+      "core": [
+        "School",
+        "AcademicSession",
+        "Term"
+      ],
+      "accounts": [
+        "User"
+      ],
+      "students": [
+        "SchoolClass",
+        "Student",
+        "ClassEnrollment",
+        "StudentGuardianLink"
+      ],
+      "academics": [
+        "Subject",
+        "TeacherAssignment",
+        "Score"
+      ],
+      "fees": [
+        "FeeCategory",
+        "FeeStructure",
+        "Invoice",
+        "InvoiceLineItem",
+        "Payment"
+      ],
+      "payroll": [
+        "StaffProfile",
+        "PayGrade",
+        "AllowanceDefinition",
+        "DeductionDefinition",
+        "PayrollRun",
+        "Payslip",
+        "PayslipLineItem",
+        "SalaryDisbursement"
+      ],
+      "finance": [
+        "Project",
+        "ExpenditureCategory",
+        "Expenditure"
+      ],
+      "notifications": [
+        "NotificationLog"
+      ]
+    },
+    "cross_app_connections": {
+      "accounts.User - students.Student": "OneToOneField limit_choices_to role=STUDENT",
+      "accounts.User - students.StudentGuardianLink": "ForeignKey limit_choices_to role=PARENT",
+      "accounts.User - academics.TeacherAssignment": "ForeignKey limit_choices_to role=TEACHER",
+      "accounts.User - payroll.StaffProfile": "OneToOneField (role-agnostic)",
+      "students.SchoolClass - academics.TeacherAssignment": "ForeignKey",
+      "students.SchoolClass - fees.FeeStructure": "ForeignKey",
+      "students.Student - fees.Invoice": "ForeignKey related_name=invoices",
+      "students.Student - academics.Score": "ForeignKey related_name=scores",
+      "core.AcademicSession - academics.TeacherAssignment": "ForeignKey related_name=teacher_assignments",
+      "core.AcademicSession - students.ClassEnrollment": "ForeignKey",
+      "core.Term - fees.FeeStructure": "ForeignKey",
+      "core.Term - fees.Invoice": "ForeignKey",
+      "core.Term - academics.Score": "ForeignKey related_name=scores",
+      "payroll.PayGrade - payroll.StaffProfile": "ForeignKey related_name=staff_profiles",
+      "payroll.PayrollRun - payroll.Payslip": "ForeignKey related_name=payslips",
+      "fees.Invoice - fees.Payment": "ForeignKey related_name=payments",
+      "finance.Project - finance.Expenditure": "ForeignKey related_name=expenditures"
+    }
+  },
+  "patterns": [
+    "All concrete models except School, InvoiceLineItem, PayslipLineItem use TenantScopedModel",
+    "School is the root non-scoped tenant model; all others carry school FK via TenantScopedModel abstraction",
+    "XOR pattern on AllowanceDefinition and DeductionDefinition: pay_grade XOR target_staff",
+    "Role validation via clean(): guardian.role==PARENT, teacher.role==TEACHER, student.user.role==STUDENT",
+    "is_current boolean + overridden save() to enforce single-current per scope: AcademicSession, Term, ClassEnrollment",
+    "InvoiceLineItem and PayslipLineItem are plain models (not tenant-scoped), always accessed through scoped parent",
+    "Property-based computed statuses on Invoice, Payslip, PayrollRun (not stored in DB)",
+    "Score uses custom ScoreQuerySet with visible_to_user() role-aware filtering",
+    "Payment.Status mirrors SalaryDisbursement.Status: PENDING -> CONFIRMED/FAILED lifecycle",
+    "Every model uses gettext_lazy for translatable verbose_name"
+  ]
+}

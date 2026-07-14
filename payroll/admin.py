@@ -308,7 +308,7 @@ class PayslipAdmin(admin.ModelAdmin):
                     continue
 
                 reference = f'{reference_base}-{payslip.id}'
-                _, created = SalaryDisbursement.objects.get_or_create(
+                disbursement, created = SalaryDisbursement.objects.get_or_create(
                     school=payslip.school,
                     reference=reference,
                     defaults={
@@ -322,6 +322,26 @@ class PayslipAdmin(admin.ModelAdmin):
                 )
                 if created:
                     created_count += 1
+                    # Send notification to staff member
+                    from notifications.utils import notify
+                    try:
+                        staff_user = payslip.staff.user
+                        notify(
+                            recipient=staff_user,
+                            channel='EMAIL',
+                            subject='Salary disbursement processed',
+                            message=(
+                                'Your salary of NGN{amount} for {period} '
+                                'has been disbursed.'
+                            ).format(
+                                amount=disbursement.amount,
+                                period=payslip.payroll_run.label,
+                            ),
+                            reference='disbursement:{}'.format(disbursement.id),
+                        )
+                    except Exception:
+                        # Notification failure should not block disbursement
+                        pass
 
             self.message_user(
                 request,
