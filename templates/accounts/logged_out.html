@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logged Out — Grace House School System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="font-['Public_Sans',sans-serif] bg-gray-50 min-h-screen flex items-center justify-center">
+  <div class="bg-white rounded-lg shadow-md p-8 max-w-md w-full mx-4 text-center">
+    <div class="mb-6">
+      <h1 class="font-['Source_Serif_4',Georgia,serif] text-2xl font-semibold text-gray-900">You've been logged out</h1>
+      <p class="text-gray-500 mt-2 text-sm">Thank you for using Grace House School System</p>
+    </div>
+    
+    <div class="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
+      <p class="text-green-700 text-sm">Your session has been ended successfully.</p>
+    </div>
+    
+    <a href="{% url 'login' %}" class="inline-block bg-[#1B2430] text-white px-6 py-2.5 rounded-md text-sm font-medium hover:bg-[#2a3648] transition-colors">
+      Sign in again
+    </a>
+    
+    <p class="text-xs text-gray-400 mt-6">Grace House School System</p>
+  </div>
+</body>
+</html>

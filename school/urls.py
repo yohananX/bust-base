@@ -7,7 +7,7 @@ from django.urls import path, include
 from django.views.generic.base import RedirectView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('secure-control-panel/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
     path('teacher/', include('academics.urls')),
     path('parent/', include('students.urls')),
