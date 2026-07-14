@@ -1,4 +1,3 @@
-import school.admin_setup  # noqa: applies admin ordering and model hiding
 
 """
 URL configuration for school project.

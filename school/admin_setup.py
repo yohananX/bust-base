@@ -1,59 +1,69 @@
-"""Custom admin configuration — app ordering, model hiding."""
-import types
-from django.contrib import admin
+"""
+Custom admin configuration — app ordering and model visibility.
 
-# ── App reordering ──────────────────────────────────────────────────────
+Called from school_admin/apps.py ready() hook,
+after all apps including admin are loaded.
+"""
+import logging
+logger = logging.getLogger(__name__)
 
-_original_get_app_list = admin.site.get_app_list
+APPS_TO_HIDE = {'django_q'}
+MODELS_TO_HIDE = {'auth.Group'}
+TARGET_ORDER = [
+    'students',   # Daily: rosters, enrollments
+    'fees',        # Daily/Weekly: invoices, payments
+    'academics',   # Weekly: subjects, scores
+    'payroll',     # Weekly/Monthly: payslips
+    'finance',     # Monthly: projects, reports
+    'notifications',  # As-needed: notification log
+    'core',        # Rarely: sessions, terms
+    'accounts',    # Rarely: users
+]
 
-def _ordered_get_app_list(site, request):
-    """Return apps in workflow order instead of alphabetical."""
-    app_list = _original_get_app_list(site, request)
-    app_dict = {app['app_label']: app for app in app_list}
+# Sentinel to prevent double-patching
+_PATCHED = False
 
-    # Workflow order: daily-use first, technical internals last
-    ordered_labels = [
-        'students',      # Daily: rosters, enrollments
-        'fees',           # Daily/Weekly: invoices, payments
-        'academics',      # Weekly: subjects, scores
-        'payroll',        # Weekly/Monthly: payslips
-        'finance',        # Monthly: projects, reports
-        'notifications',  # As-needed: notification log
-        'core',           # Rarely: sessions, terms
-        'accounts',       # Rarely: users
-    ]
 
-    ordered = []
-    seen = set()
-    for label in ordered_labels:
-        if label in app_dict:
-            ordered.append(app_dict[label])
-            seen.add(label)
+def setup_admin():
+    """Reorder admin apps and hide internal models. Idempotent."""
+    global _PATCHED
+    if _PATCHED:
+        return
+    _PATCHED = True
 
-    # Append remaining apps (django_q, auth, contenttypes, sessions, etc.)
-    for app in app_list:
-        if app['app_label'] not in seen:
-            ordered.append(app)
-            seen.add(app['app_label'])
+    from django.contrib.admin.sites import AdminSite
 
-    return ordered
+    original = AdminSite.get_app_list
 
-admin.site.get_app_list = types.MethodType(_ordered_get_app_list, admin.site)
+    def ordered_get_app_list(site_instance, request):
+        """Order apps by workflow, filtering out noise models."""
+        app_list = original(site_instance, request)
 
-# ── Hide Django Q models from admin nav ────────────────────────────────
-# Django Q internal task models are noise for school admins
+        # Filter out hidden apps entirely
+        app_list = [a for a in app_list if a['app_label'] not in APPS_TO_HIDE]
 
-from django_q.models import Task, OrmQ, Schedule, Success, Failure
-for model in [Task, OrmQ, Schedule, Success, Failure]:
-    try:
-        admin.site.unregister(model)
-    except admin.sites.NotRegistered:
-        pass
+        # Filter hidden models from remaining apps
+        for app in app_list:
+            app['models'] = [
+                m for m in app.get('models', [])
+                if f"{app['app_label']}.{m['object_name']}" not in MODELS_TO_HIDE
+            ]
 
-# ── Hide Auth Groups (unused — permission system is role-field-based) ──
+        # Reorder
+        app_dict = {app['app_label']: app for app in app_list}
+        ordered = []
+        seen = set()
+        for label in TARGET_ORDER:
+            if label in app_dict:
+                ordered.append(app_dict[label])
+                seen.add(label)
 
-from django.contrib.auth.models import Group
-try:
-    admin.site.unregister(Group)
-except admin.sites.NotRegistered:
-    pass
+        for app in app_list:
+            if app['app_label'] not in seen:
+                ordered.append(app)
+
+        return ordered
+
+    AdminSite.get_app_list = ordered_get_app_list
+    logger.info("Admin setup: reordered %d apps, hidden %d apps + %d models",
+                len(TARGET_ORDER), len(APPS_TO_HIDE), len(MODELS_TO_HIDE))
