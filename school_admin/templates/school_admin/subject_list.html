@@ -6,6 +6,7 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto">
+  <!-- Filters -->
   <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
     <form method="GET" class="flex gap-4 items-end">
       <div>
@@ -17,6 +18,13 @@
     </form>
   </div>
 
+  <!-- Header and Add Button -->
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-lg font-[var(--font-display)] font-semibold">Subjects</h2>
+    <a href="{% url 'school_admin:subject_create' %}" class="bg-[#1B2430] text-white px-4 py-2 rounded text-sm hover:bg-[#2a3648] transition-colors">+ Add Subject</a>
+  </div>
+
+  <!-- Subject Table -->
   <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
     <table class="w-full text-sm">
       <thead>
@@ -24,6 +32,7 @@
           <th class="px-4 py-3 font-medium">Name</th>
           <th class="px-4 py-3 font-medium">Code</th>
           <th class="px-4 py-3 font-medium">Pass Mark</th>
+          <th class="px-4 py-3 font-medium">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -32,10 +41,14 @@
           <td class="px-4 py-3 font-medium">{{ subj.name }}</td>
           <td class="px-4 py-3 text-gray-600">{{ subj.code }}</td>
           <td class="px-4 py-3">{{ subj.pass_mark }}%</td>
+          <td class="px-4 py-3 space-x-3">
+            <a href="{% url 'school_admin:subject_edit' subj.pk %}" class="text-amber-600 hover:underline">Edit</a>
+            <a href="{% url 'school_admin:subject_delete' subj.pk %}" class="text-red-600 hover:underline">Delete</a>
+          </td>
         </tr>
         {% empty %}
         <tr class="border-t border-gray-100">
-          <td colspan="3" class="px-4 py-8 text-center text-gray-400">No subjects found.</td>
+          <td colspan="4" class="px-4 py-8 text-center text-gray-400">No subjects found.</td>
         </tr>
         {% endfor %}
       </tbody>

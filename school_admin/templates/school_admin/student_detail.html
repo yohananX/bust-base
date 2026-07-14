@@ -6,6 +6,11 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
+  <!-- Edit Button -->
+  <div class="flex justify-end mb-4">
+    <a href="{% url 'school_admin:student_edit' student.pk %}" class="bg-[#1B2430] text-white px-4 py-2 rounded text-sm hover:bg-[#2a3648] transition-colors">Edit Student</a>
+  </div>
+
   <!-- Student Info -->
   <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100 mb-6">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -64,6 +69,34 @@
       {% else %}
       <p class="text-gray-400 text-sm">No enrollment history.</p>
       {% endif %}
+
+      <!-- Change Class Form -->
+      <div class="mt-4 pt-4 border-t border-gray-100">
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">Change Current Class</h4>
+        <form method="post" action="{% url 'school_admin:student_change_class' student.pk %}" class="flex flex-wrap items-end gap-3">
+          {% csrf_token %}
+          <input type="hidden" name="student_id" value="{{ student.pk }}">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">New Class</label>
+            <select name="class_id" required class="text-sm border border-gray-300 rounded px-3 py-2 bg-white min-w-[180px]">
+              <option value="">— Select —</option>
+              {% for c in classes %}
+                <option value="{{ c.pk }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Session</label>
+            <select name="session_id" required class="text-sm border border-gray-300 rounded px-3 py-2 bg-white min-w-[180px]">
+              <option value="">— Select —</option>
+              {% for s in sessions %}
+                <option value="{{ s.pk }}">{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="bg-amber-600 text-white text-sm px-4 py-2 rounded hover:bg-amber-700 transition-colors">Change Class</button>
+        </form>
+      </div>
     </div>
 
     <!-- Guardian Links -->

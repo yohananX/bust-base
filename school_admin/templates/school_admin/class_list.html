@@ -1,0 +1,75 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Class Management — School Admin{% endblock %}
+{% block page_header %}Classes{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <!-- Filters -->
+  <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Search</label>
+        <input type="text" name="q" value="{{ q }}" placeholder="Name or level" class="border border-gray-300 rounded px-3 py-2 text-sm w-64">
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Status</label>
+        <select name="status" class="border border-gray-300 rounded px-3 py-2 text-sm">
+          <option value="">All</option>
+          <option value="active" {% if filter_status == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if filter_status == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
+      <a href="{% url 'school_admin:class_list' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
+    </form>
+  </div>
+
+  <!-- Header and Add Button -->
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-lg font-[var(--font-display)] font-semibold">Classes</h2>
+    <a href="{% url 'school_admin:class_create' %}" class="bg-[#1B2430] text-white px-4 py-2 rounded text-sm hover:bg-[#2a3648] transition-colors">+ Add Class</a>
+  </div>
+
+  <!-- Class Table -->
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-gray-600">
+          <th class="px-4 py-3 font-medium">Name</th>
+          <th class="px-4 py-3 font-medium">Level</th>
+          <th class="px-4 py-3 font-medium">Active Status</th>
+          <th class="px-4 py-3 font-medium">Student Count</th>
+          <th class="px-4 py-3 font-medium">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in classes %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50">
+          <td class="px-4 py-3 font-medium">{{ c.name }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ c.level }}</td>
+          <td class="px-4 py-3">
+            {% if c.is_active %}
+              <span class="status-tag status-tag--active">Active</span>
+            {% else %}
+              <span class="status-tag">Inactive</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3">{{ c.student_count }}</td>
+          <td class="px-4 py-3 space-x-3">
+            <a href="{% url 'school_admin:student_list' %}?class_id={{ c.pk }}" class="text-blue-600 hover:underline">View</a>
+            <a href="{% url 'school_admin:class_edit' c.pk %}" class="text-amber-600 hover:underline">Edit</a>
+            <a href="{% url 'school_admin:class_delete' c.pk %}" class="text-red-600 hover:underline">Delete</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-100">
+          <td colspan="5" class="px-4 py-8 text-center text-gray-400">No classes found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

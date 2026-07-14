@@ -1,0 +1,58 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Delete Class — School Admin{% endblock %}
+{% block page_header %}Delete Class{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
+    <div class="mb-6">
+      <h3 class="text-lg font-[var(--font-display)] font-semibold text-red-600 mb-4">Delete Class: {{ class_obj.name }}</h3>
+
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-sm text-red-700">
+        <p class="font-medium">Are you sure you want to delete this class?</p>
+        <p class="mt-1">This action cannot be undone.</p>
+      </div>
+
+      <table class="w-full text-sm mb-4">
+        <tbody>
+          <tr class="border-b border-gray-100">
+            <td class="px-4 py-3 font-medium text-gray-600 w-32">Name</td>
+            <td class="px-4 py-3">{{ class_obj.name }}</td>
+          </tr>
+          <tr class="border-b border-gray-100">
+            <td class="px-4 py-3 font-medium text-gray-600">Level</td>
+            <td class="px-4 py-3">{{ class_obj.level }}</td>
+          </tr>
+          <tr class="border-b border-gray-100">
+            <td class="px-4 py-3 font-medium text-gray-600">Status</td>
+            <td class="px-4 py-3">
+              {% if class_obj.is_active %}
+                <span class="status-tag status-tag--active">Active</span>
+              {% else %}
+                <span class="status-tag">Inactive</span>
+              {% endif %}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {% if student_count > 0 %}
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 text-sm text-amber-700">
+        <p class="font-medium">Warning: {{ student_count }} student{{ student_count|pluralize }} currently enrolled</p>
+        <p class="mt-1">Deleting this class may affect these students' records. Consider deactivating the class instead.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <form method="post" class="flex items-center gap-3">
+      {% csrf_token %}
+      <button type="submit" class="bg-red-600 text-white text-sm px-6 py-2 rounded hover:bg-red-700 transition-colors">
+        Delete Class
+      </button>
+      <a href="{% url 'school_admin:class_list' %}" class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

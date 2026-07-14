@@ -1,0 +1,56 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Delete Student — School Admin{% endblock %}
+{% block page_header %}Delete Student{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100 text-center">
+    <!-- Warning icon -->
+    <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
+      <svg class="h-7 w-7 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+      </svg>
+    </div>
+
+    <h2 class="text-lg font-semibold text-gray-900 mb-2">Delete Student</h2>
+    <p class="text-sm text-gray-500 mb-6">
+      Are you sure you want to delete <strong>{{ student.user.get_full_name|default:student.user.username }}</strong>?
+      This action cannot be undone.
+    </p>
+
+    <!-- Student info summary -->
+    <div class="bg-gray-50 rounded p-4 text-left text-sm mb-6 space-y-1">
+      <p><span class="text-gray-500">Name:</span> {{ student.user.get_full_name|default:student.user.username }}</p>
+      <p><span class="text-gray-500">Admission #:</span> {{ student.admission_number }}</p>
+      <p><span class="text-gray-500">Status:</span> {{ student.get_status_display }}</p>
+      {% with enrollment=student.enrollments.filter.is_current.first %}
+        {% if enrollment %}
+          <p><span class="text-gray-500">Current Class:</span> {{ enrollment.school_class.name }}</p>
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    {% if has_related %}
+    <div class="bg-amber-50 border border-amber-200 rounded p-3 text-left text-sm text-amber-800 mb-6">
+      <p class="font-semibold mb-1">This student has related records that will also be deleted:</p>
+      <ul class="list-disc list-inside space-y-0.5">
+        {% if related.enrollments %}<li>{{ related.enrollments }} class enrollment(s)</li>{% endif %}
+        {% if related.guardian_links %}<li>{{ related.guardian_links }} guardian link(s)</li>{% endif %}
+        {% if related.invoices %}<li>{{ related.invoices }} invoice(s)</li>{% endif %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="flex items-center justify-center gap-3">
+      <a href="{% url 'school_admin:student_detail' student.pk %}" class="bg-gray-100 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-200 transition-colors">Cancel</a>
+      <form method="post" class="inline">
+        {% csrf_token %}
+        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors">Confirm Delete</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

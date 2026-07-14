@@ -1,7 +1,9 @@
 """Academic management views for school admin portal."""
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic.base import View
 from django.db.models import Q
+from django.contrib import messages
+from django.db import transaction
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
@@ -29,6 +31,137 @@ class SubjectListView(RoleRequiredMixin, View):
             'q': q,
         }
         return render(request, 'school_admin/subject_list.html', context)
+
+
+class SubjectCreateView(RoleRequiredMixin, View):
+    """Create a new subject."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request):
+        context = {'is_edit': False}
+        return render(request, 'school_admin/subject_form.html', context)
+
+    def post(self, request):
+        school = request.school
+        name = request.POST.get('name', '').strip()
+        code = request.POST.get('code', '').strip()
+        pass_mark = request.POST.get('pass_mark', 40)
+
+        if not name or not code:
+            messages.error(request, 'Name and code are required.')
+            return redirect('school_admin:subject_create')
+
+        # Validate unique code per school
+        if Subject.objects.filter(school=school, code__iexact=code).exists():
+            messages.error(request, f'A subject with code "{code}" already exists.')
+            return redirect('school_admin:subject_create')
+
+        try:
+            pass_mark = int(pass_mark)
+        except (ValueError, TypeError):
+            pass_mark = 40
+
+        with transaction.atomic():
+            Subject.objects.create(
+                school=school,
+                name=name,
+                code=code,
+                pass_mark=pass_mark,
+            )
+
+        messages.success(request, f'Subject "{name}" created successfully.')
+        return redirect('school_admin:subject_list')
+
+
+class SubjectEditView(RoleRequiredMixin, View):
+    """Edit an existing subject."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request, pk):
+        school = request.school
+        subject_obj = get_object_or_404(Subject, pk=pk, school=school)
+
+        context = {
+            'is_edit': True,
+            'subject': subject_obj,
+        }
+        return render(request, 'school_admin/subject_form.html', context)
+
+    def post(self, request, pk):
+        school = request.school
+        subject_obj = get_object_or_404(Subject, pk=pk, school=school)
+
+        name = request.POST.get('name', '').strip()
+        code = request.POST.get('code', '').strip()
+        pass_mark = request.POST.get('pass_mark', 40)
+
+        if not name or not code:
+            messages.error(request, 'Name and code are required.')
+            return redirect('school_admin:subject_edit', pk=pk)
+
+        # Validate unique code per school (exclude current subject)
+        if Subject.objects.filter(school=school, code__iexact=code).exclude(pk=pk).exists():
+            messages.error(request, f'A subject with code "{code}" already exists.')
+            return redirect('school_admin:subject_edit', pk=pk)
+
+        try:
+            pass_mark = int(pass_mark)
+        except (ValueError, TypeError):
+            pass_mark = 40
+
+        with transaction.atomic():
+            subject_obj.name = name
+            subject_obj.code = code
+            subject_obj.pass_mark = pass_mark
+            subject_obj.save()
+
+        messages.success(request, f'Subject "{name}" updated successfully.')
+        return redirect('school_admin:subject_list')
+
+
+class SubjectDeleteView(RoleRequiredMixin, View):
+    """Delete a subject with warnings if related records exist."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request, pk):
+        school = request.school
+        subject_obj = get_object_or_404(Subject, pk=pk, school=school)
+
+        has_assignments = TeacherAssignment.objects.filter(subject=subject_obj).exists()
+        has_scores = Score.objects.filter(subject=subject_obj).exists()
+
+        context = {
+            'subject': subject_obj,
+            'has_assignments': has_assignments,
+            'has_scores': has_scores,
+        }
+        return render(request, 'school_admin/subject_confirm_delete.html', context)
+
+    def post(self, request, pk):
+        school = request.school
+        subject_obj = get_object_or_404(Subject, pk=pk, school=school)
+        name = subject_obj.name
+
+        # Related records are cascaded; warn but proceed
+        assignment_count = TeacherAssignment.objects.filter(subject=subject_obj).count()
+        score_count = Score.objects.filter(subject=subject_obj).count()
+
+        with transaction.atomic():
+            subject_obj.delete()
+
+        msg = f'Subject "{name}" deleted successfully.'
+        if assignment_count or score_count:
+            parts = []
+            if assignment_count:
+                parts.append(f'{assignment_count} assignment(s)')
+            if score_count:
+                parts.append(f'{score_count} score record(s)')
+            msg += f' Also removed {", ".join(parts)}.'
+        messages.success(request, msg)
+        return redirect('school_admin:subject_list')
 
 
 class TeacherAssignmentListView(RoleRequiredMixin, View):

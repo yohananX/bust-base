@@ -7,9 +7,12 @@ from django.urls import path
 from school_admin.views import (
     DashboardView,
     StudentListView, StudentCreateView, StudentDetailView,
+    StudentEditView, StudentDeleteView, StudentChangeClassView,
     StudentGuardianLinkCreateView, StudentGuardianLinkDeleteView,
     StaffListView, StaffCreateView,
-    SubjectListView, TeacherAssignmentListView, ScoreAdminView,
+    ClassListView, ClassCreateView, ClassEditView, ClassDeleteView,
+    SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView,
+    TeacherAssignmentListView, ScoreAdminView,
     FeeCategoryListView, FeeStructureListView,
     InvoiceListView, InvoiceDetailView, GenerateInvoicesView,
     PayGradeListView, AllowanceDeductionListView,
@@ -32,6 +35,9 @@ urlpatterns = [
     path('students/', StudentListView.as_view(), name='student_list'),
     path('students/new/', StudentCreateView.as_view(), name='student_create'),
     path('students/<int:pk>/', StudentDetailView.as_view(), name='student_detail'),
+    path('students/<int:pk>/edit/', StudentEditView.as_view(), name='student_edit'),
+    path('students/<int:pk>/delete/', StudentDeleteView.as_view(), name='student_delete'),
+    path('students/<int:pk>/change-class/', StudentChangeClassView.as_view(), name='student_change_class'),
     path('students/<int:pk>/add-guardian/', StudentGuardianLinkCreateView.as_view(), name='student_add_guardian'),
     path('students/guardian/<int:pk>/delete/', StudentGuardianLinkDeleteView.as_view(), name='student_delete_guardian'),
 
@@ -43,6 +49,17 @@ urlpatterns = [
     path('subjects/', SubjectListView.as_view(), name='subject_list'),
     path('assignments/', TeacherAssignmentListView.as_view(), name='assignment_list'),
     path('scores/', ScoreAdminView.as_view(), name='score_list'),
+
+    # Classes
+    path('classes/', ClassListView.as_view(), name='class_list'),
+    path('classes/new/', ClassCreateView.as_view(), name='class_create'),
+    path('classes/<int:pk>/edit/', ClassEditView.as_view(), name='class_edit'),
+    path('classes/<int:pk>/delete/', ClassDeleteView.as_view(), name='class_delete'),
+
+    # Subjects
+    path('subjects/new/', SubjectCreateView.as_view(), name='subject_create'),
+    path('subjects/<int:pk>/edit/', SubjectEditView.as_view(), name='subject_edit'),
+    path('subjects/<int:pk>/delete/', SubjectDeleteView.as_view(), name='subject_delete'),
 
     # Fees & Invoices
     path('fees/categories/', FeeCategoryListView.as_view(), name='fee_category_list'),

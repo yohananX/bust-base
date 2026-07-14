@@ -6,6 +6,11 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
+  <!-- Add Student Button -->
+  <div class="flex justify-end mb-4">
+    <a href="{% url 'school_admin:student_create' %}" class="bg-[#1B2430] text-white px-4 py-2 rounded text-sm hover:bg-[#2a3648] transition-colors">+ Add Student</a>
+  </div>
+
   <!-- Filters -->
   <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
     <form method="GET" class="flex flex-wrap gap-4 items-end">
@@ -67,8 +72,10 @@
               <span class="status-tag">{{ s.status }}</span>
             {% endif %}
           </td>
-          <td class="px-4 py-3">
+          <td class="px-4 py-3 space-x-3">
             <a href="{% url 'school_admin:student_detail' s.pk %}" class="text-blue-600 hover:underline">View</a>
+            <a href="{% url 'school_admin:student_edit' s.pk %}" class="text-amber-600 hover:underline">Edit</a>
+            <a href="{% url 'school_admin:student_delete' s.pk %}" class="text-red-600 hover:underline">Delete</a>
           </td>
         </tr>
         {% empty %}
