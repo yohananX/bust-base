@@ -1,33 +1,71 @@
-<div class="bg-white rounded-lg border border-gray-200 p-6">
-  <h2 class="text-lg font-medium text-gray-900 mb-4">Import Results</h2>
+{% with has_errors=result.errors|length %}
 
+<div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
+
+  {# ── Status header ── #}
+  {% if has_errors %}
+    <div class="flex items-center gap-3 mb-5">
+      <span class="flex items-center justify-center w-10 h-10 rounded-full bg-[var(--color-status-red)]/10">
+        <svg class="w-5 h-5 text-[var(--color-status-red)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </span>
+      <div>
+        <h2 class="text-lg font-medium text-[var(--color-ink)]">Import Completed with Errors</h2>
+        <p class="text-sm text-gray-500">{{ log.filename }} &middot; {{ log.imported_at }}</p>
+      </div>
+    </div>
+  {% else %}
+    <div class="flex items-center gap-3 mb-5">
+      <span class="flex items-center justify-center w-10 h-10 rounded-full bg-[var(--color-status-green)]/10">
+        <svg class="w-5 h-5 text-[var(--color-status-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </span>
+      <div>
+        <h2 class="text-lg font-medium text-[var(--color-ink)]">Import Successful</h2>
+        <p class="text-sm text-gray-500">{{ log.filename }} &middot; {{ log.imported_at }}</p>
+      </div>
+    </div>
+  {% endif %}
+
+  {# ── Stat grid ── #}
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-    <div class="bg-gray-50 rounded-lg p-4 text-center">
-      <div class="text-2xl font-bold text-gray-900">{{ result.total }}</div>
-      <div class="text-xs text-gray-500 uppercase tracking-wider mt-1">Total Rows</div>
+    <div class="bg-[var(--color-paper)] rounded-lg p-4 text-center">
+      <div class="text-2xl font-bold text-[var(--color-ink)]">{{ result.total }}</div>
+      <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Total Rows</div>
     </div>
-    <div class="bg-green-50 rounded-lg p-4 text-center">
-      <div class="text-2xl font-bold text-green-600">{{ result.created }}</div>
-      <div class="text-xs text-gray-500 uppercase tracking-wider mt-1">Created</div>
+    <div class="bg-[var(--color-status-green)]/5 rounded-lg p-4 text-center">
+      <div class="text-2xl font-bold text-[var(--color-status-green)]">{{ result.created }}</div>
+      <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Created</div>
     </div>
-    <div class="bg-yellow-50 rounded-lg p-4 text-center">
-      <div class="text-2xl font-bold text-yellow-600">{{ result.skipped }}</div>
-      <div class="text-xs text-gray-500 uppercase tracking-wider mt-1">Skipped</div>
+    <div class="bg-[#B8863A]/5 rounded-lg p-4 text-center">
+      <div class="text-2xl font-bold text-[#B8863A]">{{ result.skipped }}</div>
+      <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Skipped</div>
     </div>
-    <div class="bg-red-50 rounded-lg p-4 text-center">
-      <div class="text-2xl font-bold text-red-600">{{ result.errors|length }}</div>
-      <div class="text-xs text-gray-500 uppercase tracking-wider mt-1">Errors</div>
+    <div class="bg-[var(--color-status-red)]/5 rounded-lg p-4 text-center">
+      <div class="text-2xl font-bold text-[var(--color-status-red)]">{{ result.errors|length }}</div>
+      <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Errors</div>
     </div>
   </div>
 
+  {# ── Error details ── #}
   {% if result.errors %}
     <div class="mb-6">
-      <h3 class="text-sm font-medium text-red-800 mb-2">Errors</h3>
-      <div class="bg-red-50 border border-red-200 rounded-md p-4 max-h-60 overflow-y-auto">
-        <ul class="space-y-1">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-[var(--color-status-red)] mb-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        {{ result.errors|length }} Error{{ result.errors|pluralize }}
+      </h3>
+      <div class="bg-[var(--color-status-red)]/5 border border-[var(--color-status-red)]/15 rounded-lg p-4 max-h-60 overflow-y-auto">
+        <ul class="space-y-1.5">
           {% for err in result.errors %}
-            <li class="text-sm text-red-700">
-              <span class="font-medium">Row {{ err.row }}:</span> {{ err.message }}
+            <li class="flex items-start gap-2 text-sm text-[var(--color-status-red)]">
+              <span class="shrink-0 mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded bg-[var(--color-status-red)]/10 text-[10px] font-bold text-[var(--color-status-red)]">
+                {{ err.row }}
+              </span>
+              <span class="pt-0.5">{{ err.message }}</span>
             </li>
           {% endfor %}
         </ul>
@@ -35,10 +73,16 @@
     </div>
   {% endif %}
 
-  <div class="flex justify-end">
+  {# ── Footer action ── #}
+  <div class="flex items-center justify-end pt-2 border-t border-gray-100">
     <a href="{% url 'school_admin:import' %}"
-       class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+       class="inline-flex items-center px-5 py-2 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white bg-[#B8863A] hover:bg-[#a07532] active:bg-[#8c6629] transition-colors">
+      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+      </svg>
       Back to Import
     </a>
   </div>
 </div>
+
+{% endwith %}

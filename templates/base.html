@@ -40,11 +40,11 @@
 
   <div class="flex min-h-screen">
     {# ===== SIDEBAR NAV ===== #}
-    <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-40 w-64 transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col">
+    <aside id="sidebar" class="sidebar bg-[#1B2430] fixed inset-y-0 left-0 z-40 w-64 transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col">
       
       {# School name in sidebar #}
       <div class="px-6 py-6 border-b border-white/10">
-        <h1 class="font-[var(--font-display)] text-xl font-semibold">Grace House</h1>
+        <h1 class="font-[var(--font-display)] text-xl font-semibold text-white">Grace House</h1>
         <p class="text-sm text-white/60 mt-1">School System</p>
       </div>
       
@@ -52,56 +52,57 @@
       <nav class="flex-1 px-4 py-6 overflow-y-auto">
         {% if user.is_authenticated %}
           {% if user.role == 'ADMIN' %}
-            <a href="/school-admin/" class="nav-item {% if request.path == '/school-admin/' %}active{% endif %}">Dashboard</a>
+            <a href="/school-admin/" class="nav-item text-white/70 hover:text-white {% if request.path == '/school-admin/' %}active{% endif %}">Dashboard</a>
 
-            <div class="section-label">Students</div>
-            <a href="/school-admin/students/" class="nav-item {% if request.path starts_with '/school-admin/students' %}active{% endif %}">All Students</a>
-            <a href="/school-admin/classes/" class="nav-item {% if request.path starts_with '/school-admin/classes' %}active{% endif %}">Classes</a>
+            <div class="section-label text-white/40">Students</div>
+            <a href="/school-admin/students/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/students' in request.path %}active{% endif %}">All Students</a>
+            <a href="/school-admin/classes/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/classes' in request.path %}active{% endif %}">Classes</a>
 
-            <div class="section-label">Staff</div>
-            <a href="/school-admin/staff/" class="nav-item {% if request.path starts_with '/school-admin/staff' %}active{% endif %}">All Staff</a>
+            <div class="section-label text-white/40">Staff</div>
+            <a href="/school-admin/staff/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/staff' in request.path %}active{% endif %}">All Staff</a>
 
-            <div class="section-label">Users</div>
-            <a href="/school-admin/users/" class="nav-item {% if request.path starts_with '/school-admin/users' %}active{% endif %}">All Users</a>
+            <div class="section-label text-white/40">Users</div>
+            <a href="/school-admin/users/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/users' in request.path %}active{% endif %}">All Users</a>
 
-            <div class="section-label">Academics</div>
-            <a href="/school-admin/subjects/" class="nav-item {% if request.path starts_with '/school-admin/subjects' %}active{% endif %}">Subjects</a>
-            <a href="/school-admin/assignments/" class="nav-item {% if request.path starts_with '/school-admin/assignments' %}active{% endif %}">Assignments</a>
+            <div class="section-label text-white/40">Academics</div>
+            <a href="/school-admin/subjects/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/subjects' in request.path %}active{% endif %}">Subjects</a>
+            <a href="/school-admin/assignments/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/assignments' in request.path %}active{% endif %}">Assignments</a>
 
-            <div class="section-label">Fees</div>
-            <a href="/school-admin/fees/categories/" class="nav-item {% if request.path starts_with '/school-admin/fees/categories' %}active{% endif %}">Categories</a>
-            <a href="/school-admin/fees/structures/" class="nav-item {% if request.path starts_with '/school-admin/fees/structures' %}active{% endif %}">Structures</a>
-            <a href="/school-admin/invoices/" class="nav-item {% if request.path starts_with '/school-admin/invoices' %}active{% endif %}">Invoices</a>
+            <div class="section-label text-white/40">Fees</div>
+            <a href="/school-admin/fees/categories/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/fees/categories' in request.path %}active{% endif %}">Categories</a>
+            <a href="/school-admin/fees/structures/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/fees/structures' in request.path %}active{% endif %}">Structures</a>
+            <a href="/school-admin/invoices/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/invoices' in request.path %}active{% endif %}">Invoices</a>
 
-            <div class="section-label">Payroll</div>
-            <a href="/school-admin/payroll/grades/" class="nav-item {% if request.path starts_with '/school-admin/payroll/grades' %}active{% endif %}">Grades</a>
-            <a href="/school-admin/payroll/runs/" class="nav-item {% if request.path starts_with '/school-admin/payroll/runs' %}active{% endif %}">Runs</a>
+            <div class="section-label text-white/40">Payroll</div>
+            <a href="/school-admin/payroll/grades/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/payroll/grades' in request.path %}active{% endif %}">Grades</a>
+            <a href="/school-admin/payroll/runs/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/payroll/runs' in request.path %}active{% endif %}">Runs</a>
 
-            <div class="section-label">Finance</div>
-            <a href="/school-admin/finance/projects/" class="nav-item {% if request.path starts_with '/school-admin/finance/projects' %}active{% endif %}">Projects</a>
+            <div class="section-label text-white/40">Finance</div>
+            <a href="/school-admin/finance/projects/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/finance/projects' in request.path %}active{% endif %}">Projects</a>
 
-            <div class="section-label">Results</div>
-            <a href="/school-admin/scores/" class="nav-item {% if request.path starts_with '/school-admin/scores' %}active{% endif %}">Scores</a>
-            <a href="/school-admin/results/review/" class="nav-item {% if request.path starts_with '/school-admin/results/review' %}active{% endif %}">Review</a>
-            <a href="/school-admin/results/publish/" class="nav-item {% if request.path starts_with '/school-admin/results/publish' %}active{% endif %}">Publish</a>
+            <div class="section-label text-white/40">Results</div>
+            <a href="/school-admin/scores/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/scores' in request.path %}active{% endif %}">Scores</a>
+            <a href="/school-admin/results/review/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/results/review' in request.path %}active{% endif %}">Review</a>
+            <a href="/school-admin/results/publish/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/results/publish' in request.path %}active{% endif %}">Publish</a>
 
             <div class="mt-4"></div>
-            <a href="/school-admin/import/" class="nav-item {% if request.path starts_with '/school-admin/import' %}active{% endif %}">Import</a>
-            <a href="/school-admin/notifications/" class="nav-item {% if request.path starts_with '/school-admin/notifications' %}active{% endif %}">Notifications</a>
+            <a href="/school-admin/import/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/import' in request.path %}active{% endif %}">Import</a>
+            <a href="/school-admin/notifications/" class="nav-item text-white/70 hover:text-white {% if '/school-admin/notifications' in request.path %}active{% endif %}">Notifications</a>
           
           {% elif user.role == 'TEACHER' %}
-            <a href="/teacher/" class="nav-item {% if request.path == '/teacher/' %}active{% endif %}">Dashboard</a>
-            <a href="/teacher/assignments/" class="nav-item {% if request.path starts_with '/teacher/assignments' %}active{% endif %}">My Assignments</a>
-            <a href="/teacher/payslips/" class="nav-item {% if request.path starts_with '/teacher/payslips' %}active{% endif %}">My Payslips</a>
+            <a href="/teacher/" class="nav-item text-white/70 hover:text-white {% if request.path == '/teacher/' %}active{% endif %}">Dashboard</a>
+            <a href="/teacher/assignments/" class="nav-item text-white/70 hover:text-white {% if '/teacher/assignments' in request.path %}active{% endif %}">My Assignments</a>
+            <a href="/teacher/payslips/" class="nav-item text-white/70 hover:text-white {% if '/teacher/payslips' in request.path %}active{% endif %}">My Payslips</a>
           
           {% elif user.role == 'STUDENT' %}
-            <a href="/student/" class="nav-item {% if request.path == '/student/' %}active{% endif %}">Dashboard</a>
-            <a href="/student/results/" class="nav-item {% if request.path starts_with '/student/results' %}active{% endif %}">My Results</a>
-            <a href="/student/invoices/" class="nav-item {% if request.path starts_with '/student/invoices' %}active{% endif %}">My Invoices</a>
+            <a href="/student/" class="nav-item text-white/70 hover:text-white {% if request.path == '/student/' %}active{% endif %}">Dashboard</a>
+            <a href="/student/results/" class="nav-item text-white/70 hover:text-white {% if '/student/results' in request.path %}active{% endif %}">My Results</a>
+            <a href="/student/invoices/" class="nav-item text-white/70 hover:text-white {% if '/student/invoices' in request.path %}active{% endif %}">My Invoices</a>
+            <a href="/student/password/" class="nav-item text-white/70 hover:text-white {% if '/student/password' in request.path %}active{% endif %}">Change Password</a>
           
           {% elif user.role == 'PARENT' %}
-            <a href="/parent/" class="nav-item {% if request.path == '/parent/' %}active{% endif %}">Dashboard</a>
-            <a href="/parent/children/" class="nav-item {% if request.path starts_with '/parent/children' %}active{% endif %}">My Children</a>
+            <a href="/parent/" class="nav-item text-white/70 hover:text-white {% if request.path == '/parent/' %}active{% endif %}">Dashboard</a>
+            <a href="/parent/children/" class="nav-item text-white/70 hover:text-white {% if '/parent/children' in request.path %}active{% endif %}">My Children</a>
           {% endif %}
         {% endif %}
       </nav>
@@ -114,12 +115,12 @@
           </div>
            <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
-            <button type="submit" class="nav-item w-full text-left">
+            <button type="submit" class="nav-item text-white/70 hover:text-white w-full text-left">
               Logout
             </button>
           </form>
         {% else %}
-          <a href="{% url 'login' %}" class="nav-item">
+          <a href="{% url 'login' %}" class="nav-item text-white/70 hover:text-white">
             Login
           </a>
         {% endif %}

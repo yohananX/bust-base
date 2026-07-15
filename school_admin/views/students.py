@@ -185,7 +185,7 @@ class StudentCreateView(RoleRequiredMixin, View):
                         counter += 1
 
                     # Generate random password
-                    password = secrets.token_urlsafe(12)
+                    password = secrets.token_urlsafe(6)
 
                     user = User.objects.create_user(
                         username=username_input,
@@ -257,7 +257,7 @@ class StudentCreateView(RoleRequiredMixin, View):
                             parent_username = f"{parent_base}{parent_counter}"
                             parent_counter += 1
 
-                        parent_password = secrets.token_urlsafe(12)
+                        parent_password = secrets.token_urlsafe(6)
                         parent_user = User.objects.create_user(
                             username=parent_username,
                             email=parent_email,
@@ -276,6 +276,7 @@ class StudentCreateView(RoleRequiredMixin, View):
                             guardian=parent_user,
                             relationship=relationship,
                             is_primary_contact=True,
+                            school=school,
                         )
 
                         messages.success(
@@ -496,6 +497,7 @@ class StudentGuardianLinkCreateView(RoleRequiredMixin, View):
                     guardian=guardian,
                     relationship=relationship,
                     is_primary_contact=is_primary_contact,
+                    school=request.school,
                 )
             messages.success(request, 'Guardian linked successfully.')
         except IntegrityError:
