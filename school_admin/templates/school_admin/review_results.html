@@ -1,0 +1,216 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Review Results — School Admin{% endblock %}
+{% block page_header %}Score Moderation{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  {# ── Filter Bar ── #}
+  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 p-4 mb-6">
+    <form method="get" class="flex items-end gap-4 flex-wrap">
+      <div>
+        <label for="term_id" class="block text-xs font-medium text-gray-500 mb-1">Term</label>
+        <select name="term_id" id="term_id" required
+                onchange="this.form.submit()"
+                class="px-3 py-1.5 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          <option value="">Select Term</option>
+          {% for term in terms %}
+            <option value="{{ term.pk }}" {% if selected_term and selected_term.pk == term.pk %}selected{% endif %}>
+              {{ term.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="class_id" class="block text-xs font-medium text-gray-500 mb-1">Class</label>
+        <select name="class_id" id="class_id"
+                onchange="this.form.submit()"
+                class="px-3 py-1.5 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          <option value="">All Classes</option>
+          {% for cls in classes %}
+            <option value="{{ cls.pk }}" {% if selected_class and selected_class.pk == cls.pk %}selected{% endif %}>
+              {{ cls.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="ml-auto">
+        <a href="{% url 'school_admin:publish_results' %}" class="text-sm text-blue-600 hover:underline">Publish / Unpublish Results →</a>
+      </div>
+    </form>
+  </div>
+
+  {# ── State 1: No term selected ── #}
+  {% if not selected_term %}
+    <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 p-8 text-center">
+      <p class="text-gray-400 text-lg">Select a term to review scores.</p>
+    </div>
+
+  {# ── State 2: Term selected, no class — Class Summary ── #}
+  {% elif not selected_class %}
+    <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <h3 class="font-semibold text-gray-800">Classes — {{ selected_term.name }}</h3>
+      </div>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-gray-600">
+            <th class="px-4 py-3 font-medium">Class</th>
+            <th class="px-4 py-3 font-medium">Level</th>
+            <th class="px-4 py-3 font-medium text-center">Total</th>
+            <th class="px-4 py-3 font-medium text-center">Pending</th>
+            <th class="px-4 py-3 font-medium text-center">Approved</th>
+            <th class="px-4 py-3 font-medium text-center">Rejected</th>
+            <th class="px-4 py-3 font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in class_summary %}
+          <tr class="border-t border-gray-100 hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium">{{ item.class.name }}</td>
+            <td class="px-4 py-3 text-gray-500">{{ item.class.level }}</td>
+            <td class="px-4 py-3 text-center">{{ item.total_scores }}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">{{ item.pending_count }}</span>
+            </td>
+            <td class="px-4 py-3 text-center">
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-700 text-xs font-semibold">{{ item.approved_count }}</span>
+            </td>
+            <td class="px-4 py-3 text-center">
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-100 text-red-700 text-xs font-semibold">{{ item.rejected_count }}</span>
+            </td>
+            <td class="px-4 py-3">
+              <a href="?term_id={{ selected_term.pk }}&class_id={{ item.class.pk }}"
+                 class="px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors">
+                Review
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr class="border-t border-gray-100">
+            <td colspan="7" class="px-4 py-8 text-center text-gray-400">No classes with scores found for this term.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {# ── State 3: Term + Class selected — Full Scores ── #}
+  {% else %}
+    <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <a href="?term_id={{ selected_term.pk }}" class="text-blue-600 hover:underline text-sm">← Back to summary</a>
+          <h3 class="font-semibold text-gray-800">{{ selected_class.name }} — {{ selected_term.name }}</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <form method="post" class="inline">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="approve_all">
+            <input type="hidden" name="term_id" value="{{ selected_term.pk }}">
+            <input type="hidden" name="class_id" value="{{ selected_class.pk }}">
+            <button type="submit" class="px-3 py-1.5 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
+                    onclick="return confirm('Approve ALL pending scores for {{ selected_class.name }}?')">
+              ✓ Approve All Pending
+            </button>
+          </form>
+        </div>
+      </div>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-gray-600">
+            <th class="px-4 py-3 font-medium">Student</th>
+            <th class="px-4 py-3 font-medium">Subject</th>
+            <th class="px-4 py-3 font-medium text-center">T1</th>
+            <th class="px-4 py-3 font-medium text-center">T2</th>
+            <th class="px-4 py-3 font-medium text-center">T3</th>
+            <th class="px-4 py-3 font-medium text-center">Exam</th>
+            <th class="px-4 py-3 font-medium text-center">Total</th>
+            <th class="px-4 py-3 font-medium text-center">Passed?</th>
+            <th class="px-4 py-3 font-medium">Status</th>
+            <th class="px-4 py-3 font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for score in scores %}
+          <tr class="border-t border-gray-100
+            {% if score.moderation_status == 'PENDING' %}bg-amber-50
+            {% elif score.moderation_status == 'APPROVED' %}bg-green-50
+            {% elif score.moderation_status == 'REJECTED' %}bg-red-50{% endif %}">
+            <td class="px-4 py-3">
+              <div class="font-medium">{{ score.student.user.get_full_name|default:score.student }}</div>
+              <div class="text-xs text-gray-400">{{ score.student.admission_number }}</div>
+            </td>
+            <td class="px-4 py-3">{{ score.subject.name }}</td>
+            <td class="px-4 py-3 text-center">{{ score.test_1|default:"—" }}</td>
+            <td class="px-4 py-3 text-center">{{ score.test_2|default:"—" }}</td>
+            <td class="px-4 py-3 text-center">{{ score.test_3|default:"—" }}</td>
+            <td class="px-4 py-3 text-center">{{ score.exam_score|default:"—" }}</td>
+            <td class="px-4 py-3 text-center font-semibold">{{ score.total_score }}</td>
+            <td class="px-4 py-3 text-center">
+              {% if score.passed is True %}
+                <span class="text-green-600 font-medium">✓ Yes</span>
+              {% elif score.passed is False %}
+                <span class="text-red-600 font-medium">✗ No</span>
+              {% else %}
+                <span class="text-gray-400">—</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3">
+              {% if score.moderation_status == 'PENDING' %}
+                <span class="status-tag status-tag--pending">Pending</span>
+              {% elif score.moderation_status == 'APPROVED' %}
+                <span class="status-tag status-tag--active">Approved</span>
+              {% elif score.moderation_status == 'REJECTED' %}
+                <span class="status-tag status-tag--fail">Rejected</span>
+              {% endif %}
+              {% if score.moderated_by %}
+                <div class="text-xs text-gray-400 mt-0.5">by {{ score.moderated_by.get_full_name|default:score.moderated_by.username }}</div>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3">
+              {% if score.moderation_status == 'PENDING' %}
+                <div class="flex items-center gap-1">
+                  <form method="post" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="score_id" value="{{ score.id }}">
+                    <input type="hidden" name="action" value="approve">
+                    <input type="hidden" name="term_id" value="{{ selected_term.pk }}">
+                    <input type="hidden" name="class_id" value="{{ selected_class.pk }}">
+                    <button type="submit" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors">
+                      ✓ Approve
+                    </button>
+                  </form>
+                  <form method="post" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="score_id" value="{{ score.id }}">
+                    <input type="hidden" name="action" value="reject">
+                    <input type="hidden" name="term_id" value="{{ selected_term.pk }}">
+                    <input type="hidden" name="class_id" value="{{ selected_class.pk }}">
+                    <button type="submit" class="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors"
+                            onclick="return confirm('Reject this score?')">
+                      ✗ Reject
+                    </button>
+                  </form>
+                </div>
+              {% else %}
+                <span class="text-xs text-gray-400">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr class="border-t border-gray-100">
+            <td colspan="10" class="px-4 py-8 text-center text-gray-400">No scores found for this class in {{ selected_term.name }}.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
