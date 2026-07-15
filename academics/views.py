@@ -1,5 +1,6 @@
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from django.views.generic.base import View
 
 from accounts.mixins import RoleRequiredMixin
@@ -130,17 +131,42 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
         score.entered_by = request.user
         score.save(update_fields=[field_name, 'entered_by', 'updated_at'])
 
+        # Reset moderation if previously approved/rejected
+        if score.moderation_status in (Score.MODERATION_APPROVED, Score.MODERATION_REJECTED):
+            score.moderation_status = Score.MODERATION_PENDING
+            score.moderated_by = None
+            score.moderated_at = None
+            score.save(update_fields=['moderation_status', 'moderated_by', 'moderated_at'])
+
         display_value = value if value is not None else ''
 
-        # Build the primary response (the updated field cell)
-        primary = f'<span class="tabular-nums">{display_value}</span>'
+        # Build the primary response: return an <input> so the teacher can keep editing
+        update_url = reverse('score_update', args=[pk, score.pk])
+        input_classes = (
+            'w-14 text-center border border-gray-300 rounded px-1 py-1 '
+            'tabular-nums text-sm focus:border-[#B8863A] focus:ring-1 '
+            'focus:ring-[#B8863A] outline-none'
+        )
+        primary = (
+            f'<input type="number" min="0" max="{max_value}" value="{display_value}"'
+            f' hx-post="{update_url}"'
+            f' hx-trigger="blur" hx-target="closest td"'
+            f' name="{field_name}"'
+            f' class="{input_classes}">'
+        )
 
         # Build OOB swap for Total cell
         total = score.total_score
         total_content = f'<span>{total}</span>'
 
-        # Build OOB swap for Status cell
-        if not score.is_complete:
+        # Build OOB swap for Status cell (includes moderation status)
+        if score.moderation_status == Score.MODERATION_PENDING and score.is_complete:
+            status_html = '<span class="status-tag status-tag--pending">Re-review</span>'
+        elif score.moderation_status == Score.MODERATION_APPROVED:
+            status_html = '<span class="status-stamp status-stamp--pass">Approved</span>'
+        elif score.moderation_status == Score.MODERATION_REJECTED:
+            status_html = '<span class="status-tag status-tag--fail">Rejected</span>'
+        elif not score.is_complete:
             status_html = '<span class="status-tag status-tag--pending">Pending</span>'
         elif score.passed:
             status_html = '<span class="status-stamp status-stamp--pass">Pass</span>'
