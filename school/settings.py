@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'payroll',
     'finance',
     'notifications',
+    'data_import',
     'school_admin',
     # Django contrib
     'django_q',

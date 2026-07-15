@@ -1,0 +1,44 @@
+<div class="bg-white rounded-lg border border-gray-200 p-6">
+  <h2 class="text-lg font-medium text-gray-900 mb-4">Import Results</h2>
+
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+    <div class="bg-gray-50 rounded-lg p-4 text-center">
+      <div class="text-2xl font-bold text-gray-900">{{ result.total }}</div>
+      <div class="text-xs text-gray-500 uppercase tracking-wider mt-1">Total Rows</div>
+    </div>
+    <div class="bg-green-50 rounded-lg p-4 text-center">
+      <div class="text-2xl font-bold text-green-600">{{ result.created }}</div>
+      <div class="text-xs text-gray-500 uppercase tracking-wider mt-1">Created</div>
+    </div>
+    <div class="bg-yellow-50 rounded-lg p-4 text-center">
+      <div class="text-2xl font-bold text-yellow-600">{{ result.skipped }}</div>
+      <div class="text-xs text-gray-500 uppercase tracking-wider mt-1">Skipped</div>
+    </div>
+    <div class="bg-red-50 rounded-lg p-4 text-center">
+      <div class="text-2xl font-bold text-red-600">{{ result.errors|length }}</div>
+      <div class="text-xs text-gray-500 uppercase tracking-wider mt-1">Errors</div>
+    </div>
+  </div>
+
+  {% if result.errors %}
+    <div class="mb-6">
+      <h3 class="text-sm font-medium text-red-800 mb-2">Errors</h3>
+      <div class="bg-red-50 border border-red-200 rounded-md p-4 max-h-60 overflow-y-auto">
+        <ul class="space-y-1">
+          {% for err in result.errors %}
+            <li class="text-sm text-red-700">
+              <span class="font-medium">Row {{ err.row }}:</span> {{ err.message }}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="flex justify-end">
+    <a href="{% url 'school_admin:import' %}"
+       class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+      Back to Import
+    </a>
+  </div>
+</div>

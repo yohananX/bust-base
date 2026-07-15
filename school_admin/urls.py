@@ -4,6 +4,9 @@ All views require the ADMIN role via RoleRequiredMixin.
 """
 from django.urls import path
 
+from data_import.views import (
+    DataImportView, DataImportConfirmView, DataImportTemplateDownloadView,
+)
 from school_admin.views import (
     DashboardView,
     StudentListView, StudentCreateView, StudentDetailView,
@@ -94,4 +97,9 @@ urlpatterns = [
     path('users/new/', UserCreateView.as_view(), name='user_create'),
     path('users/<int:pk>/edit/', UserEditView.as_view(), name='user_edit'),
     path('users/<int:pk>/toggle-active/', UserToggleActiveView.as_view(), name='user_toggle_active'),
+
+    # Data Import
+    path('import/', DataImportView.as_view(), name='import'),
+    path('import/confirm/', DataImportConfirmView.as_view(), name='import_confirm'),
+    path('import/template/<str:type>/', DataImportTemplateDownloadView.as_view(), name='import_template'),
 ]

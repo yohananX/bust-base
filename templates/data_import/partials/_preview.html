@@ -1,0 +1,51 @@
+<div class="bg-white rounded-lg border border-gray-200 p-6">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-medium text-gray-900">Preview — {{ import_type|title }} Import</h2>
+    <span class="text-sm text-gray-500">{{ total_rows }} row{{ total_rows|pluralize }} total, showing first {{ preview_rows|length }}</span>
+  </div>
+
+  {% if preview_rows %}
+    <div class="overflow-x-auto mb-6">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+            {% for header in headers %}
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ header }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          {% for row in preview_rows %}
+            <tr>
+              <td class="px-3 py-2 text-gray-400">{{ forloop.counter }}</td>
+              {% for cell in row %}
+                <td class="px-3 py-2 text-gray-600">{{ cell|default_if_none:"" }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex items-center justify-between">
+      <p class="text-sm text-gray-500">
+        This will import <strong>{{ total_rows }}</strong> row{{ total_rows|pluralize }} as <strong>{{ import_type }}</strong>.
+      </p>
+      <form method="post" action="{% url 'school_admin:import_confirm' %}" class="inline-flex gap-3">
+        {% csrf_token %}
+        <a href="{% url 'school_admin:import' %}"
+           class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+          Cancel
+        </a>
+        <button type="submit"
+                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          Confirm Import
+        </button>
+      </form>
+    </div>
+  {% else %}
+    <p class="text-sm text-gray-500">No rows to preview.</p>
+  {% endif %}
+</div>

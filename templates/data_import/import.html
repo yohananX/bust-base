@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Data Import - Grace House{% endblock %}
+{% block page_header %}Data Import{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+
+  {# Header #}
+  <div>
+    <h1 class="text-2xl font-semibold text-gray-900">Data Import</h1>
+    <p class="mt-1 text-sm text-gray-500">Upload CSV files to bulk-import classes, subjects, students, or staff.</p>
+  </div>
+
+  {# Download Templates #}
+  <div class="bg-white rounded-lg border border-gray-200 p-6">
+    <h2 class="text-lg font-medium text-gray-900 mb-4">Download Templates</h2>
+    <p class="text-sm text-gray-500 mb-4">Download a CSV template with the correct column headers for each import type.</p>
+    <div class="flex flex-wrap gap-3">
+      <a href="{% url 'school_admin:import_template' type='classes' %}"
+         class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Classes
+      </a>
+      <a href="{% url 'school_admin:import_template' type='subjects' %}"
+         class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Subjects
+      </a>
+      <a href="{% url 'school_admin:import_template' type='students' %}"
+         class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Students
+      </a>
+      <a href="{% url 'school_admin:import_template' type='staff' %}"
+         class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Staff
+      </a>
+    </div>
+  </div>
+
+  {# Upload Form #}
+  <div class="bg-white rounded-lg border border-gray-200 p-6">
+    <h2 class="text-lg font-medium text-gray-900 mb-4">Upload CSV</h2>
+    <form method="post" action="{% url 'school_admin:import' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="space-y-4">
+        <div>
+          <label for="import_type" class="block text-sm font-medium text-gray-700 mb-1">Import Type</label>
+          <select id="import_type" name="import_type" required
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+            <option value="">Select a type...</option>
+            {% for value, label in import_types %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="csv_file" class="block text-sm font-medium text-gray-700 mb-1">CSV File</label>
+          <input type="file" id="csv_file" name="csv_file" accept=".csv" required
+                 class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+        </div>
+        <div class="flex justify-end">
+          <button type="submit"
+                  class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+            Upload &amp; Preview
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  {# Preview Area (populated via HTMX or direct render) #}
+  <div id="import-preview"></div>
+
+  {# Import History #}
+  <div class="bg-white rounded-lg border border-gray-200 p-6">
+    <h2 class="text-lg font-medium text-gray-900 mb-4">Import History</h2>
+    {% if logs %}
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">File</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Skipped</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Errors</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">By</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            {% for log in logs %}
+              <tr>
+                <td class="px-4 py-3 text-sm text-gray-600">{{ log.imported_at|date:"d M Y H:i" }}</td>
+                <td class="px-4 py-3 text-sm">
+                  <span class="status-tag">{{ log.get_import_type_display }}</span>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">{{ log.filename }}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">{{ log.total_rows }}</td>
+                <td class="px-4 py-3 text-sm text-green-600 font-medium">{{ log.created_count }}</td>
+                <td class="px-4 py-3 text-sm text-yellow-600">{{ log.skipped_count }}</td>
+                <td class="px-4 py-3 text-sm text-red-600">{{ log.error_count }}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">{{ log.imported_by|default:"System" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-sm text-gray-500">No imports recorded yet.</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
