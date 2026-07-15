@@ -17,26 +17,106 @@
     <form method="post">
       {% csrf_token %}
 
-      {# --- User Dropdown (Create only) --- #}
+      {# ============================================================ #}
+      {# USER SECTION — Edit mode                                      #}
+      {# ============================================================ #}
       {% if is_edit %}
+      <h3 class="text-sm font-semibold text-[var(--color-ink)] mb-3">User Account</h3>
       <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">User <span class="text-red-500">*</span></label>
-        <input type="text" value="{{ student.user.get_full_name|default:student.user.username }}" disabled class="w-full border border-gray-200 rounded px-3 py-2 text-sm bg-gray-50 text-gray-500">
-        <p class="text-xs text-gray-400 mt-1">User account cannot be changed after creation.</p>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+        <input type="text" value="{{ student.user.username }}" disabled class="w-full border border-gray-200 rounded px-3 py-2 text-sm bg-gray-50 text-gray-500">
+        <p class="text-xs text-gray-400 mt-1">Username cannot be changed after creation.</p>
       </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+          <input type="text" name="user_first_name" value="{{ student.user.first_name }}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+          <input type="text" name="user_last_name" value="{{ student.user.last_name }}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-gray-400 font-normal">(Optional)</span></label>
+          <input type="email" name="user_email" value="{{ student.user.email }}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number <span class="text-gray-400 font-normal">(Optional)</span></label>
+          <input type="text" name="user_phone_number" value="{{ student.user.phone_number }}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        </div>
+      </div>
+
+      {# ============================================================ #}
+      {# USER SECTION — Create mode                                    #}
+      {# ============================================================ #}
       {% else %}
-      <div class="mb-4">
+      <h3 class="text-sm font-semibold text-[var(--color-ink)] mb-3">User Account</h3>
+
+      {# --- Radio toggle --- #}
+      <div class="flex items-center gap-6 mb-4">
+        <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input type="radio" name="user_mode" value="existing" checked class="text-[#1B2430] focus:ring-[#1B2430]">
+          Select Existing User
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input type="radio" name="user_mode" value="new" class="text-[#1B2430] focus:ring-[#1B2430]">
+          Create New User
+        </label>
+      </div>
+
+      {# --- Existing user section --- #}
+      <div id="existing-user-section" class="mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-1">User <span class="text-red-500">*</span></label>
-        <select name="user" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+        <select name="user" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
           <option value="">— Select User —</option>
-          {% for u in users %}
+          {% for u in users_with_no_student %}
           <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
           {% endfor %}
         </select>
+        <p class="text-xs text-gray-400 mt-1">Only users without an existing student record are shown.</p>
+      </div>
+
+      {# --- New user section --- #}
+      <div id="new-user-section" style="display:none;" class="mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">First Name <span class="text-red-500">*</span></label>
+            <input type="text" name="first_name" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Last Name <span class="text-red-500">*</span></label>
+            <input type="text" name="last_name" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <input type="text" name="new_username" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+            <p class="text-xs text-gray-400 mt-1">Auto-generated from name if left blank.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-gray-400 font-normal">(Optional)</span></label>
+            <input type="email" name="new_email" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number <span class="text-gray-400 font-normal">(Optional)</span></label>
+          <input type="text" name="new_phone_number" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        </div>
+        <div class="bg-blue-50 text-blue-800 rounded p-3 text-sm">
+          A random password will be generated automatically. You can share it with the student after creation.
+        </div>
       </div>
       {% endif %}
 
-      {# --- 2-column grid for remaining fields --- #}
+      {# ============================================================ #}
+      {# STUDENT INFO                                                   #}
+      {# ============================================================ #}
+      <hr class="my-6 border-gray-200">
+      <h3 class="text-sm font-semibold text-[var(--color-ink)] mb-3">Student Information</h3>
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Admission Number <span class="text-red-500">*</span></label>
@@ -92,7 +172,65 @@
         </div>
       </div>
 
-      {# --- Submit / Cancel --- #}
+      {# ============================================================ #}
+      {# PARENT / GUARDIAN INFO                                         #}
+      {# ============================================================ #}
+      <hr class="my-6 border-gray-200">
+      <h3 class="text-sm font-semibold text-[var(--color-ink)] mb-3">Parent / Guardian Info</h3>
+
+      {% if is_edit %}
+        {% if guardian_links %}
+        <div class="mb-4">
+          {% for link in guardian_links %}
+          <div class="flex items-center justify-between bg-gray-50 rounded p-3 mb-2 text-sm">
+            <div>
+              <span class="font-medium">{{ link.guardian.get_full_name|default:link.guardian.username }}</span>
+              <span class="text-gray-500">— {{ link.get_relationship_display }}</span>
+              {% if link.is_primary_contact %}
+              <span class="ml-2 inline-block bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded">Primary</span>
+              {% endif %}
+            </div>
+            <span class="text-gray-400">{{ link.guardian.email }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-400 mb-4">No guardian linked yet. You can link one from the student detail page.</p>
+        {% endif %}
+      {% else %}
+      <div class="bg-gray-50 rounded p-4 mb-4">
+        <p class="text-xs text-gray-500 mb-3">Optionally create a parent/guardian account and link them to this student.</p>
+        <div class="mb-3">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Parent Name</label>
+          <input type="text" name="parent_name" class="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="e.g. Jane Doe">
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Parent Email <span class="text-gray-400 font-normal">(Optional)</span></label>
+            <input type="email" name="parent_email" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Parent Phone <span class="text-gray-400 font-normal">(Optional)</span></label>
+            <input type="text" name="parent_phone" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+          </div>
+        </div>
+        <div class="mb-1">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
+          <select name="parent_relationship" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+            <option value="FATHER">Father</option>
+            <option value="MOTHER">Mother</option>
+            <option value="GUARDIAN" selected>Guardian</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+        <p class="text-xs text-gray-400 mt-2">Email and phone are optional — the parent account will be created without them if left blank.</p>
+      </div>
+      {% endif %}
+
+      {# ============================================================ #}
+      {# SUBMIT / CANCEL                                                #}
+      {# ============================================================ #}
+      <hr class="my-6 border-gray-200">
       <div class="flex items-center gap-3">
         <button type="submit" class="bg-[#1B2430] text-white text-sm px-6 py-2 rounded hover:bg-[#2a3648] transition-colors">
           {% if is_edit %}Update Student{% else %}Create Student{% endif %}
@@ -102,4 +240,13 @@
     </form>
   </div>
 </div>
+
+<script>
+document.querySelectorAll('input[name="user_mode"]').forEach(function(radio) {
+  radio.addEventListener('change', function() {
+    document.getElementById('existing-user-section').style.display = this.value === 'existing' ? 'block' : 'none';
+    document.getElementById('new-user-section').style.display = this.value === 'new' ? 'block' : 'none';
+  });
+});
+</script>
 {% endblock %}
