@@ -19,6 +19,11 @@
   
   {# HTMX #}
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script>
+    document.addEventListener('htmx:configRequest', function(evt) {
+      evt.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+    });
+  </script>
 
   {# Status Stamp & Tag Styles #}
   <style>
