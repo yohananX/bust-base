@@ -65,12 +65,12 @@
         </td>
         
         {# Total #}
-        <td class="px-3 py-2 text-center tabular-nums font-medium">
+        <td id="total-{{ score.pk }}" class="px-3 py-2 text-center tabular-nums font-medium">
           <span>{{ score.total_score }}</span>
         </td>
         
         {# Status #}
-        <td class="px-3 py-2 text-center">
+        <td id="status-{{ score.pk }}" class="px-3 py-2 text-center">
           {% if score.passed is None %}
             <span class="status-tag status-tag--pending">Pending</span>
           {% elif score.passed %}
