@@ -1,49 +1,49 @@
-{% extends 'base.html' %}
 {% load static %}
-
-{% block title %}Login | Grace House School System{% endblock %}
-
-{% block content %}
-<div class="min-h-[80vh] flex items-center justify-center">
-  <div class="w-full max-w-md">
-    
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Grace House School System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+</head>
+<body class="font-[var(--font-body)] bg-[var(--color-paper)] text-[var(--color-ink)] antialiased min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-md px-4">
     <div class="text-center mb-8">
       <h1 class="text-3xl font-[var(--font-display)] font-semibold text-[var(--color-ink)]">Grace House</h1>
       <p class="text-gray-500 mt-2 text-sm">School System — Sign in to your account</p>
     </div>
-
     <div class="bg-[var(--color-surface)] rounded-lg shadow-sm p-8">
       {% if form.errors %}
         <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
           <p class="text-sm text-[var(--color-status-red)] font-medium">Invalid username or password. Please try again.</p>
         </div>
       {% endif %}
-
       <form method="post" action="{% url 'login' %}">
         {% csrf_token %}
-        
         <div class="mb-5">
           <label for="id_username" class="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
           <input type="text" name="username" id="id_username" required
                  class="w-full px-4 py-2.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[var(--color-signal-gold)] focus:border-[var(--color-signal-gold)] outline-none transition-all"
                  placeholder="Enter your username">
         </div>
-
         <div class="mb-6">
           <label for="id_password" class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
-          <input type="password" name="password" id="id_password" required
+          <input type="password" name="password" id="id_password" required autocomplete="current-password"
                  class="w-full px-4 py-2.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[var(--color-signal-gold)] focus:border-[var(--color-signal-gold)] outline-none transition-all"
                  placeholder="Enter your password">
         </div>
-
         <button type="submit"
                 class="w-full py-2.5 px-4 bg-[var(--color-signal-gold)] hover:bg-[#9A7230] text-white font-medium text-sm rounded-md transition-colors duration-150">
           Sign In
         </button>
-
         <input type="hidden" name="next" value="{% url 'post_login_redirect' %}">
       </form>
     </div>
   </div>
-</div>
-{% endblock %}
+</body>
+</html>
