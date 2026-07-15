@@ -39,8 +39,3 @@ td.numeric { font-variant-numeric: tabular-nums; text-align: right; }
 input, select, textarea { border: 1px solid rgba(27,36,48,0.15); border-radius: var(--radius-control); padding: 10px 12px; font-size: 14px; font-family: var(--font-body); transition: border-color var(--transition-fast), box-shadow var(--transition-fast); }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--color-signal-gold); box-shadow: 0 0 0 3px rgba(184,134,58,0.15); }
 label { font-size: 13px; font-weight: 500; color: rgba(27,36,48,0.7); margin-bottom: 4px; display: block; }
-.sidebar { background: var(--color-ink); color: rgba(255,255,255,0.7); }
-.sidebar .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.4); margin: 24px 0 8px; }
-.sidebar .nav-item { display: block; padding: 8px 12px; border-radius: 6px; color: rgba(255,255,255,0.7); transition: background var(--transition-fast), color var(--transition-fast); text-decoration: none; }
-.sidebar .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
-.sidebar .nav-item.active { background: rgba(255,255,255,0.08); color: white; border-left: 2px solid var(--color-signal-gold); padding-left: 10px; }
