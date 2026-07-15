@@ -47,10 +47,11 @@ class UserModelTests(TestCase):
         self.assertEqual(str(user2), "jane")
 
     def test_required_fields(self):
+        """email is required; school and role are optional (superadmins don't need them)."""
         User = get_user_model()
         self.assertIn('email', User.REQUIRED_FIELDS)
-        self.assertIn('school', User.REQUIRED_FIELDS)
-        self.assertIn('role', User.REQUIRED_FIELDS)
+        self.assertNotIn('school', User.REQUIRED_FIELDS)
+        self.assertNotIn('role', User.REQUIRED_FIELDS)
 
 
 class AdminCanCreateFullFixtureTest(TestCase):

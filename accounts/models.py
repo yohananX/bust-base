@@ -30,12 +30,24 @@ class User(AbstractUser, TenantScopedModel):
     """Custom user model with school tenancy and role.
 
     Inherits school FK from TenantScopedModel (abstract base).
+    Superadmins are cross-school and have school=None.
     Role-specific profile data belongs in future modules.
     """
     objects = TenantScopedUserManager()
+
+    # Override school to be nullable (superadmins don't belong to a school)
+    school = models.ForeignKey(
+        'core.School',
+        on_delete=models.CASCADE,
+        verbose_name=_('school'),
+        null=True,
+        blank=True,
+    )
+
     role = models.CharField(
         max_length=20,
         choices=Roles.CHOICES,
+        blank=True,
         verbose_name=_('role'),
     )
     phone_number = models.CharField(
@@ -44,7 +56,7 @@ class User(AbstractUser, TenantScopedModel):
         verbose_name=_('phone number'),
     )
 
-    REQUIRED_FIELDS = ['email', 'school', 'role']
+    REQUIRED_FIELDS = ['email']
 
     class Meta:
         verbose_name = _('user')
