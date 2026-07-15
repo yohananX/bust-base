@@ -68,6 +68,21 @@ class DataImportView(RoleRequiredMixin, View):
             messages.error(request, 'The CSV file is empty or has no data rows.')
             return redirect('school_admin:import')
 
+        # Run dry_run to get created/skipped/error counts
+        tmp = tempfile.NamedTemporaryFile(mode='w', newline='', suffix='.csv', delete=False, encoding='utf-8')
+        try:
+            if all_rows:
+                writer = csv.DictWriter(tmp, fieldnames=all_rows[0].keys())
+                writer.writeheader()
+                writer.writerows(all_rows)
+            tmp.close()
+
+            importer_class = IMPORTERS[import_type]
+            importer = importer_class(school=request.school, dry_run=True, verbose=False)
+            dry_result = importer.import_csv(tmp.name)
+        finally:
+            os.unlink(tmp.name)
+
         # Store data in session for confirmation
         request.session['import_data'] = {
             'type': import_type,
@@ -81,12 +96,16 @@ class DataImportView(RoleRequiredMixin, View):
         for row in all_rows[:10]:
             preview_rows.append([row.get(h, '') for h in headers])
 
+        error_rows = [e['row'] for e in dry_result.get('errors', [])]
+
         context = {
             'import_type': import_type,
             'filename': csv_file.name,
             'total_rows': len(all_rows),
             'preview_rows': preview_rows,
             'headers': headers,
+            'dry_result': dry_result,
+            'error_rows': error_rows,
         }
 
         return render(request, 'data_import/partials/_preview.html', context)

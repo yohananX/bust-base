@@ -1,26 +1,38 @@
-<div class="bg-white rounded-lg border border-gray-200 p-6">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-medium text-gray-900">Preview — {{ import_type|title }} Import</h2>
-    <span class="text-sm text-gray-500">{{ total_rows }} row{{ total_rows|pluralize }} total, showing first {{ preview_rows|length }}</span>
+<div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
+
+  {# ── Summary header card ── #}
+  <div class="flex items-center justify-between mb-5">
+    <div>
+      <h2 class="text-lg font-medium text-[var(--color-ink)]">
+        Import {{ import_type|title }} <span class="text-[var(--color-signal-gold)]">&mdash;</span> {{ filename }}
+      </h2>
+      <p class="mt-1 text-sm text-gray-500">
+        {{ total_rows }} row{{ total_rows|pluralize }} detected &middot; showing first {{ preview_rows|length }}
+      </p>
+    </div>
+    <span class="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#1B2430]/5 text-[var(--color-ink)]">
+      {{ import_type|title }}
+    </span>
   </div>
 
   {% if preview_rows %}
-    <div class="overflow-x-auto mb-6">
+    {# ── Preview table ── #}
+    <div class="overflow-x-auto mb-6 border border-gray-100 rounded-lg">
       <table class="min-w-full divide-y divide-gray-200 text-sm">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+        <thead>
+          <tr class="bg-[var(--color-paper)]">
+            <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--color-ink)] uppercase tracking-wider">#</th>
             {% for header in headers %}
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ header }}</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--color-ink)] uppercase tracking-wider">{{ header }}</th>
             {% endfor %}
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
+        <tbody class="divide-y divide-gray-100">
           {% for row in preview_rows %}
-            <tr>
-              <td class="px-3 py-2 text-gray-400">{{ forloop.counter }}</td>
+            <tr class="{% if forloop.counter in error_rows %}bg-red-50 border-l-2 border-l-red-400{% else %}hover:bg-gray-50/50{% endif %} transition-colors">
+              <td class="px-4 py-2.5 text-xs font-mono {% if forloop.counter in error_rows %}text-red-500 font-bold{% else %}text-gray-400{% endif %}">{{ forloop.counter }}</td>
               {% for cell in row %}
-                <td class="px-3 py-2 text-gray-600">{{ cell|default_if_none:"" }}</td>
+                <td class="px-4 py-2.5 text-sm {% if forloop.parentloop.counter in error_rows %}text-red-700{% else %}text-gray-700{% endif %}">{{ cell|default_if_none:"" }}</td>
               {% endfor %}
             </tr>
           {% endfor %}
@@ -28,24 +40,67 @@
       </table>
     </div>
 
-    <div class="flex items-center justify-between">
-      <p class="text-sm text-gray-500">
-        This will import <strong>{{ total_rows }}</strong> row{{ total_rows|pluralize }} as <strong>{{ import_type }}</strong>.
-      </p>
-      <form method="post" action="{% url 'school_admin:import_confirm' %}" class="inline-flex gap-3">
+    {# ── Count summary bar ── #}
+    <div class="bg-[var(--color-paper)] rounded-lg px-4 py-3 mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600">
+      <svg class="w-4 h-4 text-[var(--color-signal-gold)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span>
+        <strong class="text-[var(--color-status-green)]">{{ dry_result.created }}</strong> row{{ dry_result.created|pluralize }} will be created,
+        <strong class="text-[#B8863A]">{{ dry_result.skipped }}</strong> will be skipped
+        {% if dry_result.errors %}
+        , <strong class="text-[var(--color-status-red)]">{{ dry_result.errors|length }}</strong> have errors
+        {% endif %}
+      </span>
+    </div>
+
+    {% if dry_result.errors %}
+    {# ── Error details ── #}
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <h3 class="text-sm font-semibold text-red-700 mb-2 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        {{ dry_result.errors|length }} Validation Error{{ dry_result.errors|pluralize }}
+      </h3>
+      <ul class="space-y-1">
+        {% for err in dry_result.errors %}
+        <li class="text-sm text-red-600 flex items-start gap-2">
+          <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded bg-red-100 text-[10px] font-bold text-red-600">{{ err.row }}</span>
+          {{ err.message }}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {# ── Action buttons ── #}
+    <div class="flex items-center justify-end gap-3 pt-2">
+      <a href="{% url 'school_admin:import' %}"
+         class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+        Cancel
+      </a>
+      <form method="post" action="{% url 'school_admin:import_confirm' %}" class="inline-flex">
         {% csrf_token %}
-        <a href="{% url 'school_admin:import' %}"
-           class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-          Cancel
-        </a>
         <button type="submit"
-                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors">
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                class="inline-flex items-center px-5 py-2 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white bg-[#B8863A] hover:bg-[#a07532] active:bg-[#8c6629] transition-colors">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
           Confirm Import
         </button>
       </form>
     </div>
+
   {% else %}
-    <p class="text-sm text-gray-500">No rows to preview.</p>
+    <div class="text-center py-10">
+      <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      <p class="mt-3 text-sm text-gray-500">No rows to preview.</p>
+      <a href="{% url 'school_admin:import' %}" class="mt-4 inline-flex items-center text-sm font-medium text-[var(--color-signal-gold)] hover:underline">
+        &larr; Back to Import
+      </a>
+    </div>
   {% endif %}
 </div>
