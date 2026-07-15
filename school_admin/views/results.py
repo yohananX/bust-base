@@ -40,7 +40,7 @@ class PublishResultsView(RoleRequiredMixin, View):
             })
 
         return render(request, 'school_admin/publish_results.html', {
-            'terms_with_stats': terms_with_stats,
+            'terms': terms_with_stats,
         })
 
     def post(self, request):
