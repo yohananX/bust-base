@@ -150,7 +150,7 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
         # Combine: primary response + OOB swaps
         response_html = (
             f'{primary}'
-            f'<div hx-swap-oob="innerHTML:#total-{score.pk}">{total_content}</div>'
-            f'<div hx-swap-oob="innerHTML:#status-{score.pk}">{status_html}</div>'
+            f'<div id="total-{score.pk}" hx-swap-oob="innerHTML">{total_content}</div>'
+            f'<div id="status-{score.pk}" hx-swap-oob="innerHTML">{status_html}</div>'
         )
         return HttpResponse(response_html)
