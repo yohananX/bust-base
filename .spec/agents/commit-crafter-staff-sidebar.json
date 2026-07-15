@@ -1,9 +1,0 @@
-{
-  "agent": "commit-crafter",
-  "commit_hash": "e5629ab",
-  "files_committed": [
-    "data_import/migrations/0001_initial.py",
-    "templates/base.html"
-  ],
-  "last_action": "feat: staff management page + sidebar reorganization + fix data_import migration"
-}
