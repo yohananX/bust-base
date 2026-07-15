@@ -86,17 +86,21 @@
       <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
         {% if user.is_authenticated %}
           {% if user.role == 'ADMIN' %}
-            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-2 pb-1">School Admin</div>
             <a href="/school-admin/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Dashboard</a>
-            <a href="/school-admin/students/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Students</a>
+
+            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Students</div>
+            <a href="/school-admin/students/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">All Students</a>
             <a href="/school-admin/classes/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Classes</a>
-            <a href="/school-admin/staff/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Staff</a>
-            <a href="/school-admin/users/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Users</a>
+
+            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Staff</div>
+            <a href="/school-admin/staff/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">All Staff</a>
+
+            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Users</div>
+            <a href="/school-admin/users/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">All Users</a>
 
             <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Academics</div>
             <a href="/school-admin/subjects/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Subjects</a>
             <a href="/school-admin/assignments/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Assignments</a>
-            <a href="/school-admin/scores/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Scores</a>
 
             <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Fees</div>
             <a href="/school-admin/fees/categories/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Categories</a>
@@ -104,23 +108,19 @@
             <a href="/school-admin/invoices/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Invoices</a>
 
             <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Payroll</div>
-            <a href="/school-admin/payroll/grades/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Pay Grades</a>
-            <a href="/school-admin/payroll/allowances/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Allowances</a>
-            <a href="/school-admin/payroll/runs/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Payroll Runs</a>
+            <a href="/school-admin/payroll/grades/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Grades</a>
+            <a href="/school-admin/payroll/runs/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Runs</a>
 
             <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Finance</div>
             <a href="/school-admin/finance/projects/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Projects</a>
-            <a href="/school-admin/finance/expenditures/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Expenditures</a>
-            <a href="/school-admin/finance/report/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Financial Report</a>
 
-            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Other</div>
-            <a href="/school-admin/results/review/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Review Scores</a>
-            <a href="/school-admin/results/publish/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Publish Results</a>
+            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Results</div>
+            <a href="/school-admin/scores/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Scores</a>
+            <a href="/school-admin/results/review/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Review</a>
+            <a href="/school-admin/results/publish/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Publish</a>
+
+            <a href="/school-admin/import/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors mt-4">Import</a>
             <a href="/school-admin/notifications/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Notifications</a>
-            <a href="/school-admin/import/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Import Data</a>
-
-            <div class="text-xs uppercase tracking-wider text-white/40 px-3 pt-4 pb-1">Django Admin</div>
-            <a href="/secure-control-panel/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Super Admin</a>
           
           {% elif user.role == 'TEACHER' %}
             <a href="/teacher/" class="flex items-center px-3 py-2.5 text-sm rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors">Dashboard</a>
