@@ -2,7 +2,7 @@
 from decimal import Decimal
 from datetime import date, datetime
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -855,6 +855,7 @@ class PayrollRunNoStatusFieldTest(BasePayrollTest):
 
 # --- Cross-Staff Payslip Isolation Test ---
 
+@override_settings(STORAGES={"staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}})
 class CrossStaffPayslipIsolationTest(BasePayrollTest):
     """Test that staff users cannot access each other's payslips."""
 

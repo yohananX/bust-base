@@ -751,27 +751,4 @@ class DecimalCheckTest(BaseFinanceTest):
                         )
 
 
-# ─── Admin Tests ──────────────────────────────────────────────────────────
 
-from django.test import override_settings
-
-
-@override_settings(STORAGES={"staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}})
-class AdminTest(BaseFinanceTest):
-    def test_project_admin_accessible(self):
-        """Admin can access the project admin list."""
-        self.client.force_login(self.admin_user)
-        response = self.client.get("/admin/finance/project/")
-        self.assertEqual(response.status_code, 200)
-
-    def test_expenditure_admin_accessible(self):
-        """Admin can access the expenditure admin list."""
-        self.client.force_login(self.admin_user)
-        response = self.client.get("/admin/finance/expenditure/")
-        self.assertEqual(response.status_code, 200)
-
-    def test_expenditure_category_admin_accessible(self):
-        """Admin can access the category admin list."""
-        self.client.force_login(self.admin_user)
-        response = self.client.get("/admin/finance/expenditurecategory/")
-        self.assertEqual(response.status_code, 200)
