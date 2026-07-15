@@ -4,7 +4,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 
-from .models import Score, Subject, TeacherAssignment
+from .models import GradeScale, Score, Subject, TeacherAssignment, TermResult
 
 
 # ---------------------------------------------------------------------------
@@ -205,3 +205,51 @@ class ScoreAdmin(admin.ModelAdmin):
             'media': self.media,
         }
         return render(request, 'admin/academics/publish_results.html', context)
+
+
+# ---------------------------------------------------------------------------
+# GradeScale Admin
+# ---------------------------------------------------------------------------
+
+@admin.register(GradeScale)
+class GradeScaleAdmin(admin.ModelAdmin):
+    list_display = ['label', 'min_score', 'max_score', 'remark', 'school']
+    list_filter = ['school']
+
+
+# ---------------------------------------------------------------------------
+# TermResult Admin
+# ---------------------------------------------------------------------------
+
+@admin.register(TermResult)
+class TermResultAdmin(admin.ModelAdmin):
+    list_display = ['student', 'term', 'grand_total', 'average', 'overall_position']
+    list_filter = ['term']
+    readonly_fields = ['computed_at']
+    actions = ['compute_term_summaries']
+
+    @admin.display(description=_('average'))
+    def average(self, obj):
+        return f"{obj.average:.2f}"
+
+    def compute_term_summaries(self, request, queryset):
+        """Compute term summaries for selected term results."""
+        from .ranking import compute_term_summary
+        from students.models import SchoolClass
+
+        # Get unique (school_class, term) pairs
+        pairs = set()
+        for tr in queryset.select_related('term', 'student__enrollments__school_class'):
+            for enrollment in tr.student.enrollments.filter(is_current=True):
+                pairs.add((enrollment.school_class, tr.term))
+
+        total = 0
+        for school_class, term in pairs:
+            total += compute_term_summary(school_class, term)
+
+        self.message_user(
+            request,
+            _('Updated %(count)d term result(s).') % {'count': total},
+        )
+
+    compute_term_summaries.short_description = _('Compute term summaries for selected results')

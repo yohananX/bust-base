@@ -36,6 +36,8 @@ class School(models.Model):
     address = models.CharField(max_length=500, blank=True, verbose_name=_('address'))
     phone = models.CharField(max_length=50, blank=True, verbose_name=_('phone'))
     email = models.EmailField(blank=True, verbose_name=_('email'))
+    logo = models.ImageField(upload_to='school_logos/', blank=True, verbose_name=_('logo'))
+    principal_name = models.CharField(max_length=200, blank=True, verbose_name=_('principal name'))
     is_active = models.BooleanField(default=True, verbose_name=_('active'))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('created at'))
 

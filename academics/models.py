@@ -199,3 +199,88 @@ class Score(TenantScopedModel):
         if not self.is_complete:
             return None
         return self.total_score >= self.subject.pass_mark
+
+
+class GradeScale(TenantScopedModel):
+    """Grading scale bands — e.g. 75-100 = A/Excellent."""
+
+    min_score = models.PositiveSmallIntegerField(verbose_name=_('min score'))
+    max_score = models.PositiveSmallIntegerField(verbose_name=_('max score'))
+    label = models.CharField(max_length=5, verbose_name=_('label'))  # A, B, C, D, F
+    remark = models.CharField(max_length=50, verbose_name=_('remark'))  # Excellent, Very Good, etc.
+
+    class Meta:
+        verbose_name = _('grade scale')
+        verbose_name_plural = _('grade scales')
+        unique_together = ('school', 'label')
+        ordering = ['-min_score']
+
+    def __str__(self):
+        return f"{self.label} ({self.min_score}-{self.max_score})"
+
+    @classmethod
+    def get_grade(cls, school, score):
+        """Return the GradeScale label for a given score, or None."""
+        grade = cls.objects.filter(
+            school=school, min_score__lte=score, max_score__gte=score
+        ).first()
+        return grade.label if grade else None
+
+
+class TermResult(TenantScopedModel):
+    """Cross-subject aggregate for one student, one term."""
+
+    student = models.ForeignKey(
+        'students.Student', on_delete=models.CASCADE,
+        related_name='term_results', verbose_name=_('student'),
+    )
+    term = models.ForeignKey(
+        'core.Term', on_delete=models.CASCADE,
+        related_name='term_results', verbose_name=_('term'),
+    )
+    # Computed academic fields
+    grand_total = models.PositiveIntegerField(default=0, verbose_name=_('grand total'))
+    average = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name=_('average'))
+    overall_position = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('overall position'))
+    total_subjects = models.PositiveSmallIntegerField(default=0, verbose_name=_('total subjects'))
+
+    # Manually entered fields
+    days_present = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name=_('days present'))
+    days_absent = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name=_('days absent'))
+    total_days = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name=_('total school days'))
+
+    # Affective ratings (1-5)
+    punctuality = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name=_('punctuality'),
+    )
+    neatness = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name=_('neatness'),
+    )
+    honesty = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name=_('honesty'),
+    )
+    attentiveness = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name=_('attentiveness'),
+    )
+
+    # Remarks
+    class_teacher_remark = models.TextField(blank=True, verbose_name=_('class teacher remark'))
+    principal_remark = models.TextField(blank=True, verbose_name=_('principal remark'))
+
+    computed_at = models.DateTimeField(auto_now=True, verbose_name=_('computed at'))
+
+    class Meta:
+        verbose_name = _('term result')
+        verbose_name_plural = _('term results')
+        unique_together = ('student', 'term')
+
+    def __str__(self):
+        return f"{self.student} - {self.term}"
