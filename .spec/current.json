@@ -1,44 +1,46 @@
 {
-  "phase": "complete",
-  "project": "Grace House School System",
-  "session": "admin-fix-and-refinement",
   "status": "complete",
+  "cleanup": {
+    "files_removed": 7,
+    "space_freed_bytes": 3793,
+    "space_freed_human": "3.7 KB",
+    "packages_removed": [],
+    "directories_cleaned": [".spec/agents"],
+    "dry_run": false,
+    "timestamp": "2026-07-14T17:47:00Z",
+    "stubs_destroyed": [
+      "commit-crafter-crud-students-classes-subjects.json",
+      "commit-crafter-fix-admin-redirect-logout.json",
+      "creator-classes-views.json",
+      "creator-student-crud-templates.json",
+      "creator-student-crud.json",
+      "creator-templates-class-subject.json",
+      "executor-admin-redirect-logout-fix.json"
+    ]
+  },
+  "phase": "3-implementation",
+  "project": "Grace House School System",
+  "session": "admin-portal-features-and-security",
   "completed": [
-    "Full codebase audit - 176 tests pass",
-    "Finance module (Project, ExpenditureCategory, Expenditure, financial reports) - 30 tests",
-    "Notifications module (NotificationLog, notify(), Django-Q2 process_notification) - 15 tests",
-    "Results_published gate on Term model to block score results before publication",
-    "Bug fixes: payroll disbursement _ → disbursement, notification dedup, staff isolation in payroll views, security settings (11 Django configs)",
-    "Cleanup: removed 198MB path-splitting artifacts (House/, School/, System/, duplicate venvs, pycache, staticfiles, db.sqlite3, stale stubs)",
-    "Frontend portals (Teacher scores grid, Parent dashboard with Pay Now, Student dashboard) - all role-scoped",
-    "School admin portal - 11 view modules, 21 templates, all RoleRequiredMixin-guarded",
-    "Django admin: app reordering (students→fees→...→accounts), hide django_q + auth.Group via AdminSite class-level get_app_list patch in AppConfig.ready() - no more LazyObject monkey-patch that broke permissions",
-    "Guardian Link Management: StudentGuardianLinkCreateView + DeleteView + template form in student detail",
-    "User Management: UserListView/CreateView/EditView/ToggleActiveView + templates",
-    "Custom superadmin URL: /admin/ → /secure-control-panel/",
-    "Logout redirect: LOGOUT_REDIRECT_URL + logout_complete path + logged_out.html template",
-    "Sidebar: Users nav link added, Super Admin URL updated"
+    "Guardian link management in school admin portal: StudentGuardianLinkCreateView + DeleteView, parent dropdown + relationship selector + primary contact flag on student detail page, remove button per guardian row",
+    "User management in school admin portal: UserListView (searchable table), UserCreateView (all 4 roles: ADMIN/TEACHER/STUDENT/PARENT), UserEditView, UserToggleActiveView (self-deactivation protected). 2 new templates (user_list.html, user_form.html). Sidebar 'Users' link added.",
+    "Custom superadmin URL: Django admin moved from /admin/ to /secure-control-panel/ for security through obscurity",
+    "Logout redirect fixed: always shows a standalone 'Logged Out' page (templates/accounts/logged_out.html) with sign-in link, via LOGOUT_REDIRECT_URL setting + logout → logout_complete redirect chain",
+    "Staff status (is_staff) explained: controls Django admin (/secure-control-panel/) access — super admins need is_staff=True + is_superuser=True; school admins use the custom /school-admin/ portal"
   ],
   "active": {
-    "description": "School admin portal enhanced with guardian link mgmt, user mgmt, custom admin URL, and logout redirect",
+    "description": "All 4 changes deployed and pushed",
     "blockers": []
   },
   "next_moves": [
     "ExamScribe module: exam formatting → teacher portal integration → Score entries",
     "Docker Compose end-to-end test with Postgres",
-    "Production deployment checklist (env vars, secrets, staticfiles)"
+    "Production deployment checklist (env vars for SECRET_KEY, Paystack keys, email config)"
   ],
   "test_count": 176,
-  "last_commit": "27fd642",
+  "last_commit": "80177d1",
   "branch": "main",
   "remote": "git@github.com:yohananX/bust-base.git",
-  "cleanup": {
-    "files_removed": 6,
-    "space_freed_bytes": 2098,
-    "space_freed_human": "2.1 KB",
-    "packages_removed": [],
-    "directories_scanned": [".spec/agents"],
-    "dry_run": false,
-    "timestamp": "2026-07-14T16:52:00Z"
-  }
+  "admin_url": "/secure-control-panel/",
+  "school_admin_url": "/school-admin/"
 }

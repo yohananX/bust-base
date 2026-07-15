@@ -26,5 +26,19 @@
     "files_removed": 6,
     "space_freed_bytes": 2098,
     "status": "cleaned"
+  },
+  {
+    "session_id": "admin-fix-and-refinement",
+    "start_time": "2026-07-14T16:58:00Z",
+    "end_time": "2026-07-14T16:58:00Z",
+    "description": "Stale stub cleanup — removed remaining .spec/agents/*.json",
+    "agent_count": 1,
+    "agents_used": ["cleanup-agent"],
+    "files_created": 0,
+    "packages_installed": [],
+    "packages_removed": [],
+    "files_removed": 1,
+    "space_freed_bytes": 651,
+    "status": "cleaned"
   }
 ]

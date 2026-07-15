@@ -20,7 +20,7 @@ from .finance import (
     ProjectListView, ProjectDetailView,
     ExpenditureListView, FinancialReportView,
 )
-from .results import PublishResultsView
+from .results import PublishResultsView, ResultReviewView
 from .notifications import NotificationLogView
 from .users import (
     UserListView, UserCreateView, UserEditView, UserToggleActiveView,

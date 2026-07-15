@@ -20,7 +20,7 @@ from school_admin.views import (
     GeneratePayrollView, RecordDisbursementView,
     ProjectListView, ProjectDetailView,
     ExpenditureListView, FinancialReportView,
-    PublishResultsView,
+    PublishResultsView, ResultReviewView,
     NotificationLogView,
     UserListView, UserCreateView, UserEditView, UserToggleActiveView,
 )
@@ -84,6 +84,7 @@ urlpatterns = [
 
     # Results
     path('results/publish/', PublishResultsView.as_view(), name='publish_results'),
+    path('results/review/', ResultReviewView.as_view(), name='review_results'),
 
     # Notifications
     path('notifications/', NotificationLogView.as_view(), name='notification_log'),

@@ -52,3 +52,12 @@ htmlcov/
 # Docker / env
 .env
 staticfiles/
+
+# Path-splitting artifacts
+Grace/
+House/
+School/
+System/
+
+# Duplicate venv
+venv/

@@ -146,6 +146,30 @@ class Score(TenantScopedModel):
     )
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('updated at'))
 
+    MODERATION_PENDING = 'PENDING'
+    MODERATION_APPROVED = 'APPROVED'
+    MODERATION_REJECTED = 'REJECTED'
+    MODERATION_CHOICES = [
+        (MODERATION_PENDING, _('Pending')),
+        (MODERATION_APPROVED, _('Approved')),
+        (MODERATION_REJECTED, _('Rejected')),
+    ]
+
+    moderation_status = models.CharField(
+        max_length=20,
+        choices=MODERATION_CHOICES,
+        default=MODERATION_PENDING,
+        verbose_name=_('moderation status'),
+    )
+    moderated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='moderated_scores',
+        verbose_name=_('moderated by'),
+    )
+    moderated_at = models.DateTimeField(null=True, blank=True, verbose_name=_('moderated at'))
+
     objects = ScoreQuerySet.as_manager()
 
     class Meta:
