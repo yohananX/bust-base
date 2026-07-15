@@ -131,4 +131,26 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
         score.save(update_fields=[field_name, 'entered_by', 'updated_at'])
 
         display_value = value if value is not None else ''
-        return HttpResponse(f'<span class="tabular-nums">{display_value}</span>')
+
+        # Build the primary response (the updated field cell)
+        primary = f'<span class="tabular-nums">{display_value}</span>'
+
+        # Build OOB swap for Total cell
+        total = score.total_score
+        total_content = f'<span>{total}</span>'
+
+        # Build OOB swap for Status cell
+        if not score.is_complete:
+            status_html = '<span class="status-tag status-tag--pending">Pending</span>'
+        elif score.passed:
+            status_html = '<span class="status-stamp status-stamp--pass">Pass</span>'
+        else:
+            status_html = '<span class="status-tag status-tag--fail">Fail</span>'
+
+        # Combine: primary response + OOB swaps
+        response_html = (
+            f'{primary}'
+            f'<div hx-swap-oob="innerHTML:#total-{score.pk}">{total_content}</div>'
+            f'<div hx-swap-oob="innerHTML:#status-{score.pk}">{status_html}</div>'
+        )
+        return HttpResponse(response_html)
