@@ -7,7 +7,8 @@
 {% block content %}
 <div class="max-w-7xl mx-auto">
   <!-- Edit Button -->
-  <div class="flex justify-end mb-4">
+  <div class="flex justify-end gap-2 mb-4">
+    <a href="{% url 'school_admin:student_password_change' student.pk %}" class="border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-50 transition-colors">Change Password</a>
     <a href="{% url 'school_admin:student_edit' student.pk %}" class="bg-[#1B2430] text-white px-4 py-2 rounded text-sm hover:bg-[#2a3648] transition-colors">Edit Student</a>
   </div>
 

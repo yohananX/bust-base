@@ -506,6 +506,43 @@ class StudentGuardianLinkCreateView(RoleRequiredMixin, View):
         return redirect('school_admin:student_detail', pk=student_id)
 
 
+class StudentPasswordChangeView(RoleRequiredMixin, View):
+    """Change a student's user account password."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request, pk):
+        school = request.school
+        student = get_object_or_404(Student, school=school, pk=pk)
+        context = {'student': student}
+        return render(request, 'school_admin/student_password_change.html', context)
+
+    def post(self, request, pk):
+        school = request.school
+        student = get_object_or_404(Student, school=school, pk=pk)
+        user = student.user
+
+        action = request.POST.get('action', '')
+        new_password = request.POST.get('new_password', '').strip()
+
+        if action == 'auto_generate':
+            password = secrets.token_urlsafe(6)
+        elif new_password:
+            password = new_password
+        else:
+            messages.error(request, 'Please enter a new password or use auto-generate.')
+            return redirect('school_admin:student_password_change', pk=pk)
+
+        user.set_password(password)
+        user.save()
+
+        messages.success(
+            request,
+            f'Password changed for {user.get_full_name()}. New password: {password}',
+        )
+        return redirect('school_admin:student_detail', pk=pk)
+
+
 class StudentGuardianLinkDeleteView(RoleRequiredMixin, View):
     """Remove a guardian link from a student."""
 

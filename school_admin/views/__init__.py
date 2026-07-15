@@ -2,6 +2,7 @@ from .dashboard import DashboardView
 from .students import (
     StudentListView, StudentCreateView, StudentDetailView,
     StudentEditView, StudentDeleteView, StudentChangeClassView,
+    StudentPasswordChangeView,
     StudentGuardianLinkCreateView, StudentGuardianLinkDeleteView,
 )
 from .staff import StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView
