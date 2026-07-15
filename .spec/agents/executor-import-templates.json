@@ -1,0 +1,12 @@
+{
+  "agent": "executor",
+  "status": "complete",
+  "timestamp": "2026-07-15T00:00:00Z",
+  "files_changed": [
+    "templates/data_import/partials/_preview.html",
+    "templates/data_import/partials/_results.html"
+  ],
+  "summary": "Redesigned both import template partials with design token integration: preview header with filename/count, styled table, gold confirm button; results with success/error icon header, color-coded stat grid, error detail list with row badges, gold back button.",
+  "tests_passed": "30/30 data_import tests OK",
+  "next_steps": ["commit changes via commit-crafter"]
+}

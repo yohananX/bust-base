@@ -1,0 +1,6 @@
+{
+  "agent": "commit-crafter",
+  "commit_hash": "6371013",
+  "files_committed": ["static/css/tokens.css", "templates/base.html"],
+  "last_action": "feat: apply design system — tokens, buttons, status stamps, tables, forms, sidebar styling"
+}

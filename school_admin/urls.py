@@ -15,7 +15,8 @@ from school_admin.views import (
     StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView,
     ClassListView, ClassCreateView, ClassEditView, ClassDeleteView,
     SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView,
-    TeacherAssignmentListView, ScoreAdminView,
+    TeacherAssignmentListView, AssignmentDeleteView, AssignmentAddView, AssignmentSubjectsPartialView,
+    ScoreAdminView,
     FeeCategoryListView, FeeStructureListView,
     InvoiceListView, InvoiceDetailView, GenerateInvoicesView,
     PayGradeListView, AllowanceDeductionListView,
@@ -53,6 +54,9 @@ urlpatterns = [
     # Academics
     path('subjects/', SubjectListView.as_view(), name='subject_list'),
     path('assignments/', TeacherAssignmentListView.as_view(), name='assignment_list'),
+    path('assignments/delete/<int:pk>/', AssignmentDeleteView.as_view(), name='assignment_delete'),
+    path('assignments/add/', AssignmentAddView.as_view(), name='assignment_add'),
+    path('assignments/subjects/', AssignmentSubjectsPartialView.as_view(), name='assignment_subjects'),
     path('scores/', ScoreAdminView.as_view(), name='score_list'),
 
     # Classes

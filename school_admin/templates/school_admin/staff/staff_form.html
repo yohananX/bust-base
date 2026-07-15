@@ -33,12 +33,12 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
-          <input type="email" name="email" value="{{ staff_obj.email|default:'' }}" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input type="email" name="email" value="{{ staff_obj.email|default:'' }}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-          <input type="text" name="phone_number" value="{{ staff_obj.phone_number|default:'' }}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number <span class="text-red-500">*</span></label>
+          <input type="text" name="phone_number" value="{{ staff_obj.phone_number|default:'' }}" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
         </div>
       </div>
 
@@ -52,15 +52,17 @@
         </select>
       </div>
 
+      {% if is_edit %}
       <div class="mb-6">
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          Password {% if not is_edit %}<span class="text-red-500">*</span>{% endif %}
-        </label>
-        <input type="password" name="password" value="" {% if not is_edit %}required{% endif %} class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-        {% if is_edit %}
-          <p class="text-xs text-gray-400 mt-1">Leave blank to keep current password.</p>
-        {% endif %}
+        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+        <input type="password" name="password" value="" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+        <p class="text-xs text-gray-400 mt-1">Leave blank to keep current password.</p>
       </div>
+      {% else %}
+      <div class="mb-6">
+        <p class="text-sm text-gray-500">A password will be auto-generated and shown after creation.</p>
+      </div>
+      {% endif %}
 
       <div class="flex items-center gap-3">
         <button type="submit" class="bg-[#1B2430] text-white text-sm px-6 py-2 rounded hover:bg-[#2a3648] transition-colors">

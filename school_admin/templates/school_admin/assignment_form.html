@@ -1,0 +1,57 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Create Assignment — School Admin{% endblock %}
+{% block page_header %}Create Teacher Assignment{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Teacher</label>
+        <input type="text" value="{{ teacher.get_full_name|default:teacher.username }}" disabled class="w-full border border-gray-200 rounded px-3 py-2 text-sm bg-gray-50 text-gray-500">
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Subject <span class="text-red-500">*</span></label>
+        <select name="subject_id" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+          <option value="">— Select Subject —</option>
+          {% for s in subjects %}
+            <option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Class <span class="text-red-500">*</span></label>
+        <select name="class_id" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+          <option value="">— Select Class —</option>
+          {% for c in classes %}
+            <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Session <span class="text-red-500">*</span></label>
+        <select name="session_id" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+          <option value="">— Select Session —</option>
+          {% for s in sessions %}
+            <option value="{{ s.id }}" {% if s.is_current %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button type="submit" class="bg-[#1B2430] text-white text-sm px-6 py-2 rounded hover:bg-[#2a3648] transition-colors">
+          Create Assignment
+        </button>
+        <a href="{% url 'school_admin:assignment_list' %}" class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

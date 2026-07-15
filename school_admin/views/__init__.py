@@ -6,7 +6,11 @@ from .students import (
 )
 from .staff import StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView
 from .classes import ClassListView, ClassCreateView, ClassEditView, ClassDeleteView
-from .academics import SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView, TeacherAssignmentListView, ScoreAdminView
+from .academics import (
+    SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView,
+    TeacherAssignmentListView, AssignmentDeleteView, AssignmentAddView, AssignmentSubjectsPartialView,
+    ScoreAdminView,
+)
 from .fees import (
     FeeCategoryListView, FeeStructureListView,
     InvoiceListView, InvoiceDetailView, GenerateInvoicesView,

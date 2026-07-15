@@ -6,9 +6,10 @@ from django.contrib import messages
 from django.db import transaction
 
 from accounts.mixins import RoleRequiredMixin
-from accounts.models import Roles
+from accounts.models import Roles, User
 from academics.models import Subject, TeacherAssignment, Score
 from students.models import SchoolClass
+from core.models import AcademicSession
 
 
 class SubjectListView(RoleRequiredMixin, View):
@@ -165,46 +166,137 @@ class SubjectDeleteView(RoleRequiredMixin, View):
 
 
 class TeacherAssignmentListView(RoleRequiredMixin, View):
-    """List teacher assignments with filters."""
+    """Two-column teacher assignment management — teacher list + per-teacher assignments."""
 
     allowed_roles = [Roles.ADMIN]
 
     def get(self, request):
         school = request.school
-        assignments = TeacherAssignment.objects.filter(
-            school=school
-        ).select_related('teacher', 'subject', 'school_class', 'session')
+        teachers = User.objects.filter(
+            school=school, role=Roles.TEACHER, is_active=True
+        ).order_by('first_name', 'last_name')
+        classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
+        subjects = Subject.objects.filter(school=school).order_by('name')
+        sessions = AcademicSession.objects.filter(school=school).order_by('-start_date')
 
-        # Filters
         teacher_id = request.GET.get('teacher_id', '')
+        selected_teacher = None
+        assignments = []
         if teacher_id:
-            assignments = assignments.filter(teacher_id=teacher_id)
-
-        class_id = request.GET.get('class_id', '')
-        if class_id:
-            assignments = assignments.filter(school_class_id=class_id)
-
-        session_id = request.GET.get('session_id', '')
-        if session_id:
-            assignments = assignments.filter(session_id=session_id)
-
-        from core.models import AcademicSession
-        from accounts.models import User
-
-        teachers = User.objects.filter(school=school, role=Roles.TEACHER, is_active=True)
-        classes = SchoolClass.objects.filter(school=school, is_active=True)
-        sessions = AcademicSession.objects.filter(school=school)
+            selected_teacher = get_object_or_404(
+                User, school=school, pk=teacher_id, role=Roles.TEACHER
+            )
+            assignments = TeacherAssignment.objects.filter(
+                school=school, teacher=selected_teacher
+            ).select_related('subject', 'school_class', 'session')
 
         context = {
-            'assignments': assignments,
             'teachers': teachers,
+            'selected_teacher': selected_teacher,
+            'assignments': assignments,
             'classes': classes,
+            'subjects': subjects,
             'sessions': sessions,
-            'filter_teacher': teacher_id,
-            'filter_class': class_id,
-            'filter_session': session_id,
         }
         return render(request, 'school_admin/assignment_list.html', context)
+
+
+class AssignmentDeleteView(RoleRequiredMixin, View):
+    """Delete a teacher assignment via HTMX."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk):
+        school = request.school
+        assignment = get_object_or_404(TeacherAssignment, school=school, pk=pk)
+        teacher_pk = assignment.teacher_id
+        assignment.delete()
+        messages.success(request, 'Assignment removed.')
+        if request.headers.get('HX-Request'):
+            assignments = TeacherAssignment.objects.filter(
+                school=school, teacher_id=teacher_pk
+            ).select_related('subject', 'school_class', 'session')
+            return render(request, 'school_admin/_assignment_rows.html', {'assignments': assignments})
+        return redirect('school_admin:assignment_list')
+
+
+class AssignmentAddView(RoleRequiredMixin, View):
+    """Add one or more teacher assignments via HTMX."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request):
+        school = request.school
+        teacher_id = request.POST.get('teacher_id')
+        class_id = request.POST.get('class_id')
+        session_id = request.POST.get('session_id')
+        subject_ids = request.POST.getlist('subject_ids')
+
+        if not all([teacher_id, class_id, session_id, subject_ids]):
+            messages.error(request, 'Teacher, class, session, and at least one subject are required.')
+            if request.headers.get('HX-Request'):
+                from django.http import HttpResponse
+                return HttpResponse('')
+            return redirect('school_admin:assignment_list')
+
+        teacher = get_object_or_404(User, school=school, pk=teacher_id, role=Roles.TEACHER)
+        school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
+        session = get_object_or_404(AcademicSession, school=school, pk=session_id)
+
+        created_count = 0
+        skipped_count = 0
+        for subject_id in subject_ids:
+            subject = get_object_or_404(Subject, school=school, pk=subject_id)
+            _, created = TeacherAssignment.objects.get_or_create(
+                school=school,
+                teacher=teacher,
+                subject=subject,
+                school_class=school_class,
+                session=session,
+            )
+            if created:
+                created_count += 1
+            else:
+                skipped_count += 1
+
+        msg = f'{created_count} assignment(s) created.'
+        if skipped_count:
+            msg += f' {skipped_count} already existed (skipped).'
+        messages.success(request, msg)
+
+        if request.headers.get('HX-Request'):
+            assignments = TeacherAssignment.objects.filter(
+                school=school, teacher=teacher
+            ).select_related('subject', 'school_class', 'session')
+            return render(request, 'school_admin/_assignment_rows.html', {'assignments': assignments})
+        return redirect('school_admin:assignment_list')
+
+
+class AssignmentSubjectsPartialView(RoleRequiredMixin, View):
+    """Return subject pills for a given class (HTMX partial)."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request):
+        school = request.school
+        class_id = request.GET.get('class_id', '')
+        teacher_id = request.GET.get('teacher_id', '')
+
+        subjects = Subject.objects.filter(school=school).order_by('name')
+
+        assigned_subject_ids = set()
+        if teacher_id and class_id:
+            assigned_subject_ids = set(
+                TeacherAssignment.objects.filter(
+                    school=school, teacher_id=teacher_id, school_class_id=class_id
+                ).values_list('subject_id', flat=True)
+            )
+
+        context = {
+            'subjects': subjects,
+            'assigned_subject_ids': assigned_subject_ids,
+        }
+        return render(request, 'school_admin/_subject_pills.html', context)
 
 
 class ScoreAdminView(RoleRequiredMixin, View):
@@ -251,3 +343,6 @@ class ScoreAdminView(RoleRequiredMixin, View):
             'filter_subject': subject_id,
         }
         return render(request, 'school_admin/score_list.html', context)
+
+
+
