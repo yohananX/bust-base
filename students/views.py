@@ -136,6 +136,70 @@ class StudentOverviewView(RoleRequiredMixin, View):
         })
 
 
+class StudentResultBookletView(RoleRequiredMixin, View):
+    """Display result booklet inline for a student."""
+
+    allowed_roles = [Roles.STUDENT]
+
+    def get(self, request, term_id):
+        student = request.user.student_profile
+        term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
+
+        from academics.models import Score, GradeScale, TermResult
+
+        enrollment = ClassEnrollment.objects.filter(
+            student=student, session=term.session
+        ).select_related('school_class').first()
+
+        if not enrollment:
+            messages.error(request, 'No enrollment found for this term.')
+            return redirect('student-overview')
+
+        scores = Score.objects.filter(
+            student=student, term=term
+        ).select_related('subject').order_by('subject__name')
+
+        term_result = TermResult.objects.filter(
+            student=student, term=term
+        ).first()
+
+        grade_scale = GradeScale.objects.filter(school=request.school).order_by('-min_score')
+
+        score_data = []
+        for score in scores:
+            grade_obj = GradeScale.objects.filter(
+                school=request.school, label=GradeScale.get_grade(request.school, score.total_score)
+            ).first() if GradeScale.get_grade(request.school, score.total_score) else None
+            score_data.append({
+                'subject': score.subject.name,
+                'test_1': score.test_1 or 0,
+                'test_2': score.test_2 or 0,
+                'test_3': score.test_3 or 0,
+                'exam': score.exam_score or 0,
+                'total': score.total_score,
+                'grade': GradeScale.get_grade(request.school, score.total_score) or '-',
+                'position': score.position,
+                'remark': grade_obj.remark if grade_obj else '-',
+            })
+
+        class_size = ClassEnrollment.objects.filter(
+            school_class=enrollment.school_class, session=term.session, is_current=True
+        ).count()
+
+        context = {
+            'student': student,
+            'term': term,
+            'enrollment': enrollment,
+            'school_class': enrollment.school_class,
+            'scores': score_data,
+            'term_result': term_result,
+            'grade_scale': grade_scale,
+            'class_size': class_size,
+            'school': request.school,
+        }
+        return render(request, 'students/student/result_booklet.html', context)
+
+
 class StudentResultDownloadView(RoleRequiredMixin, View):
     """Download result booklet PDF for a student."""
 
@@ -152,6 +216,75 @@ class StudentResultDownloadView(RoleRequiredMixin, View):
             messages.error(request, 'No enrollment found for this term.')
             return redirect('student-overview')
         return response
+
+
+class ParentChildResultBookletView(RoleRequiredMixin, View):
+    """Display result booklet inline for a child (parent portal)."""
+
+    allowed_roles = [Roles.PARENT]
+
+    def get(self, request, child_pk, term_id):
+        child = get_object_or_404(Student, school=request.school, pk=child_pk)
+        if not StudentGuardianLink.objects.filter(student=child, guardian=request.user).exists():
+            messages.error(request, 'You are not linked to this student.')
+            return redirect('parent-children')
+
+        term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
+
+        from academics.models import Score, GradeScale, TermResult
+
+        enrollment = ClassEnrollment.objects.filter(
+            student=child, session=term.session
+        ).select_related('school_class').first()
+
+        if not enrollment:
+            messages.error(request, 'No enrollment found for this term.')
+            return redirect('parent-child-detail', pk=child_pk)
+
+        scores = Score.objects.filter(
+            student=child, term=term
+        ).select_related('subject').order_by('subject__name')
+
+        term_result = TermResult.objects.filter(
+            student=child, term=term
+        ).first()
+
+        grade_scale = GradeScale.objects.filter(school=request.school).order_by('-min_score')
+
+        score_data = []
+        for score in scores:
+            grade_obj = GradeScale.objects.filter(
+                school=request.school, label=GradeScale.get_grade(request.school, score.total_score)
+            ).first() if GradeScale.get_grade(request.school, score.total_score) else None
+            score_data.append({
+                'subject': score.subject.name,
+                'test_1': score.test_1 or 0,
+                'test_2': score.test_2 or 0,
+                'test_3': score.test_3 or 0,
+                'exam': score.exam_score or 0,
+                'total': score.total_score,
+                'grade': GradeScale.get_grade(request.school, score.total_score) or '-',
+                'position': score.position,
+                'remark': grade_obj.remark if grade_obj else '-',
+            })
+
+        class_size = ClassEnrollment.objects.filter(
+            school_class=enrollment.school_class, session=term.session, is_current=True
+        ).count()
+
+        context = {
+            'student': child,
+            'term': term,
+            'enrollment': enrollment,
+            'school_class': enrollment.school_class,
+            'scores': score_data,
+            'term_result': term_result,
+            'grade_scale': grade_scale,
+            'class_size': class_size,
+            'school': request.school,
+            'child_pk': child_pk,
+        }
+        return render(request, 'students/parent/result_booklet.html', context)
 
 
 class ParentChildResultDownloadView(RoleRequiredMixin, View):
