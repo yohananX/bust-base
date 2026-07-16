@@ -4,15 +4,17 @@ Paystack integration module.
 This module handles Paystack payment gateway operations including:
 - Webhook signature verification (security-critical)
 - Webhook handling for payment confirmation
-- Payment initiation stub
+- Payment initiation via Paystack API
 """
 
 import hashlib
 import hmac
 import logging
+import uuid
 from decimal import Decimal
 from datetime import datetime
 
+import requests as http_requests
 from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -147,39 +149,64 @@ def handle_webhook(request):
         return JsonResponse({'status': 'created'})
 
 
-def initiate_payment(invoice: Invoice, parent_email: str, callback_url: str) -> dict:
+def initiate_payment(invoice, parent_email, callback_url, existing_reference=None):
     """
-    Initiate a Paystack payment for an invoice.
+    Initiate a Paystack transaction.
 
-    This is a stub for MVP. In production, this would call the Paystack API
-    to create a transaction and return the checkout URL.
+    If existing_reference is provided, reuses it (deduplication).
+    Otherwise creates a new PENDING payment row and generates a new reference.
 
     Args:
         invoice: The Invoice to be paid
         parent_email: Email of the parent making payment
         callback_url: URL to redirect after payment
+        existing_reference: Optional reference from a recent PENDING payment
 
     Returns:
-        dict with 'authorization_url' and 'reference'
+        dict with 'authorization_url' and 'reference', or 'error' key on failure.
     """
-    import uuid
-    reference = f'GH-{invoice.id}-{uuid.uuid4().hex[:8].upper()}'
+    if existing_reference:
+        reference = existing_reference
+    else:
+        reference = f'GH-{invoice.id}-{uuid.uuid4().hex[:8].upper()}'
+        # Create PENDING payment row BEFORE calling Paystack
+        Payment.objects.create(
+            school=invoice.school,
+            invoice=invoice,
+            amount=invoice.balance,  # Server-side computed, never from client
+            method=Payment.Method.PAYSTACK,
+            reference=reference,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+            recorded_by=None,
+        )
 
-    # Create a pending payment record
-    Payment.objects.create(
-        school=invoice.school,
-        invoice=invoice,
-        amount=invoice.balance,
-        method=Payment.Method.PAYSTACK,
-        reference=reference,
-        status=Payment.Status.PENDING,
-        paid_on=timezone.now(),
-        recorded_by=None,
-    )
-
-    # Stub: return a simulated authorization URL
-    # In production, this would POST to https://api.paystack.co/transaction/initialize
-    return {
-        'authorization_url': f'https://checkout.paystack.com/{reference}',
-        'reference': reference,
+    url = 'https://api.paystack.co/transaction/initialize'
+    headers = {
+        'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
+        'Content-Type': 'application/json',
     }
+    payload = {
+        'email': parent_email,
+        'amount': int(invoice.balance * 100),  # kobo
+        'reference': reference,
+        'callback_url': callback_url,
+        'metadata': {
+            'invoice_id': invoice.id,
+            'school_id': str(invoice.school_id),
+        },
+    }
+
+    try:
+        resp = http_requests.post(url, json=payload, headers=headers, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get('status'):
+            return {
+                'authorization_url': data['data']['authorization_url'],
+                'reference': reference,
+            }
+        return {'error': data.get('message', 'Paystack initialization failed')}
+    except Exception as e:
+        logger.error(f'Paystack API error: {e}')
+        return {'error': 'Payment gateway error. Please try again.'}

@@ -8,3 +8,4 @@ asgiref==3.11.1
 django-q2==1.10.0
 Pillow==12.3.0
 weasyprint==69.0
+requests==2.34.2
