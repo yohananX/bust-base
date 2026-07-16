@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Result Booklet — {{ student.user.get_full_name }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 12mm 15mm 12mm;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 10pt;
+      color: #1a1a1a;
+      line-height: 1.4;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      border-bottom: 3px solid #1B2430;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+    .logo-img {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+    }
+    .school-name {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #1B2430;
+      letter-spacing: 0.5px;
+    }
+    .school-address {
+      font-size: 8pt;
+      color: #555;
+      margin-top: 2px;
+    }
+    .report-title {
+      font-size: 13pt;
+      font-weight: 600;
+      color: #B8863A;
+      margin-top: 6px;
+    }
+
+    /* ── Student Info ── */
+    .info-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 24px;
+      margin-bottom: 12px;
+      padding: 8px 10px;
+      background: #f7f8fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+    }
+    .info-item {
+      font-size: 9pt;
+      width: 48%;
+    }
+    .info-label {
+      font-weight: 600;
+      color: #444;
+    }
+
+    /* ── Subjects Table ── */
+    .subjects-title {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #1B2430;
+      margin: 12px 0 6px;
+      border-bottom: 1.5px solid #B8863A;
+      padding-bottom: 3px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+      font-size: 9pt;
+    }
+    th {
+      background: #1B2430;
+      color: #fff;
+      padding: 5px 6px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 8.5pt;
+    }
+    th.num, td.num {
+      text-align: right;
+    }
+    td {
+      padding: 4px 6px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    tr:nth-child(even) {
+      background: #f9f9fb;
+    }
+
+    /* ── Summary Section ── */
+    .summary-section {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .summary-box {
+      flex: 1;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 8px 10px;
+    }
+    .summary-box h3 {
+      font-size: 9pt;
+      font-weight: 600;
+      color: #1B2430;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 3px;
+      margin-bottom: 6px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9pt;
+      padding: 2px 0;
+    }
+    .summary-label {
+      color: #555;
+    }
+    .summary-value {
+      font-weight: 600;
+    }
+
+    /* ── Grade Legend ── */
+    .grade-legend {
+      margin-bottom: 12px;
+    }
+    .grade-legend h3 {
+      font-size: 9pt;
+      font-weight: 600;
+      color: #1B2430;
+      margin-bottom: 4px;
+    }
+    .grade-legend-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 8.5pt;
+    }
+    .grade-legend-item {
+      padding: 2px 6px;
+      background: #f0f1f3;
+      border-radius: 3px;
+    }
+    .grade-legend-label {
+      font-weight: 700;
+      color: #1B2430;
+    }
+
+    /* ── Remarks / Signatures ── */
+    .remarks-section {
+      margin-bottom: 12px;
+    }
+    .remarks-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .remark-box {
+      flex: 1;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 6px 10px;
+    }
+    .remark-box h4 {
+      font-size: 8.5pt;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 3px;
+    }
+    .remark-box p {
+      font-size: 9pt;
+      color: #333;
+      font-style: italic;
+    }
+
+    .signatures {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px solid #e0e0e0;
+    }
+    .sig-block {
+      text-align: center;
+      width: 30%;
+    }
+    .sig-line {
+      border-top: 1px solid #1a1a1a;
+      margin-top: 28px;
+      padding-top: 4px;
+      font-size: 8.5pt;
+    }
+    .sig-name {
+      font-weight: 600;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 14px;
+      padding-top: 6px;
+      border-top: 2px solid #1B2430;
+      font-size: 7.5pt;
+      color: #888;
+    }
+
+    /* ── Affective Table ── */
+    .affective-table {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+    .affective-table td {
+      padding: 3px 6px;
+    }
+    .affective-label {
+      font-weight: 600;
+      color: #444;
+      width: 40%;
+    }
+    .affective-value {
+      text-align: right;
+    }
+
+    /* ── Attendance ── */
+    .attendance-row {
+      display: flex;
+      gap: 16px;
+      font-size: 9pt;
+      margin-bottom: 10px;
+      padding: 6px 10px;
+      background: #f7f8fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+    }
+    .attendance-item {
+      flex: 1;
+      text-align: center;
+    }
+    .attendance-num {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #1B2430;
+    }
+    .attendance-label {
+      font-size: 8pt;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ HEADER ═══ -->
+  <div class="header">
+    <div class="header-row">
+      {% if logo_url %}
+        <img src="{{ logo_url }}" alt="School Logo" class="logo-img">
+      {% endif %}
+      <div>
+        <div class="school-name">{{ school.name }}</div>
+        {% if school.address %}
+          <div class="school-address">{{ school.address }}</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="report-title">STUDENT RESULT BOOKLET</div>
+  </div>
+
+  <!-- ═══ STUDENT INFO ═══ -->
+  <div class="info-grid">
+    <div class="info-item"><span class="info-label">Name:</span> {{ student.user.get_full_name }}</div>
+    <div class="info-item"><span class="info-label">Admission No.:</span> {{ student.admission_number }}</div>
+    <div class="info-item"><span class="info-label">Class:</span> {{ school_class.name }}</div>
+    <div class="info-item"><span class="info-label">Session:</span> {{ term.session.name }}</div>
+    <div class="info-item"><span class="info-label">Term:</span> {{ term.name }}</div>
+    <div class="info-item"><span class="info-label">Date of Birth:</span> {{ student.date_of_birth|date:"d/m/Y" }}</div>
+  </div>
+
+  <!-- ═══ SUBJECTS TABLE ═══ -->
+  <div class="subjects-title">ACADEMIC PERFORMANCE</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:22%">Subject</th>
+        <th class="num" style="width:9%">T1</th>
+        <th class="num" style="width:9%">T2</th>
+        <th class="num" style="width:9%">T3</th>
+        <th class="num" style="width:10%">Exam</th>
+        <th class="num" style="width:10%">Total</th>
+        <th style="width:8%">Grade</th>
+        <th style="width:11%">Remark</th>
+        <th class="num" style="width:12%">Position</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in scores %}
+      <tr>
+        <td>{{ s.subject }}</td>
+        <td class="num">{{ s.test_1 }}</td>
+        <td class="num">{{ s.test_2 }}</td>
+        <td class="num">{{ s.test_3 }}</td>
+        <td class="num">{{ s.exam }}</td>
+        <td class="num"><strong>{{ s.total }}</strong></td>
+        <td><strong>{{ s.grade }}</strong></td>
+        <td>{{ s.remark }}</td>
+        <td class="num">
+          {% if s.position %}
+            {{ s.position }}{% if s.position == 1 %}st{% elif s.position == 2 %}nd{% elif s.position == 3 %}rd{% else %}th{% endif %}
+            / {{ class_size }}
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="9" style="text-align:center; color:#888; padding:12px;">No scores recorded for this term.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- ═══ GRADE LEGEND ═══ -->
+  {% if grade_scale %}
+  <div class="grade-legend">
+    <h3>GRADING KEY</h3>
+    <div class="grade-legend-row">
+      {% for g in grade_scale %}
+        <span class="grade-legend-item">
+          <span class="grade-legend-label">{{ g.label }}</span> — {{ g.min_score }}–{{ g.max_score }} ({{ g.remark }})
+        </span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ═══ SUMMARY + AFFECTIVE ═══ -->
+  {% if term_result %}
+  <div class="summary-section">
+    <div class="summary-box">
+      <h3>TERM SUMMARY</h3>
+      <div class="summary-row">
+        <span class="summary-label">Grand Total</span>
+        <span class="summary-value">{{ term_result.grand_total }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Average</span>
+        <span class="summary-value">{{ term_result.average }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Subjects</span>
+        <span class="summary-value">{{ term_result.total_subjects }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Overall Position</span>
+        <span class="summary-value">
+          {% if term_result.overall_position %}
+            {{ term_result.overall_position }}{% if term_result.overall_position == 1 %}st{% elif term_result.overall_position == 2 %}nd{% elif term_result.overall_position == 3 %}rd{% else %}th{% endif %}
+            / {{ class_size }}
+          {% else %}—{% endif %}
+        </span>
+      </div>
+    </div>
+
+    <div class="summary-box">
+      <h3>AFFECTIVE DOMAIN (1–5)</h3>
+      <table class="affective-table" style="margin-bottom:0">
+        <tr>
+          <td class="affective-label">Punctuality</td>
+          <td class="affective-value">{{ term_result.punctuality|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td class="affective-label">Neatness</td>
+          <td class="affective-value">{{ term_result.neatness|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td class="affective-label">Honesty</td>
+          <td class="affective-value">{{ term_result.honesty|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td class="affective-label">Attentiveness</td>
+          <td class="affective-value">{{ term_result.attentiveness|default:"—" }}</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ ATTENDANCE ═══ -->
+  {% if term_result.total_days %}
+  <div class="attendance-row">
+    <div class="attendance-item">
+      <div class="attendance-num">{{ term_result.days_present|default:"—" }}</div>
+      <div class="attendance-label">Days Present</div>
+    </div>
+    <div class="attendance-item">
+      <div class="attendance-num">{{ term_result.days_absent|default:"—" }}</div>
+      <div class="attendance-label">Days Absent</div>
+    </div>
+    <div class="attendance-item">
+      <div class="attendance-num">{{ term_result.total_days }}</div>
+      <div class="attendance-label">Total School Days</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ═══ REMARKS ═══ -->
+  <div class="remarks-section">
+    <div class="remarks-row">
+      <div class="remark-box">
+        <h4>CLASS TEACHER'S REMARK</h4>
+        <p>{{ term_result.class_teacher_remark|default:"" }}</p>
+      </div>
+      <div class="remark-box">
+        <h4>PRINCIPAL'S REMARK</h4>
+        <p>{{ term_result.principal_remark|default:"" }}</p>
+      </div>
+    </div>
+  </div>
+
+  {% endif %}
+
+  <!-- ═══ SIGNATURES ═══ -->
+  <div class="signatures">
+    <div class="sig-block">
+      <div class="sig-line">
+        <div class="sig-name">Class Teacher</div>
+      </div>
+    </div>
+    <div class="sig-block">
+      <div class="sig-line">
+        <div class="sig-name">Parent / Guardian</div>
+      </div>
+    </div>
+    <div class="sig-block">
+      <div class="sig-line">
+        <div class="sig-name">{{ school.principal_name|default:"Principal" }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ FOOTER ═══ -->
+  <div class="footer">
+    {{ school.name }} · {{ term.session.name }} · {{ term.name }} · Generated {{ term_result.computed_at|date:"d M Y" }}
+  </div>
+
+</body>
+</html>
