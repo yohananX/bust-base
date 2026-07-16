@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-2xl font-display text-[#1B2430] mb-6">My Results</h1>
+
+<div class="bg-white rounded-lg shadow-sm p-4">
+  {% if results %}
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-gray-500 border-b">
+        <th class="pb-2">Session</th>
+        <th class="pb-2">Term</th>
+        <th class="pb-2">Class</th>
+        <th class="pb-2"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for result in results %}
+      <tr class="border-b last:border-0">
+        <td class="py-3">{{ result.term.session.name }}</td>
+        <td class="py-3">{{ result.term.name }}</td>
+        <td class="py-3">{{ result.class_name }}</td>
+        <td class="py-3 text-right">
+          <a href="{% url 'student-result-booklet' term_id=result.term.pk %}"
+             class="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">
+            View Booklet
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-gray-500 text-sm">No results available yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

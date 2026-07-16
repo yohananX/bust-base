@@ -287,6 +287,74 @@ class ParentChildResultBookletView(RoleRequiredMixin, View):
         return render(request, 'students/parent/result_booklet.html', context)
 
 
+class StudentResultsHistoryView(RoleRequiredMixin, View):
+    """List all published terms with results for the student."""
+
+    allowed_roles = [Roles.STUDENT]
+
+    def get(self, request):
+        student = request.user.student_profile
+
+        published_terms = Term.objects.filter(
+            school=request.school,
+            results_published=True,
+            scores__student=student,
+        ).distinct().order_by('-start_date').select_related('session')
+
+        results = []
+        for term in published_terms:
+            enrollment = ClassEnrollment.objects.filter(
+                student=student, session=term.session
+            ).select_related('school_class').first()
+            results.append({
+                'term': term,
+                'class_name': enrollment.school_class.name if enrollment else '—',
+            })
+
+        return render(request, 'students/student/results_history.html', {
+            'results': results,
+        })
+
+
+class StudentSelfPasswordChangeView(RoleRequiredMixin, View):
+    """Student changes their own password."""
+
+    allowed_roles = [Roles.STUDENT]
+
+    def get(self, request):
+        return render(request, 'students/student/password_change.html')
+
+    def post(self, request):
+        current_password = request.POST.get('current_password', '').strip()
+        new_password = request.POST.get('new_password', '').strip()
+        confirm_password = request.POST.get('confirm_password', '').strip()
+
+        if not current_password:
+            messages.error(request, 'Please enter your current password.')
+            return redirect('student-password-change')
+
+        if not request.user.check_password(current_password):
+            messages.error(request, 'Current password is incorrect.')
+            return redirect('student-password-change')
+
+        if not new_password:
+            messages.error(request, 'Please enter a new password.')
+            return redirect('student-password-change')
+
+        if new_password != confirm_password:
+            messages.error(request, 'New passwords do not match.')
+            return redirect('student-password-change')
+
+        if len(new_password) < 6:
+            messages.error(request, 'Password must be at least 6 characters.')
+            return redirect('student-password-change')
+
+        request.user.set_password(new_password)
+        request.user.save()
+        messages.success(request, 'Password changed successfully.')
+        return redirect('student-overview')
+
+
 class ParentChildResultDownloadView(RoleRequiredMixin, View):
     """Download result booklet PDF for a child (parent portal)."""
 
