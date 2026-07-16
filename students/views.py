@@ -1,3 +1,4 @@
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404, render, redirect
 from django.views.generic.base import View
 from django.contrib import messages
@@ -8,11 +9,11 @@ from core.models import Term
 from students.models import Student, StudentGuardianLink, ClassEnrollment
 from fees.models import Invoice
 
-from academics.models import Score
+from academics.models import Score, TermResult
 
 
 class ParentChildrenListView(RoleRequiredMixin, View):
-    """Lists all children linked to the logged-in parent."""
+    """Dashboard overview + children list with academic and fee data."""
 
     allowed_roles = [Roles.PARENT]
 
@@ -22,75 +23,97 @@ class ParentChildrenListView(RoleRequiredMixin, View):
         ).select_related('student', 'student__user')
 
         current_term = Term.objects.filter(
-            school=request.school,
-            is_current=True,
+            school=request.school, is_current=True,
         ).first()
 
+        children_data = []
         for link in guardian_links:
             student = link.student
 
-            # Annotate school_class from the current enrollment
+            # Current enrollment
             enrollment = ClassEnrollment.objects.filter(
-                student=student,
-                is_current=True,
-            ).select_related('school_class').first()
-            student.school_class = enrollment.school_class if enrollment else None
+                student=student, is_current=True,
+            ).select_related('school_class', 'session').first()
 
-            # Annotate invoice_balance
-            invoices = Invoice.objects.filter(student=student)
-            student.invoice_balance = sum(inv.balance for inv in invoices)
-
-            # Annotate has_published_results
+            # Academic performance for current term
+            term_result = None
             if current_term and current_term.results_published:
-                student.has_published_results = Score.objects.filter(
-                    student=student,
-                    term=current_term,
-                ).exists()
-            else:
-                student.has_published_results = False
+                term_result = TermResult.objects.filter(
+                    student=student, term=current_term,
+                ).first()
+
+            # Total amount owed
+            unpaid_invoices = Invoice.objects.filter(
+                student=student,
+            ).exclude(status='PAID')
+            total_owed = sum(inv.balance for inv in unpaid_invoices)
+            unpaid_count = unpaid_invoices.count()
+
+            children_data.append({
+                'student': student,
+                'enrollment': enrollment,
+                'term_result': term_result,
+                'total_owed': total_owed,
+                'unpaid_count': unpaid_count,
+            })
+
+        # Summary stats for dashboard
+        total_children = len(children_data)
+        total_owed_all = sum(c['total_owed'] for c in children_data)
 
         return render(request, 'students/parent/children_list.html', {
-            'guardian_links': guardian_links,
+            'children_data': children_data,
+            'total_children': total_children,
+            'total_owed_all': total_owed_all,
         })
 
 
 class ParentChildDetailView(RoleRequiredMixin, View):
-    """Displays details, scores, and invoices for a specific child."""
+    """Deep dive for a single child — academic trend, invoices, scores, booklets."""
 
     allowed_roles = [Roles.PARENT]
 
     def get(self, request, pk):
         guardian_link = get_object_or_404(
-            StudentGuardianLink,
-            guardian=request.user,
-            student_id=pk,
+            StudentGuardianLink, guardian=request.user, student_id=pk,
         )
         student = guardian_link.student
 
         current_enrollment = ClassEnrollment.objects.filter(
-            student=student,
-            is_current=True,
+            student=student, is_current=True,
         ).select_related('school_class', 'session').first()
 
         current_term = Term.objects.filter(
-            school=request.school,
-            is_current=True,
+            school=request.school, is_current=True,
         ).first()
 
         invoices = Invoice.objects.filter(
             student=student,
-        ).prefetch_related('payments')
+        ).prefetch_related('payments').order_by('-term__start_date')
 
         scores = Score.objects.visible_to_user(request.user).filter(
             student=student,
-        ).select_related('subject').order_by('subject__name')
+        ).select_related('subject', 'term').order_by('subject__name')
 
-        # Published terms with scores for this student
         published_terms = Term.objects.filter(
-            school=request.school,
-            results_published=True,
-            scores__student=student,
+            school=request.school, results_published=True, scores__student=student,
         ).distinct().order_by('-start_date')
+
+        # Academic trend — TermResults across all published terms
+        academic_trend = TermResult.objects.filter(
+            student=student, term__results_published=True,
+        ).select_related('term', 'term__session').order_by('term__start_date')
+
+        # Current term summary
+        current_term_result = None
+        if current_term:
+            current_term_result = TermResult.objects.filter(
+                student=student, term=current_term,
+            ).first()
+
+        # Fee summary
+        total_owed = sum(inv.balance for inv in invoices)
+        unpaid_count = invoices.exclude(status='PAID').count()
 
         return render(request, 'students/parent/child_detail.html', {
             'student': student,
@@ -99,6 +122,70 @@ class ParentChildDetailView(RoleRequiredMixin, View):
             'invoices': invoices,
             'scores': scores,
             'published_terms': published_terms,
+            'academic_trend': academic_trend,
+            'current_term_result': current_term_result,
+            'total_owed': total_owed,
+            'unpaid_count': unpaid_count,
+        })
+
+
+class ParentInvoicesView(RoleRequiredMixin, View):
+    """All invoices across all children for this parent."""
+
+    allowed_roles = [Roles.PARENT]
+
+    def get(self, request):
+        student_ids = StudentGuardianLink.objects.filter(
+            guardian=request.user,
+        ).values_list('student_id', flat=True)
+
+        invoices = Invoice.objects.filter(
+            student_id__in=student_ids,
+        ).select_related('student', 'student__user', 'term').order_by('-term__start_date')
+
+        # Filter by child if requested
+        child_filter = request.GET.get('child')
+        if child_filter:
+            invoices = invoices.filter(student_id=child_filter)
+
+        # Summary
+        total_owed = sum(inv.balance for inv in invoices)
+
+        # Children for filter dropdown
+        children = Student.objects.filter(
+            pk__in=student_ids,
+        ).select_related('user')
+
+        return render(request, 'students/parent/invoices_list.html', {
+            'invoices': invoices,
+            'total_owed': total_owed,
+            'children': children,
+            'child_filter': child_filter,
+        })
+
+
+class ParentInvoiceDetailView(RoleRequiredMixin, View):
+    """Single invoice with line items and payment history."""
+
+    allowed_roles = [Roles.PARENT]
+
+    def get(self, request, pk):
+        invoice = get_object_or_404(Invoice, pk=pk, school=request.school)
+
+        # Guardian scope check
+        if not StudentGuardianLink.objects.filter(
+            student=invoice.student, guardian=request.user,
+        ).exists():
+            messages.error(request, 'You are not authorized to view this invoice.')
+            return redirect('parent-children')
+
+        payments = invoice.payments.all().order_by('-paid_on')
+        line_items = invoice.line_items.all().select_related('category')
+
+        return render(request, 'students/parent/invoice_detail.html', {
+            'invoice': invoice,
+            'payments': payments,
+            'line_items': line_items,
         })
 
 

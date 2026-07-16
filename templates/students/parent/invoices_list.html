@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Invoices - Grace House{% endblock %}
+{% block page_header %}Invoices{% endblock %}
+{% block content %}
+
+{# ===== Header + Filter ===== #}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+  <h1 class="text-2xl font-display text-[#1B2430]">All Invoices</h1>
+  <form method="get" class="flex items-center gap-2">
+    <label for="child-filter" class="text-sm text-gray-500">Filter by child:</label>
+    <select id="child-filter" name="child" onchange="this.form.submit()" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#B8863A]/30 focus:border-[#B8863A]">
+      <option value="">All Children</option>
+      {% for child in children %}
+      <option value="{{ child.pk }}" {% if child_filter|stringformat:"s" == child.pk|stringformat:"s" %}selected{% endif %}>{{ child.user.get_full_name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+{# ===== Invoices Table ===== #}
+{% if invoices %}
+<div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="bg-gray-50 text-left">
+        <th class="px-4 py-3 font-medium text-gray-600">Child</th>
+        <th class="px-4 py-3 font-medium text-gray-600">Term</th>
+        <th class="px-4 py-3 font-medium text-gray-600 text-right tabular-nums">Amount</th>
+        <th class="px-4 py-3 font-medium text-gray-600 text-right tabular-nums">Balance</th>
+        <th class="px-4 py-3 font-medium text-gray-600">Status</th>
+        <th class="px-4 py-3 font-medium text-gray-600">Action</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for invoice in invoices %}
+      <tr class="hover:bg-gray-50">
+        <td class="px-4 py-3 font-medium">{{ invoice.student.user.get_full_name }}</td>
+        <td class="px-4 py-3">{{ invoice.term.name }}</td>
+        <td class="px-4 py-3 text-right tabular-nums">₦{{ invoice.total_amount|floatformat:2 }}</td>
+        <td class="px-4 py-3 text-right tabular-nums">
+          {% if invoice.balance > 0 %}
+            <span class="text-amber-600 font-semibold">₦{{ invoice.balance|floatformat:2 }}</span>
+          {% else %}
+            <span class="text-green-600">—</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-3">{% include 'components/status_stamp.html' with status=invoice.status %}</td>
+        <td class="px-4 py-3">
+          {% if invoice.status == 'UNPAID' or invoice.status == 'PARTIAL' %}
+          <a href="/fees/pay/{{ invoice.pk }}/" class="inline-block bg-[#B8863A] text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-[#9A7030] transition-colors">Pay Now</a>
+          {% else %}
+          <span class="text-gray-400">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ===== Total Owed Summary ===== #}
+<div class="mt-4 flex justify-end">
+  <div class="bg-white rounded-lg shadow-sm px-5 py-3">
+    <span class="text-sm text-gray-500">Total Outstanding: </span>
+    <span class="text-lg font-bold text-[#1B2430] tabular-nums">₦{{ total_owed|floatformat:2 }}</span>
+  </div>
+</div>
+
+{% else %}
+<div class="bg-white rounded-lg shadow-sm p-8 text-center">
+  <p class="text-gray-500">No invoices found.</p>
+</div>
+{% endif %}
+
+{% endblock %}

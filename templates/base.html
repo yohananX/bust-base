@@ -418,6 +418,20 @@
                 </ul>
               </div>
 
+              {# Finance #}
+              <div>
+                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Finance</span>
+                <ul class="space-y-1">
+                  <li>
+                    <a href="/parent/invoices/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
+                      {% if '/parent/invoices' in request.path %}bg-blue-600/10 text-blue-400 font-medium{% else %}hover:bg-slate-800/50 hover:text-white{% endif %}">
+                      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
+                      <span>Invoices</span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
             {% endif %}
           {% endif %}
         </nav>

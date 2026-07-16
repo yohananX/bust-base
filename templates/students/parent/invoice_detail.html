@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Invoice #{{ invoice.pk }} - Grace House{% endblock %}
+{% block page_header %}Invoice #{{ invoice.pk }}{% endblock %}
+{% block content %}
+
+{# ===== Back Link ===== #}
+<div class="mb-4">
+  <a href="{% url 'parent-invoices' %}" class="text-sm text-gray-500 hover:text-[#B8863A] transition-colors">&larr; Back to Invoices</a>
+</div>
+
+{# ===== Invoice Header ===== #}
+<div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-display font-semibold text-[#1B2430]">Invoice</h1>
+      <p class="text-sm text-gray-500 mt-1">
+        {{ invoice.student.user.get_full_name }}
+        <span class="text-gray-400 mx-1">·</span>
+        {{ invoice.term.name }}
+      </p>
+      <p class="text-xs text-gray-400 mt-1">Generated {{ invoice.generated_on|date:"d/m/Y" }}</p>
+    </div>
+    <div class="flex items-center gap-4">
+      {% include 'components/status_stamp.html' with status=invoice.status %}
+      {% if invoice.status == 'UNPAID' or invoice.status == 'PARTIAL' %}
+      <a href="/fees/pay/{{ invoice.pk }}/" class="inline-block bg-[#B8863A] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#9A7030] transition-colors">Pay Now</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# ===== Summary ===== #}
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+  <div class="bg-white rounded-lg shadow-sm p-4 text-center">
+    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Total Amount</p>
+    <p class="text-xl font-bold text-[#1B2430] tabular-nums">₦{{ invoice.total_amount|floatformat:2 }}</p>
+  </div>
+  <div class="bg-white rounded-lg shadow-sm p-4 text-center">
+    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Amount Paid</p>
+    <p class="text-xl font-bold text-green-600 tabular-nums">₦{{ invoice.amount_paid|floatformat:2 }}</p>
+  </div>
+  <div class="bg-white rounded-lg shadow-sm p-4 text-center">
+    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Balance</p>
+    <p class="text-xl font-bold {% if invoice.balance > 0 %}text-amber-600{% else %}text-green-600{% endif %} tabular-nums">₦{{ invoice.balance|floatformat:2 }}</p>
+  </div>
+</div>
+
+{# ===== Line Items ===== #}
+{% if line_items %}
+<section class="mb-6">
+  <h2 class="text-lg font-display font-semibold text-[#1B2430] mb-3 border-b border-gray-200 pb-2">Fee Breakdown</h2>
+  <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left">
+          <th class="px-4 py-3 font-medium text-gray-600">Category</th>
+          <th class="px-4 py-3 font-medium text-gray-600 text-right tabular-nums">Amount</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for item in line_items %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3">{{ item.category.name }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">₦{{ item.amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{# ===== Payment History ===== #}
+<section class="mb-6">
+  <h2 class="text-lg font-display font-semibold text-[#1B2430] mb-3 border-b border-gray-200 pb-2">Payment History</h2>
+  {% if payments %}
+  <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left">
+          <th class="px-4 py-3 font-medium text-gray-600">Date</th>
+          <th class="px-4 py-3 font-medium text-gray-600 text-right tabular-nums">Amount</th>
+          <th class="px-4 py-3 font-medium text-gray-600">Method</th>
+          <th class="px-4 py-3 font-medium text-gray-600">Status</th>
+          <th class="px-4 py-3 font-medium text-gray-600">Reference</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for payment in payments %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 tabular-nums">{{ payment.paid_on|date:"d/m/Y H:i" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums font-semibold">₦{{ payment.amount|floatformat:2 }}</td>
+          <td class="px-4 py-3">{{ payment.get_method_display }}</td>
+          <td class="px-4 py-3">{% include 'components/status_stamp.html' with status=payment.status %}</td>
+          <td class="px-4 py-3 text-gray-500 text-xs">{{ payment.reference|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-lg shadow-sm p-4 text-gray-500 text-sm">No payments recorded yet.</div>
+  {% endif %}
+</section>
+
+{% endblock %}
