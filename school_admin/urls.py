@@ -20,6 +20,7 @@ from school_admin.views import (
     ScoreAdminView,
     FeeCategoryListView, FeeStructureListView,
     InvoiceListView, InvoiceDetailView, GenerateInvoicesView,
+    OutstandingFeesReportView,
     PayGradeListView, AllowanceDeductionListView,
     PayrollRunListView, PayrollRunDetailView,
     GeneratePayrollView, RecordDisbursementView,
@@ -75,6 +76,7 @@ urlpatterns = [
     # Fees & Invoices
     path('fees/categories/', FeeCategoryListView.as_view(), name='fee_category_list'),
     path('fees/structures/', FeeStructureListView.as_view(), name='fee_structure_list'),
+    path('fees/outstanding/', OutstandingFeesReportView.as_view(), name='outstanding_fees'),
     path('invoices/', InvoiceListView.as_view(), name='invoice_list'),
     path('invoices/generate/', GenerateInvoicesView.as_view(), name='generate_invoices'),
     path('invoices/<int:pk>/', InvoiceDetailView.as_view(), name='invoice_detail'),

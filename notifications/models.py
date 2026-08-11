@@ -63,7 +63,7 @@ class NotificationLog(TenantScopedModel):
     class Meta:
         verbose_name = _('notification log')
         verbose_name_plural = _('notification logs')
-        ordering = ['-created_at']
+        ordering = ['-created_at', '-id']
 
     def __str__(self):
         return (

@@ -8,7 +8,8 @@ from django.views.generic.base import View
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from students.models import Student
-from fees.models import Invoice, Payment
+from fees.models import Invoice
+from fees.selectors import invoices_with_balance
 from payroll.models import PayrollRun
 from finance.models import Project
 
@@ -27,11 +28,10 @@ class DashboardView(RoleRequiredMixin, View):
         ).count()
 
         # Outstanding fees — sum of balances where status != PAID
-        invoices = Invoice.objects.filter(school=school)
-        outstanding_fees = Decimal('0.00')
-        for inv in invoices:
-            if inv.status != 'PAID':
-                outstanding_fees += inv.balance
+        invoices = invoices_with_balance(Invoice.objects.filter(school=school))
+        outstanding_fees = invoices.aggregate(
+            total=Sum('balance_annotated')
+        )['total'] or Decimal('0.00')
 
         # Pending payroll runs — runs with no disbursements
         pending_payroll = PayrollRun.objects.filter(

@@ -191,6 +191,16 @@
                       <span>Invoices</span>
                     </a>
                   </li>
+                  <li>
+                    <a href="/school-admin/fees/outstanding/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
+                      {% if '/school-admin/fees/outstanding' in request.path %}
+                        bg-blue-600/10 text-blue-400 font-medium
+                      {% else %}
+                        hover:bg-slate-800/50 hover:text-white
+                      {% endif %}">
+                      <span>Outstanding Fees</span>
+                    </a>
+                  </li>
                 </ul>
               </div>
 

@@ -15,6 +15,7 @@ from .academics import (
 from .fees import (
     FeeCategoryListView, FeeStructureListView,
     InvoiceListView, InvoiceDetailView, GenerateInvoicesView,
+    OutstandingFeesReportView,
 )
 from .payroll import (
     PayGradeListView, AllowanceDeductionListView,

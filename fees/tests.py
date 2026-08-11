@@ -12,6 +12,7 @@ from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from fees.models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment
+from fees.selectors import invoices_with_balance
 
 
 User = get_user_model()
@@ -710,3 +711,127 @@ class AdditionalPaymentTests(BaseFeesTest):
                 term=self.term,
                 total_amount=Decimal('60000.00'),
             )
+
+
+# ─── Annotation Selector Tests ────────────────────────────────────────────
+
+class InvoicesWithBalanceSelectorTest(BaseFeesTest):
+    """Tests for the invoices_with_balance() query helper (no N+1 annotation)."""
+
+    def setUp(self):
+        super().setUp()
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('100000.00'),
+        )
+
+    def _annotated(self):
+        return invoices_with_balance(
+            Invoice.objects.filter(school=self.school, pk=self.invoice.pk)
+        ).get()
+
+    def _add_payment(self, amount, status=Payment.Status.CONFIRMED):
+        Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=amount,
+            method=Payment.Method.CASH,
+            status=status,
+            paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+
+    def test_unpaid_invoice_balance_matches_property(self):
+        """No payments — annotation matches the model property."""
+        inv = self._annotated()
+        self.assertEqual(inv.amount_paid_annotated, Decimal('0.00'))
+        self.assertEqual(inv.balance_annotated, self.invoice.total_amount)
+        self.assertEqual(inv.balance_annotated, self.invoice.balance)
+
+    def test_partial_payment_matches_property(self):
+        """Partial confirmed payment — annotation matches amount_paid/balance."""
+        self._add_payment(Decimal('30000.00'))
+        inv = self._annotated()
+        self.assertEqual(inv.amount_paid_annotated, Decimal('30000.00'))
+        self.assertEqual(inv.amount_paid_annotated, self.invoice.amount_paid)
+        self.assertEqual(inv.balance_annotated, Decimal('70000.00'))
+        self.assertEqual(inv.balance_annotated, self.invoice.balance)
+
+    def test_full_payment_balance_zero(self):
+        """Fully paid invoice — annotated balance is zero."""
+        self._add_payment(Decimal('100000.00'))
+        inv = self._annotated()
+        self.assertEqual(inv.amount_paid_annotated, Decimal('100000.00'))
+        self.assertEqual(inv.balance_annotated, Decimal('0.00'))
+
+    def test_pending_payments_do_not_count(self):
+        """Business rule: PENDING payments never count toward amount_paid."""
+        self._add_payment(Decimal('50000.00'), status=Payment.Status.PENDING)
+        inv = self._annotated()
+        self.assertEqual(inv.amount_paid_annotated, Decimal('0.00'))
+        self.assertEqual(inv.balance_annotated, Decimal('100000.00'))
+        self.assertEqual(inv.balance, Decimal('100000.00'))
+
+    def test_failed_payments_do_not_count(self):
+        """Business rule: FAILED payments never count toward amount_paid."""
+        self._add_payment(Decimal('50000.00'), status=Payment.Status.FAILED)
+        inv = self._annotated()
+        self.assertEqual(inv.amount_paid_annotated, Decimal('0.00'))
+        self.assertEqual(inv.balance_annotated, Decimal('100000.00'))
+
+    def test_multiple_confirmed_payments_sum(self):
+        """Multiple confirmed payments sum correctly in the annotation."""
+        self._add_payment(Decimal('25000.00'))
+        self._add_payment(Decimal('35000.00'))
+        inv = self._annotated()
+        self.assertEqual(inv.amount_paid_annotated, Decimal('60000.00'))
+        self.assertEqual(inv.balance_annotated, Decimal('40000.00'))
+
+    def test_filter_by_balance_annotation(self):
+        """balance_annotated can be used in filter() (SQL-side, not Python)."""
+        # setUp created self.invoice (100000, unpaid) for self.student+self.term.
+        # Can't create a second invoice for the same student+term, so use a
+        # second student for the fully-paid invoice.
+        user2 = User.objects.create_user(
+            username='student2',
+            email='student2@test.com',
+            password='testpass123',
+            school=self.school,
+            role=Roles.STUDENT,
+            first_name='Jane',
+            last_name='Doe',
+        )
+        student2 = Student.objects.create(
+            school=self.school,
+            user=user2,
+            admission_number='STU002',
+            date_of_birth=date(2010, 2, 2),
+            gender=Student.FEMALE,
+            admission_date=date(2025, 9, 1),
+            status=Student.ACTIVE,
+        )
+        paid = Invoice.objects.create(
+            school=self.school,
+            student=student2,
+            term=self.term,
+            total_amount=Decimal('50000.00'),
+        )
+        Payment.objects.create(
+            school=self.school,
+            invoice=paid,
+            amount=Decimal('50000.00'),
+            method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+
+        qs = invoices_with_balance(Invoice.objects.filter(school=self.school))
+        self.assertEqual(qs.filter(balance_annotated__gt=Decimal('0.00')).count(), 1)
+        self.assertEqual(qs.filter(balance_annotated=Decimal('0.00')).count(), 1)
+        self.assertEqual(
+            qs.filter(balance_annotated__gt=Decimal('0.00')).first().balance_annotated,
+            Decimal('100000.00'),
+        )
