@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Receipt - Grace House School System{% endblock %}
+
+{% block page_header %}Payment Receipt{% endblock %}
+
+{% block content %}
+{% with student_obj=student|default:payment.invoice.student %}
+{% with term_obj=term|default:payment.invoice.term %}
+{% with school_obj=school|default:payment.invoice.school %}
+{% with receipt_obj=receipt|default:payment.receipt %}
+{% with current_enrollment=student_obj.enrollments.all|first %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+  {# ===== Back Link ===== #}
+  <div>
+    {% if user.role == 'PARENT' %}
+    <a href="{% url 'parent-invoices' %}" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
+      <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to Invoices
+    </a>
+    {% elif user.role == 'STUDENT' %}
+    <a href="{% url 'student-overview' %}" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
+      <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to Dashboard
+    </a>
+    {% else %}
+    <a href="#" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
+      <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back
+    </a>
+    {% endif %}
+  </div>
+
+  {# ===== Receipt Card ===== #}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+    {# Violet header strip #}
+    <div class="bg-violet-600 px-6 py-5 flex items-center justify-between gap-4">
+      <div class="min-w-0">
+        <p class="text-[11px] font-bold uppercase tracking-[0.15em] text-violet-200">Official Receipt</p>
+        <h1 class="text-lg font-semibold text-white mt-0.5 truncate">{{ school_obj.name|default:"Grace House School" }}</h1>
+      </div>
+      <div class="text-right flex-shrink-0">
+        {% if receipt_obj %}
+        <span class="inline-block bg-white/20 text-white text-xs font-mono font-medium rounded-lg px-3 py-1.5">#{{ receipt_obj.receipt_number }}</span>
+        {% else %}
+        <span class="inline-block bg-white/20 text-white text-xs font-mono font-medium rounded-lg px-3 py-1.5">#{{ payment.pk }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Amount highlight #}
+    <div class="px-6 pt-6">
+      <div class="bg-violet-50 border border-violet-100 rounded-xl px-5 py-4 flex items-center justify-between">
+        <span class="text-sm font-medium text-gray-600">Amount Paid</span>
+        <span class="text-2xl font-bold text-gray-900 tabular-nums">&#8358;{{ payment.amount|floatformat:2 }}</span>
+      </div>
+    </div>
+
+    {# Receipt details grid #}
+    <div class="p-6 pt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5 text-sm">
+      <div>
+        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Student</p>
+        <p class="font-semibold text-gray-900">{{ student_obj.user.get_full_name }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Class</p>
+        <p class="text-gray-700">{{ current_enrollment.school_class.name|default:"—" }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Term</p>
+        <p class="text-gray-700">{{ term_obj.name }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Method</p>
+        <p class="text-gray-700">{{ payment.get_method_display|default:"Paystack" }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Reference</p>
+        <p class="text-gray-700 font-mono text-xs break-all">{{ payment.reference|default:"—" }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Channel</p>
+        <p class="text-gray-700">{{ payment.channel|default:"Online" }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Fees Charged</p>
+        <p class="text-gray-700 tabular-nums">&#8358;{{ payment.fees_charged|floatformat:2 }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Date Paid</p>
+        <p class="text-gray-700 tabular-nums">{{ payment.paid_on|date:"d M Y H:i" }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Balance Remaining</p>
+        <p class="text-gray-700 tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Status</p>
+        {% include 'components/badge.html' with status='success' text=payment.get_status_display %}
+      </div>
+    </div>
+
+    {# Actions #}
+    <div class="px-6 pb-6 flex flex-wrap items-center gap-3">
+      <a href="{% url 'fees:payment-receipt-pdf' payment.pk %}"
+         class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm hover:shadow">
+        <i data-lucide="download" class="w-4 h-4 mr-2"></i>Download PDF
+      </a>
+      <button type="button" onclick="window.print()"
+              class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <i data-lucide="printer" class="w-4 h-4 mr-2"></i>Print
+      </button>
+    </div>
+  </div>
+</div>
+{% endwith %}
+{% endwith %}
+{% endwith %}
+{% endwith %}
+{% endwith %}
+{% endblock %}

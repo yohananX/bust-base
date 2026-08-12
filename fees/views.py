@@ -246,6 +246,175 @@ class PaymentStatusPartialView(RoleRequiredMixin, View):
         })
 
 
+class VerifyPaymentView(RoleRequiredMixin, View):
+    """Server-side verification of a payment against the Paystack API.
+
+    Tamper-reconciles the paid amount (kobo) with the recorded amount before
+    confirming, then issues a receipt. Idempotent: already-confirmed payments
+    short-circuit to the status partial without double crediting.
+    """
+    allowed_roles = [Roles.PARENT, Roles.STUDENT]
+
+    def get(self, request):
+        reference = request.GET.get('reference')
+        invoice_id = request.GET.get('invoice_id')
+
+        if not reference or not invoice_id:
+            return HttpResponse('<span class="text-gray-500">Invalid request.</span>')
+
+        invoice = get_object_or_404(Invoice, pk=invoice_id, school=request.school)
+
+        # Guardian scope check — same as PaymentReturnView
+        if request.user.role == Roles.PARENT:
+            if not invoice.student.guardian_links.filter(guardian=request.user).exists():
+                return redirect('parent-children')
+
+        payment = Payment.objects.filter(reference=reference, invoice=invoice).first()
+        if not payment:
+            return HttpResponse('<span class="text-gray-500">Payment not found.</span>')
+
+        # Already confirmed (e.g. via webhook) — no double-credit, show current state.
+        if payment.status == Payment.Status.CONFIRMED:
+            return render(request, 'fees/partials/payment_status.html', {
+                'payment': payment,
+                'invoice': invoice,
+                'reference': reference,
+                'receipt': getattr(payment, 'receipt', None),
+            })
+
+        # PENDING/FAILED — verify against Paystack. Imports deferred: the
+        # paystack helpers are provided by a parallel agent.
+        from fees.paystack import verify_transaction, issue_receipt
+        result = verify_transaction(reference)
+
+        if 'error' in result:
+            # Gateway unreachable — leave status unchanged; user can retry later.
+            return render(request, 'fees/partials/payment_status.html', {
+                'payment': payment,
+                'invoice': invoice,
+                'reference': reference,
+                'receipt': getattr(payment, 'receipt', None),
+            })
+
+        data = result.get('data') or {}
+
+        if data.get('status') == 'success' and data.get('amount'):
+            # Tamper reconciliation — Paystack reports the amount in kobo.
+            expected_kobo = int(payment.amount * 100)
+            if expected_kobo != data.get('amount'):
+                # Amount mismatch — mark failed, never credit.
+                payment.status = Payment.Status.FAILED
+                payment.webhook_processed = True
+                payment.webhook_payload = {'verified': data}
+                payment.save(update_fields=['status', 'webhook_processed', 'webhook_payload'])
+            else:
+                # Amount matches — confirm and enrich from Paystack data.
+                payment.status = Payment.Status.CONFIRMED
+                payment.verified_at = timezone.now()
+                payment.webhook_processed = True
+                payment.webhook_payload = {'verified': data}
+                payment.currency = data.get('currency') or settings.DEFAULT_CURRENCY
+                payment.fees_charged = Decimal(str(data.get('fees') or 0)) / Decimal('100')
+                payment.paid_on = timezone.now() if not payment.paid_on else payment.paid_on
+
+                authorization = data.get('authorization') or {}
+                payment.channel = authorization.get('channel') or payment.channel
+                payment.card_last4 = authorization.get('last4') or payment.card_last4
+                payment.card_brand = authorization.get('card_type') or payment.card_brand
+                payment.bank_name = authorization.get('bank') or payment.bank_name
+
+                customer = data.get('customer') or {}
+                payment.paid_by_email = customer.get('email') or payment.paid_by_email
+                payment.paid_by_name = customer.get('first_name') or payment.paid_by_name
+                payment.paid_by_phone = customer.get('phone') or payment.paid_by_phone
+
+                payment.save(update_fields=[
+                    'status', 'verified_at', 'webhook_processed', 'webhook_payload',
+                    'currency', 'fees_charged', 'paid_on', 'channel', 'card_last4',
+                    'card_brand', 'bank_name', 'paid_by_email', 'paid_by_name',
+                    'paid_by_phone',
+                ])
+                issue_receipt(payment)
+
+        # Re-render with fresh state (refreshed in case a webhook landed meanwhile).
+        payment.refresh_from_db()
+        return render(request, 'fees/partials/payment_status.html', {
+            'payment': payment,
+            'invoice': invoice,
+            'reference': reference,
+            'receipt': getattr(payment, 'receipt', None),
+        })
+
+
+def _resolve_receipt_payment(request, payment_id):
+    """Resolve a payment for receipt views with role and tenant scoping.
+
+    Returns a (payment, redirect_name) tuple — when redirect_name is not
+    None the caller should redirect there instead of serving the receipt.
+    """
+    payment = get_object_or_404(Payment, pk=payment_id, school=request.school)
+
+    role = request.user.role
+    if role == Roles.PARENT:
+        if not payment.invoice.student.guardian_links.filter(guardian=request.user).exists():
+            return None, 'parent-children'
+    elif role == Roles.STUDENT:
+        if payment.invoice.student.user != request.user:
+            return None, 'student-overview'
+    # ADMIN passes without extra checks.
+
+    if payment.status != Payment.Status.CONFIRMED:
+        if role == Roles.PARENT:
+            return None, 'parent-children'
+        if role == Roles.STUDENT:
+            return None, 'student-overview'
+        return None, 'school_admin:invoice_list'
+
+    return payment, None
+
+
+class PaymentReceiptView(RoleRequiredMixin, View):
+    """Renders the receipt page for a confirmed payment.
+
+    The receipt is issued lazily and idempotently via fees.paystack.issue_receipt.
+    """
+    allowed_roles = [Roles.PARENT, Roles.STUDENT, Roles.ADMIN]
+
+    def get(self, request, payment_id):
+        payment, redirect_name = _resolve_receipt_payment(request, payment_id)
+        if payment is None:
+            return redirect(redirect_name)
+
+        from fees.paystack import issue_receipt
+        receipt = issue_receipt(payment)
+
+        return render(request, 'fees/receipt_view.html', {
+            'payment': payment,
+            'invoice': payment.invoice,
+            'receipt': receipt,
+            'student': payment.invoice.student,
+            'term': payment.invoice.term,
+            'school': request.school,
+        })
+
+
+class PaymentReceiptPdfView(RoleRequiredMixin, View):
+    """Downloads the receipt PDF for a confirmed payment."""
+    allowed_roles = [Roles.PARENT, Roles.STUDENT, Roles.ADMIN]
+
+    def get(self, request, payment_id):
+        payment, redirect_name = _resolve_receipt_payment(request, payment_id)
+        if payment is None:
+            return redirect(redirect_name)
+
+        # Import deferred to call time — fees/pdf.py is built by a parallel agent.
+        from fees.pdf import render_receipt_pdf
+        response = render_receipt_pdf(payment)
+        if response is None:
+            return redirect('fees:payment-receipt', payment_id=payment.pk)
+        return response
+
+
 class PaymentTimeoutHelpView(RoleRequiredMixin, View):
     """Shows a help message after payment processing takes too long."""
     allowed_roles = [Roles.PARENT, Roles.STUDENT]

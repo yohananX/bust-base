@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Receipt {{ payment.reference }}</title>
+  <style>
+    @page { size: A4; margin: 1.6cm; }
+    * { box-sizing: border-box; }
+    body { font-family: "Segoe UI", Arial, sans-serif; color: #111827; font-size: 11pt; line-height: 1.5; margin: 0; }
+    h1, h2, p, table { margin: 0; }
+    .mono { font-family: "Consolas", "Courier New", monospace; }
+
+    /* ===== Header ===== */
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #7C3AED; padding-bottom: 14px; }
+    .header h1 { font-size: 17pt; font-weight: 700; }
+    .official { font-size: 10pt; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #7C3AED; margin-top: 2px; }
+    .header .meta { text-align: right; font-size: 9.5pt; color: #4B5563; }
+    .header .meta .mono { font-size: 9pt; }
+
+    /* ===== Body table ===== */
+    table.details { width: 100%; border-collapse: collapse; margin-top: 18px; }
+    table.details th, table.details td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #E5E7EB; vertical-align: middle; }
+    table.details th { width: 34%; font-size: 9.5pt; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #6B7280; background: #F9FAFB; }
+    table.details td { font-size: 11pt; color: #111827; }
+    table.details tr.amount td { font-size: 14pt; font-weight: 700; color: #111827; }
+    table.details tr.status td { font-weight: 700; color: #059669; letter-spacing: 0.08em; }
+
+    /* ===== Footer ===== */
+    .footer { margin-top: 26px; padding-top: 10px; border-top: 1px solid #E5E7EB; text-align: center; font-size: 9pt; color: #9CA3AF; }
+  </style>
+</head>
+<body>
+  {% with student_obj=payment.invoice.student %}
+  {% with current_enrollment=student_obj.enrollments.all|first %}
+  <div class="header">
+    <div>
+      <h1>{{ school.name|default:"Grace House School" }}</h1>
+      <p class="official">Official Receipt</p>
+    </div>
+    <div class="meta">
+      <p>Receipt No: <span class="mono">
+        {% if payment.receipt %}{{ payment.receipt.receipt_number }}{% else %}{{ payment.reference|default:"—" }}{% endif %}
+      </span></p>
+      <p>Issued: {% if payment.receipt %}{{ payment.receipt.issued_at|date:"d M Y" }}{% else %}{{ payment.paid_on|date:"d M Y" }}{% endif %}</p>
+    </div>
+  </div>
+
+  <table class="details">
+    <tr>
+      <th>Student</th>
+      <td>{{ student_obj.user.get_full_name }}{% if current_enrollment %} ({{ current_enrollment.school_class.name }}){% endif %}</td>
+    </tr>
+    <tr>
+      <th>Term</th>
+      <td>{{ payment.invoice.term.name }}</td>
+    </tr>
+    <tr class="amount">
+      <th>Amount Paid</th>
+      <td>&#8358;{{ payment.amount|floatformat:2 }}</td>
+    </tr>
+    <tr>
+      <th>Paystack Reference</th>
+      <td class="mono">{{ payment.reference|default:"—" }}</td>
+    </tr>
+    <tr>
+      <th>Channel</th>
+      <td>{{ payment.channel|default:"Online" }}</td>
+    </tr>
+    <tr>
+      <th>Paid Via</th>
+      <td>{{ payment.get_method_display }}</td>
+    </tr>
+    <tr>
+      <th>Balance Remaining</th>
+      <td>&#8358;{{ payment.invoice.balance|floatformat:2 }}</td>
+    </tr>
+    <tr class="status">
+      <th>Status</th>
+      <td>CONFIRMED</td>
+    </tr>
+  </table>
+
+  <div class="footer">This receipt is system-generated. Thank you.</div>
+  {% endwith %}
+  {% endwith %}
+</body>
+</html>

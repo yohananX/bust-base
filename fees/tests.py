@@ -835,3 +835,365 @@ class InvoicesWithBalanceSelectorTest(BaseFeesTest):
             qs.filter(balance_annotated__gt=Decimal('0.00')).first().balance_annotated,
             Decimal('100000.00'),
         )
+
+
+# ─── Paystack Upgrade: Webhook Security Tests ─────────────────────────────
+
+class WebhookSecurityTest(BaseFeesTest):
+    """Security tests for the Paystack webhook upgrade (2026).
+
+    Covers: WebhookLog persistence, amount-tamper rejection, charge.failed
+    handling, metadata enrichment on confirmation, and idempotent receipts.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from fees.models import Invoice
+
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def _create_pending_payment(self, reference='SEC_REF_001'):
+        from fees.models import Payment
+
+        return Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference=reference,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+
+    def _post_webhook(self, event='charge.success', reference='SEC_REF_001',
+                      amount_kobo=6000000, **extra_data):
+        """Simulate a Paystack webhook event via RequestFactory (signature patched)."""
+        import json
+        from unittest.mock import patch
+        from django.test.client import RequestFactory
+        from fees.paystack import handle_webhook as webhook_view
+
+        data = {
+            'reference': reference,
+            'amount': amount_kobo,
+            'paid_at': '2026-01-15T10:30:00.000Z',
+            'metadata': {'invoice_id': self.invoice.id},
+        }
+        data.update(extra_data)
+
+        payload = json.dumps({'event': event, 'data': data})
+        factory = RequestFactory()
+        request = factory.post(
+            '/fees/api/paystack-webhook/',
+            data=payload,
+            content_type='application/json',
+            HTTP_X_PAYSTACK_SIGNATURE='test_signature',
+        )
+        with patch('fees.paystack.verify_webhook_signature', return_value=True):
+            return webhook_view(request)
+
+    def test_webhook_event_logged(self):
+        """Every verified webhook event is recorded in WebhookLog with sender IP."""
+        from fees.models import Payment, WebhookLog
+
+        self._create_pending_payment('SEC_REF_001')
+        response = self._post_webhook(reference='SEC_REF_001')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(WebhookLog.objects.count(), 1)
+        log = WebhookLog.objects.first()
+        self.assertEqual(log.event, 'charge.success')
+        self.assertIsNotNone(log.ip_address)
+        self.assertEqual(
+            Payment.objects.get(reference='SEC_REF_001').status,
+            Payment.Status.CONFIRMED,
+        )
+
+    def test_amount_tamper_marks_failed_no_credit(self):
+        """Amount in kobo not matching payment.amount - FAILED, no credit, no receipt."""
+        from fees.models import FeeReceipt, Payment
+
+        payment = self._create_pending_payment('SEC_REF_002')
+        response = self._post_webhook(reference='SEC_REF_002', amount_kobo=9999999)
+
+        self.assertEqual(response.status_code, 200)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.FAILED)
+        self.assertTrue(payment.webhook_processed)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
+        self.assertEqual(FeeReceipt.objects.count(), 0)
+
+    def test_charge_failed_marks_pending_failed(self):
+        """charge.failed event flips a PENDING payment to FAILED with no credit."""
+        from fees.models import FeeReceipt, Payment
+
+        payment = self._create_pending_payment('SEC_REF_003')
+        response = self._post_webhook(event='charge.failed', reference='SEC_REF_003')
+
+        self.assertEqual(response.status_code, 200)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.FAILED)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
+        self.assertEqual(FeeReceipt.objects.count(), 0)
+
+    def test_confirmation_enriches_metadata(self):
+        """Successful charge.success enriches the Payment with Paystack metadata."""
+        from fees.models import Payment
+
+        payment = self._create_pending_payment('SEC_REF_004')
+        response = self._post_webhook(
+            reference='SEC_REF_004',
+            amount_kobo=6000000,
+            currency='NGN',
+            fees=15000,
+            authorization={
+                'channel': 'card',
+                'last4': '4242',
+                'card_type': 'visa',
+                'bank': '',
+            },
+            customer={
+                'email': 'p@x.com',
+                'first_name': 'Ada',
+                'last_name': 'Lovelace',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+        self.assertEqual(payment.channel, 'card')
+        self.assertEqual(payment.card_last4, '4242')
+        self.assertEqual(payment.card_brand, 'visa')
+        self.assertEqual(payment.paid_by_email, 'p@x.com')
+        self.assertEqual(payment.paid_by_name, 'Ada Lovelace')
+        self.assertEqual(payment.fees_charged, Decimal('150.00'))
+        self.assertEqual(payment.currency, 'NGN')
+        self.assertTrue(payment.webhook_processed)
+
+    def test_receipt_issued_once_on_duplicate_webhook(self):
+        """Duplicate webhooks issue exactly one receipt and never duplicate the payment."""
+        import re
+        from fees.models import FeeReceipt, Payment
+
+        payment = self._create_pending_payment('SEC_REF_005')
+
+        response1 = self._post_webhook(reference='SEC_REF_005')
+        self.assertEqual(response1.status_code, 200)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+
+        response2 = self._post_webhook(reference='SEC_REF_005')
+        self.assertEqual(response2.status_code, 200)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+
+        self.assertEqual(Payment.objects.count(), 1)
+        self.assertEqual(FeeReceipt.objects.count(), 1)
+        receipt = FeeReceipt.objects.get(payment=payment)
+        self.assertRegex(receipt.receipt_number, r'^RCP-\d{4}-0{3}\d+$')
+        self.assertEqual(
+            receipt.receipt_number,
+            f'RCP-{timezone.now().year}-{payment.pk:06d}',
+        )
+        self.assertEqual(payment.method, Payment.Method.PAYSTACK)
+        self.assertEqual(payment.reference, 'SEC_REF_005')
+
+
+# ─── Paystack Upgrade: Verify-Transaction Fallback Tests ─────────────────
+
+class VerifyTransactionFallbackTest(BaseFeesTest):
+    """Server-side verification fallback (verify_transaction) confirms PENDING payments.
+
+    NOTE: the view imports verify_transaction with a deferred local import
+    (inside get()), so the patch must target 'fees.paystack.verify_transaction'.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from fees.models import Invoice, Payment
+
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+        self.payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference='VERIFY_REF_001',
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        self.client.force_login(self.parent_user)
+
+    def _get_verify(self, fake_result):
+        from unittest.mock import patch
+
+        with patch('fees.paystack.verify_transaction', return_value=fake_result):
+            return self.client.get(
+                reverse('fees:payment-verify'),
+                {'reference': self.payment.reference, 'invoice_id': self.invoice.id},
+            )
+
+    def test_verify_flow_confirms_and_issues_receipt(self):
+        """Successful verify_transaction confirms, enriches and issues a receipt."""
+        from fees.models import FeeReceipt, Payment
+
+        fake = {
+            'status': True,
+            'data': {
+                'status': 'success',
+                'amount': 6000000,
+                'fees': 15000,
+                'currency': 'NGN',
+                'authorization': {'channel': 'bank', 'bank': 'Zenith'},
+                'customer': {'email': 'p@x.com', 'name': 'Ada'},
+            },
+        }
+        response = self._get_verify(fake)
+
+        self.assertEqual(response.status_code, 200)
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, Payment.Status.CONFIRMED)
+        self.assertEqual(self.payment.channel, 'bank')
+        self.assertEqual(self.payment.bank_name, 'Zenith')
+        self.assertTrue(self.payment.webhook_processed)
+        self.assertTrue(FeeReceipt.objects.filter(payment=self.payment).exists())
+
+    def test_verify_amount_mismatch_marks_failed(self):
+        """Verify result whose amount does not match - FAILED, no receipt, no credit."""
+        from fees.models import FeeReceipt, Payment
+
+        fake = {
+            'status': True,
+            'data': {'status': 'success', 'amount': 1234},
+        }
+        response = self._get_verify(fake)
+
+        self.assertEqual(response.status_code, 200)
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, Payment.Status.FAILED)
+        self.assertEqual(FeeReceipt.objects.count(), 0)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
+
+    def test_verify_error_keeps_pending(self):
+        """verify_transaction returning an error leaves the payment PENDING, no receipt."""
+        from fees.models import FeeReceipt, Payment
+
+        response = self._get_verify({'error': 'gateway error'})
+
+        self.assertEqual(response.status_code, 200)
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, Payment.Status.PENDING)
+        self.assertEqual(FeeReceipt.objects.count(), 0)
+
+
+# ─── Paystack Upgrade: Receipt View Tests ─────────────────────────────────
+
+# PDF rendering depends on WeasyPrint, whose native GTK/Pango libraries are
+# not available on every machine — probe once and skip PDF tests when missing.
+from unittest import skipUnless  # noqa: E402
+
+try:
+    from fees.pdf import render_receipt_pdf  # noqa: F401 - import probe
+    PDF_RENDERING_AVAILABLE = True
+except (ImportError, OSError):
+    PDF_RENDERING_AVAILABLE = False
+
+
+class ReceiptViewTest(BaseFeesTest):
+    """Fee receipt pages: access control, lazy issuance, PDF download."""
+
+    def setUp(self):
+        super().setUp()
+        from fees.models import Invoice
+
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+        self.parent_user2 = User.objects.create_user(
+            username='parent2',
+            email='parent2@test.com',
+            password='testpass123',
+            school=self.school,
+            role=Roles.PARENT,
+            first_name='Parent',
+            last_name='Two',
+        )
+
+    def _create_payment(self, status):
+        from fees.models import Payment
+
+        return Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference=f'RCPT_REF_{status}',
+            status=status,
+            paid_on=timezone.now(),
+        )
+
+    def test_receipt_page_parent(self):
+        """A linked parent can view the receipt; a missing receipt is issued lazily."""
+        from fees.models import FeeReceipt, Payment
+
+        payment = self._create_payment(Payment.Status.CONFIRMED)
+        self.client.force_login(self.parent_user)
+
+        response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Receipt')
+        self.assertTrue(FeeReceipt.objects.filter(payment=payment).exists())
+
+    def test_receipt_page_unauthorized_parent(self):
+        """A parent not linked to the student is redirected away."""
+        from fees.models import Payment
+
+        payment = self._create_payment(Payment.Status.CONFIRMED)
+        self.client.force_login(self.parent_user2)
+
+        response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
+
+        self.assertEqual(response.status_code, 302)
+
+    @skipUnless(PDF_RENDERING_AVAILABLE, 'WeasyPrint native libraries unavailable')
+    def test_receipt_pdf_download(self):
+        """The receipt PDF endpoint returns a PDF download."""
+        from fees.models import Payment
+
+        payment = self._create_payment(Payment.Status.CONFIRMED)
+        self.client.force_login(self.parent_user)
+
+        response = self.client.get(reverse('fees:payment-receipt-pdf', args=[payment.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('application/pdf', response['Content-Type'])
+
+    def test_pending_payment_has_no_receipt_page(self):
+        """PENDING payments have no receipt — the view redirects and creates nothing."""
+        from fees.models import FeeReceipt, Payment
+
+        payment = self._create_payment(Payment.Status.PENDING)
+        self.client.force_login(self.parent_user)
+
+        response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(FeeReceipt.objects.count(), 0)

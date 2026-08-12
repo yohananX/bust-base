@@ -175,6 +175,54 @@ class Payment(TenantScopedModel):
         blank=True,
         verbose_name=_('recorded by'),
     )
+    authorization_url = models.URLField(
+        blank=True, max_length=500, verbose_name=_('authorization url')
+    )
+    access_code = models.CharField(
+        max_length=100, blank=True, default='', verbose_name=_('access code')
+    )
+    fees_charged = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name=_('fees charged'),
+    )
+    channel = models.CharField(
+        max_length=30, blank=True, default='', verbose_name=_('channel')
+    )
+    currency = models.CharField(
+        max_length=3, default='NGN', verbose_name=_('currency')
+    )
+    paid_by_email = models.EmailField(
+        blank=True, default='', verbose_name=_('paid by email')
+    )
+    paid_by_name = models.CharField(
+        max_length=200, blank=True, default='', verbose_name=_('paid by name')
+    )
+    paid_by_phone = models.CharField(
+        max_length=20, blank=True, default='', verbose_name=_('paid by phone')
+    )
+    card_last4 = models.CharField(
+        max_length=4, blank=True, default='', verbose_name=_('card last 4')
+    )
+    card_brand = models.CharField(
+        max_length=50, blank=True, default='', verbose_name=_('card brand')
+    )
+    bank_name = models.CharField(
+        max_length=100, blank=True, default='', verbose_name=_('bank name')
+    )
+    initiated_at = models.DateTimeField(
+        null=True, blank=True, verbose_name=_('initiated at')
+    )
+    verified_at = models.DateTimeField(
+        null=True, blank=True, verbose_name=_('verified at')
+    )
+    webhook_processed = models.BooleanField(
+        default=False, verbose_name=_('webhook processed')
+    )
+    webhook_payload = models.JSONField(
+        default=dict, blank=True, verbose_name=_('webhook payload')
+    )
 
     class Meta:
         verbose_name = _('payment')
@@ -192,3 +240,41 @@ class Payment(TenantScopedModel):
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
+
+
+class WebhookLog(TenantScopedModel):
+    event = models.CharField(max_length=50, verbose_name=_('event'))
+    payload = models.JSONField(verbose_name=_('payload'))
+    ip_address = models.GenericIPAddressField(
+        null=True, blank=True, verbose_name=_('ip address')
+    )
+    processed = models.BooleanField(default=False, verbose_name=_('processed'))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('created at'))
+
+    class Meta:
+        verbose_name = _('webhook log')
+        verbose_name_plural = _('webhook logs')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.event} {self.created_at}'
+
+
+class FeeReceipt(TenantScopedModel):
+    receipt_number = models.CharField(max_length=50, verbose_name=_('receipt number'))
+    payment = models.OneToOneField(
+        'fees.Payment',
+        on_delete=models.CASCADE,
+        related_name='receipt',
+        verbose_name=_('payment'),
+    )
+    issued_at = models.DateTimeField(auto_now_add=True, verbose_name=_('issued at'))
+
+    class Meta:
+        verbose_name = _('fee receipt')
+        verbose_name_plural = _('fee receipts')
+        unique_together = ('school', 'receipt_number')
+        ordering = ['-issued_at']
+
+    def __str__(self):
+        return self.receipt_number

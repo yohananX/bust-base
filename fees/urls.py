@@ -14,4 +14,7 @@ urlpatterns = [
     path('return/', views.PaymentReturnView.as_view(), name='payment-return'),
     path('api/payment-status/', views.PaymentStatusPartialView.as_view(), name='payment-status-partial'),
     path('api/payment-timeout-help/', views.PaymentTimeoutHelpView.as_view(), name='payment-timeout-help'),
+    path('api/payment-verify/', views.VerifyPaymentView.as_view(), name='payment-verify'),
+    path('receipt/<int:payment_id>/', views.PaymentReceiptView.as_view(), name='payment-receipt'),
+    path('receipt/<int:payment_id>/pdf/', views.PaymentReceiptPdfView.as_view(), name='payment-receipt-pdf'),
 ]
