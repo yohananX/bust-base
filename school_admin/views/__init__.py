@@ -31,3 +31,11 @@ from .notifications import NotificationLogView
 from .users import (
     UserListView, UserCreateView, UserEditView, UserToggleActiveView,
 )
+from .credentials import (
+    CredentialSlipView, CredentialBatchView, CredentialBatchPrintView,
+)
+from .search import (
+    StudentSearchAPIView, StaffSearchAPIView, UserSearchAPIView,
+    InvoiceSearchAPIView, ClassSearchAPIView, SubjectSearchAPIView,
+    NotificationSearchAPIView,
+)

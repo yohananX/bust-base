@@ -29,6 +29,10 @@ from school_admin.views import (
     PublishResultsView, ResultReviewView,
     NotificationLogView,
     UserListView, UserCreateView, UserEditView, UserToggleActiveView,
+    CredentialSlipView, CredentialBatchView, CredentialBatchPrintView,
+    StudentSearchAPIView, StaffSearchAPIView, UserSearchAPIView,
+    InvoiceSearchAPIView, ClassSearchAPIView, SubjectSearchAPIView,
+    NotificationSearchAPIView,
 )
 
 app_name = 'school_admin'
@@ -39,6 +43,13 @@ urlpatterns = [
 
     # Students
     path('students/', StudentListView.as_view(), name='student_list'),
+    path('api/students/', StudentSearchAPIView.as_view(), name='student_search_api'),
+    path('api/staff/', StaffSearchAPIView.as_view(), name='staff_search_api'),
+    path('api/users/', UserSearchAPIView.as_view(), name='user_search_api'),
+    path('api/invoices/', InvoiceSearchAPIView.as_view(), name='invoice_search_api'),
+    path('api/classes/', ClassSearchAPIView.as_view(), name='class_search_api'),
+    path('api/subjects/', SubjectSearchAPIView.as_view(), name='subject_search_api'),
+    path('api/notifications/', NotificationSearchAPIView.as_view(), name='notification_search_api'),
     path('students/new/', StudentCreateView.as_view(), name='student_create'),
     path('students/<int:pk>/', StudentDetailView.as_view(), name='student_detail'),
     path('students/<int:pk>/edit/', StudentEditView.as_view(), name='student_edit'),
@@ -107,6 +118,11 @@ urlpatterns = [
     path('users/new/', UserCreateView.as_view(), name='user_create'),
     path('users/<int:pk>/edit/', UserEditView.as_view(), name='user_edit'),
     path('users/<int:pk>/toggle-active/', UserToggleActiveView.as_view(), name='user_toggle_active'),
+
+    # Credential Slips
+    path('credentials/user/<int:pk>/', CredentialSlipView.as_view(), name='credential_slip'),
+    path('credentials/batch/', CredentialBatchView.as_view(), name='credential_batch'),
+    path('credentials/print/', CredentialBatchPrintView.as_view(), name='credential_batch_print'),
 
     # Data Import
     path('import/', DataImportView.as_view(), name='import'),

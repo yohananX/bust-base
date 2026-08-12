@@ -1,0 +1,13 @@
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+    {% if status == 'success' %}bg-emerald-50 text-emerald-700 border border-emerald-100
+    {% elif status == 'warning' %}bg-amber-50 text-amber-700 border border-amber-100
+    {% elif status == 'danger' %}bg-red-50 text-red-700 border border-red-100
+    {% elif status == 'info' %}bg-blue-50 text-blue-700 border border-blue-100
+    {% else %}bg-gray-50 text-gray-700 border border-gray-100{% endif %}">
+    {% if status == 'success' %}<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+    {% elif status == 'warning' %}<span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+    {% elif status == 'danger' %}<span class="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>
+    {% elif status == 'info' %}<span class="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5"></span>
+    {% endif %}
+    {{ text }}
+</span>

@@ -6,49 +6,59 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto">
-  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
     <table class="w-full text-sm">
       <thead>
-        <tr class="bg-gray-50 text-left text-gray-600">
-          <th class="px-4 py-3 font-medium">Term</th>
-          <th class="px-4 py-3 font-medium">Session</th>
-          <th class="px-4 py-3 font-medium">Period</th>
-          <th class="px-4 py-3 font-medium">Status</th>
-          <th class="px-4 py-3 font-medium">Moderation Summary</th>
-          <th class="px-4 py-3 font-medium">Actions</th>
+        <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
+          <th class="px-5 py-3.5 font-semibold">Term</th>
+          <th class="px-5 py-3.5 font-semibold">Session</th>
+          <th class="px-5 py-3.5 font-semibold">Period</th>
+          <th class="px-5 py-3.5 font-semibold">Status</th>
+          <th class="px-5 py-3.5 font-semibold">Moderation Summary</th>
+          <th class="px-5 py-3.5 font-semibold text-right">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for item in terms %}
-        <tr class="border-t border-gray-100 hover:bg-gray-50">
-          <td class="px-4 py-3 font-medium">{{ item.term.name }}</td>
-          <td class="px-4 py-3 text-gray-600">{{ item.term.session.name }}</td>
-          <td class="px-4 py-3 text-gray-500">{{ item.term.start_date|date:'M d' }} — {{ item.term.end_date|date:'M d, Y' }}</td>
-          <td class="px-4 py-3">
+        <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+          <td class="px-5 py-3.5 font-medium text-gray-900">{{ item.term.name }}</td>
+          <td class="px-5 py-3.5 text-gray-600">{{ item.term.session.name }}</td>
+          <td class="px-5 py-3.5 text-gray-500">{{ item.term.start_date|date:'M d' }} — {{ item.term.end_date|date:'M d, Y' }}</td>
+          <td class="px-5 py-3.5">
             {% if item.term.results_published %}
-              <span class="status-stamp status-stamp--results-published">Published</span>
+              {% include 'components/badge.html' with status='success' text='Published' %}
             {% else %}
-              <span class="status-tag status-tag--pending">Not Published</span>
+              {% include 'components/badge.html' with status='warning' text='Not Published' %}
             {% endif %}
           </td>
-          <td class="px-3 py-2 text-sm">
-            <span class="text-yellow-600">{{ item.pending_count }} pending</span> ·
-            <span class="text-green-600">{{ item.approved_count }} approved</span> ·
-            <span class="text-red-600">{{ item.rejected_count }} rejected</span>
+          <td class="px-5 py-3.5">
+            <div class="flex items-center gap-3 text-xs">
+              <span class="inline-flex items-center gap-1.5 text-amber-700">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>{{ item.pending_count }} pending
+              </span>
+              <span class="inline-flex items-center gap-1.5 text-emerald-700">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>{{ item.approved_count }} approved
+              </span>
+              <span class="inline-flex items-center gap-1.5 text-red-700">
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>{{ item.rejected_count }} rejected
+              </span>
+            </div>
           </td>
-          <td class="px-4 py-3">
+          <td class="px-5 py-3.5 text-right">
             <form method="POST" class="inline">
               {% csrf_token %}
               <input type="hidden" name="term_id" value="{{ item.term.id }}">
               {% if item.term.results_published %}
-                <button type="submit" name="action" value="unpublish" class="px-3 py-1.5 bg-[var(--color-status-red)] text-white rounded text-xs hover:opacity-90"
-                  onclick="return confirm('Unpublish results for {{ item.term.name }}?')">
-                  Unpublish
+                <button type="submit" name="action" value="unpublish"
+                        class="inline-flex items-center px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-medium rounded-xl transition-colors border border-red-100"
+                        onclick="return confirm('Unpublish results for {{ item.term.name }}?')">
+                  <i data-lucide="archive" class="w-3.5 h-3.5 mr-1.5"></i>Unpublish
                 </button>
               {% else %}
-                <button type="submit" name="action" value="publish" class="px-3 py-1.5 bg-[var(--color-status-green)] text-white rounded text-xs hover:opacity-90"
-                  onclick="return confirm('Publish results for {{ item.term.name }}? This will notify guardians.')">
-                  Publish
+                <button type="submit" name="action" value="publish"
+                        class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-xl transition-colors shadow-sm"
+                        onclick="return confirm('Publish results for {{ item.term.name }}? This will notify guardians.')">
+                  <i data-lucide="send" class="w-3.5 h-3.5 mr-1.5"></i>Publish
                 </button>
               {% endif %}
             </form>
@@ -56,7 +66,12 @@
         </tr>
         {% empty %}
         <tr class="border-t border-gray-100">
-          <td colspan="6" class="px-4 py-8 text-center text-gray-400">No terms found.</td>
+          <td colspan="6" class="px-5 py-12 text-center">
+            <div class="flex flex-col items-center gap-2 text-gray-400">
+              <i data-lucide="megaphone" class="w-8 h-8"></i>
+              <p class="text-sm">No terms found.</p>
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

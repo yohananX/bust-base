@@ -1,0 +1,37 @@
+{
+  "agent": "executor",
+  "task": "paystack-upgrade-tests",
+  "status": "complete",
+  "timestamp": "2026-08-12T00:00:00Z",
+  "files_changed": ["fees/tests.py"],
+  "tests_added": [
+    "WebhookSecurityTest.test_webhook_event_logged",
+    "WebhookSecurityTest.test_amount_tamper_marks_failed_no_credit",
+    "WebhookSecurityTest.test_charge_failed_marks_pending_failed",
+    "WebhookSecurityTest.test_confirmation_enriches_metadata",
+    "WebhookSecurityTest.test_receipt_issued_once_on_duplicate_webhook",
+    "VerifyTransactionFallbackTest.test_verify_flow_confirms_and_issues_receipt",
+    "VerifyTransactionFallbackTest.test_verify_amount_mismatch_marks_failed",
+    "VerifyTransactionFallbackTest.test_verify_error_keeps_pending",
+    "ReceiptViewTest.test_receipt_page_parent",
+    "ReceiptViewTest.test_receipt_page_unauthorized_parent",
+    "ReceiptViewTest.test_receipt_pdf_download",
+    "ReceiptViewTest.test_pending_payment_has_no_receipt_page"
+  ],
+  "contract_deviations": [
+    "verify_transaction is imported inside VerifyPaymentView.get() via deferred local import (from fees.paystack import verify_transaction), NOT at module top as the contract stated. Tests patch 'fees.paystack.verify_transaction' instead of 'fees.views.verify_transaction'.",
+    "The upgrade (paystack.py webhook logging/tamper-check/failure-handling, views.py VerifyPaymentView/PaymentReceiptView/PaymentReceiptPdfView, urls.py payment-verify/payment-receipt/payment-receipt-pdf, fees/pdf.py) was NOT present at first run — a parallel agent landed it mid-task. Tests were written against the contract; first run correctly failed against old code, second run passed against landed code.",
+    "NoFloatGuard class NOT added: existing DecimalCheckTest has no reusable scan helper, per instructions.",
+    "test_receipt_pdf_download is guarded with @skipUnless(PDF_RENDERING_AVAILABLE, ...) because WeasyPrint cannot load native GTK/Pango libraries (libgobject-2.0-0) on this Windows machine — environment issue, not a code defect. No pre-existing PDF-test pattern in the repo to follow."
+  ],
+  "test_run": {
+    "command": "venv\\Scripts\\python.exe manage.py test fees.tests.WebhookSecurityTest fees.tests.VerifyTransactionFallbackTest fees.tests.ReceiptViewTest --verbosity 1",
+    "result": "OK (skipped=1) - 11 passed, 1 skipped (PDF env guard), 0 failures, 0 errors",
+    "syntax_check": "OK"
+  },
+  "packages_installed": [],
+  "next_steps": [
+    "Install WeasyPrint native libs (GTK/Pango) on Windows to enable test_receipt_pdf_download, or run on a provisioned CI machine",
+    "Full-suite run by orchestrator when SQLite DB lock is free"
+  ]
+}

@@ -28,7 +28,7 @@ class ProjectListView(RoleRequiredMixin, View):
         context = {
             'projects': projects,
             'filter_status': status,
-            'status_choices': Project.STATUS_CHOICES,
+            'status_choices': Project.Status.choices,
         }
         return render(request, 'school_admin/project_list.html', context)
 

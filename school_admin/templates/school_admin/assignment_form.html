@@ -6,18 +6,26 @@
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
-  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
-    <form method="post">
+  <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+        <i data-lucide="user-round" class="w-5 h-5"></i>
+      </div>
+      <p class="text-sm text-gray-600">Assign a subject and class to a teacher.</p>
+    </div>
+    <form method="post" class="space-y-5">
       {% csrf_token %}
 
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Teacher</label>
-        <input type="text" value="{{ teacher.get_full_name|default:teacher.username }}" disabled class="w-full border border-gray-200 rounded px-3 py-2 text-sm bg-gray-50 text-gray-500">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Teacher</label>
+        <input type="text" value="{{ teacher.get_full_name|default:teacher.username }}" disabled
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-500">
       </div>
 
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Subject <span class="text-red-500">*</span></label>
-        <select name="subject_id" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Subject <span class="text-red-500">*</span></label>
+        <select name="subject_id" required
+                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">— Select Subject —</option>
           {% for s in subjects %}
             <option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>
@@ -25,9 +33,10 @@
         </select>
       </div>
 
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Class <span class="text-red-500">*</span></label>
-        <select name="class_id" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Class <span class="text-red-500">*</span></label>
+        <select name="class_id" required
+                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">— Select Class —</option>
           {% for c in classes %}
             <option value="{{ c.id }}">{{ c.name }}</option>
@@ -35,9 +44,10 @@
         </select>
       </div>
 
-      <div class="mb-6">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Session <span class="text-red-500">*</span></label>
-        <select name="session_id" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Session <span class="text-red-500">*</span></label>
+        <select name="session_id" required
+                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">— Select Session —</option>
           {% for s in sessions %}
             <option value="{{ s.id }}" {% if s.is_current %}selected{% endif %}>{{ s.name }}</option>
@@ -45,11 +55,12 @@
         </select>
       </div>
 
-      <div class="flex items-center gap-3">
-        <button type="submit" class="bg-[#1B2430] text-white text-sm px-6 py-2 rounded hover:bg-[#2a3648] transition-colors">
-          Create Assignment
+      <div class="flex items-center gap-4 pt-2">
+        <button type="submit"
+                class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+          <i data-lucide="check" class="w-4 h-4 mr-2"></i>Create Assignment
         </button>
-        <a href="{% url 'school_admin:assignment_list' %}" class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
+        <a href="{% url 'school_admin:assignment_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
       </div>
     </form>
   </div>

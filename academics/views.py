@@ -20,7 +20,7 @@ FIELD_MAX_VALUES = {
 
 
 class TeacherAssignmentListView(RoleRequiredMixin, View):
-    """Lists all current-term teaching assignments for the logged-in teacher."""
+    """Dashboard for the teacher portal — assignments, stats, chart, recent scores."""
 
     allowed_roles = [Roles.TEACHER]
 
@@ -29,8 +29,78 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
             teacher=request.user,
             session__is_current=True,
         ).select_related('subject', 'school_class', 'session')
+
+        subject_count = len(set(a.subject_id for a in assignments))
+        class_count = len(set(a.school_class_id for a in assignments))
+
+        class_ids = [a.school_class_id for a in assignments]
+        student_count = 0
+        if class_ids:
+            student_count = ClassEnrollment.objects.filter(
+                school_class_id__in=class_ids, is_current=True,
+            ).values_list('student_id', flat=True).distinct().count()
+
+        scores_entered = Score.objects.filter(
+            entered_by=request.user
+        ).count()
+
+        current_term = Term.objects.filter(
+            school=request.school, is_current=True,
+        ).first()
+
+        # Subject averages for the current term (complete scores only)
+        subject_averages = []
+        if current_term:
+            subject_ids = list({a.subject_id for a in assignments})
+            totals = {}
+            counts = {}
+            for sc in Score.objects.filter(
+                subject_id__in=subject_ids, term=current_term,
+            ).select_related('subject'):
+                if not sc.is_complete:
+                    continue
+                totals.setdefault(sc.subject.name, []).append(sc.total_score)
+                counts[sc.subject.name] = counts.get(sc.subject.name, 0) + 1
+            subject_averages = [
+                {
+                    'subject': name,
+                    'average': round(sum(vals) / len(vals), 1),
+                    'count': counts[name],
+                }
+                for name, vals in totals.items()
+            ]
+            subject_averages.sort(key=lambda a: a['average'], reverse=True)
+        subject_labels = [a['subject'] for a in subject_averages]
+        subject_values = [a['average'] for a in subject_averages]
+
+        # Most recently entered scores
+        recent_scores = []
+        for sc in Score.objects.filter(
+            entered_by=request.user,
+        ).select_related('student', 'student__user', 'subject').order_by('-updated_at')[:5]:
+            enrollment = ClassEnrollment.objects.filter(
+                student=sc.student, session=sc.term.session, is_current=True,
+            ).select_related('school_class').first()
+            recent_scores.append({
+                'student_name': sc.student.user.get_full_name() or sc.student.user.username,
+                'subject': sc.subject.name,
+                'class_name': enrollment.school_class.name if enrollment else '',
+                'total': sc.total_score if sc.is_complete else None,
+                'complete': sc.is_complete,
+                'passed': sc.passed,
+                'updated_at': sc.updated_at,
+            })
+
         return render(request, 'academics/teacher/assignment_list.html', {
             'assignments': assignments,
+            'subject_count': subject_count,
+            'class_count': class_count,
+            'student_count': student_count,
+            'scores_entered': scores_entered,
+            'subject_labels': subject_labels,
+            'subject_values': subject_values,
+            'subject_averages': subject_averages,
+            'recent_scores': recent_scores,
         })
 
 
@@ -42,7 +112,9 @@ class TeacherScoreGridView(RoleRequiredMixin, View):
     def get(self, request, pk):
         assignment = get_object_or_404(TeacherAssignment, pk=pk)
         if assignment.teacher != request.user:
-            return HttpResponseForbidden("Not your assignment")
+            resp = HttpResponseForbidden("Not your assignment")
+        from core.toasts import attach_toast
+        return attach_toast(resp, "Not your assignment", "error")
 
         current_term = Term.objects.filter(
             school=request.school,
@@ -98,7 +170,9 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
             school_class=enrollment.school_class,
             session=score.term.session,
         ).exists():
-            return HttpResponseForbidden("Not your assignment")
+            resp = HttpResponseForbidden("Not your assignment")
+        from core.toasts import attach_toast
+        return attach_toast(resp, "Not your assignment", "error")
 
         # htmx sends the field name as the POST key (e.g. test_1=8)
         field_name = None
@@ -110,7 +184,9 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
                 break
 
         if field_name is None:
-            return HttpResponse("Invalid field", status=400)
+            resp = HttpResponse("Invalid field", status=400)
+        from core.toasts import attach_toast
+        return attach_toast(resp, "Invalid field", "error")
 
         if raw_value == '':
             value = None
@@ -118,14 +194,16 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
             try:
                 value = int(raw_value)
             except (ValueError, TypeError):
-                return HttpResponse("Value must be a whole number", status=400)
+                resp = HttpResponse("Value must be a whole number", status=400)
+        from core.toasts import attach_toast
+        return attach_toast(resp, "Value must be a whole number", "error")
 
         max_value = FIELD_MAX_VALUES[field_name]
         if value is not None and (value < 0 or value > max_value):
-            return HttpResponse(
-                f"{field_name.replace('_', ' ').title()} must be between 0 and {max_value}",
-                status=400,
-            )
+            msg = f"{field_name.replace('_', ' ').title()} must be between 0 and {max_value}"
+            resp = HttpResponse(msg, status=400)
+            from core.toasts import attach_toast
+            return attach_toast(resp, msg, "error")
 
         setattr(score, field_name, value)
         score.entered_by = request.user
@@ -179,4 +257,6 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
             f'<div id="total-{score.pk}" hx-swap-oob="innerHTML">{total_content}</div>'
             f'<div id="status-{score.pk}" hx-swap-oob="innerHTML">{status_html}</div>'
         )
-        return HttpResponse(response_html)
+        response = HttpResponse(response_html)
+        from core.toasts import attach_toast
+        return attach_toast(response, 'Score saved.', 'success')

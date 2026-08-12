@@ -5,18 +5,36 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Grace House School System{% endblock %}</title>
-  
+
   {# Google Fonts #}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:wght@400;600;700&display=swap" rel="stylesheet">
-  
+
   {# Tailwind CSS via CDN #}
   <script src="https://cdn.tailwindcss.com"></script>
-  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#7C3AED',
+            'primary-hover': '#6D28D9',
+            'page-bg': '#FAFAFA',
+            'sidebar-bg': '#EEEEEE',
+            'card-purple': '#F0EAF5',
+            'card-blue': '#D2F0FE',
+            'card-orange': '#FEEFE7',
+            'card-green': '#E8F5E9',
+          }
+        }
+      }
+    }
+  </script>
+
   {# CSS Tokens #}
   <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
-  
+
   {# HTMX #}
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script>
@@ -25,471 +43,158 @@
     });
   </script>
 
+  {# Chart.js #}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  {# Lucide Icons #}
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    .sidebar-active {
+      background: white;
+      border-left: 4px solid #7C3AED;
+      color: #7C3AED;
+    }
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline; }
+    .htmx-request.htmx-indicator { display: inline; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+
+    /* ===== Sidebar width (collapsible to icon rail on desktop) ===== */
+    #sidebar { width: 16rem; }
+    @media (min-width: 1024px) { #sidebar { width: 14rem; } }
+    #sidebar.sidebar-collapsed { width: 4.25rem; }
+
+    /* Collapsed: hide labels, center icons, hide section headers & badges */
+    .sidebar-collapsed .nav-label,
+    .sidebar-collapsed .nav-badge,
+    .sidebar-collapsed .brand-text,
+    .sidebar-collapsed .sidebar-close-btn,
+    .sidebar-collapsed .profile-text,
+    .sidebar-collapsed .profile-logout-label,
+    .sidebar-collapsed .section-toggle-text,
+    .sidebar-collapsed .section-chev { display: none; }
+    .sidebar-collapsed #sidebar-nav a { justify-content: center; padding-left: 0; padding-right: 0; }
+    .sidebar-collapsed #sidebar-nav a i { margin-right: 0; }
+    .sidebar-collapsed .section-toggle { justify-content: center; padding-left: 0; padding-right: 0; }
+    .sidebar-collapsed .brand-inner, .sidebar-collapsed .profile-inner { justify-content: center; }
+    .sidebar-collapsed .collapse-open { display: inline-flex; }
+    .sidebar-collapsed .collapse-close { display: none; }
+    .collapse-open { display: none; }
+    .collapse-close { display: inline-flex; }
+
+    /* Section collapse chevron */
+    .section-chev { transition: transform 0.15s ease; }
+    .section-toggle.section-collapsed .section-chev { transform: rotate(-90deg); }
+
+    /* ===== Toasts ===== */
+    @keyframes toast-in {
+      from { transform: translateX(110%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes toast-out {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(110%); opacity: 0; }
+    }
+    .toast-item { animation: toast-in 0.3s ease; }
+    .toast-item.toast-out { animation: toast-out 0.3s ease forwards; }
+  </style>
+
   {% block extra_head %}{% endblock %}
+  {% block extra_css %}{% endblock %}
 </head>
-<body class="font-[var(--font-body)] bg-[var(--color-paper)] text-[var(--color-ink)] antialiased">
-  
-  {# Mobile sidebar toggle #}
-  <button id="sidebar-toggle" class="lg:hidden fixed top-4 left-4 z-50 p-2 bg-[#0f172a] text-white rounded-md shadow-md">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  </button>
+<body class="bg-page-bg text-gray-800 font-[var(--font-body)] antialiased">
 
-  <div class="flex min-h-screen">
-    {# ===== SIDEBAR NAV ===== #}
-    <aside id="sidebar" class="hidden lg:flex flex-col w-64 bg-[#0f172a] text-slate-300 fixed inset-y-0 left-0 z-40 h-full border-r border-slate-800 justify-between transition-transform duration-200 ease-in-out">
-      
-      {# ===== TOP: Logo + Nav ===== #}
-      <div class="flex flex-col overflow-y-auto">
-        {# Brand #}
-        <div class="flex items-center space-x-3 px-6 py-6 border-b border-slate-800">
-          <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 text-white font-bold text-sm">
-            GH
-          </div>
-          <div>
-            <h2 class="text-white font-semibold leading-tight text-sm tracking-wide">Grace House</h2>
-            <span class="text-[11px] text-slate-400">School System</span>
-          </div>
+  {# Mobile sidebar overlay #}
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/40 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+  {# Toast container — top-right, stacked, max 5 visible #}
+  <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col items-end gap-2 w-[350px] max-w-[calc(100vw-2rem)]"></div>
+
+  <div class="flex h-screen overflow-hidden">
+
+    {# ===== SIDEBAR ===== #}
+    <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 bg-sidebar-bg flex-shrink-0 flex flex-col z-50 transform -translate-x-full lg:translate-x-0 transition-all duration-200">
+      {# Brand #}
+      <div class="h-16 flex items-center px-5 border-b border-gray-200/50 flex-shrink-0">
+        <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-sm mr-2.5 flex-shrink-0">
+          {{ request.school.short_code|first|default:'G' }}
         </div>
-
-        {# Nav groups — scoped by role #}
-        <nav class="flex-1 px-4 py-5 space-y-5">
-          {% if user.is_authenticated %}
-
-            {% if user.role == 'ADMIN' %}
-              {# Dashboard #}
-              <a href="/school-admin/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                {% if request.path == '/school-admin/' %}
-                  bg-blue-600/10 text-blue-400 font-medium
-                {% else %}
-                  hover:bg-slate-800/50 hover:text-white
-                {% endif %}">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>
-                <span>Dashboard</span>
-              </a>
-
-              {# Students #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Students</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/school-admin/students/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/students' in request.path and '/school-admin/students/' == request.path or '/school-admin/students/' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>All Students</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/school-admin/classes/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/classes' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Classes</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Staff #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Staff</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/school-admin/staff/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/staff' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>All Staff</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Users #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Users</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/school-admin/users/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/users' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>All Users</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Academics #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Academics</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/school-admin/subjects/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/subjects' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Subjects</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/school-admin/assignments/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/assignments' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Assignments</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Fees #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Fees</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/school-admin/fees/categories/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/fees/categories' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Categories</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/school-admin/fees/structures/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/fees/structures' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Structures</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/school-admin/invoices/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/invoices' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Invoices</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/school-admin/fees/outstanding/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/fees/outstanding' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Outstanding Fees</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Payroll #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Payroll</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/school-admin/payroll/grades/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/payroll/grades' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Grades</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/school-admin/payroll/runs/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/payroll/runs' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Runs</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Finance #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Finance</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/school-admin/finance/projects/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/finance/projects' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Projects</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Results #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Results</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/school-admin/scores/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/scores' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Scores</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/school-admin/results/review/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/results/review' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Review</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/school-admin/results/publish/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/results/publish' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Publish</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# System #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">System</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/school-admin/import/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/import' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Import</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/school-admin/notifications/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/school-admin/notifications' in request.path %}
-                        bg-blue-600/10 text-blue-400 font-medium
-                      {% else %}
-                        hover:bg-slate-800/50 hover:text-white
-                      {% endif %}">
-                      <span>Notifications</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-            {% elif user.role == 'TEACHER' %}
-              {# Dashboard #}
-              <a href="/teacher/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                {% if request.path == '/teacher/' %}
-                  bg-blue-600/10 text-blue-400 font-medium
-                {% else %}
-                  hover:bg-slate-800/50 hover:text-white
-                {% endif %}">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>
-                <span>Dashboard</span>
-              </a>
-              <a href="/teacher/assignments/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                {% if '/teacher/assignments' in request.path %}
-                  bg-blue-600/10 text-blue-400 font-medium
-                {% else %}
-                  hover:bg-slate-800/50 hover:text-white
-                {% endif %}">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                <span>My Assignments</span>
-              </a>
-              <a href="/teacher/payslips/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                {% if '/teacher/payslips' in request.path %}
-                  bg-blue-600/10 text-blue-400 font-medium
-                {% else %}
-                  hover:bg-slate-800/50 hover:text-white
-                {% endif %}">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                <span>My Payslips</span>
-              </a>
-
-            {% elif user.role == 'STUDENT' %}
-              {# Core #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Core</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/student/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if request.path == '/student/' %}bg-blue-600/10 text-blue-400 font-medium{% else %}hover:bg-slate-800/50 hover:text-white{% endif %}">
-                      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>
-                      <span>Dashboard</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Academics #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Academics</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/student/results/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/student/results' in request.path %}bg-blue-600/10 text-blue-400 font-medium{% else %}hover:bg-slate-800/50 hover:text-white{% endif %}">
-                      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
-                      <span>My Results</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Finance #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Finance</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/student/invoices/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/student/invoices' in request.path %}bg-blue-600/10 text-blue-400 font-medium{% else %}hover:bg-slate-800/50 hover:text-white{% endif %}">
-                      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
-                      <span>My Invoices</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Account #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Account</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/student/password/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/student/password' in request.path %}bg-blue-600/10 text-blue-400 font-medium{% else %}hover:bg-slate-800/50 hover:text-white{% endif %}">
-                      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                      <span>Change Password</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-            {% elif user.role == 'PARENT' %}
-              {# Core #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Core</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/parent/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if request.path == '/parent/' %}bg-blue-600/10 text-blue-400 font-medium{% else %}hover:bg-slate-800/50 hover:text-white{% endif %}">
-                      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>
-                      <span>Dashboard</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Children #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Children</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/parent/children/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/parent/children' in request.path %}bg-blue-600/10 text-blue-400 font-medium{% else %}hover:bg-slate-800/50 hover:text-white{% endif %}">
-                      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                      <span>My Children</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {# Finance #}
-              <div>
-                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Finance</span>
-                <ul class="space-y-1">
-                  <li>
-                    <a href="/parent/invoices/" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all
-                      {% if '/parent/invoices' in request.path %}bg-blue-600/10 text-blue-400 font-medium{% else %}hover:bg-slate-800/50 hover:text-white{% endif %}">
-                      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
-                      <span>Invoices</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-            {% endif %}
-          {% endif %}
-        </nav>
+        <div class="brand-text min-w-0">
+          <p class="font-bold text-gray-800 text-sm tracking-tight leading-tight truncate">{{ request.school.name|default:'Grace House' }}</p>
+          <p class="text-[10px] text-gray-400">School System</p>
+        </div>
+        <div class="ml-auto flex items-center gap-1">
+          <button onclick="toggleCollapseSidebar()" class="hidden lg:flex p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/60 transition-colors" title="Collapse sidebar">
+            <i data-lucide="panel-left-close" class="collapse-close w-4.5 h-4.5"></i>
+            <i data-lucide="panel-left-open" class="collapse-open w-4.5 h-4.5"></i>
+          </button>
+          <button onclick="toggleSidebar()" class="sidebar-close-btn lg:hidden text-gray-500 p-1.5"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
       </div>
 
-      {# ===== BOTTOM: Profile + Logout ===== #}
-      <div class="p-4 border-t border-slate-800 space-y-2">
-        {% if user.is_authenticated %}
-          <div class="flex items-center space-x-3 px-2 py-1">
-            <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
-              {{ user.first_name|first }}{{ user.last_name|first }}
+      {# Nav #}
+      <nav class="flex-1 py-4 overflow-y-auto" id="sidebar-nav">
+        {% for section in sidebar_sections %}
+          {% if section.section %}
+            <button type="button" data-section="{{ section.section }}"
+                    class="section-toggle w-full flex items-center justify-between px-5 pt-4 pb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors">
+              <span class="section-toggle-text truncate">{{ section.section }}</span>
+              <i data-lucide="chevron-down" class="section-chev w-3.5 h-3.5 flex-shrink-0"></i>
+            </button>
+            <div class="section-body">
+              {% for item in section.items %}{% include 'components/nav_item.html' %}{% endfor %}
             </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-semibold text-white truncate">{{ user.get_full_name|default:user.username }}</p>
-              <p class="text-[10px] text-slate-400 truncate">{{ user.get_role_display }}</p>
+          {% else %}
+            {% for item in section.items %}{% include 'components/nav_item.html' %}{% endfor %}
+          {% endif %}
+        {% endfor %}
+      </nav>
+
+      {# Profile + logout #}
+      <div class="p-4 border-t border-gray-200/50 flex-shrink-0">
+        {% if user.is_authenticated %}
+          <div class="profile-inner flex items-center mb-2">
+            <div class="w-9 h-9 rounded-full bg-violet-100 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">
+              {{ user.first_name|first|default:'U' }}{{ user.last_name|first|default:'' }}
+            </div>
+            <div class="profile-text ml-3 min-w-0">
+              <p class="text-xs font-semibold text-gray-900 truncate">{{ user.get_full_name|default:user.username }}</p>
+              <p class="text-[11px] text-gray-500">{{ user.get_role_display }}</p>
             </div>
           </div>
-          <form method="post" action="{% url 'logout' %}">
+          <form method="post" action="{% url 'logout' %}" class="mt-1">
             {% csrf_token %}
-            <button type="submit" class="flex items-center space-x-3 px-2 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10 text-xs font-medium transition-all w-full">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-              <span>Logout</span>
+            <button type="submit" class="flex items-center w-full px-3 py-2 rounded-lg text-rose-500 hover:bg-rose-50 text-xs font-medium transition-all">
+              <i data-lucide="log-out" class="w-4 h-4 mr-3 flex-shrink-0"></i><span class="profile-logout-label">Logout</span>
             </button>
           </form>
         {% else %}
-          <a href="{% url 'login' %}" class="flex items-center space-x-3 px-2 py-2 rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white text-xs font-medium transition-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
-            <span>Login</span>
+          <a href="{% url 'login' %}" class="flex items-center px-3 py-2 rounded-lg text-gray-600 hover:bg-white/60 text-xs font-medium transition-all">
+            <i data-lucide="log-in" class="w-4 h-4 mr-3 flex-shrink-0"></i><span class="profile-logout-label">Login</span>
           </a>
         {% endif %}
       </div>
     </aside>
 
-    {# Overlay for mobile sidebar #}
-    <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-black/50 hidden lg:hidden" onclick="toggleSidebar()"></div>
-
     {# ===== MAIN CONTENT ===== #}
-    <div class="flex-1 lg:ml-64">
-      
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
       {# Top bar #}
-      <header class="bg-[var(--color-surface)] border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
-        <div class="flex items-center gap-3">
-          <span class="text-sm text-gray-500">{% block page_header %}Dashboard{% endblock %}</span>
+      <header class="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 lg:px-8 flex-shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <button onclick="toggleSidebar()" class="lg:hidden p-2 -ml-2 text-gray-500 hover:text-gray-700">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+          </button>
+          <h1 class="text-lg font-semibold text-gray-800 truncate">
+            {% block page_title %}{% block page_header %}Dashboard{% endblock %}{% endblock %}
+          </h1>
         </div>
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3 lg:gap-4">
           {% if user.is_authenticated %}
-            <span class="text-sm text-gray-600 hidden sm:block">{{ user.get_full_name|default:user.username }}</span>
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full 
+            <span class="hidden sm:block text-sm text-gray-600">{{ user.get_full_name|default:user.username }}</span>
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full
               {% if user.role == 'ADMIN' %}bg-purple-100 text-purple-700
               {% elif user.role == 'TEACHER' %}bg-blue-100 text-blue-700
               {% elif user.role == 'STUDENT' %}bg-green-100 text-green-700
@@ -502,25 +207,148 @@
       </header>
 
       {# Page content #}
-      <main class="p-6 max-w-6xl mx-auto">
+      <main class="flex-1 overflow-y-auto p-4 lg:p-8">
         {% block content %}{% endblock %}
       </main>
     </div>
   </div>
 
-  {# Mobile sidebar toggle script #}
+  {# Modal container for htmx modal forms #}
+  <div id="modal-container"></div>
+
+  {# Django messages → toasts #}
   <script>
+    window.__djangoMessages = [
+      {% for message in messages %}
+        {level: '{{ message.level_tag|default:"info" }}', text: '{{ message|escapejs }}'},
+      {% endfor %}
+    ];
+  </script>
+
+  <script>
+    /* ===== Toast notification system ===== */
+    class ToastNotification {
+      constructor(containerId = 'toast-container') {
+        this.container = document.getElementById(containerId);
+        this.maxVisible = 5;
+        this.defaultDuration = 3000;
+      }
+      success(message, duration) { this.show(message, 'success', duration); }
+      error(message, duration) { this.show(message, 'error', duration); }
+      warning(message, duration) { this.show(message, 'warning', duration); }
+      info(message, duration) { this.show(message, 'info', duration); }
+
+      show(message, type = 'info', duration = this.defaultDuration) {
+        if (!this.container) return;
+        const config = {
+          success: { border: '#10B981', icon: 'check-circle', iconColor: '#10B981' },
+          error:   { border: '#EF4444', icon: 'x-circle', iconColor: '#EF4444' },
+          warning: { border: '#F59E0B', icon: 'alert-triangle', iconColor: '#F59E0B' },
+          info:    { border: '#3B82F6', icon: 'info', iconColor: '#3B82F6' },
+        }[type] || { border: '#3B82F6', icon: 'info', iconColor: '#3B82F6' };
+
+        while (this.container.children.length >= this.maxVisible) {
+          this.remove(this.container.firstElementChild.dataset.toastId);
+        }
+
+        const id = 't' + Date.now() + Math.random().toString(36).slice(2, 6);
+        const el = document.createElement('div');
+        el.dataset.toastId = id;
+        el.className = 'toast-item bg-white border-l-4 shadow-lg rounded-lg pl-4 pr-2 py-3 flex items-start gap-3 w-full';
+        el.style.borderLeftColor = config.border;
+        el.innerHTML =
+          '<i data-lucide="' + config.icon + '" class="w-5 h-5 mt-0.5 flex-shrink-0" style="color:' + config.iconColor + '"></i>' +
+          '<p class="text-sm text-gray-700 flex-1 min-w-0 break-words"></p>' +
+          '<button class="toast-close p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0" title="Dismiss">' +
+            '<i data-lucide="x" class="w-4 h-4"></i>' +
+          '</button>';
+        el.querySelector('p').textContent = message;
+        el.querySelector('.toast-close').addEventListener('click', () => this.remove(id));
+        if (window.lucide) lucide.createIcons({ attrs: { class: undefined } }, el);
+
+        const timers = {};
+        el.addEventListener('mouseenter', () => { clearTimeout(timers[id]); el.classList.add('hover-paused'); });
+        el.addEventListener('mouseleave', () => { el.classList.remove('hover-paused'); timers[id] = this._schedule(id, duration); });
+
+        this.container.appendChild(el);
+        timers[id] = this._schedule(id, duration);
+        el.dataset.timerKey = id;
+        el._timers = timers;
+      }
+
+      _schedule(id, duration) {
+        const el = this.container.querySelector('[data-toast-id="' + id + '"]');
+        if (!el) return null;
+        return setTimeout(() => {
+          if (el.classList.contains('hover-paused')) return;
+          this.remove(id);
+        }, duration || this.defaultDuration);
+      }
+
+      remove(id) {
+        const el = this.container.querySelector('[data-toast-id="' + id + '"]');
+        if (!el) return;
+        if (el._timers && el._timers[id]) { clearTimeout(el._timers[id]); delete el._timers[id]; }
+        el.classList.add('toast-out');
+        setTimeout(() => el.remove(), 300);
+      }
+
+      clearAll() {
+        Array.from(this.container.children).forEach(el => this.remove(el.dataset.toastId));
+      }
+    }
+    window.toast = new ToastNotification();
+
+    /* Render server-side messages as toasts on load */
+    (function() {
+      const levelMap = { debug: 'info', info: 'info', success: 'success', warning: 'warning', error: 'error' };
+      (window.__djangoMessages || []).forEach(function(m) {
+        window.toast.show(m.text, levelMap[m.level] || 'info');
+      });
+    })();
+
+    /* HTMX-triggered toasts (views set HX-Trigger: {"app-toast": {...}}) */
+    document.addEventListener('app-toast', function(e) {
+      const d = e.detail || {};
+      if (d.message) window.toast.show(d.message, d.type || 'success');
+    });
+  </script>
+
+  <script>
+    lucide.createIcons();
+    document.body.addEventListener('htmx:afterSwap', function() { lucide.createIcons(); });
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebar-overlay');
-      sidebar.classList.toggle('hidden');
-      sidebar.classList.toggle('flex');
+      const overlay = document.getElementById('mobile-overlay');
+      sidebar.classList.toggle('-translate-x-full');
       overlay.classList.toggle('hidden');
     }
-    document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebar);
-    document.getElementById('sidebar-overlay')?.addEventListener('click', toggleSidebar);
+    function toggleCollapseSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const collapsed = sidebar.classList.toggle('sidebar-collapsed');
+      localStorage.setItem('sbCollapsed', collapsed ? '1' : '0');
+    }
+    /* Restore collapsed state + section states */
+    (function() {
+      const sidebar = document.getElementById('sidebar');
+      if (localStorage.getItem('sbCollapsed') === '1') sidebar.classList.add('sidebar-collapsed');
+      document.querySelectorAll('.section-toggle').forEach(function(btn) {
+        const body = btn.nextElementSibling;
+        const key = 'sbSection:' + btn.dataset.section;
+        if (localStorage.getItem(key) === '0') {
+          body.classList.add('hidden');
+          btn.classList.add('section-collapsed');
+        }
+        btn.addEventListener('click', function() {
+          const collapsed = body.classList.toggle('hidden');
+          btn.classList.toggle('section-collapsed', collapsed);
+          localStorage.setItem(key, collapsed ? '0' : '1');
+        });
+      });
+    })();
   </script>
-  
+
   {% block extra_scripts %}{% endblock %}
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

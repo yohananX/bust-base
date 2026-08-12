@@ -5,16 +5,17 @@
 {% block page_header %}Notification Log{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
-  <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
     <form method="GET" class="flex flex-wrap gap-4 items-end">
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Search</label>
-        <input type="text" name="q" value="{{ q }}" placeholder="Subject or email" class="border border-gray-300 rounded px-3 py-2 text-sm w-48">
+      <div class="min-w-[220px]">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
+        {% include 'components/search_autocomplete.html' with cache_key='notifications' api_path='/school-admin/api/notifications/' placeholder='Subject or email' %}
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Status</label>
-        <select name="status" class="border border-gray-300 rounded px-3 py-2 text-sm">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
+        <select name="status"
+                class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">All</option>
           <option value="QUEUED" {% if filter_status == 'QUEUED' %}selected{% endif %}>Queued</option>
           <option value="SENT" {% if filter_status == 'SENT' %}selected{% endif %}>Sent</option>
@@ -22,54 +23,72 @@
         </select>
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Channel</label>
-        <select name="channel" class="border border-gray-300 rounded px-3 py-2 text-sm">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Channel</label>
+        <select name="channel"
+                class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">All</option>
           <option value="EMAIL" {% if filter_channel == 'EMAIL' %}selected{% endif %}>Email</option>
           <option value="SMS" {% if filter_channel == 'SMS' %}selected{% endif %}>SMS</option>
         </select>
       </div>
-      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
-      <a href="{% url 'school_admin:notification_log' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
+      <div class="flex gap-2">
+        <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+          <i data-lucide="filter" class="w-4 h-4 mr-2"></i>Filter
+        </button>
+        <a href="{% url 'school_admin:notification_log' %}" class="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Clear</a>
+      </div>
     </form>
   </div>
 
-  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
-          <tr class="bg-gray-50 text-left text-gray-600">
-            <th class="px-4 py-3 font-medium">Date</th>
-            <th class="px-4 py-3 font-medium">Recipient</th>
-            <th class="px-4 py-3 font-medium">Channel</th>
-            <th class="px-4 py-3 font-medium">Subject</th>
-            <th class="px-4 py-3 font-medium">Reference</th>
-            <th class="px-4 py-3 font-medium">Status</th>
+          <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
+            <th class="px-5 py-3.5 font-semibold">Date</th>
+            <th class="px-5 py-3.5 font-semibold">Recipient</th>
+            <th class="px-5 py-3.5 font-semibold">Channel</th>
+            <th class="px-5 py-3.5 font-semibold">Subject</th>
+            <th class="px-5 py-3.5 font-semibold">Reference</th>
+            <th class="px-5 py-3.5 font-semibold">Status</th>
           </tr>
         </thead>
         <tbody>
           {% for log in logs %}
-          <tr class="border-t border-gray-100 hover:bg-gray-50">
-            <td class="px-4 py-3 text-gray-500 whitespace-nowrap">{{ log.created_at|date:'M d, Y H:i' }}</td>
-            <td class="px-4 py-3">{{ log.recipient.get_full_name|default:log.recipient.username }}<br><span class="text-xs text-gray-400">{{ log.recipient.email }}</span></td>
-            <td class="px-4 py-3">
-              <span class="status-tag {% if log.channel == 'EMAIL' %}status-tag--active{% endif %}">{{ log.get_channel_display }}</span>
+          <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+            <td class="px-5 py-3.5 text-gray-500 whitespace-nowrap">{{ log.created_at|date:'M d, Y H:i' }}</td>
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                {% include 'components/avatar.html' with name=log.recipient.get_full_name|default:log.recipient.username size='md' %}
+                <div>
+                  <p class="font-medium text-gray-900">{{ log.recipient.get_full_name|default:log.recipient.username }}</p>
+                  <p class="text-xs text-gray-400">{{ log.recipient.email }}</p>
+                </div>
+              </div>
             </td>
-            <td class="px-4 py-3 max-w-xs truncate">{{ log.subject|default:'—' }}</td>
-            <td class="px-4 py-3 text-xs text-gray-500">{{ log.reference|default:'—' }}</td>
-            <td class="px-4 py-3">
+            <td class="px-5 py-3.5">
+              {% include 'components/badge.html' with status='info' text=log.get_channel_display %}
+            </td>
+            <td class="px-5 py-3.5 text-gray-600 max-w-xs truncate">{{ log.subject|default:'—' }}</td>
+            <td class="px-5 py-3.5 text-xs text-gray-500">{{ log.reference|default:'—' }}</td>
+            <td class="px-5 py-3.5">
               {% if log.status == 'SENT' %}
-                <span class="status-tag status-tag--active">Sent</span>
+                {% include 'components/badge.html' with status='success' text=log.get_status_display %}
               {% elif log.status == 'FAILED' %}
-                <span class="status-tag status-tag--fail">Failed</span>
+                {% include 'components/badge.html' with status='danger' text=log.get_status_display %}
               {% else %}
-                <span class="status-tag status-tag--pending">Queued</span>
+                {% include 'components/badge.html' with status='warning' text=log.get_status_display %}
               {% endif %}
             </td>
           </tr>
           {% empty %}
           <tr class="border-t border-gray-100">
-            <td colspan="6" class="px-4 py-8 text-center text-gray-400">No notifications found.</td>
+            <td colspan="6" class="px-5 py-12 text-center">
+              <div class="flex flex-col items-center gap-2 text-gray-400">
+                <i data-lucide="bell" class="w-8 h-8"></i>
+                <p class="text-sm">No notifications found.</p>
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>

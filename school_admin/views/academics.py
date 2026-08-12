@@ -211,12 +211,17 @@ class AssignmentDeleteView(RoleRequiredMixin, View):
         assignment = get_object_or_404(TeacherAssignment, school=school, pk=pk)
         teacher_pk = assignment.teacher_id
         assignment.delete()
-        messages.success(request, 'Assignment removed.')
+        msg = 'Assignment removed.'
+        messages.success(request, msg)
         if request.headers.get('HX-Request'):
+            from core.toasts import attach_toast
             assignments = TeacherAssignment.objects.filter(
                 school=school, teacher_id=teacher_pk
             ).select_related('subject', 'school_class', 'session')
-            return render(request, 'school_admin/_assignment_rows.html', {'assignments': assignments})
+            return attach_toast(
+                render(request, 'school_admin/_assignment_rows.html', {'assignments': assignments}),
+                msg,
+            )
         return redirect('school_admin:assignment_list')
 
 
@@ -233,10 +238,12 @@ class AssignmentAddView(RoleRequiredMixin, View):
         subject_ids = request.POST.getlist('subject_ids')
 
         if not all([teacher_id, class_id, session_id, subject_ids]):
-            messages.error(request, 'Teacher, class, session, and at least one subject are required.')
+            msg = 'Teacher, class, session, and at least one subject are required.'
+            messages.error(request, msg)
             if request.headers.get('HX-Request'):
+                from core.toasts import attach_toast
                 from django.http import HttpResponse
-                return HttpResponse('')
+                return attach_toast(HttpResponse(''), msg, 'error')
             return redirect('school_admin:assignment_list')
 
         teacher = get_object_or_404(User, school=school, pk=teacher_id, role=Roles.TEACHER)
@@ -265,10 +272,14 @@ class AssignmentAddView(RoleRequiredMixin, View):
         messages.success(request, msg)
 
         if request.headers.get('HX-Request'):
+            from core.toasts import attach_toast
             assignments = TeacherAssignment.objects.filter(
                 school=school, teacher=teacher
             ).select_related('subject', 'school_class', 'session')
-            return render(request, 'school_admin/_assignment_rows.html', {'assignments': assignments})
+            return attach_toast(
+                render(request, 'school_admin/_assignment_rows.html', {'assignments': assignments}),
+                msg,
+            )
         return redirect('school_admin:assignment_list')
 
 

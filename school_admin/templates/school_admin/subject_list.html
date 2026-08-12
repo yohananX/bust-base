@@ -7,48 +7,79 @@
 {% block content %}
 <div class="max-w-5xl mx-auto">
   <!-- Filters -->
-  <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
-    <form method="GET" class="flex gap-4 items-end">
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Search</label>
-        <input type="text" name="q" value="{{ q }}" placeholder="Subject name or code" class="border border-gray-300 rounded px-3 py-2 text-sm w-64">
+  <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div class="flex-1 min-w-52">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
+        {% include 'components/search_autocomplete.html' with cache_key='subjects' api_path='/school-admin/api/subjects/' item_url='/school-admin/subjects/{id}/edit/' placeholder='Subject name or code' %}
       </div>
-      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Search</button>
-      <a href="{% url 'school_admin:subject_list' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
+      <button type="submit"
+              class="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors">
+        Search
+      </button>
+      <a href="{% url 'school_admin:subject_list' %}"
+         class="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Clear</a>
     </form>
   </div>
 
   <!-- Header and Add Button -->
   <div class="flex justify-between items-center mb-4">
-    <h2 class="text-lg font-[var(--font-display)] font-semibold">Subjects</h2>
-    <a href="{% url 'school_admin:subject_create' %}" class="bg-[#1B2430] text-white px-4 py-2 rounded text-sm hover:bg-[#2a3648] transition-colors">+ Add Subject</a>
+    <h2 class="text-lg font-display font-semibold text-gray-900">Subjects</h2>
+    <a href="{% url 'school_admin:subject_create' %}"
+       class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+      <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Subject
+    </a>
   </div>
 
   <!-- Subject Table -->
-  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
     <table class="w-full text-sm">
       <thead>
-        <tr class="bg-gray-50 text-left text-gray-600">
-          <th class="px-4 py-3 font-medium">Name</th>
-          <th class="px-4 py-3 font-medium">Code</th>
-          <th class="px-4 py-3 font-medium">Pass Mark</th>
-          <th class="px-4 py-3 font-medium">Actions</th>
+        <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
+          <th class="px-5 py-3.5 font-semibold">Name</th>
+          <th class="px-5 py-3.5 font-semibold">Code</th>
+          <th class="px-5 py-3.5 font-semibold">Pass Mark</th>
+          <th class="px-5 py-3.5 font-semibold text-right">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for subj in subjects %}
-        <tr class="border-t border-gray-100 hover:bg-gray-50">
-          <td class="px-4 py-3 font-medium">{{ subj.name }}</td>
-          <td class="px-4 py-3 text-gray-600">{{ subj.code }}</td>
-          <td class="px-4 py-3">{{ subj.pass_mark }}%</td>
-          <td class="px-4 py-3 space-x-3">
-            <a href="{% url 'school_admin:subject_edit' subj.pk %}" class="text-amber-600 hover:underline">Edit</a>
-            <a href="{% url 'school_admin:subject_delete' subj.pk %}" class="text-red-600 hover:underline">Delete</a>
+        <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+          <td class="px-5 py-3.5">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="book-open" class="w-4.5 h-4.5"></i>
+              </div>
+              <span class="font-medium text-gray-900">{{ subj.name }}</span>
+            </div>
+          </td>
+          <td class="px-5 py-3.5">
+            <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium">{{ subj.code }}</span>
+          </td>
+          <td class="px-5 py-3.5 text-gray-700">{{ subj.pass_mark }}%</td>
+          <td class="px-5 py-3.5">
+            <div class="flex items-center justify-end gap-1">
+              <a href="{% url 'school_admin:subject_edit' subj.pk %}"
+                 title="Edit"
+                 class="p-2 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </a>
+              <a href="{% url 'school_admin:subject_delete' subj.pk %}"
+                 title="Delete"
+                 class="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </a>
+            </div>
           </td>
         </tr>
         {% empty %}
         <tr class="border-t border-gray-100">
-          <td colspan="4" class="px-4 py-8 text-center text-gray-400">No subjects found.</td>
+          <td colspan="4" class="px-5 py-12 text-center">
+            <div class="flex flex-col items-center gap-2 text-gray-400">
+              <i data-lucide="book-open" class="w-8 h-8"></i>
+              <p class="text-sm">No subjects found.</p>
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

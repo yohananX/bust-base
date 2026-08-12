@@ -1,18 +1,259 @@
 {% extends 'base.html' %}
+{% block title %}My Dashboard — Grace House{% endblock %}
+{% block page_header %}My Dashboard{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-display text-[#1B2430] mb-6">My Assignments</h1>
-<div class="grid gap-4">
-  {% for a in assignments %}
-  <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-[#B8863A]">
-    <h2 class="font-semibold text-lg">{{ a.subject.name }}</h2>
-    <p class="text-sm text-gray-600">{{ a.school_class.name }} — {{ a.session.name }}</p>
-    <a href="{% url 'score_grid' a.pk %}" class="inline-block mt-2 text-[#B8863A] hover:underline font-medium">Enter Scores →</a>
+<div class="max-w-7xl mx-auto space-y-6">
+
+  {# ── KPI ROW ── #}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+    {# Subjects #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-violet-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">My Subjects</p>
+          <p class="text-3xl font-bold text-gray-900">{{ subject_count|default:"0" }}</p>
+          <p class="text-xs text-gray-400 mt-1">Current session</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="book-open" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
+
+    {# Classes #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-sky-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Classes</p>
+          <p class="text-3xl font-bold text-gray-900">{{ class_count|default:"0" }}</p>
+          <p class="text-xs text-gray-400 mt-1">You teach</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="building-2" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
+
+    {# Students #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Students</p>
+          <p class="text-3xl font-bold text-gray-900">{{ student_count|default:"0" }}</p>
+          <p class="text-xs text-gray-400 mt-1">Across my classes</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="users" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
+
+    {# Scores entered #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-amber-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Scores Entered</p>
+          <p class="text-3xl font-bold text-gray-900">{{ scores_entered|default:"0" }}</p>
+          <p class="text-xs text-gray-400 mt-1">By you</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="calculator" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
   </div>
-  {% empty %}
-  <p class="text-gray-500">No assignments for the current session.</p>
-  {% endfor %}
+
+  {# ── ASSIGNMENTS BANNER ── #}
+  {% if assignments %}
+    <div class="bg-sky-50 border border-sky-100 rounded-2xl p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="clipboard-check" class="w-5 h-5 text-sky-600"></i>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-sky-800">{{ assignments|length }} teaching assignment{{ assignments|length|pluralize }} this session</p>
+          <p class="text-xs text-sky-600">Pick one below to start entering scores.</p>
+        </div>
+      </div>
+      <a href="{% url 'score_grid' assignments.0.pk %}" class="text-sm font-medium text-sky-700 hover:text-sky-900 hover:underline shrink-0">Enter Scores</a>
+    </div>
+  {% else %}
+    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-amber-800">No assignments for the current session</p>
+          <p class="text-xs text-amber-600">Contact the school admin to set up your teaching assignments.</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {# ── QUICK ACTIONS ── #}
+  <div>
+    <h3 class="text-sm font-semibold text-gray-800 mb-3">Quick Actions</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      {% if assignments %}
+      <a href="{% url 'score_grid' assignments.0.pk %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-violet-200 hover:bg-violet-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:bg-violet-100 transition-colors">
+          <i data-lucide="calculator" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-violet-700">Enter Scores</span>
+      </a>
+      {% endif %}
+      <a href="/payroll/payslips/" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-sky-200 hover:bg-sky-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:bg-sky-100 transition-colors">
+          <i data-lucide="wallet" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-sky-700">View My Payslips</span>
+      </a>
+    </div>
+  </div>
+
+  {# ── CHART + ASSIGNMENTS ── #}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    {# Subject averages chart #}
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">My Subject Averages</h3>
+      {% if subject_averages %}
+      <div class="h-64 relative">
+        <canvas id="subjectChart"></canvas>
+      </div>
+      {% else %}
+      <div class="py-16 text-center">
+        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="bar-chart-3" class="w-5 h-5 text-gray-400"></i></div>
+        <p class="text-sm text-gray-400">No complete scores for the current term yet.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Assignments list #}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <h3 class="text-sm font-semibold text-gray-800">My Assignments</h3>
+      </div>
+      <div class="divide-y divide-gray-50">
+        {% for a in assignments %}
+        <a href="{% url 'score_grid' a.pk %}" class="flex items-center justify-between px-6 py-4 hover:bg-gray-50/70 transition-colors group">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-100 flex items-center justify-center flex-shrink-0 transition-colors">
+              <i data-lucide="book-open" class="w-4 h-4"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="font-medium text-sm text-gray-900 truncate">{{ a.subject.name }}</p>
+              <p class="text-xs text-gray-400">{{ a.school_class.name }} — {{ a.session.name }}</p>
+            </div>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400 group-hover:text-primary transition-colors flex-shrink-0"></i>
+        </a>
+        {% empty %}
+        <div class="py-12 text-center">
+          <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="book-open" class="w-5 h-5 text-gray-400"></i></div>
+          <p class="text-sm text-gray-400">No assignments for the current session.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# ── RECENT SCORES TABLE ── #}
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-800">Recent Scores</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Student</th>
+            <th class="px-6 py-3 font-medium">Class</th>
+            <th class="px-6 py-3 font-medium">Subject</th>
+            <th class="px-6 py-3 font-medium text-right">Total</th>
+            <th class="px-6 py-3 font-medium">Status</th>
+            <th class="px-6 py-3 font-medium">Updated</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for s in recent_scores %}
+          <tr class="hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5">
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold mr-2.5 flex-shrink-0">
+                  {{ s.student_name|first }}
+                </div>
+                <span class="text-sm font-medium text-gray-900">{{ s.student_name }}</span>
+              </div>
+            </td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ s.class_name|default:"—" }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ s.subject }}</td>
+            <td class="px-6 py-3.5 text-sm font-semibold text-gray-900 text-right tabular-nums">{{ s.total|default:"—" }}</td>
+            <td class="px-6 py-3.5">
+              {% if s.complete %}
+                {% if s.passed %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></span> Pass
+                </span>
+                {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-100">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1"></span> Fail
+                </span>
+                {% endif %}
+              {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-50 text-gray-500 border border-gray-100">Incomplete</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-3.5 text-sm text-gray-500">{{ s.updated_at|date:"M d, Y" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="py-10 text-center text-sm text-gray-400">No scores entered yet</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
-<div class="mt-8 pt-4 border-t">
-  <a href="/payroll/payslips/" class="text-[#B8863A] hover:underline">View My Payslips →</a>
-</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+  const labels = [{% for l in subject_labels %}'{{ l|escapejs }}',{% endfor %}];
+  const values = [{% for v in subject_values %}{{ v }},{% endfor %}];
+  const el = document.getElementById('subjectChart');
+  if (!el || !labels.length) return;
+  new Chart(el.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Average',
+        data: values,
+        backgroundColor: '#7C3AED',
+        borderRadius: 6,
+        barThickness: 28,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#F3F4F6', drawBorder: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } }
+      }
+    }
+  });
+})();
+</script>
 {% endblock %}

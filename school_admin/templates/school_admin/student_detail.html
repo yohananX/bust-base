@@ -5,81 +5,90 @@
 {% block page_header %}{{ student.user.get_full_name|default:student.user.username }}{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
-  <!-- Edit Button -->
-  <div class="flex justify-end gap-2 mb-4">
-    <a href="{% url 'school_admin:student_password_change' student.pk %}" class="border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-50 transition-colors">Change Password</a>
-    <a href="{% url 'school_admin:student_edit' student.pk %}" class="bg-[#1B2430] text-white px-4 py-2 rounded text-sm hover:bg-[#2a3648] transition-colors">Edit Student</a>
+<div class="max-w-7xl mx-auto space-y-6">
+  {# ── Header actions ── #}
+  <div class="flex justify-end gap-2">
+    <a href="{% url 'school_admin:student_password_change' student.pk %}" class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+      <i data-lucide="key-round" class="w-4 h-4 mr-2 text-gray-400"></i>Change Password
+    </a>
+    <a href="{% url 'school_admin:student_edit' student.pk %}" class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+      <i data-lucide="pencil" class="w-4 h-4 mr-2"></i>Edit Student
+    </a>
   </div>
 
-  <!-- Student Info -->
-  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100 mb-6">
+  {# ── Student Info ── #}
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <div class="flex items-center gap-4 mb-5">
+      {% include "components/avatar.html" with name=student.user.get_full_name size="lg" %}
+      <div>
+        <h2 class="text-base font-semibold text-gray-900">{{ student.user.get_full_name|default:student.user.username }}</h2>
+        <p class="text-sm text-gray-500">{{ student.user.email|default:'No email on file' }}</p>
+      </div>
+    </div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div>
         <span class="text-xs text-gray-500 block">Admission Number</span>
-        <span class="font-medium">{{ student.admission_number }}</span>
+        <span class="font-medium text-gray-900">{{ student.admission_number }}</span>
       </div>
       <div>
         <span class="text-xs text-gray-500 block">Date of Birth</span>
-        <span class="font-medium">{{ student.date_of_birth|date:'M d, Y' }}</span>
+        <span class="font-medium text-gray-900">{{ student.date_of_birth|date:'M d, Y' }}</span>
       </div>
       <div>
         <span class="text-xs text-gray-500 block">Gender</span>
-        <span class="font-medium">{{ student.get_gender_display }}</span>
+        <span class="font-medium text-gray-900 capitalize">{{ student.get_gender_display }}</span>
       </div>
       <div>
         <span class="text-xs text-gray-500 block">Status</span>
-        {% if student.status == 'ACTIVE' %}
-          <span class="status-tag status-tag--active">{{ student.get_status_display }}</span>
-        {% else %}
-          <span class="status-tag">{{ student.get_status_display }}</span>
-        {% endif %}
+        {% if student.status == 'ACTIVE' %}{% include "components/badge.html" with status="success" text=student.get_status_display %}
+        {% elif student.status == 'SUSPENDED' %}{% include "components/badge.html" with status="danger" text=student.get_status_display %}
+        {% elif student.status == 'GRADUATED' %}{% include "components/badge.html" with status="info" text=student.get_status_display %}
+        {% else %}{% include "components/badge.html" with status="warning" text=student.get_status_display %}{% endif %}
       </div>
     </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Enrollment History -->
-    <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
-      <h3 class="font-[var(--font-display)] font-semibold text-lg mb-4">Enrollment History</h3>
+    {# ── Enrollment History ── #}
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">Enrollment History</h3>
       {% if enrollments %}
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-gray-600 border-b">
-            <th class="pb-2">Session</th>
-            <th class="pb-2">Class</th>
-            <th class="pb-2">Current</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for e in enrollments %}
-          <tr class="border-t border-gray-50">
-            <td class="py-2">{{ e.session.name }}</td>
-            <td class="py-2">{{ e.school_class.name }}</td>
-            <td class="py-2">
-              {% if e.is_current %}
-                <span class="status-tag status-tag--active">Yes</span>
-              {% else %}
-                <span class="text-gray-400">No</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+              <th class="px-4 py-2.5 font-medium">Session</th>
+              <th class="px-4 py-2.5 font-medium">Class</th>
+              <th class="px-4 py-2.5 font-medium">Current</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            {% for e in enrollments %}
+            <tr class="hover:bg-gray-50/50">
+              <td class="px-4 py-3 text-gray-900">{{ e.session.name }}</td>
+              <td class="px-4 py-3 text-gray-600">{{ e.school_class.name }}</td>
+              <td class="px-4 py-3">
+                {% if e.is_current %}{% include "components/badge.html" with status="success" text="Yes" %}
+                {% else %}<span class="text-gray-400">No</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       {% else %}
       <p class="text-gray-400 text-sm">No enrollment history.</p>
       {% endif %}
 
-      <!-- Change Class Form -->
-      <div class="mt-4 pt-4 border-t border-gray-100">
-        <h4 class="text-sm font-semibold text-gray-700 mb-2">Change Current Class</h4>
+      {# ── Change Class Form ── #}
+      <div class="mt-5 pt-5 border-t border-gray-100">
+        <h4 class="text-sm font-semibold text-gray-700 mb-3">Change Current Class</h4>
         <form method="post" action="{% url 'school_admin:student_change_class' student.pk %}" class="flex flex-wrap items-end gap-3">
           {% csrf_token %}
           <input type="hidden" name="student_id" value="{{ student.pk }}">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">New Class</label>
-            <select name="class_id" required class="text-sm border border-gray-300 rounded px-3 py-2 bg-white min-w-[180px]">
+            <label class="block text-xs font-medium text-gray-500 mb-1">New Class</label>
+            <select name="class_id" required class="text-sm px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all min-w-[180px]">
               <option value="">— Select —</option>
               {% for c in classes %}
                 <option value="{{ c.pk }}">{{ c.name }}</option>
@@ -87,67 +96,66 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Session</label>
-            <select name="session_id" required class="text-sm border border-gray-300 rounded px-3 py-2 bg-white min-w-[180px]">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Session</label>
+            <select name="session_id" required class="text-sm px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all min-w-[180px]">
               <option value="">— Select —</option>
               {% for s in sessions %}
                 <option value="{{ s.pk }}">{{ s.name }}</option>
               {% endfor %}
             </select>
           </div>
-          <button type="submit" class="bg-amber-600 text-white text-sm px-4 py-2 rounded hover:bg-amber-700 transition-colors">Change Class</button>
+          <button type="submit" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">Change Class</button>
         </form>
       </div>
     </div>
 
-    <!-- Guardian Links -->
-    <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100">
-      <h3 class="font-[var(--font-display)] font-semibold text-lg mb-4">Guardians</h3>
+    {# ── Guardian Links ── #}
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">Guardians</h3>
       {% if guardian_links %}
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-gray-600 border-b">
-            <th class="pb-2">Name</th>
-            <th class="pb-2">Relationship</th>
-            <th class="pb-2">Primary</th>
-            <th class="pb-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for g in guardian_links %}
-          <tr class="border-t border-gray-50">
-            <td class="py-2">{{ g.guardian.get_full_name|default:g.guardian.username }}</td>
-            <td class="py-2">{{ g.get_relationship_display }}</td>
-            <td class="py-2">
-              {% if g.is_primary_contact %}
-                <span class="status-tag status-tag--active">Yes</span>
-              {% else %}
-                <span class="text-gray-400">No</span>
-              {% endif %}
-            </td>
-            <td class="py-2">
-              <form method="post" action="{% url 'school_admin:student_delete_guardian' g.pk %}" onsubmit="return confirm('Remove this guardian link?')">
-                {% csrf_token %}
-                <button type="submit" class="text-red-600 hover:text-red-800 text-xs underline">Remove</button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+              <th class="px-4 py-2.5 font-medium">Name</th>
+              <th class="px-4 py-2.5 font-medium">Relationship</th>
+              <th class="px-4 py-2.5 font-medium">Primary</th>
+              <th class="px-4 py-2.5 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            {% for g in guardian_links %}
+            <tr class="hover:bg-gray-50/50">
+              <td class="px-4 py-3 text-gray-900">{{ g.guardian.get_full_name|default:g.guardian.username }}</td>
+              <td class="px-4 py-3 text-gray-600">{{ g.get_relationship_display }}</td>
+              <td class="px-4 py-3">
+                {% if g.is_primary_contact %}{% include "components/badge.html" with status="success" text="Yes" %}
+                {% else %}<span class="text-gray-400">No</span>{% endif %}
+              </td>
+              <td class="px-4 py-3 text-right">
+                <form method="post" action="{% url 'school_admin:student_delete_guardian' g.pk %}" onsubmit="return confirm('Remove this guardian link?')" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="Remove"><i data-lucide="user-x" class="w-4 h-4"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       {% else %}
       <p class="text-gray-400 text-sm">No guardians linked.</p>
       {% endif %}
 
-      <!-- Add Guardian Form -->
-      <div class="mt-4 pt-4 border-t border-gray-100">
-        <h4 class="text-sm font-semibold text-gray-700 mb-2">Link a Guardian</h4>
+      {# ── Link a Guardian Form ── #}
+      <div class="mt-5 pt-5 border-t border-gray-100">
+        <h4 class="text-sm font-semibold text-gray-700 mb-3">Link a Guardian</h4>
         <form method="post" action="{% url 'school_admin:student_add_guardian' student.pk %}" class="flex flex-wrap items-end gap-3">
           {% csrf_token %}
           <input type="hidden" name="student_id" value="{{ student.pk }}">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Parent</label>
-            <select name="guardian_id" required class="text-sm border border-gray-300 rounded px-3 py-2 bg-white min-w-[180px]">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Parent</label>
+            <select name="guardian_id" required class="text-sm px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all min-w-[180px]">
               <option value="">— Select —</option>
               {% for p in parents %}
                 <option value="{{ p.pk }}">{{ p.get_full_name|default:p.username }} ({{ p.email }})</option>
@@ -155,58 +163,56 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Relationship</label>
-            <select name="relationship" required class="text-sm border border-gray-300 rounded px-3 py-2 bg-white">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Relationship</label>
+            <select name="relationship" required class="text-sm px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
               <option value="FATHER">Father</option>
               <option value="MOTHER">Mother</option>
               <option value="GUARDIAN">Guardian</option>
               <option value="OTHER">Other</option>
             </select>
           </div>
-          <div class="flex items-center gap-1 pb-1">
-            <input type="checkbox" name="is_primary_contact" id="is_primary" value="on" class="rounded border-gray-300">
+          <div class="flex items-center gap-1.5 pb-2.5">
+            <input type="checkbox" name="is_primary_contact" id="is_primary" value="on" class="rounded border-gray-300 text-primary focus:ring-primary">
             <label for="is_primary" class="text-xs text-gray-600">Primary</label>
           </div>
-          <button type="submit" class="bg-[#1B2430] text-white text-sm px-4 py-2 rounded hover:bg-[#2a3648] transition-colors">Link Guardian</button>
+          <button type="submit" class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">Link Guardian</button>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- Invoices -->
-  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100 mt-6">
-    <h3 class="font-[var(--font-display)] font-semibold text-lg mb-4">Invoice History</h3>
+  {# ── Invoice History ── #}
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <h3 class="text-sm font-semibold text-gray-800 mb-4">Invoice History</h3>
     {% if invoices %}
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-left text-gray-600 border-b">
-          <th class="pb-2">Term</th>
-          <th class="pb-2">Total</th>
-          <th class="pb-2">Paid</th>
-          <th class="pb-2">Balance</th>
-          <th class="pb-2">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for inv in invoices %}
-        <tr class="border-t border-gray-50">
-          <td class="py-2">{{ inv.term.name }}</td>
-          <td class="py-2">NGN {{ inv.total_amount|floatformat:2 }}</td>
-          <td class="py-2">NGN {{ inv.amount_paid|floatformat:2 }}</td>
-          <td class="py-2">NGN {{ inv.balance|floatformat:2 }}</td>
-          <td class="py-2">
-            {% if inv.status == 'PAID' %}
-              <span class="status-stamp status-stamp--paid">{{ inv.status }}</span>
-            {% elif inv.status == 'PARTIAL' %}
-              <span class="status-tag status-tag--pending">{{ inv.status }}</span>
-            {% else %}
-              <span class="status-tag">{{ inv.status }}</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-4 py-2.5 font-medium">Term</th>
+            <th class="px-4 py-2.5 font-medium">Total</th>
+            <th class="px-4 py-2.5 font-medium">Paid</th>
+            <th class="px-4 py-2.5 font-medium">Balance</th>
+            <th class="px-4 py-2.5 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for inv in invoices %}
+          <tr class="hover:bg-gray-50/50">
+            <td class="px-4 py-3 text-gray-900">{{ inv.term.name }}</td>
+            <td class="px-4 py-3 text-gray-600">NGN {{ inv.total_amount|floatformat:2 }}</td>
+            <td class="px-4 py-3 text-gray-600">NGN {{ inv.amount_paid|floatformat:2 }}</td>
+            <td class="px-4 py-3 text-gray-900 font-medium">NGN {{ inv.balance|floatformat:2 }}</td>
+            <td class="px-4 py-3">
+              {% if inv.status == 'PAID' %}{% include "components/badge.html" with status="success" text=inv.status %}
+              {% elif inv.status == 'PARTIAL' %}{% include "components/badge.html" with status="warning" text=inv.status %}
+              {% else %}{% include "components/badge.html" with status="danger" text=inv.status %}{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% else %}
     <p class="text-gray-400 text-sm">No invoices found.</p>
     {% endif %}

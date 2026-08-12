@@ -1,0 +1,43 @@
+{
+  "agent": "executor",
+  "task": "restyle-6-templates-ia-academy",
+  "status": "complete",
+  "timestamp": "2026-08-11T00:00:00Z",
+  "files_changed": [
+    "finance/templates/finance/report.html",
+    "templates/fees/payment_return.html",
+    "school_admin/templates/school_admin/project_list.html",
+    "school_admin/templates/school_admin/project_detail.html",
+    "school_admin/templates/school_admin/notification_log.html",
+    "school_admin/templates/school_admin/staff/staff_form.html"
+  ],
+  "pages_verified": {
+    "finance-report": "/finance/report/ -> 200, lucide=True",
+    "fees-payment-return": "/fees/return/?invoice_id=1&reference=probe-ref-2 -> 200, lucide=True",
+    "notification-log": "/school-admin/notifications/ -> 200, lucide=True",
+    "project-detail": "/school-admin/finance/projects/1/ -> 200, lucide=True",
+    "staff-form-new": "/school-admin/staff/new/ -> 200, lucide=True",
+    "staff-form-edit": "/school-admin/staff/2/edit/ -> 200, lucide=True",
+    "project-list": "template renders with lucide; view GET 500s due to PRE-EXISTING view bug (Project.STATUS_CHOICES AttributeError at school_admin/views/finance.py:31) - present since commit 3123961, template never reached"
+  },
+  "context_surprises": [
+    "templates/fees/payment_return.html lives in the GLOBAL templates dir (templates/fees/), not fees/templates/ - confirmed via fees/views.py PaymentReturnView render call",
+    "finance/report.html is a STANDALONE HTML page (no extends) - added its own Tailwind CDN + lucide setup mirroring base.html, kept {% trans %} and finance:financial-report url",
+    "school_admin/views/finance.py ProjectListView references Project.STATUS_CHOICES which does not exist (model only defines Status.TextChoices) - pre-existing AttributeError, page 500s before template renders. NOT fixed (views out of scope). Template verified via direct render with Project.Status.choices",
+    "payment_return.html keeps &pound; currency to stay consistent with the unmodifiable htmx partial (templates/fees/partials/payment_status.html which also uses &pound;)",
+    "project_list view bug means status filter select never rendered in production - template still built to iterate status_choices per original markup"
+  ],
+  "preserved": [
+    "all {% block %} names",
+    "all form POST field names (first_name, last_name, username, email, phone_number, role, password)",
+    "all {% url 'school_admin:...' %}, {% url 'fees:...' %}, {% url 'finance:...' %} refs",
+    "all htmx attrs (id=payment-status, hx-get, hx-trigger every 2s / revealed delay:120s, hx-swap)",
+    "csrf tokens, hidden inputs, floatformat usage, {% trans %} tags"
+  ],
+  "verification": "Ran `python manage.py test school_admin.probe_fin2_tests` - 7/7 OK (probe file deleted after)",
+  "probe_file_deleted": true,
+  "next_steps": [
+    "Optionally fix school_admin/views/finance.py line 31 (Project.STATUS_CHOICES -> Project.Status.choices) as a separate non-template change so /school-admin/finance/projects/ renders",
+    "commit via git-wrangler"
+  ]
+}

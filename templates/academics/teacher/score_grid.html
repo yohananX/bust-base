@@ -1,92 +1,105 @@
 {% extends 'base.html' %}
+{% block title %}{{ assignment.subject.name }} — Scores{% endblock %}
+{% block page_header %}{{ assignment.subject.name }} — Scores{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-  <div>
-    <h1 class="text-2xl font-display text-[#1B2430]">{{ assignment.subject.name }}</h1>
-    <p class="text-sm text-gray-600">{{ assignment.school_class.name }} — {{ assignment.session.name }} — {{ term.name }}</p>
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <p class="text-sm text-gray-500">{{ assignment.school_class.name }} — {{ assignment.session.name }} — {{ term.name }}</p>
+    <a href="{% url 'assignment_list' %}" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
+      <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to Assignments
+    </a>
   </div>
-  <a href="{% url 'assignment_list' %}" class="text-sm text-[#B8863A] hover:underline">← Back to Assignments</a>
-</div>
 
-<div class="overflow-x-auto bg-white rounded-lg shadow-sm">
-  <table class="w-full text-sm">
-    <thead>
-      <tr class="bg-[#1B2430] text-white">
-        <th class="px-3 py-2 text-left font-medium w-12">S/N</th>
-        <th class="px-3 py-2 text-left font-medium">Student Name</th>
-        <th class="px-3 py-2 text-center font-medium w-20">Test 1<br><span class="text-[10px] font-normal opacity-70">/10</span></th>
-        <th class="px-3 py-2 text-center font-medium w-20">Test 2<br><span class="text-[10px] font-normal opacity-70">/10</span></th>
-        <th class="px-3 py-2 text-center font-medium w-20">Test 3<br><span class="text-[10px] font-normal opacity-70">/10</span></th>
-        <th class="px-3 py-2 text-center font-medium w-20">Exam<br><span class="text-[10px] font-normal opacity-70">/70</span></th>
-        <th class="px-3 py-2 text-center font-medium w-16">Total<br><span class="text-[10px] font-normal opacity-70">/100</span></th>
-        <th class="px-3 py-2 text-center font-medium w-16">Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for score in scores %}
-      <tr class="border-t border-gray-100 hover:bg-gray-50">
-        <td class="px-3 py-2 text-gray-500">{{ forloop.counter }}</td>
-        <td class="px-3 py-2 font-medium">{{ score.student.user.get_full_name|default:score.student.user.username }}</td>
-        
-        {# Test 1 #}
-        <td class="px-1 py-1 text-center">
-          <input type="number" min="0" max="10" value="{{ score.test_1|default:'' }}"
-                 hx-post="{% url 'score_update' assignment.pk score.pk %}"
-                 hx-trigger="blur" hx-target="closest td"
-                 name="test_1"
-                 class="w-14 text-center border border-gray-300 rounded px-1 py-1 tabular-nums text-sm focus:border-[#B8863A] focus:ring-1 focus:ring-[#B8863A] outline-none">
-        </td>
-        
-        {# Test 2 #}
-        <td class="px-1 py-1 text-center">
-          <input type="number" min="0" max="10" value="{{ score.test_2|default:'' }}"
-                 hx-post="{% url 'score_update' assignment.pk score.pk %}"
-                 hx-trigger="blur" hx-target="closest td"
-                 name="test_2"
-                 class="w-14 text-center border border-gray-300 rounded px-1 py-1 tabular-nums text-sm focus:border-[#B8863A] focus:ring-1 focus:ring-[#B8863A] outline-none">
-        </td>
-        
-        {# Test 3 #}
-        <td class="px-1 py-1 text-center">
-          <input type="number" min="0" max="10" value="{{ score.test_3|default:'' }}"
-                 hx-post="{% url 'score_update' assignment.pk score.pk %}"
-                 hx-trigger="blur" hx-target="closest td"
-                 name="test_3"
-                 class="w-14 text-center border border-gray-300 rounded px-1 py-1 tabular-nums text-sm focus:border-[#B8863A] focus:ring-1 focus:ring-[#B8863A] outline-none">
-        </td>
-        
-        {# Exam #}
-        <td class="px-1 py-1 text-center">
-          <input type="number" min="0" max="70" value="{{ score.exam_score|default:'' }}"
-                 hx-post="{% url 'score_update' assignment.pk score.pk %}"
-                 hx-trigger="blur" hx-target="closest td"
-                 name="exam_score"
-                 class="w-14 text-center border border-gray-300 rounded px-1 py-1 tabular-nums text-sm focus:border-[#B8863A] focus:ring-1 focus:ring-[#B8863A] outline-none">
-        </td>
-        
-        {# Total #}
-        <td id="total-{{ score.pk }}" class="px-3 py-2 text-center tabular-nums font-medium">
-          <span>{{ score.total_score }}</span>
-        </td>
-        
-        {# Status #}
-        <td id="status-{{ score.pk }}" class="px-3 py-2 text-center">
-          {% if score.passed is None %}
-            <span class="status-tag status-tag--pending">Pending</span>
-          {% elif score.passed %}
-            <span class="status-stamp status-stamp--pass">Pass</span>
-          {% else %}
-            <span class="status-tag status-tag--fail">Fail</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="8" class="px-3 py-8 text-center text-gray-500">No students enrolled in this class.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
+            <th class="px-5 py-3.5 font-semibold w-12">S/N</th>
+            <th class="px-5 py-3.5 font-semibold">Student Name</th>
+            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 1<span class="block text-[10px] font-normal text-gray-400">/10</span></th>
+            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 2<span class="block text-[10px] font-normal text-gray-400">/10</span></th>
+            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 3<span class="block text-[10px] font-normal text-gray-400">/10</span></th>
+            <th class="px-5 py-3.5 font-semibold text-center w-20">Exam<span class="block text-[10px] font-normal text-gray-400">/70</span></th>
+            <th class="px-5 py-3.5 font-semibold text-center w-16">Total<span class="block text-[10px] font-normal text-gray-400">/100</span></th>
+            <th class="px-5 py-3.5 font-semibold text-center w-16">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for score in scores %}
+          <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+            <td class="px-5 py-3.5 text-gray-500">{{ forloop.counter }}</td>
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                {% include 'components/avatar.html' with name=score.student.user.get_full_name|default:score.student.user.username size='sm' %}
+                <span class="font-medium text-gray-900">{{ score.student.user.get_full_name|default:score.student.user.username }}</span>
+              </div>
+            </td>
+
+            {# Test 1 #}
+            <td class="px-1 py-1 text-center">
+              <input type="number" min="0" max="10" value="{{ score.test_1|default:'' }}"
+                     hx-post="{% url 'score_update' assignment.pk score.pk %}"
+                     hx-trigger="blur" hx-target="closest td"
+                     name="test_1"
+                     class="w-14 text-center bg-gray-50 border border-gray-200 rounded-lg px-1 py-1.5 tabular-nums text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </td>
+
+            {# Test 2 #}
+            <td class="px-1 py-1 text-center">
+              <input type="number" min="0" max="10" value="{{ score.test_2|default:'' }}"
+                     hx-post="{% url 'score_update' assignment.pk score.pk %}"
+                     hx-trigger="blur" hx-target="closest td"
+                     name="test_2"
+                     class="w-14 text-center bg-gray-50 border border-gray-200 rounded-lg px-1 py-1.5 tabular-nums text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </td>
+
+            {# Test 3 #}
+            <td class="px-1 py-1 text-center">
+              <input type="number" min="0" max="10" value="{{ score.test_3|default:'' }}"
+                     hx-post="{% url 'score_update' assignment.pk score.pk %}"
+                     hx-trigger="blur" hx-target="closest td"
+                     name="test_3"
+                     class="w-14 text-center bg-gray-50 border border-gray-200 rounded-lg px-1 py-1.5 tabular-nums text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </td>
+
+            {# Exam #}
+            <td class="px-1 py-1 text-center">
+              <input type="number" min="0" max="70" value="{{ score.exam_score|default:'' }}"
+                     hx-post="{% url 'score_update' assignment.pk score.pk %}"
+                     hx-trigger="blur" hx-target="closest td"
+                     name="exam_score"
+                     class="w-14 text-center bg-gray-50 border border-gray-200 rounded-lg px-1 py-1.5 tabular-nums text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </td>
+
+            {# Total #}
+            <td id="total-{{ score.pk }}" class="px-5 py-3.5 text-center tabular-nums font-semibold text-gray-900">
+              <span>{{ score.total_score }}</span>
+            </td>
+
+            {# Status #}
+            <td id="status-{{ score.pk }}" class="px-5 py-3.5 text-center">
+              {% if score.passed is None %}
+                {% include 'components/badge.html' with status='info' text='Pending' %}
+              {% elif score.passed %}
+                {% include 'components/badge.html' with status='success' text='Pass' %}
+              {% else %}
+                {% include 'components/badge.html' with status='danger' text='Fail' %}
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="px-5 py-12 text-center">
+              <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="users" class="w-5 h-5 text-gray-400"></i></div>
+              <p class="text-sm text-gray-400">No students enrolled in this class.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 {% endblock %}
 

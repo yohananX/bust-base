@@ -1,92 +1,286 @@
 {% extends 'base.html' %}
+{% block title %}My Dashboard — Grace House{% endblock %}
+{% block page_header %}My Dashboard{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-display text-[#1B2430] mb-6">My Dashboard</h1>
+<div class="max-w-7xl mx-auto space-y-6">
 
-{% if enrollment %}
-<div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-  <h2 class="font-semibold text-lg mb-2">Current Enrollment</h2>
-  <p class="text-sm text-gray-600">Class: <span class="font-medium">{{ enrollment.school_class.name }}</span></p>
-  <p class="text-sm text-gray-600">Session: {{ enrollment.session.name }}</p>
-</div>
-{% endif %}
+  {# ── KPI ROW ── #}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-  <div class="bg-white rounded-lg shadow-sm p-4">
-    <h2 class="font-semibold text-lg mb-3">Invoices</h2>
-    {% if invoices %}
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-left text-gray-500 border-b">
-          <th class="pb-2">Term</th>
-          <th class="pb-2 tabular-nums">Amount</th>
-          <th class="pb-2 tabular-nums">Balance</th>
-          <th class="pb-2">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for invoice in invoices %}
-        <tr class="border-b last:border-0">
-          <td class="py-2">{{ invoice.term.name }}</td>
-          <td class="py-2 tabular-nums">₦{{ invoice.total_amount }}</td>
-          <td class="py-2 tabular-nums">₦{{ invoice.balance }}</td>
-          <td class="py-2">{% include 'components/status_stamp.html' with status=invoice.status %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="text-gray-500 text-sm">No invoices.</p>
-    {% endif %}
+    {# Class #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-violet-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div class="min-w-0">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">My Class</p>
+          <p class="text-3xl font-bold text-gray-900 truncate">{{ enrollment.school_class.name|default:"—" }}</p>
+          <p class="text-xs text-gray-400 mt-1">{{ enrollment.session.name|default:"Not enrolled" }}</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:scale-105 transition-transform flex-shrink-0">
+          <i data-lucide="building-2" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
+
+    {# Outstanding Fees #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Outstanding Fees</p>
+          <p class="text-3xl font-bold text-gray-900">&#8358;{{ outstanding|floatformat:0 }}</p>
+          <p class="text-xs text-gray-400 mt-1">{{ unpaid_count|default:"0" }} invoice{{ unpaid_count|pluralize }} unpaid</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="banknote" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
+
+    {# Average #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-sky-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">My Average</p>
+          <p class="text-3xl font-bold text-gray-900">
+            {% if term_result and term_result.average %}{{ term_result.average|floatformat:1 }}{% else %}—{% endif %}
+          </p>
+          <p class="text-xs text-gray-400 mt-1">Current term</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="trending-up" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
+
+    {# Position #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-amber-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Position</p>
+          <p class="text-3xl font-bold text-gray-900">
+            {% if term_result and term_result.overall_position %}{{ term_result.overall_position }}{% else %}—{% endif %}
+          </p>
+          <p class="text-xs text-gray-400 mt-1">In class</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="trophy" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="bg-white rounded-lg shadow-sm p-4">
-    <h2 class="font-semibold text-lg mb-3">Recent Results</h2>
-    {% if scores %}
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-left text-gray-500 border-b">
-          <th class="pb-2">Subject</th>
-          <th class="pb-2 tabular-nums">Total</th>
-          <th class="pb-2">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for score in scores %}
-        <tr class="border-b last:border-0">
-          <td class="py-2">{{ score.subject.name }}</td>
-          <td class="py-2 tabular-nums">{{ score.total_score|default:"—" }}</td>
-          <td class="py-2">
-            {% if score.is_complete %}
-              {% include 'components/status_stamp.html' with status=score.passed|yesno:"PASS,FAIL" %}
-            {% else %}
-              <span class="text-gray-400">Incomplete</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="text-gray-500 text-sm">No results available yet.</p>
-    {% endif %}
+  {# ── RESULTS BANNER ── #}
+  {% if term_result %}
+    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="check-circle" class="w-5 h-5 text-emerald-600"></i>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-emerald-800">Your results for the current term are published</p>
+          <p class="text-xs text-emerald-600">View your report card below.</p>
+        </div>
+      </div>
+      <a href="{% url 'student-results-history' %}" class="text-sm font-medium text-emerald-700 hover:text-emerald-900 hover:underline shrink-0">View Results</a>
+    </div>
+  {% else %}
+    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-amber-800">Results for the current term are not yet published</p>
+          <p class="text-xs text-amber-600">They will appear here once released by the school.</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {# ── QUICK ACTIONS ── #}
+  <div>
+    <h3 class="text-sm font-semibold text-gray-800 mb-3">Quick Actions</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <a href="{% url 'student-results-history' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-violet-200 hover:bg-violet-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:bg-violet-100 transition-colors">
+          <i data-lucide="file-text" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-violet-700">My Results</span>
+      </a>
+      <a href="#booklets" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-sky-200 hover:bg-sky-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:bg-sky-100 transition-colors">
+          <i data-lucide="book-open" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-sky-700">Result Booklets</span>
+      </a>
+      <a href="#invoices" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+          <i data-lucide="credit-card" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-emerald-700">My Invoices</span>
+      </a>
+      <a href="{% url 'student-password-change' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-amber-200 hover:bg-amber-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:bg-amber-100 transition-colors">
+          <i data-lucide="key" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-amber-700">Change Password</span>
+      </a>
+    </div>
   </div>
 
+  {# ── CHART + TERM OVERVIEW ── #}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    {# Academic trend chart #}
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">My Average by Term</h3>
+      {% if term_chart_labels %}
+      <div class="h-64 relative">
+        <canvas id="termChart"></canvas>
+      </div>
+      {% else %}
+      <div class="py-16 text-center">
+        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="bar-chart-3" class="w-5 h-5 text-gray-400"></i></div>
+        <p class="text-sm text-gray-400">No published results yet.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {# This term summary #}
+    <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">This Term</h3>
+      {% if enrollment %}
+      <div class="space-y-2.5 text-sm">
+        <div class="flex justify-between items-center">
+          <span class="text-gray-500">Class</span>
+          <span class="font-semibold text-gray-900">{{ enrollment.school_class.name }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-500">Session</span>
+          <span class="font-semibold text-gray-900">{{ enrollment.session.name }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-500">Subjects</span>
+          <span class="font-semibold text-gray-900">{{ scores|length }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-500">Position</span>
+          <span class="font-semibold text-gray-900">
+            {% if term_result and term_result.overall_position %}{{ term_result.overall_position }}{% else %}—{% endif %}
+          </span>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-sm text-gray-400 py-8 text-center">Not currently enrolled.</p>
+      {% endif %}
+      <div class="mt-5 pt-4 border-t border-gray-100 space-y-2">
+        <div class="flex justify-between text-xs">
+          <span class="text-gray-500">Unpaid invoices</span>
+          <span class="font-semibold text-gray-900">{{ unpaid_count|default:"0" }}</span>
+        </div>
+        <div class="flex justify-between text-xs">
+          <span class="text-gray-500">Published terms</span>
+          <span class="font-semibold text-gray-900">{{ published_terms|length }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── INVOICES TABLE ── #}
+  <div id="invoices" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-800">My Invoices</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Term</th>
+            <th class="px-6 py-3 font-medium text-right">Amount</th>
+            <th class="px-6 py-3 font-medium text-right">Balance</th>
+            <th class="px-6 py-3 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for invoice in invoices %}
+          <tr class="hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ invoice.term.name }} — {{ invoice.term.session.name }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600 text-right tabular-nums">&#8358;{{ invoice.total_amount|floatformat:2 }}</td>
+            <td class="px-6 py-3.5 text-sm font-semibold text-gray-900 text-right tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</td>
+            <td class="px-6 py-3.5">
+              {% if invoice.status == 'PAID' %}{% include 'components/badge.html' with status='success' text=invoice.status %}
+              {% elif invoice.status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text=invoice.status %}
+              {% else %}{% include 'components/badge.html' with status='danger' text=invoice.status %}{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="py-10 text-center text-sm text-gray-400">No invoices yet</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── RESULT BOOKLETS ── #}
   {% if published_terms %}
-  <div class="bg-white rounded-lg shadow-sm p-4 mt-6">
-    <h2 class="font-semibold text-lg mb-3">Result Booklets</h2>
-    <div class="space-y-2">
+  <div id="booklets" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-800">Result Booklets</h3>
+    </div>
+    <div class="divide-y divide-gray-50">
       {% for term in published_terms %}
       <a href="{% url 'student-result-booklet' term_id=term.pk %}"
-         class="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
+         class="flex items-center justify-between px-6 py-4 hover:bg-gray-50/70 transition-colors group">
         <div class="flex items-center gap-3">
-          <svg class="w-5 h-5 text-gray-400 group-hover:text-[#1B2430] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          <span class="font-medium text-sm text-[#1B2430]">{{ term.session.name }} — {{ term.name }}</span>
+          <div class="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-100 flex items-center justify-center transition-colors">
+            <i data-lucide="file-text" class="w-4 h-4"></i>
+          </div>
+          <span class="font-medium text-sm text-gray-900">{{ term.session.name }} — {{ term.name }}</span>
         </div>
-        <svg class="w-4 h-4 text-gray-400 group-hover:text-[#1B2430] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400 group-hover:text-primary transition-colors"></i>
       </a>
       {% endfor %}
     </div>
   </div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+  const labels = [{% for l in term_chart_labels %}'{{ l|escapejs }}',{% endfor %}];
+  const values = [{% for v in term_chart_values %}{{ v }},{% endfor %}];
+  const el = document.getElementById('termChart');
+  if (!el || !labels.length) return;
+  new Chart(el.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Average',
+        data: values,
+        backgroundColor: '#7C3AED',
+        borderRadius: 6,
+        barThickness: 28,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#F3F4F6', drawBorder: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } }
+      }
+    }
+  });
+})();
+</script>
 {% endblock %}

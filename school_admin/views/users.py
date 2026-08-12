@@ -77,8 +77,11 @@ class UserCreateView(RoleRequiredMixin, View):
             school=school,
             phone_number=phone_number,
         )
+        # Store the raw password ONLY in the session so the printable
+        # credential slip can display it; never persist it elsewhere.
+        request.session[f'credential_slip_{user.pk}'] = password
         messages.success(request, f'User "{user.get_full_name() or user.username}" created successfully.')
-        return redirect('school_admin:user_list')
+        return redirect('school_admin:credential_slip', pk=user.pk)
 
 
 class UserEditView(RoleRequiredMixin, View):

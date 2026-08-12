@@ -1,7 +1,7 @@
 {% if assignments %}
 <div class="flex flex-wrap gap-2">
   {% for a in assignments %}
-  <div class="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full pl-3 pr-1 py-1 text-sm group">
+  <div class="inline-flex items-center gap-2 bg-violet-50 border border-violet-100 rounded-full pl-3 pr-1 py-1 text-sm group">
     <span class="text-gray-700">
       {{ a.school_class.name }} · {{ a.subject.name }}
       <span class="text-gray-400">({{ a.session.name }})</span>
@@ -13,9 +13,7 @@
             hx-confirm="Remove {{ a.subject.name }} from {{ a.school_class.name }} ({{ a.session.name }})?"
             class="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:bg-red-100 hover:text-red-600 transition-colors opacity-50 group-hover:opacity-100"
             title="Remove assignment">
-      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-      </svg>
+      <i data-lucide="x" class="w-3.5 h-3.5"></i>
     </button>
   </div>
   {% endfor %}

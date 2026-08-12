@@ -1,85 +1,274 @@
 {% extends 'base.html' %}
-{% block title %}My Children - Grace House{% endblock %}
-{% block page_header %}My Children{% endblock %}
+{% block title %}My Dashboard — Grace House{% endblock %}
+{% block page_header %}My Dashboard{% endblock %}
 {% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
 
-{# ===== Summary Stats ===== #}
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-  <div class="bg-white rounded-lg shadow-sm p-5">
-    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Children</p>
-    <p class="text-2xl font-bold text-[#1B2430]">{{ total_children }}</p>
-  </div>
-  <div class="bg-white rounded-lg shadow-sm p-5">
-    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Outstanding</p>
-    <p class="text-2xl font-bold text-[#1B2430] tabular-nums">₦{{ total_owed_all|floatformat:2 }}</p>
-  </div>
-  <a href="/parent/invoices/" class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow group">
-    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Finance</p>
-    <p class="text-sm font-medium text-[#B8863A] group-hover:underline">View All Invoices →</p>
-  </a>
-</div>
+  {# ── KPI ROW ── #}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
-{# ===== Children Cards ===== #}
-<h2 class="text-xl font-display font-semibold text-[#1B2430] mb-4 border-b border-gray-200 pb-2">My Children</h2>
-<div class="grid gap-4">
-  {% for child in children_data %}
-  <div class="bg-white rounded-lg shadow-sm p-5">
-    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-      {# Left: name + class + session #}
-      <div class="flex-1 min-w-0">
-        <h3 class="font-semibold text-lg text-[#1B2430]">{{ child.student.user.get_full_name }}</h3>
-        {% if child.enrollment %}
-        <p class="text-sm text-gray-500 mt-0.5">
-          {{ child.enrollment.school_class.name }}
-          <span class="text-gray-400 mx-1">·</span>
-          {{ child.enrollment.session.name }}
-        </p>
-        {% else %}
-        <p class="text-sm text-gray-400 mt-0.5">Not currently enrolled</p>
-        {% endif %}
-      </div>
-
-      {# Right: academic + fee stats #}
-      <div class="flex items-center gap-6 text-sm">
-        {# Average #}
-        <div class="text-center">
-          <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Average</p>
-          {% if child.term_result and child.term_result.average %}
-          <p class="text-lg font-bold text-[#1B2430] tabular-nums">{{ child.term_result.average|floatformat:1 }}</p>
-          {% else %}
-          <p class="text-lg font-bold text-gray-300">—</p>
-          {% endif %}
+    {# Children #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-violet-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">My Children</p>
+          <p class="text-3xl font-bold text-gray-900">{{ total_children|default:"0" }}</p>
+          <p class="text-xs text-gray-400 mt-1">Linked to you</p>
         </div>
-        {# Position #}
-        <div class="text-center">
-          <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Position</p>
-          {% if child.term_result and child.term_result.overall_position %}
-          <p class="text-lg font-bold text-[#1B2430] tabular-nums">{{ child.term_result.overall_position }}</p>
-          {% else %}
-          <p class="text-lg font-bold text-gray-300">—</p>
-          {% endif %}
-        </div>
-        {# Fees #}
-        <div class="text-center">
-          <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Owed</p>
-          <p class="text-lg font-bold text-[#1B2430] tabular-nums">₦{{ child.total_owed|floatformat:2 }}</p>
-          {% if child.unpaid_count > 0 %}
-          <p class="text-[10px] text-amber-600 font-medium">{{ child.unpaid_count }} unpaid</p>
-          {% endif %}
+        <div class="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="users" class="w-6 h-6"></i>
         </div>
       </div>
     </div>
 
-    {# View Details link #}
-    <div class="mt-4 pt-3 border-t border-gray-100">
-      <a href="{% url 'parent-child-detail' child.student.pk %}" class="inline-block text-[#B8863A] hover:underline font-medium text-sm">View Details →</a>
+    {# Total Outstanding #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total Outstanding</p>
+          <p class="text-3xl font-bold text-gray-900">&#8358;{{ total_owed_all|floatformat:0 }}</p>
+          <p class="text-xs text-gray-400 mt-1">{{ unpaid_invoices|default:"0" }} invoice{{ unpaid_invoices|pluralize }} unpaid</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="banknote" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
+
+    {# Average #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-sky-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Average</p>
+          <p class="text-3xl font-bold text-gray-900">{% if children_average %}{{ children_average|floatformat:1 }}{% else %}—{% endif %}</p>
+          <p class="text-xs text-gray-400 mt-1">Across children</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="trending-up" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
+
+    {# Published terms #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-amber-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Published Terms</p>
+          <p class="text-3xl font-bold text-gray-900">{{ published_terms_count|default:"0" }}</p>
+          <p class="text-xs text-gray-400 mt-1">With results</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="file-check" class="w-6 h-6"></i>
+        </div>
+      </div>
     </div>
   </div>
-  {% empty %}
-  <div class="bg-white rounded-lg shadow-sm p-8 text-center">
-    <p class="text-gray-500">No children linked to your account.</p>
-  </div>
-  {% endfor %}
-</div>
 
+  {# ── RESULTS BANNER ── #}
+  {% if results_published %}
+    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="check-circle" class="w-5 h-5 text-emerald-600"></i>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-emerald-800">Current term results are published</p>
+          <p class="text-xs text-emerald-600">Your children's report cards are available below.</p>
+        </div>
+      </div>
+      <a href="#children" class="text-sm font-medium text-emerald-700 hover:text-emerald-900 hover:underline shrink-0">View Children</a>
+    </div>
+  {% else %}
+    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-amber-800">Results for the current term are not yet published</p>
+          <p class="text-xs text-amber-600">They will appear here once released by the school.</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {# ── QUICK ACTIONS ── #}
+  <div>
+    <h3 class="text-sm font-semibold text-gray-800 mb-3">Quick Actions</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <a href="{% url 'parent-invoices' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+          <i data-lucide="file-text" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-emerald-700">View All Invoices</span>
+      </a>
+      {% if children_data %}
+      <a href="{% url 'parent-child-detail' children_data.0.student.pk %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-violet-200 hover:bg-violet-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:bg-violet-100 transition-colors">
+          <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-violet-700">View First Child</span>
+      </a>
+      {% endif %}
+      <a href="#children" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-sky-200 hover:bg-sky-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:bg-sky-100 transition-colors">
+          <i data-lucide="users" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-sky-700">My Children</span>
+      </a>
+    </div>
+  </div>
+
+  {# ── CHART + SUMMARY ── #}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    {# Fees owed per child #}
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">Fees Owed per Child</h3>
+      {% if child_chart_labels %}
+      <div class="h-64 relative">
+        <canvas id="feesChart"></canvas>
+      </div>
+      {% else %}
+      <div class="py-16 text-center">
+        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="bar-chart-3" class="w-5 h-5 text-gray-400"></i></div>
+        <p class="text-sm text-gray-400">No children linked to your account.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Summary #}
+    <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">Summary</h3>
+      <div class="space-y-2.5 text-sm">
+        <div class="flex justify-between items-center">
+          <span class="text-gray-500">Children</span>
+          <span class="font-semibold text-gray-900">{{ total_children|default:"0" }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-500">Unpaid invoices</span>
+          <span class="font-semibold text-gray-900">{{ unpaid_invoices|default:"0" }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-500">Average</span>
+          <span class="font-semibold text-gray-900">{% if children_average %}{{ children_average|floatformat:1 }}{% else %}—{% endif %}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-500">Published terms</span>
+          <span class="font-semibold text-gray-900">{{ published_terms_count|default:"0" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── CHILDREN CARDS ── #}
+  <div id="children">
+    <h3 class="text-sm font-semibold text-gray-800 mb-3">My Children</h3>
+    <div class="grid gap-4">
+      {% for child in children_data %}
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1 h-full bg-violet-500 rounded-l-2xl"></div>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          {# Left: avatar + name + class + session #}
+          <div class="flex items-center min-w-0">
+            {% include "components/avatar.html" with name=child.student.user.get_full_name size="md" %}
+            <div class="ml-3 min-w-0">
+              <h3 class="font-semibold text-gray-900 truncate">{{ child.student.user.get_full_name }}</h3>
+              {% if child.enrollment %}
+              <p class="text-sm text-gray-500 mt-0.5">
+                {{ child.enrollment.school_class.name }}
+                <span class="text-gray-400 mx-1">·</span>
+                {{ child.enrollment.session.name }}
+              </p>
+              {% else %}
+              <p class="text-sm text-gray-400 mt-0.5">Not currently enrolled</p>
+              {% endif %}
+            </div>
+          </div>
+
+          {# Right: academic + fee stats #}
+          <div class="flex items-center gap-6 text-sm">
+            {# Average #}
+            <div class="text-center">
+              <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Average</p>
+              {% if child.term_result and child.term_result.average %}
+              <p class="text-lg font-bold text-gray-900 tabular-nums">{{ child.term_result.average|floatformat:1 }}</p>
+              {% else %}
+              <p class="text-lg font-bold text-gray-300">—</p>
+              {% endif %}
+            </div>
+            {# Position #}
+            <div class="text-center">
+              <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Position</p>
+              {% if child.term_result and child.term_result.overall_position %}
+              <p class="text-lg font-bold text-gray-900 tabular-nums">{{ child.term_result.overall_position }}</p>
+              {% else %}
+              <p class="text-lg font-bold text-gray-300">—</p>
+              {% endif %}
+            </div>
+            {# Fees #}
+            <div class="text-center">
+              <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Owed</p>
+              <p class="text-lg font-bold text-gray-900 tabular-nums">&#8358;{{ child.total_owed|floatformat:2 }}</p>
+              {% if child.unpaid_count > 0 %}
+              <p class="text-[10px] text-amber-600 font-medium">{{ child.unpaid_count }} unpaid</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# View Details link #}
+        <div class="mt-4 pt-4 border-t border-gray-100">
+          <a href="{% url 'parent-child-detail' child.student.pk %}" class="inline-flex items-center text-sm font-medium text-primary hover:text-primary-hover transition-colors">
+            View Details <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
+          </a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm py-12 text-center">
+        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="users" class="w-5 h-5 text-gray-400"></i></div>
+        <p class="text-sm text-gray-400">No children linked to your account.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+  const labels = [{% for l in child_chart_labels %}'{{ l|escapejs }}',{% endfor %}];
+  const values = [{% for v in child_chart_values %}{{ v }},{% endfor %}];
+  const el = document.getElementById('feesChart');
+  if (!el || !labels.length) return;
+  new Chart(el.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Owed (₦)',
+        data: values,
+        backgroundColor: '#7C3AED',
+        borderRadius: 6,
+        barThickness: 28,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#F3F4F6', drawBorder: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } }
+      }
+    }
+  });
+})();
+</script>
 {% endblock %}

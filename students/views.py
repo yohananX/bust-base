@@ -43,11 +43,12 @@ class ParentChildrenListView(RoleRequiredMixin, View):
                 ).first()
 
             # Total amount owed
-            unpaid_invoices = Invoice.objects.filter(
+            invoices = Invoice.objects.filter(
                 student=student,
-            ).exclude(status='PAID')
+            )
+            unpaid_invoices = [inv for inv in invoices if inv.balance > 0]
             total_owed = sum(inv.balance for inv in unpaid_invoices)
-            unpaid_count = unpaid_invoices.count()
+            unpaid_count = len(unpaid_invoices)
 
             children_data.append({
                 'student': student,
@@ -60,11 +61,47 @@ class ParentChildrenListView(RoleRequiredMixin, View):
         # Summary stats for dashboard
         total_children = len(children_data)
         total_owed_all = sum(c['total_owed'] for c in children_data)
+        unpaid_invoices = sum(c['unpaid_count'] for c in children_data)
+
+        # Results status + average across children
+        results_published = bool(
+            current_term and current_term.results_published
+        )
+        averages = [
+            c['term_result'].average
+            for c in children_data
+            if c['term_result'] and c['term_result'].average
+        ]
+        children_average = (
+            round(sum(averages) / len(averages), 1) if averages else None
+        )
+
+        published_terms_count = 0
+        if children_data:
+            child_ids = [c['student'].pk for c in children_data]
+            published_terms_count = Term.objects.filter(
+                school=request.school,
+                results_published=True,
+                scores__student_id__in=child_ids,
+            ).distinct().count()
+
+        # Fees owed per child (chart)
+        child_chart_labels = [
+            c['student'].user.get_full_name() or c['student'].user.username
+            for c in children_data
+        ]
+        child_chart_values = [float(c['total_owed']) for c in children_data]
 
         return render(request, 'students/parent/children_list.html', {
             'children_data': children_data,
             'total_children': total_children,
             'total_owed_all': total_owed_all,
+            'unpaid_invoices': unpaid_invoices,
+            'results_published': results_published,
+            'children_average': children_average,
+            'published_terms_count': published_terms_count,
+            'child_chart_labels': child_chart_labels,
+            'child_chart_values': child_chart_values,
         })
 
 
@@ -112,8 +149,9 @@ class ParentChildDetailView(RoleRequiredMixin, View):
             ).first()
 
         # Fee summary
-        total_owed = sum(inv.balance for inv in invoices)
-        unpaid_count = invoices.exclude(status='PAID').count()
+        unpaid_invoices = [inv for inv in invoices if inv.balance > 0]
+        total_owed = sum(inv.balance for inv in unpaid_invoices)
+        unpaid_count = len(unpaid_invoices)
 
         return render(request, 'students/parent/child_detail.html', {
             'student': student,
@@ -190,7 +228,7 @@ class ParentInvoiceDetailView(RoleRequiredMixin, View):
 
 
 class StudentOverviewView(RoleRequiredMixin, View):
-    """Student dashboard showing enrollment, invoices, and scores."""
+    """Student dashboard — KPIs, results banner, chart, invoices."""
 
     allowed_roles = [Roles.STUDENT]
 
@@ -215,11 +253,42 @@ class StudentOverviewView(RoleRequiredMixin, View):
             scores__student__user=request.user,
         ).distinct().order_by('-start_date')
 
+        current_term = Term.objects.filter(
+            school=request.school, is_current=True,
+        ).first()
+
+        # Current term result (only shown once published)
+        term_result = None
+        if current_term and current_term.results_published:
+            term_result = TermResult.objects.filter(
+                student__user=request.user, term=current_term,
+            ).first()
+
+        # Fee summary
+        unpaid_invoices = [inv for inv in invoices if inv.balance > 0]
+        outstanding = sum(inv.balance for inv in unpaid_invoices)
+        unpaid_count = len(unpaid_invoices)
+
+        # Academic trend — average per published term (chart)
+        term_chart_labels = []
+        term_chart_values = []
+        for tr in TermResult.objects.filter(
+            student__user=request.user, term__results_published=True,
+        ).select_related('term', 'term__session').order_by('term__start_date'):
+            term_chart_labels.append(tr.term.session.name)
+            term_chart_values.append(float(tr.average))
+
         return render(request, 'students/student/overview.html', {
             'enrollment': enrollment,
             'invoices': invoices,
             'scores': scores,
             'published_terms': published_terms,
+            'current_term': current_term,
+            'term_result': term_result,
+            'outstanding': outstanding,
+            'unpaid_count': unpaid_count,
+            'term_chart_labels': term_chart_labels,
+            'term_chart_values': term_chart_values,
         })
 
 

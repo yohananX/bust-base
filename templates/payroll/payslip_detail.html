@@ -8,45 +8,54 @@
 <div class="max-w-4xl mx-auto space-y-6">
 
   {# ─── Payslip Summary Card ─── #}
-  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-200 p-6">
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h2 class="text-xl font-semibold text-gray-900">{{ payslip.payroll_run.label }}</h2>
-        <p class="text-sm text-gray-500 mt-1">
-          {{ payslip.payroll_run.period_start|date:"M d, Y" }} — {{ payslip.payroll_run.period_end|date:"M d, Y" }}
-        </p>
-        <p class="text-sm text-gray-600 mt-1">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <i data-lucide="receipt" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">{{ payslip.payroll_run.label }}</h2>
+            <p class="text-sm text-gray-500 mt-0.5">
+              {{ payslip.payroll_run.period_start|date:"M d, Y" }} — {{ payslip.payroll_run.period_end|date:"M d, Y" }}
+            </p>
+          </div>
+        </div>
+        <p class="text-sm text-gray-600 mt-3">
           {{ payslip.staff.user.get_full_name }}
         </p>
       </div>
       <div class="flex-shrink-0">
-        {% include 'components/status_stamp.html' with status=payslip.disbursement_status %}
+        {% if payslip.disbursement_status == 'PAID' %}{% include 'components/badge.html' with status='success' text=payslip.disbursement_status %}
+        {% elif payslip.disbursement_status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text=payslip.disbursement_status %}
+        {% else %}{% include 'components/badge.html' with status='danger' text=payslip.disbursement_status %}{% endif %}
       </div>
     </div>
   </div>
 
   {# ─── Earnings Section ─── #}
-  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-      <h3 class="text-base font-semibold text-gray-900">Earnings</h3>
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-800">Earnings</h3>
     </div>
     <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Item</th>
+            <th class="px-6 py-3 font-medium text-right">Amount</th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
+        <tbody class="divide-y divide-gray-50">
           <tr class="bg-gray-50/50">
             <td class="px-6 py-3 text-sm font-medium text-gray-900">Base Salary</td>
-            <td class="px-6 py-3 text-sm text-gray-900 text-right font-mono">{{ payslip.base_salary|floatformat:2 }}</td>
+            <td class="px-6 py-3 text-sm text-gray-900 text-right font-mono">NGN {{ payslip.base_salary|floatformat:2 }}</td>
           </tr>
           {% for allowance in allowances %}
-          <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-6 py-3 text-sm text-gray-700">{{ allowance.label }}</td>
-            <td class="px-6 py-3 text-sm text-gray-900 text-right font-mono">{{ allowance.amount|floatformat:2 }}</td>
+          <tr class="hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3 text-sm text-gray-600">{{ allowance.label }}</td>
+            <td class="px-6 py-3 text-sm text-gray-900 text-right font-mono">NGN {{ allowance.amount|floatformat:2 }}</td>
           </tr>
           {% empty %}
           <tr>
@@ -54,10 +63,10 @@
           </tr>
           {% endfor %}
         </tbody>
-        <tfoot class="bg-gray-50">
+        <tfoot class="bg-gray-50/70">
           <tr>
             <td class="px-6 py-3 text-sm font-semibold text-gray-900">Total Earnings</td>
-            <td class="px-6 py-3 text-sm font-semibold text-gray-900 text-right font-mono">{{ payslip.gross_pay|floatformat:2 }}</td>
+            <td class="px-6 py-3 text-sm font-semibold text-gray-900 text-right font-mono">NGN {{ payslip.gross_pay|floatformat:2 }}</td>
           </tr>
         </tfoot>
       </table>
@@ -65,23 +74,23 @@
   </div>
 
   {# ─── Deductions Section ─── #}
-  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-      <h3 class="text-base font-semibold text-gray-900">Deductions</h3>
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-800">Deductions</h3>
     </div>
     <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Item</th>
+            <th class="px-6 py-3 font-medium text-right">Amount</th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
+        <tbody class="divide-y divide-gray-50">
           {% for deduction in deductions %}
-          <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-6 py-3 text-sm text-gray-700">{{ deduction.label }}</td>
-            <td class="px-6 py-3 text-sm text-gray-900 text-right font-mono">{{ deduction.amount|floatformat:2 }}</td>
+          <tr class="hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3 text-sm text-gray-600">{{ deduction.label }}</td>
+            <td class="px-6 py-3 text-sm text-gray-900 text-right font-mono">NGN {{ deduction.amount|floatformat:2 }}</td>
           </tr>
           {% empty %}
           <tr>
@@ -89,10 +98,10 @@
           </tr>
           {% endfor %}
         </tbody>
-        <tfoot class="bg-gray-50">
+        <tfoot class="bg-gray-50/70">
           <tr>
             <td class="px-6 py-3 text-sm font-semibold text-gray-900">Total Deductions</td>
-            <td class="px-6 py-3 text-sm font-semibold text-gray-900 text-right font-mono">{{ payslip.total_deductions|floatformat:2 }}</td>
+            <td class="px-6 py-3 text-sm font-semibold text-gray-900 text-right font-mono">NGN {{ payslip.total_deductions|floatformat:2 }}</td>
           </tr>
         </tfoot>
       </table>
@@ -100,46 +109,54 @@
   </div>
 
   {# ─── Net Pay Summary ─── #}
-  <div class="bg-[var(--color-primary)]/5 border-2 border-[var(--color-primary)]/20 rounded-lg p-6 text-center">
-    <p class="text-sm font-medium text-[var(--color-primary)]/70 uppercase tracking-wider">Net Pay</p>
-    <p class="text-3xl font-bold text-[var(--color-primary)] mt-1 font-mono">{{ payslip.net_pay|floatformat:2 }}</p>
+  <div class="bg-primary/5 border-2 border-primary/20 rounded-2xl p-6 text-center">
+    <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2">
+      <i data-lucide="wallet" class="w-5 h-5"></i>
+    </div>
+    <p class="text-sm font-medium text-primary uppercase tracking-wider">Net Pay</p>
+    <p class="text-3xl font-bold text-primary mt-1 font-mono">NGN {{ payslip.net_pay|floatformat:2 }}</p>
   </div>
 
   {# ─── Disbursement History ─── #}
-  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-      <h3 class="text-base font-semibold text-gray-900">Disbursement History</h3>
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-800">Disbursement History</h3>
     </div>
+    {% if disbursements %}
     <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
-            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Date</th>
+            <th class="px-6 py-3 font-medium text-right">Amount</th>
+            <th class="px-6 py-3 font-medium">Method</th>
+            <th class="px-6 py-3 font-medium">Reference</th>
+            <th class="px-6 py-3 font-medium text-center">Status</th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
+        <tbody class="divide-y divide-gray-50">
           {% for d in disbursements %}
-          <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ d.disbursed_on|date:"M d, Y" }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">{{ d.amount|floatformat:2 }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ d.get_method_display }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">{{ d.reference }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-center">
-              {% include 'components/status_stamp.html' with status=d.status %}
+          <tr class="hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5 whitespace-nowrap text-sm text-gray-600">{{ d.disbursed_on|date:"M d, Y" }}</td>
+            <td class="px-6 py-3.5 whitespace-nowrap text-sm text-gray-900 text-right font-mono">NGN {{ d.amount|floatformat:2 }}</td>
+            <td class="px-6 py-3.5 whitespace-nowrap text-sm text-gray-600">{{ d.get_method_display }}</td>
+            <td class="px-6 py-3.5 whitespace-nowrap text-sm text-gray-500 font-mono">{{ d.reference }}</td>
+            <td class="px-6 py-3.5 whitespace-nowrap text-center">
+              {% if d.status == 'CONFIRMED' %}{% include 'components/badge.html' with status='success' text=d.get_status_display %}
+              {% elif d.status == 'PENDING' %}{% include 'components/badge.html' with status='warning' text=d.get_status_display %}
+              {% else %}{% include 'components/badge.html' with status='danger' text=d.get_status_display %}{% endif %}
             </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">No disbursements recorded yet.</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+    {% else %}
+    <div class="py-12 text-center">
+      <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="banknote" class="w-5 h-5 text-gray-400"></i></div>
+      <p class="text-sm text-gray-400">No disbursements recorded yet</p>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

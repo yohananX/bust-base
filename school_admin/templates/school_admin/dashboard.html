@@ -1,75 +1,303 @@
 {% extends 'school_admin/base_admin.html' %}
 {% load static %}
 
-{% block title %}School Admin Dashboard — Grace House{% endblock %}
-{% block page_header %}Dashboard{% endblock %}
+{% block title %}Dashboard — Grace House{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
-  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-    
-    <!-- Students (Blue) -->
-    <div class="bg-white rounded-2xl border border-slate-100 p-6 flex justify-between items-start shadow-sm hover:shadow-md transition-shadow">
-      <div class="space-y-2">
-        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Active Students</span>
-        <h3 class="text-3xl font-bold text-slate-800">{{ total_students }}</h3>
-        <p class="text-xs text-slate-400">Currently enrolled</p>
-      </div>
-      <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+<div class="max-w-7xl mx-auto space-y-6">
+
+  {# ── KPI ROW ── #}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+    {# Students #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-violet-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total Active Students</p>
+          <p class="text-3xl font-bold text-gray-900">{{ total_students|default:"0" }}</p>
+          <p class="text-xs text-emerald-600 font-medium mt-1 flex items-center">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5 mr-1"></i>
+            {{ student_growth|default:"0" }}% this term
+          </p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="users" class="w-6 h-6"></i>
+        </div>
       </div>
     </div>
 
-    <!-- Outstanding Fees (Green) -->
-    <a href="{% url 'school_admin:outstanding_fees' %}" class="bg-white rounded-2xl border border-slate-100 p-6 flex justify-between items-start shadow-sm hover:shadow-md transition-shadow">
-      <div class="space-y-2">
-        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Outstanding Fees</span>
-        <h3 class="text-3xl font-bold text-slate-800">NGN {{ outstanding_fees|floatformat:2 }}</h3>
-        <p class="text-xs text-slate-400">Unpaid / partially paid</p>
-      </div>
-      <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    {# Outstanding Fees #}
+    <a href="{% url 'school_admin:outstanding_fees' %}" class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow block">
+      <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Outstanding Fees</p>
+          <p class="text-3xl font-bold text-gray-900">&#8358;{{ outstanding_fees|floatformat:0 }}</p>
+          <p class="text-xs text-gray-400 mt-1">{{ owing_students|default:"0" }} students owing</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="banknote" class="w-6 h-6"></i>
+        </div>
       </div>
     </a>
 
-    <!-- Results Status (Purple) -->
-    <div class="bg-white rounded-2xl border border-slate-100 p-6 flex justify-between items-start shadow-sm hover:shadow-md transition-shadow">
-      <div class="space-y-2">
-        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Results Status</span>
-        <h3 class="text-3xl font-bold text-slate-800">
-          {% if results_published %}Published{% else %}Not Published{% endif %}
-        </h3>
-        <p class="text-xs text-slate-400">Current term</p>
-      </div>
-      <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      </div>
-    </div>
-
-    <!-- Payroll Runs (Amber) -->
-    <div class="bg-white rounded-2xl border border-slate-100 p-6 flex justify-between items-start shadow-sm hover:shadow-md transition-shadow">
-      <div class="space-y-2">
-        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Payroll Runs</span>
-        <h3 class="text-3xl font-bold text-slate-800">{{ pending_payroll }}</h3>
-        <p class="text-xs text-slate-400">Total runs created</p>
-      </div>
-      <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+    {# Payroll #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-sky-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Payroll Runs</p>
+          <p class="text-3xl font-bold text-gray-900">{{ payroll_runs|default:"0" }}</p>
+          <p class="text-xs text-gray-400 mt-1">This academic year</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="wallet" class="w-6 h-6"></i>
+        </div>
       </div>
     </div>
 
+    {# Projects #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div class="absolute top-0 left-0 w-1 h-full bg-amber-500 rounded-l-2xl"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Active Projects</p>
+          <p class="text-3xl font-bold text-gray-900">{{ active_projects|default:"0" }}</p>
+          <p class="text-xs text-gray-400 mt-1">Ongoing school projects</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-105 transition-transform">
+          <i data-lucide="folder-kanban" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Quick Actions -->
-  <div class="mt-10">
-    <h2 class="text-lg font-semibold text-slate-800 mb-4">Quick Actions</h2>
-    <div class="flex flex-wrap gap-3">
-      <a href="{% url 'school_admin:student_list' %}" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:shadow-sm hover:border-slate-300 transition-all">View Students</a>
-      <a href="{% url 'school_admin:invoice_list' %}" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:shadow-sm hover:border-slate-300 transition-all">View Invoices</a>
-      <a href="{% url 'school_admin:payroll_run_list' %}" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:shadow-sm hover:border-slate-300 transition-all">Payroll Runs</a>
-      <a href="{% url 'school_admin:generate_invoices' %}" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:shadow-sm hover:border-slate-300 transition-all">Generate Invoices</a>
-      <a href="{% url 'school_admin:publish_results' %}" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:shadow-sm hover:border-slate-300 transition-all">Publish Results</a>
+  {# ── RESULTS STATUS BANNER ── #}
+  {% if results_published %}
+    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="check-circle" class="w-5 h-5 text-emerald-600"></i>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-emerald-800">Current term results are published</p>
+          <p class="text-xs text-emerald-600">Students and parents can now view report cards.</p>
+        </div>
+      </div>
+      <a href="{% url 'school_admin:review_results' %}" class="text-sm font-medium text-emerald-700 hover:text-emerald-900 hover:underline shrink-0">Manage</a>
+    </div>
+  {% else %}
+    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-amber-800">Results for the current term are not yet published</p>
+          <p class="text-xs text-amber-600">Review and publish results to make report cards visible.</p>
+        </div>
+      </div>
+      <a href="{% url 'school_admin:publish_results' %}" class="text-sm font-medium text-amber-700 hover:text-amber-900 hover:underline shrink-0">Publish now</a>
+    </div>
+  {% endif %}
+
+  {# ── QUICK ACTIONS ── #}
+  <div>
+    <h3 class="text-sm font-semibold text-gray-800 mb-3">Quick Actions</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <a href="{% url 'school_admin:student_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-violet-200 hover:bg-violet-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:bg-violet-100 transition-colors">
+          <i data-lucide="users" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-violet-700">View Students</span>
+      </a>
+      <a href="{% url 'school_admin:invoice_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+          <i data-lucide="file-text" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-emerald-700">View Invoices</span>
+      </a>
+      <a href="{% url 'school_admin:payroll_run_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-sky-200 hover:bg-sky-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:bg-sky-100 transition-colors">
+          <i data-lucide="banknote" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-sky-700">Payroll Runs</span>
+      </a>
+      <a href="{% url 'school_admin:generate_invoices' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-amber-200 hover:bg-amber-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:bg-amber-100 transition-colors">
+          <i data-lucide="plus-circle" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-amber-700">Generate Invoices</span>
+      </a>
+      <a href="{% url 'school_admin:publish_results' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-pink-200 hover:bg-pink-50/30 transition-all group">
+        <div class="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center text-pink-600 group-hover:bg-pink-100 transition-colors">
+          <i data-lucide="send" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-700 group-hover:text-pink-700">Publish Results</span>
+      </a>
+    </div>
+  </div>
+
+  {# ── CHARTS + OVERVIEW ── #}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    {# Fee Collection Trend #}
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">Fee Collection Trend</h3>
+      <div class="h-64 relative">
+        <canvas id="feeChart"></canvas>
+      </div>
+    </div>
+
+    {# Student Overview #}
+    <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">Student Overview</h3>
+      <div class="relative w-36 h-36 mx-auto">
+        <canvas id="studentChart"></canvas>
+        <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+          <span class="text-xl font-bold text-gray-900">{{ total_students|default:"0" }}</span>
+          <span class="text-[10px] text-gray-500 uppercase tracking-wide">Total</span>
+        </div>
+      </div>
+      <div class="flex justify-center gap-5 mt-5 text-xs">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-violet-500"></span>
+          <span class="text-gray-600">Male {{ male_count|default:"0" }}</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-pink-400"></span>
+          <span class="text-gray-600">Female {{ female_count|default:"0" }}</span>
+        </div>
+      </div>
+      <div class="mt-5 pt-4 border-t border-gray-100 space-y-2">
+        <div class="flex justify-between text-xs">
+          <span class="text-gray-500">New Admissions</span>
+          <span class="font-semibold text-gray-900">{{ new_admissions|default:"0" }}</span>
+        </div>
+        <div class="flex justify-between text-xs">
+          <span class="text-gray-500">Active Classes</span>
+          <span class="font-semibold text-gray-900">{{ active_classes|default:"0" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── RECENT PAYMENTS TABLE ── #}
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-800">Recent Fee Payments</h3>
+      <a href="{% url 'school_admin:invoice_list' %}" class="text-xs text-violet-600 hover:text-violet-700 font-medium">View All</a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Student</th>
+            <th class="px-6 py-3 font-medium">Class</th>
+            <th class="px-6 py-3 font-medium">Amount</th>
+            <th class="px-6 py-3 font-medium">Method</th>
+            <th class="px-6 py-3 font-medium">Date</th>
+            <th class="px-6 py-3 font-medium text-right">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for payment in recent_payments %}
+          <tr class="hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5">
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold mr-2.5 flex-shrink-0">
+                  {{ payment.student_name|first }}
+                </div>
+                <span class="text-sm font-medium text-gray-900">{{ payment.student_name }}</span>
+              </div>
+            </td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ payment.class_name|default:"—" }}</td>
+            <td class="px-6 py-3.5 text-sm font-semibold text-gray-900">&#8358;{{ payment.amount|floatformat:2 }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ payment.method|default:"Cash" }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-500">{{ payment.paid_on|date:"M d, Y" }}</td>
+            <td class="px-6 py-3.5 text-right">
+              {% if payment.status == 'CONFIRMED' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></span> Paid
+                </span>
+              {% elif payment.status == 'PENDING' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-100">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1"></span> Pending
+                </span>
+              {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-100">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1"></span> Failed
+                </span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="py-10 text-center text-sm text-gray-400">No recent payments</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+
+  // Fee Collection Bar Chart
+  const feeEl = document.getElementById('feeChart');
+  if (feeEl) {
+    new Chart(feeEl.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: {{ monthly_labels|safe }},
+        datasets: [{
+          label: 'Collected (₦)',
+          data: {{ monthly_fees|safe }},
+          backgroundColor: '#7C3AED',
+          borderRadius: 6,
+          barThickness: 28,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#F3F4F6', drawBorder: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } },
+          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } }
+        }
+      }
+    });
+  }
+
+  // Student Distribution Donut
+  const studentEl = document.getElementById('studentChart');
+  if (studentEl) {
+    new Chart(studentEl.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Male', 'Female'],
+        datasets: [{
+          data: [{{ male_count|default:0 }}, {{ female_count|default:0 }}],
+          backgroundColor: ['#8B5CF6', '#F472B6'],
+          borderWidth: 0,
+          cutout: '78%'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+})();
+</script>
 {% endblock %}

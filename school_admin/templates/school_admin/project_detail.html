@@ -5,31 +5,35 @@
 {% block page_header %}{{ project.name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto">
+<div class="max-w-5xl mx-auto space-y-6">
+  <a href="{% url 'school_admin:project_list' %}" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">
+    <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to projects
+  </a>
+
   <!-- Project Summary -->
-  <div class="bg-[var(--color-surface)] rounded-lg p-6 shadow-sm border border-gray-100 mb-6">
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
       <div>
         <span class="text-xs text-gray-500 block">Status</span>
-        <span class="status-tag 
-          {% if project.status == 'APPROVED' or project.status == 'IN_PROGRESS' %}status-tag--active
-          {% elif project.status == 'COMPLETED' %}status-tag--active
-          {% elif project.status == 'CANCELLED' %}status-tag--fail
-          {% else %}status-tag--pending{% endif %}">
-          {{ project.get_status_display }}
-        </span>
+        {% if project.status == 'APPROVED' or project.status == 'IN_PROGRESS' or project.status == 'COMPLETED' %}
+          {% include 'components/badge.html' with status='success' text=project.get_status_display %}
+        {% elif project.status == 'CANCELLED' %}
+          {% include 'components/badge.html' with status='danger' text=project.get_status_display %}
+        {% else %}
+          {% include 'components/badge.html' with status='warning' text=project.get_status_display %}
+        {% endif %}
       </div>
       <div>
         <span class="text-xs text-gray-500 block">Target Amount</span>
-        <span class="font-medium">NGN {{ project.target_amount|floatformat:2 }}</span>
+        <span class="font-medium text-gray-900">NGN {{ project.target_amount|floatformat:2 }}</span>
       </div>
       <div>
         <span class="text-xs text-gray-500 block">Spent</span>
-        <span class="font-medium">NGN {{ project.spent|floatformat:2 }}</span>
+        <span class="font-medium text-gray-900">NGN {{ project.spent|floatformat:2 }}</span>
       </div>
       <div>
         <span class="text-xs text-gray-500 block">Remaining</span>
-        <span class="font-medium {% if project.remaining < 0 %}text-red-600{% endif %}">NGN {{ project.remaining|floatformat:2 }}</span>
+        <span class="font-medium {% if project.remaining < 0 %}text-red-600{% else %}text-gray-900{% endif %}">NGN {{ project.remaining|floatformat:2 }}</span>
       </div>
     </div>
     {% if project.description %}
@@ -43,34 +47,45 @@
   </div>
 
   <!-- Expenditures -->
-  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-    <div class="px-4 py-3 bg-gray-50 border-b font-medium text-sm">Expenditures</div>
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-left text-gray-600 border-b">
-          <th class="px-4 py-2">Date</th>
-          <th class="px-4 py-2">Category</th>
-          <th class="px-4 py-2">Description</th>
-          <th class="px-4 py-2">Amount</th>
-          <th class="px-4 py-2">Recorded By</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for e in expenditures %}
-        <tr class="border-t border-gray-50 hover:bg-gray-50">
-          <td class="px-4 py-2">{{ e.date|date:'M d, Y' }}</td>
-          <td class="px-4 py-2">{{ e.category.name }}</td>
-          <td class="px-4 py-2">{{ e.description }}</td>
-          <td class="px-4 py-2 font-medium">NGN {{ e.amount|floatformat:2 }}</td>
-          <td class="px-4 py-2 text-gray-500">{{ e.recorded_by.get_full_name|default:e.recorded_by.username }}</td>
-        </tr>
-        {% empty %}
-        <tr class="border-t border-gray-50">
-          <td colspan="5" class="px-4 py-8 text-center text-gray-400">No expenditures recorded.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-800">Expenditures</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
+            <th class="px-5 py-3.5 font-semibold">Date</th>
+            <th class="px-5 py-3.5 font-semibold">Category</th>
+            <th class="px-5 py-3.5 font-semibold">Description</th>
+            <th class="px-5 py-3.5 font-semibold text-right">Amount</th>
+            <th class="px-5 py-3.5 font-semibold">Recorded By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in expenditures %}
+          <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+            <td class="px-5 py-3.5 text-gray-600">{{ e.date|date:'M d, Y' }}</td>
+            <td class="px-5 py-3.5">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">{{ e.category.name }}</span>
+            </td>
+            <td class="px-5 py-3.5 text-gray-600 max-w-xs truncate">{{ e.description }}</td>
+            <td class="px-5 py-3.5 font-medium text-gray-900 text-right">NGN {{ e.amount|floatformat:2 }}</td>
+            <td class="px-5 py-3.5 text-gray-500">{{ e.recorded_by.get_full_name|default:e.recorded_by.username }}</td>
+          </tr>
+          {% empty %}
+          <tr class="border-t border-gray-100">
+            <td colspan="5" class="px-5 py-12 text-center">
+              <div class="flex flex-col items-center gap-2 text-gray-400">
+                <i data-lucide="file-text" class="w-8 h-8"></i>
+                <p class="text-sm">No expenditures recorded.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% endblock %}

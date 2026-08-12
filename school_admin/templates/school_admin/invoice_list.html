@@ -5,16 +5,16 @@
 {% block page_header %}Invoice Management{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
-  <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
     <form method="GET" class="flex flex-wrap gap-4 items-end">
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Search Student</label>
-        <input type="text" name="q" value="{{ q }}" placeholder="Student name" class="border border-gray-300 rounded px-3 py-2 text-sm w-48">
+      <div class="min-w-[220px]">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Search Student</label>
+        {% include 'components/search_autocomplete.html' with cache_key='invoices' api_path='/school-admin/api/invoices/' item_url='/school-admin/invoices/{id}/' placeholder='Student name' %}
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Term</label>
-        <select name="term_id" class="border border-gray-300 rounded px-3 py-2 text-sm">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Term</label>
+        <select name="term_id" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">All Terms</option>
           {% for t in terms %}
             <option value="{{ t.id }}" {% if filter_term == t.id|stringformat:'s' %}selected{% endif %}>{{ t.name }}</option>
@@ -22,61 +22,71 @@
         </select>
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Status</label>
-        <select name="status" class="border border-gray-300 rounded px-3 py-2 text-sm">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
+        <select name="status" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">All</option>
           <option value="PAID" {% if filter_status == 'PAID' %}selected{% endif %}>Paid</option>
           <option value="PARTIAL" {% if filter_status == 'PARTIAL' %}selected{% endif %}>Partial</option>
           <option value="UNPAID" {% if filter_status == 'UNPAID' %}selected{% endif %}>Unpaid</option>
         </select>
       </div>
-      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
-      <a href="{% url 'school_admin:invoice_list' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
-      <a href="{% url 'school_admin:generate_invoices' %}" class="px-4 py-2 bg-[var(--color-signal-gold)] text-white rounded text-sm hover:opacity-90 ml-auto">+ Generate Invoices</a>
+      <div class="flex gap-2">
+        <button type="submit" class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">Filter</button>
+        <a href="{% url 'school_admin:invoice_list' %}" class="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Clear</a>
+      </div>
+      <a href="{% url 'school_admin:generate_invoices' %}" class="ml-auto inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <i data-lucide="plus" class="w-4 h-4 mr-2"></i>Generate Invoices
+      </a>
     </form>
   </div>
 
-  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="bg-gray-50 text-left text-gray-600">
-          <th class="px-4 py-3 font-medium">Student</th>
-          <th class="px-4 py-3 font-medium">Term</th>
-          <th class="px-4 py-3 font-medium">Total</th>
-          <th class="px-4 py-3 font-medium">Paid</th>
-          <th class="px-4 py-3 font-medium">Balance</th>
-          <th class="px-4 py-3 font-medium">Status</th>
-          <th class="px-4 py-3 font-medium">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for inv in invoices %}
-        <tr class="border-t border-gray-100 hover:bg-gray-50">
-          <td class="px-4 py-3">{{ inv.student.user.get_full_name|default:inv.student.user.username }}</td>
-          <td class="px-4 py-3 text-gray-600">{{ inv.term.name }}</td>
-          <td class="px-4 py-3">NGN {{ inv.total_amount|floatformat:2 }}</td>
-          <td class="px-4 py-3">NGN {{ inv.amount_paid|floatformat:2 }}</td>
-          <td class="px-4 py-3 font-medium">NGN {{ inv.balance|floatformat:2 }}</td>
-          <td class="px-4 py-3">
-            {% if inv.status == 'PAID' %}
-              <span class="status-stamp status-stamp--paid">{{ inv.status }}</span>
-            {% elif inv.status == 'PARTIAL' %}
-              <span class="status-tag status-tag--pending">{{ inv.status }}</span>
-            {% else %}
-              <span class="status-tag">{{ inv.status }}</span>
-            {% endif %}
-          </td>
-          <td class="px-4 py-3">
-            <a href="{% url 'school_admin:invoice_detail' inv.pk %}" class="text-blue-600 hover:underline">View</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr class="border-t border-gray-100">
-          <td colspan="7" class="px-4 py-8 text-center text-gray-400">No invoices found.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Student</th>
+            <th class="px-6 py-3 font-medium">Term</th>
+            <th class="px-6 py-3 font-medium text-right">Total</th>
+            <th class="px-6 py-3 font-medium text-right">Paid</th>
+            <th class="px-6 py-3 font-medium text-right">Balance</th>
+            <th class="px-6 py-3 font-medium">Status</th>
+            <th class="px-6 py-3 font-medium text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for inv in invoices %}
+          <tr class="group hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5">
+              <div class="flex items-center">
+                {% include "components/avatar.html" with name=inv.student.user.get_full_name size="sm" %}
+                <span class="ml-3 text-sm font-medium text-gray-900">{{ inv.student.user.get_full_name|default:inv.student.user.username }}</span>
+              </div>
+            </td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ inv.term.name }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600 text-right">NGN {{ inv.total_amount|floatformat:2 }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600 text-right">NGN {{ inv.amount_paid|floatformat:2 }}</td>
+            <td class="px-6 py-3.5 text-sm font-semibold text-gray-900 text-right">NGN {{ inv.balance|floatformat:2 }}</td>
+            <td class="px-6 py-3.5">
+              {% if inv.status == 'PAID' %}{% include "components/badge.html" with status="success" text=inv.status %}
+              {% elif inv.status == 'PARTIAL' %}{% include "components/badge.html" with status="warning" text=inv.status %}
+              {% else %}{% include "components/badge.html" with status="danger" text=inv.status %}{% endif %}
+            </td>
+            <td class="px-6 py-3.5 text-right">
+              <a href="{% url 'school_admin:invoice_detail' inv.pk %}" class="p-1.5 text-gray-400 hover:text-primary transition-colors inline-block" title="View"><i data-lucide="eye" class="w-4 h-4"></i></a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="py-12 text-center">
+              <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="file-text" class="w-5 h-5 text-gray-400"></i></div>
+              <p class="text-sm text-gray-400">No invoices found</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% endblock %}

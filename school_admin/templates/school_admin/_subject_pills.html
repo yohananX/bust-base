@@ -5,22 +5,22 @@
     {% if s.pk in assigned_subject_ids %}
       bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed
     {% else %}
-      bg-white border-gray-300 text-gray-700 hover:border-[#1B2430] hover:bg-gray-50
+      bg-white border-gray-300 text-gray-700 hover:border-primary hover:bg-violet-50
     {% endif %}">
     {% if s.pk in assigned_subject_ids %}
       <input type="checkbox" name="subject_ids" value="{{ s.pk }}" disabled class="sr-only">
-      <span class="text-green-500 text-xs">✓</span>
+      <span class="text-emerald-500 text-xs"><i data-lucide="check" class="w-3 h-3"></i></span>
       <span>{{ s.name }}</span>
       <span class="text-xs text-gray-400">(assigned)</span>
     {% else %}
       <input type="checkbox" name="subject_ids" value="{{ s.pk }}" class="sr-only peer">
       <span class="w-3.5 h-3.5 rounded border border-gray-300 flex items-center justify-center
-        peer-checked:bg-[#1B2430] peer-checked:border-[#1B2430] peer-checked:text-white transition-colors">
+        peer-checked:bg-primary peer-checked:border-primary peer-checked:text-white transition-colors">
         <svg class="w-2.5 h-2.5 hidden peer-checked:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
           <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
         </svg>
       </span>
-      <span class="peer-checked:text-[#1B2430] peer-checked:font-medium">{{ s.name }}</span>
+      <span class="peer-checked:text-primary peer-checked:font-medium">{{ s.name }}</span>
     {% endif %}
   </label>
   {% endfor %}

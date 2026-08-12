@@ -1,37 +1,43 @@
 {% extends 'base.html' %}
+{% block title %}My Results{% endblock %}
+{% block page_header %}My Results{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-display text-[#1B2430] mb-6">My Results</h1>
-
-<div class="bg-white rounded-lg shadow-sm p-4">
-  {% if results %}
-  <table class="w-full text-sm">
-    <thead>
-      <tr class="text-left text-gray-500 border-b">
-        <th class="pb-2">Session</th>
-        <th class="pb-2">Term</th>
-        <th class="pb-2">Class</th>
-        <th class="pb-2"></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for result in results %}
-      <tr class="border-b last:border-0">
-        <td class="py-3">{{ result.term.session.name }}</td>
-        <td class="py-3">{{ result.term.name }}</td>
-        <td class="py-3">{{ result.class_name }}</td>
-        <td class="py-3 text-right">
-          <a href="{% url 'student-result-booklet' term_id=result.term.pk %}"
-             class="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">
-            View Booklet
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p class="text-gray-500 text-sm">No results available yet.</p>
-  {% endif %}
+<div class="max-w-6xl mx-auto space-y-6">
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    {% if results %}
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Session</th>
+            <th class="px-6 py-3 font-medium">Term</th>
+            <th class="px-6 py-3 font-medium">Class</th>
+            <th class="px-6 py-3 font-medium text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for result in results %}
+          <tr class="hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ result.term.session.name }}</td>
+            <td class="px-6 py-3.5 text-sm font-medium text-gray-900">{{ result.term.name }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ result.class_name }}</td>
+            <td class="px-6 py-3.5 text-right">
+              <a href="{% url 'student-result-booklet' term_id=result.term.pk %}"
+                 class="inline-flex items-center px-3.5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-medium rounded-xl transition-colors shadow-sm">
+                <i data-lucide="eye" class="w-3.5 h-3.5 mr-1.5"></i>View Booklet
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="py-16 text-center">
+      <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="file-text" class="w-5 h-5 text-gray-400"></i></div>
+      <p class="text-sm text-gray-400">No results available yet</p>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

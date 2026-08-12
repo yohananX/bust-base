@@ -5,22 +5,27 @@
 {% block page_header %}Student Management{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
-  <!-- Add Student Button -->
-  <div class="flex justify-end mb-4">
-    <a href="{% url 'school_admin:student_create' %}" class="bg-[#1B2430] text-white px-4 py-2 rounded text-sm hover:bg-[#2a3648] transition-colors">+ Add Student</a>
+<div class="max-w-7xl mx-auto space-y-6">
+
+  {# ── Toolbar ── #}
+  {% url 'school_admin:student_create' as add_student_url %}
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <p class="text-sm text-gray-500">{{ students|length }} student(s)</p>
+    </div>
+    {% include "components/button_primary.html" with text="Add Student" icon="plus" href=add_student_url %}
   </div>
 
-  <!-- Filters -->
-  <div class="bg-[var(--color-surface)] rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+  {# ── Filters ── #}
+  <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
     <form method="GET" class="flex flex-wrap gap-4 items-end">
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Search</label>
-        <input type="text" name="q" value="{{ q }}" placeholder="Name or admission #" class="border border-gray-300 rounded px-3 py-2 text-sm w-64">
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
+        {% include 'components/search_autocomplete.html' with cache_key='students' api_path='/school-admin/api/students/' item_url='/school-admin/students/{id}/' placeholder='Search by name or admission #' %}
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Class</label>
-        <select name="class_id" class="border border-gray-300 rounded px-3 py-2 text-sm">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Class</label>
+        <select name="class_id" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">All Classes</option>
           {% for c in classes %}
             <option value="{{ c.id }}" {% if filter_class_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
@@ -28,63 +33,75 @@
         </select>
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Status</label>
-        <select name="status" class="border border-gray-300 rounded px-3 py-2 text-sm">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
+        <select name="status" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">All Statuses</option>
           {% for code, label in status_choices %}
             <option value="{{ code }}" {% if filter_status == code %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
-      <button type="submit" class="px-4 py-2 bg-[#1B2430] text-white rounded text-sm hover:opacity-90">Filter</button>
-      <a href="{% url 'school_admin:student_list' %}" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Clear</a>
+      <div class="flex gap-2">
+        <button type="submit" class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">Filter</button>
+        <a href="{% url 'school_admin:student_list' %}" class="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Clear</a>
+      </div>
     </form>
   </div>
 
-  <!-- Student Table -->
-  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="bg-gray-50 text-left text-gray-600">
-          <th class="px-4 py-3 font-medium">Name</th>
-          <th class="px-4 py-3 font-medium">Admission #</th>
-          <th class="px-4 py-3 font-medium">Current Class</th>
-          <th class="px-4 py-3 font-medium">Status</th>
-          <th class="px-4 py-3 font-medium">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in students %}
-        <tr class="border-t border-gray-100 hover:bg-gray-50">
-          <td class="px-4 py-3">
-            <a href="{% url 'school_admin:student_detail' s.pk %}" class="text-[var(--color-signal-gold)] hover:underline">
-              {{ s.user.get_full_name|default:s.user.username }}
-            </a>
-          </td>
-          <td class="px-4 py-3 text-gray-600">{{ s.admission_number }}</td>
-          <td class="px-4 py-3">{{ s.current_class.name|default:'—' }}</td>
-          <td class="px-4 py-3">
-            {% if s.status == 'ACTIVE' %}
-              <span class="status-tag status-tag--active">{{ s.status }}</span>
-            {% elif s.status == 'SUSPENDED' %}
-              <span class="status-tag status-tag--pending">{{ s.status }}</span>
-            {% else %}
-              <span class="status-tag">{{ s.status }}</span>
-            {% endif %}
-          </td>
-          <td class="px-4 py-3 space-x-3">
-            <a href="{% url 'school_admin:student_detail' s.pk %}" class="text-blue-600 hover:underline">View</a>
-            <a href="{% url 'school_admin:student_edit' s.pk %}" class="text-amber-600 hover:underline">Edit</a>
-            <a href="{% url 'school_admin:student_delete' s.pk %}" class="text-red-600 hover:underline">Delete</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr class="border-t border-gray-100">
-          <td colspan="5" class="px-4 py-8 text-center text-gray-400">No students found.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  {# ── Student Table ── #}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Student</th>
+            <th class="px-6 py-3 font-medium">Class</th>
+            <th class="px-6 py-3 font-medium">Gender</th>
+            <th class="px-6 py-3 font-medium">Status</th>
+            <th class="px-6 py-3 font-medium text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for s in students %}
+          <tr class="group hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5">
+              <div class="flex items-center">
+                {% include "components/avatar.html" with name=s.user.get_full_name size="sm" %}
+                <div class="ml-3">
+                  <a href="{% url 'school_admin:student_detail' s.pk %}" class="text-sm font-medium text-gray-900 hover:text-primary transition-colors">
+                    {{ s.user.get_full_name|default:s.user.username }}
+                  </a>
+                  <p class="text-xs text-gray-500">{{ s.admission_number }}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ s.current_class.name|default:'—' }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600 capitalize">{{ s.get_gender_display|default:'—' }}</td>
+            <td class="px-6 py-3.5">
+              {% if s.status == 'ACTIVE' %}{% include "components/badge.html" with status="success" text=s.get_status_display %}
+              {% elif s.status == 'SUSPENDED' %}{% include "components/badge.html" with status="danger" text=s.get_status_display %}
+              {% elif s.status == 'GRADUATED' %}{% include "components/badge.html" with status="info" text=s.get_status_display %}
+              {% else %}{% include "components/badge.html" with status="warning" text=s.get_status_display %}{% endif %}
+            </td>
+            <td class="px-6 py-3.5 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <a href="{% url 'school_admin:student_detail' s.pk %}" class="p-1.5 text-gray-400 hover:text-primary transition-colors" title="View"><i data-lucide="eye" class="w-4 h-4"></i></a>
+                <a href="{% url 'school_admin:student_edit' s.pk %}" class="p-1.5 text-gray-400 hover:text-amber-600 transition-colors" title="Edit"><i data-lucide="pencil" class="w-4 h-4"></i></a>
+                <a href="{% url 'school_admin:student_delete' s.pk %}" class="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="py-12 text-center">
+              <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="users" class="w-5 h-5 text-gray-400"></i></div>
+              <p class="text-sm text-gray-400">No students found</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% endblock %}

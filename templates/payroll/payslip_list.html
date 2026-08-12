@@ -5,57 +5,60 @@
 {% block page_header %}Payslips{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto">
-  <div class="bg-[var(--color-surface)] rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+<div class="max-w-6xl mx-auto space-y-6">
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    {% if payslips %}
     <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
-            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Gross Pay</th>
-            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Net Pay</th>
-            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
-            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Period</th>
+            <th class="px-6 py-3 font-medium text-right">Gross Pay</th>
+            <th class="px-6 py-3 font-medium text-right">Net Pay</th>
+            <th class="px-6 py-3 font-medium text-center">Status</th>
+            <th class="px-6 py-3 font-medium text-right">Balance</th>
+            <th class="px-6 py-3 font-medium text-center">Actions</th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
+        <tbody class="divide-y divide-gray-50">
           {% for payslip in payslips %}
-          <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+          <tr class="hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5 whitespace-nowrap text-sm font-medium text-gray-900">
               {{ payslip.payroll_run.label }}
               <div class="text-xs text-gray-500">
                 {{ payslip.payroll_run.period_start|date:"M d, Y" }} — {{ payslip.payroll_run.period_end|date:"M d, Y" }}
               </div>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
-              {{ payslip.gross_pay|floatformat:2 }}
+            <td class="px-6 py-3.5 whitespace-nowrap text-sm text-gray-600 text-right font-mono">
+              NGN {{ payslip.gross_pay|floatformat:2 }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
-              {{ payslip.net_pay|floatformat:2 }}
+            <td class="px-6 py-3.5 whitespace-nowrap text-sm font-semibold text-gray-900 text-right font-mono">
+              NGN {{ payslip.net_pay|floatformat:2 }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-center">
-              {% include 'components/status_stamp.html' with status=payslip.disbursement_status %}
+            <td class="px-6 py-3.5 whitespace-nowrap text-center">
+              {% if payslip.disbursement_status == 'PAID' %}{% include 'components/badge.html' with status='success' text=payslip.disbursement_status %}
+              {% elif payslip.disbursement_status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text=payslip.disbursement_status %}
+              {% else %}{% include 'components/badge.html' with status='danger' text=payslip.disbursement_status %}{% endif %}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
-              {{ payslip.balance|floatformat:2 }}
+            <td class="px-6 py-3.5 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
+              NGN {{ payslip.balance|floatformat:2 }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-center">
-              <a href="{% url 'payroll:payslip-detail' payslip.id %}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary)]/10 rounded-md hover:bg-[var(--color-primary)]/20 transition-colors">
-                View Details
+            <td class="px-6 py-3.5 whitespace-nowrap text-center">
+              <a href="{% url 'payroll:payslip-detail' payslip.id %}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 rounded-xl hover:bg-primary/20 transition-colors">
+                <i data-lucide="eye" class="w-3.5 h-3.5 mr-1"></i>View Details
               </a>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="6" class="px-6 py-12 text-center text-sm text-gray-500">
-              No payslips found.
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+    {% else %}
+    <div class="py-16 text-center">
+      <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="receipt" class="w-5 h-5 text-gray-400"></i></div>
+      <p class="text-sm text-gray-400">No payslips found</p>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

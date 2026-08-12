@@ -1,0 +1,28 @@
+{
+  "agent": "executor",
+  "status": "complete",
+  "timestamp": "2026-08-12T00:00:00Z",
+  "task": "Hardening fees/paystack.py: Paystack integration rework",
+  "files_changed": ["fees/paystack.py"],
+  "functions": {
+    "verify_webhook_signature": "UNCHANGED",
+    "handle_webhook": "Reworked: logs every event to WebhookLog before dispatch (school resolved from payload metadata/payment/invoice), dispatches charge.success -> confirm w/ tamper check, charge.* failures -> FAILED if PENDING, unhandled -> ignored. All inside one atomic block. Idempotency via CONFIRMED+webhook_processed flag.",
+    "initiate_payment": "BASE_URL now settings.PAYSTACK_BASE_URL w/ fallback; new row sets initiated_at; after successful API response persists authorization_url + access_code + initiated_at via QuerySet.update (both new-row and existing_reference reuse paths); metadata adds custom_fields invoice field. PENDING-row-before-API, kobo conversion, timeout=15, error dict unchanged.",
+    "verify_transaction": "NEW - GET {base}/transaction/verify/{reference}, same headers, timeout=15; returns full response dict on success, {'error': message|'Verification failed'} on non-200/status false, {'error': 'Payment gateway error. Please try again.'} on exception.",
+    "issue_receipt": "NEW - FeeReceipt get_or_create(payment=...) defaults school + 'RCP-{year}-{pk:06d}'; lazy import; called inside atomic block on both confirm paths (idempotent).",
+    "_handle_charge_success": "NEW helper - already-confirmed short-circuit, TAMPER CHECK (int(payment.amount*100) != amount_kobo -> FAILED + webhook_processed + warning, NO credit), confirm path sets status/paid_on/webhook_processed/webhook_payload/verified_at/currency/fees_charged/channel/card_last4/card_brand/bank_name/paid_by_email/paid_by_name/paid_by_phone; webhook-first fallback creates CONFIRMED payment with enrichment; receipt + log processed on both.",
+    "_handle_charge_failure": "NEW helper - charge.failed/error/other charge.*: PENDING payment -> FAILED + webhook_processed + payload; returns 'recorded'; else 'ignored'.",
+    "_create_webhook_log/_resolve_event_school/_mark_webhook_log_processed/_parse_paid_at/_paystack_base_url/_default_currency": "NEW private helpers (school resolution required for non-null TenantScopedModel.school FK; getattr fallbacks since settings.py on disk lacks PAYSTACK_BASE_URL/DEFAULT_CURRENCY)."
+  },
+  "tamper_check_position": "handle_webhook charge.success, immediately after already-confirmed short-circuit, before any credit; mismatch -> status=FAILED, webhook_processed=True, webhook_payload=event, save(update_fields=[status, webhook_processed, webhook_payload]), logger.warning, JsonResponse({'status': 'amount mismatch'}) 200, no receipt.",
+  "idempotency_flags": "webhook_processed=True set on confirm/fail; 'already confirmed' requires status==CONFIRMED AND webhook_processed; WebhookLog rows: processed=True for fully-handled events, False for ignored/unhandled/error routes.",
+  "receipt_issuance": "issue_receipt(payment) called inside atomic block whenever a payment is confirmed (both existing-row and webhook-first paths); get_or_create -> idempotent; lazy import fee receipt model.",
+  "decimal_only": "No float usage anywhere in file (Decimal only, kobo via int(Decimal*100)); float-scanner test passes.",
+  "verification": {
+    "syntax": "ast.parse OK",
+    "tests": "fees.tests.DuplicateWebhookTest + fees.tests.PaymentModelTest: 6 tests, OK (21.3s); fees.tests.DecimalCheckTest.test_no_float_in_fees_app: OK",
+    "db_lock": "no lock issues encountered"
+  },
+  "next_steps": ["commit via git-wrangler", "optionally define PAYSTACK_BASE_URL and DEFAULT_CURRENCY in school/settings.py (module already handles absence via getattr)"],
+  "packages_installed": []
+}

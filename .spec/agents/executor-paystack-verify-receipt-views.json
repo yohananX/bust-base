@@ -1,0 +1,43 @@
+{
+  "agent": "executor",
+  "status": "complete",
+  "timestamp": "2026-08-12T00:00:00Z",
+  "task": "Add PaymentVerify + Receipt views and URLs for Paystack payment upgrade",
+  "files_changed": ["fees/views.py", "fees/urls.py"],
+  "classes_added": [
+    "VerifyPaymentView",
+    "PaymentReceiptView",
+    "PaymentReceiptPdfView",
+    "_resolve_receipt_payment (module-level helper)"
+  ],
+  "url_names_added": [
+    "fees:payment-verify",
+    "fees:payment-receipt",
+    "fees:payment-receipt-pdf"
+  ],
+  "permission_behavior": {
+    "VerifyPaymentView": "Roles.PARENT/STUDENT only; school-scoped invoice via get_object_or_404(..., school=request.school); PARENT guardian_links check else redirect('parent-children')",
+    "PaymentReceiptView": "Roles.PARENT/STUDENT/ADMIN; school-scoped payment; PARENT must be guardian link else parent-children; STUDENT must own invoice student else student-overview; ADMIN passes; non-CONFIRMED payment redirects by role (PARENT->parent-children, STUDENT->student-overview, ADMIN->school_admin:invoice_list)",
+    "PaymentReceiptPdfView": "same roles + same _resolve_receipt_payment logic; render_receipt_pdf returning None falls back to redirect('fees:payment-receipt')"
+  },
+  "verify_reconciliation_flow": {
+    "step_1": "Lookup invoice (school-scoped) + payment by reference+invoice; missing params/payment return gray span",
+    "step_2": "CONFIRMED -> short-circuit render partial (no double credit)",
+    "step_3": "PENDING/FAILED -> verify_transaction(reference); 'error' key leaves status unchanged (retry later)",
+    "step_4": "data.status=='success' and data.amount: expected_kobo = int(amount*100); mismatch -> FAILED + webhook_processed=True + webhook_payload={'verified': data}",
+    "step_5": "match -> CONFIRMED, verified_at, currency, fees_charged=Decimal(fees)/100, paid_on kept/normalized, enrichment from authorization (channel/last4/card_type/bank) + customer (email/first_name/phone), then issue_receipt(payment)",
+    "step_6": "re-render payment_status.html with fresh payment + receipt from payment.receipt (getattr, None-safe)"
+  },
+  "deferred_imports": ["fees.paystack.verify_transaction", "fees.paystack.issue_receipt", "fees.pdf.render_receipt_pdf"],
+  "note": "Spec said redirect('invoice-list') for ADMIN fallback, but that URL name does not exist in the codebase; used the real existing name 'school_admin:invoice_list'. No floats used (Decimal only).",
+  "verification": {
+    "ast_parse": "OK",
+    "manage.py_check": "System check identified no issues (0 silenced)."
+  },
+  "next_steps": [
+    "Parallel agents: add verify_transaction + issue_receipt to fees/paystack.py, create fees/pdf.py + templates/fees/receipt_view.html",
+    "Run migration for nullable paid_on if not already done",
+    "Commit via git-wrangler (not done here)"
+  ],
+  "packages_installed": []
+}

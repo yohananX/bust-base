@@ -69,6 +69,11 @@ class Student(TenantScopedModel):
         default=ACTIVE,
         verbose_name=_('status'),
     )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        db_index=True,
+        verbose_name=_('updated at'),
+    )
 
     class Meta:
         verbose_name = _('student')
