@@ -140,5 +140,9 @@ class TermSetCurrentView(RoleRequiredMixin, View):
         term.is_current = True
         term.save()
 
+        session = term.session
+        session.is_current = True
+        session.save()
+
         messages.success(request, f'{term.name} is now the current term.')
         return redirect('school_admin:session_list')
