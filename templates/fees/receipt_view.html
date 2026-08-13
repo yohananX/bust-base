@@ -22,7 +22,7 @@
       <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to Payments
     </a>
     {% else %}
-    <a href="#" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
+    <a href="{% url 'parent-children' %}" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
       <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back
     </a>
     {% endif %}

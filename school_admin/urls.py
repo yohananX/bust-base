@@ -18,7 +18,8 @@ from school_admin.views import (
     SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView,
     TeacherAssignmentListView, AssignmentDeleteView, AssignmentAddView, AssignmentSubjectsPartialView,
     ScoreAdminView,
-    FeeCategoryListView, FeeStructureListView,
+    FeeCategoryListView, FeeCategoryCreateView, FeeCategoryEditView,
+    FeeCategoryDeleteView, FeeStructureListView,
     InvoiceListView, InvoiceDetailView, GenerateInvoicesView,
     OutstandingFeesReportView,
     PendingTransfersView, PendingTransferConfirmView, PendingTransferRejectView,
@@ -87,6 +88,9 @@ urlpatterns = [
 
     # Fees & Invoices
     path('fees/categories/', FeeCategoryListView.as_view(), name='fee_category_list'),
+    path('fees/categories/new/', FeeCategoryCreateView.as_view(), name='fee_category_create'),
+    path('fees/categories/<int:pk>/edit/', FeeCategoryEditView.as_view(), name='fee_category_edit'),
+    path('fees/categories/<int:pk>/delete/', FeeCategoryDeleteView.as_view(), name='fee_category_delete'),
     path('fees/structures/', FeeStructureListView.as_view(), name='fee_structure_list'),
     path('fees/outstanding/', OutstandingFeesReportView.as_view(), name='outstanding_fees'),
     path('fees/pending/', PendingTransfersView.as_view(), name='pending_transfers'),

@@ -8,15 +8,15 @@
 <div class="max-w-7xl mx-auto space-y-6">
 
   <div class="flex gap-2 flex-wrap">
-    <a href="?section=pay_grades"
+    <a href="{% url 'school_admin:pay_grade_list' %}"
        class="px-4 py-2 rounded-xl text-sm font-medium transition-colors {% if section == 'pay_grades' %}bg-primary text-white shadow-sm{% else %}bg-white text-gray-700 border border-gray-200 hover:bg-gray-50{% endif %}">
       Pay Grades
     </a>
-    <a href="?section=allowances"
+    <a href="{% url 'school_admin:allowance_list' %}"
        class="px-4 py-2 rounded-xl text-sm font-medium transition-colors {% if section == 'allowances' %}bg-primary text-white shadow-sm{% else %}bg-white text-gray-700 border border-gray-200 hover:bg-gray-50{% endif %}">
       Allowances &amp; Deductions
     </a>
-    <a href="?section=runs"
+    <a href="{% url 'school_admin:payroll_run_list' %}"
        class="px-4 py-2 rounded-xl text-sm font-medium transition-colors {% if section == 'runs' %}bg-primary text-white shadow-sm{% else %}bg-white text-gray-700 border border-gray-200 hover:bg-gray-50{% endif %}">
       Payroll Runs
     </a>

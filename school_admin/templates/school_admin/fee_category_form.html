@@ -1,0 +1,36 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}Edit Fee Category{% else %}Add Fee Category{% endif %} — School Admin{% endblock %}
+{% block page_header %}{% if is_edit %}Edit Fee Category{% else %}Add Fee Category{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+        <i data-lucide="receipt" class="w-5 h-5"></i>
+      </div>
+      <p class="text-sm text-gray-600">Set the fee category name.</p>
+    </div>
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Name <span class="text-red-500">*</span></label>
+        <input type="text" name="name" value="{{ category.name|default:'' }}" required
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+
+      <div class="flex items-center gap-4 pt-2">
+        <button type="submit"
+                class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+          {% if is_edit %}<i data-lucide="check" class="w-4 h-4 mr-2"></i>{% else %}<i data-lucide="plus" class="w-4 h-4 mr-2"></i>{% endif %}
+          {% if is_edit %}Update Category{% else %}Create Category{% endif %}
+        </button>
+        <a href="{% url 'school_admin:fee_category_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -32,6 +32,106 @@ class FeeCategoryListView(RoleRequiredMixin, View):
         })
 
 
+class FeeCategoryCreateView(RoleRequiredMixin, View):
+    """Create a new fee category."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request):
+        return render(request, 'school_admin/fee_category_form.html', {
+            'is_edit': False,
+        })
+
+    def post(self, request):
+        school = request.school
+        name = request.POST.get('name', '').strip()
+
+        if not name:
+            messages.error(request, 'Category name is required.')
+            return render(request, 'school_admin/fee_category_form.html', {
+                'is_edit': False,
+            })
+
+        if FeeCategory.objects.filter(school=school, name__iexact=name).exists():
+            messages.error(request, 'A category with that name already exists.')
+            return render(request, 'school_admin/fee_category_form.html', {
+                'is_edit': False,
+            })
+
+        FeeCategory.objects.create(school=school, name=name)
+        messages.success(request, f'Category "{name}" created successfully.')
+        return redirect('school_admin:fee_category_list')
+
+
+class FeeCategoryEditView(RoleRequiredMixin, View):
+    """Edit an existing fee category."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request, pk):
+        school = request.school
+        category = get_object_or_404(FeeCategory, school=school, pk=pk)
+        return render(request, 'school_admin/fee_category_form.html', {
+            'category': category,
+            'is_edit': True,
+        })
+
+    def post(self, request, pk):
+        school = request.school
+        category = get_object_or_404(FeeCategory, school=school, pk=pk)
+        name = request.POST.get('name', '').strip()
+
+        if not name:
+            messages.error(request, 'Category name is required.')
+            return render(request, 'school_admin/fee_category_form.html', {
+                'category': category,
+                'is_edit': True,
+            })
+
+        if FeeCategory.objects.filter(
+            school=school, name__iexact=name,
+        ).exclude(pk=category.pk).exists():
+            messages.error(request, 'A category with that name already exists.')
+            return render(request, 'school_admin/fee_category_form.html', {
+                'category': category,
+                'is_edit': True,
+            })
+
+        category.name = name
+        category.save()
+        messages.success(request, f'Category "{name}" updated successfully.')
+        return redirect('school_admin:fee_category_list')
+
+
+class FeeCategoryDeleteView(RoleRequiredMixin, View):
+    """Delete a fee category with confirmation."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request, pk):
+        school = request.school
+        category = get_object_or_404(FeeCategory, school=school, pk=pk)
+        context = {
+            'category': category,
+            'structure_count': category.feestructure_set.count(),
+            'line_item_count': InvoiceLineItem.objects.filter(category=category).count(),
+        }
+        return render(request, 'school_admin/fee_category_confirm_delete.html', context)
+
+    def post(self, request, pk):
+        school = request.school
+        category = get_object_or_404(FeeCategory, school=school, pk=pk)
+
+        if category.feestructure_set.exists():
+            messages.error(request, 'Cannot delete — assigned to fee structures.')
+            return redirect('school_admin:fee_category_list')
+
+        name = category.name
+        category.delete()
+        messages.success(request, f'Category "{name}" deleted successfully.')
+        return redirect('school_admin:fee_category_list')
+
+
 class FeeStructureListView(RoleRequiredMixin, View):
     """List fee structures with filters."""
 

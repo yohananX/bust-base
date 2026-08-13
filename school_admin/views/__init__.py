@@ -13,7 +13,8 @@ from .academics import (
     ScoreAdminView,
 )
 from .fees import (
-    FeeCategoryListView, FeeStructureListView,
+    FeeCategoryListView, FeeCategoryCreateView, FeeCategoryEditView,
+    FeeCategoryDeleteView, FeeStructureListView,
     InvoiceListView, InvoiceDetailView, GenerateInvoicesView,
     OutstandingFeesReportView,
     PendingTransfersView, PendingTransferConfirmView, PendingTransferRejectView,
