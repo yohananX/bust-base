@@ -1,19 +1,19 @@
 {% extends 'school_admin/base_admin.html' %}
 {% load static %}
 
-{% block title %}Delete Fee Structure — School Admin{% endblock %}
-{% block page_header %}Delete Fee Structure{% endblock %}
+{% block title %}Delete Pricing — School Admin{% endblock %}
+{% block page_header %}Delete Pricing{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
   <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
     <div class="flex items-start gap-4 mb-6">
-      <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+      <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0">
         <i data-lucide="alert-triangle" class="w-5 h-5"></i>
       </div>
       <div>
         <h3 class="text-lg font-display font-semibold text-gray-900">Delete Pricing: {{ structure.school_class.name }} — {{ structure.category.name }}</h3>
-        <p class="text-sm text-gray-500 mt-1">This action cannot be undone. The amount for this class, term and category will be removed.</p>
+        <p class="text-sm text-gray-500 mt-1">This action cannot be undone.</p>
       </div>
     </div>
 
@@ -45,7 +45,7 @@
         <i data-lucide="info" class="w-4.5 h-4.5 mt-0.5 flex-shrink-0"></i>
         <div>
           <p class="font-medium">Warning</p>
-          <p class="mt-1">This will remove the fee amount for {{ structure.school_class.name }} — {{ structure.category.name }} in {{ structure.term.name }}. Existing invoices are not changed.</p>
+          <p class="mt-1">This will remove the amount for {{ structure.school_class.name }} — {{ structure.category.name }} in {{ structure.term.name }}. Existing invoices are not changed.</p>
         </div>
       </div>
     </div>
@@ -54,9 +54,9 @@
       {% csrf_token %}
       <button type="submit"
               class="inline-flex items-center px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
-        <i data-lucide="trash-2" class="w-4 h-4 mr-2"></i>Delete Structure
+        <i data-lucide="trash-2" class="w-4 h-4 mr-2"></i>Delete Pricing
       </button>
-      <a href="{% url 'school_admin:fee_structure_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
+      <a href="{% url 'school_admin:fee_pricing_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
     </form>
   </div>
 </div>

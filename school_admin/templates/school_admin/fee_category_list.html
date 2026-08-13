@@ -1,0 +1,73 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Categories — School Admin{% endblock %}
+{% block page_header %}Fee Categories{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+  {# ── Back link ── #}
+  <a href="{% url 'school_admin:fee_pricing_list' %}" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">
+    <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to Fee Pricing
+  </a>
+
+  {# ── Header row ── #}
+  <div class="flex justify-between items-center">
+    <h2 class="text-lg font-display font-semibold text-gray-900">Categories</h2>
+    <a href="{% url 'school_admin:fee_category_create' %}"
+       class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+      <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Category
+    </a>
+  </div>
+
+  {# ── Categories table ── #}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Name</th>
+            <th class="px-6 py-3 font-medium text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for cat in categories %}
+          <tr class="hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="tags" class="w-4 h-4 text-violet-600"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-900">{{ cat.name }}</span>
+              </div>
+            </td>
+            <td class="px-6 py-3.5">
+              <div class="flex items-center justify-end gap-1">
+                <a href="{% url 'school_admin:fee_category_edit' cat.pk %}"
+                   title="Edit"
+                   class="p-2 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                </a>
+                <a href="{% url 'school_admin:fee_category_delete' cat.pk %}"
+                   title="Delete"
+                   class="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="2" class="py-12 text-center">
+              <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="tags" class="w-5 h-5 text-gray-400"></i></div>
+              <p class="text-sm text-gray-400">No categories found</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

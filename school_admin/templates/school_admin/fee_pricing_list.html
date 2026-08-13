@@ -1,0 +1,111 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Fees — School Admin{% endblock %}
+{% block page_header %}Fee Management{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+  {# ── Header row ── #}
+  <div class="flex justify-between items-center">
+    <h2 class="text-lg font-display font-semibold text-gray-900">Fee Pricing</h2>
+    <div class="flex gap-2">
+      <a href="{% url 'school_admin:fee_category_list' %}"
+         class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 text-sm font-medium text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
+        <i data-lucide="tags" class="w-4 h-4 mr-1.5"></i>Categories
+      </a>
+      <a href="{% url 'school_admin:fee_pricing_create' %}"
+         class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Pricing
+      </a>
+    </div>
+  </div>
+
+  {# ── Filter card ── #}
+  <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Class</label>
+        <select name="class_id" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">All Classes</option>
+          {% for c in classes %}
+            <option value="{{ c.id }}" {% if filter_class == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Term</label>
+        <select name="term_id" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">All Terms</option>
+          {% for t in terms %}
+            <option value="{{ t.id }}" {% if filter_term == t.id|stringformat:'s' %}selected{% endif %}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">Filter</button>
+        <a href="{% url 'school_admin:fee_pricing_list' %}" class="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Clear</a>
+      </div>
+    </form>
+  </div>
+
+  {# ── Pricing table ── #}
+  {% if pricing %}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Class</th>
+            <th class="px-6 py-3 font-medium">Term</th>
+            <th class="px-6 py-3 font-medium">Category</th>
+            <th class="px-6 py-3 font-medium text-right">Amount</th>
+            <th class="px-6 py-3 font-medium text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for p in pricing %}
+          <tr class="hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5 text-sm font-medium text-gray-900">{{ p.school_class.name }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ p.term.name }}</td>
+            <td class="px-6 py-3.5">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">{{ p.category.name }}</span>
+            </td>
+            <td class="px-6 py-3.5 text-sm font-semibold text-gray-900 text-right">NGN {{ p.amount|floatformat:2 }}</td>
+            <td class="px-6 py-3.5">
+              <div class="flex items-center justify-end gap-1">
+                <a href="{% url 'school_admin:fee_pricing_edit' p.pk %}"
+                   title="Edit"
+                   class="p-2 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                </a>
+                <a href="{% url 'school_admin:fee_pricing_delete' p.pk %}"
+                   title="Delete"
+                   class="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  {# ── Empty state ── #}
+  <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
+    <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+      <i data-lucide="receipt" class="w-5 h-5 text-gray-400"></i>
+    </div>
+    <h3 class="text-base font-display font-semibold text-gray-900">No pricing set yet</h3>
+    <p class="text-sm text-gray-500 mt-1">Add a price for a category, class and term to get started.</p>
+    <a href="{% url 'school_admin:fee_pricing_create' %}"
+       class="inline-flex items-center mt-4 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+      <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Pricing
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

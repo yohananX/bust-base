@@ -1,0 +1,37 @@
+{
+  "agent": "executor",
+  "status": "complete",
+  "timestamp": "2026-08-13T00:00:00Z",
+  "description": "Rework fee-management backend: single price-line model replacing bulk pricing + structures tab",
+  "files_changed": [
+    "school_admin/views/fees.py",
+    "school_admin/views/__init__.py",
+    "school_admin/urls.py",
+    "core/context_processors.py"
+  ],
+  "packages_installed": [],
+  "verification": {
+    "py_compile": "OK (fees.py, __init__.py, urls.py, context_processors.py)",
+    "reverse_check": {
+      "school_admin:fee_pricing_list": "/school-admin/fees/",
+      "school_admin:fee_pricing_create": "/school-admin/fees/new/",
+      "school_admin:fee_pricing_edit": "/school-admin/fees/1/edit/",
+      "school_admin:fee_pricing_delete": "/school-admin/fees/1/delete/",
+      "school_admin:fee_category_list": "/school-admin/fees/categories/",
+      "school_admin:fee_category_create": "/school-admin/fees/categories/new/",
+      "school_admin:fee_category_edit": "/school-admin/fees/categories/1/edit/",
+      "school_admin:fee_category_delete": "/school-admin/fees/categories/1/delete/",
+      "gone_NoReverseMatch": [
+        "school_admin:fee_structure_list",
+        "school_admin:fee_pricing",
+        "school_admin:fee_structure_edit",
+        "school_admin:fee_structure_delete"
+      ]
+    }
+  },
+  "next_steps": [
+    "Frontend agent: create fee_pricing_list.html, fee_pricing_form.html, fee_pricing_confirm_delete.html, fee_category_list.html; delete fee_list.html, fee_pricing.html, fee_structure_form.html, fee_structure_confirm_delete.html (they still reference removed URL names)",
+    "Dispatch git-wrangler to commit",
+    "Dispatch cleanup-agent to destroy this stub"
+  ]
+}

@@ -26,9 +26,8 @@ class FeeCategoryListView(RoleRequiredMixin, View):
     def get(self, request):
         school = request.school
         categories = FeeCategory.objects.filter(school=school).order_by('name')
-        return render(request, 'school_admin/fee_list.html', {
+        return render(request, 'school_admin/fee_category_list.html', {
             'categories': categories,
-            'section': 'categories',
         })
 
 
@@ -132,190 +131,84 @@ class FeeCategoryDeleteView(RoleRequiredMixin, View):
         return redirect('school_admin:fee_category_list')
 
 
-class FeeStructureListView(RoleRequiredMixin, View):
-    """List fee structures with filters."""
+class FeePricingListView(RoleRequiredMixin, View):
+    """List fee price lines with class and term filters."""
 
     allowed_roles = [Roles.ADMIN]
 
     def get(self, request):
+        from core.models import Term
         school = request.school
-        structures = FeeStructure.objects.filter(
+        pricing = FeeStructure.objects.filter(
             school=school
         ).select_related('school_class', 'term', 'category')
 
         class_id = request.GET.get('class_id', '')
         if class_id:
-            structures = structures.filter(school_class_id=class_id)
+            pricing = pricing.filter(school_class_id=class_id)
 
         term_id = request.GET.get('term_id', '')
         if term_id:
-            structures = structures.filter(term_id=term_id)
+            pricing = pricing.filter(term_id=term_id)
 
-        from core.models import Term
         classes = SchoolClass.objects.filter(school=school, is_active=True)
         terms = Term.objects.filter(school=school).order_by('-start_date')
 
-        return render(request, 'school_admin/fee_list.html', {
-            'structures': structures,
+        return render(request, 'school_admin/fee_pricing_list.html', {
+            'pricing': pricing,
             'classes': classes,
             'terms': terms,
             'filter_class': class_id,
             'filter_term': term_id,
-            'section': 'structures',
         })
 
 
-class FeePricingView(RoleRequiredMixin, View):
-    """Bulk fee-pricing editor: set the amount for every category at once."""
+class FeePricingCreateView(RoleRequiredMixin, View):
+    """Add a single fee price line (category + class + term + amount)."""
 
     allowed_roles = [Roles.ADMIN]
 
     def get(self, request):
         from core.models import Term
         school = request.school
-        classes = SchoolClass.objects.filter(school=school, is_active=True)
-        terms = Term.objects.filter(school=school).order_by('-start_date')
-
-        class_id = request.GET.get('class_id', '')
-        term_id = request.GET.get('term_id', '')
-
-        selected_class = None
-        selected_term = None
-        existing = {}
-        categories = FeeCategory.objects.filter(school=school)
-
-        if class_id and term_id:
-            selected_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
-            selected_term = get_object_or_404(Term, school=school, pk=term_id)
-            existing = {
-                fs.category_id: fs.amount
-                for fs in FeeStructure.objects.filter(
-                    school=school,
-                    school_class_id=class_id,
-                    term_id=term_id,
-                )
-            }
-
-        return render(request, 'school_admin/fee_pricing.html', {
-            'classes': classes,
-            'terms': terms,
-            'categories': categories,
-            'existing': existing,
-            'selected_class_id': class_id,
-            'selected_term_id': term_id,
-            'selected_class': selected_class,
-            'selected_term': selected_term,
+        return render(request, 'school_admin/fee_pricing_form.html', {
+            'is_edit': False,
+            'categories': FeeCategory.objects.filter(school=school),
+            'classes': SchoolClass.objects.filter(school=school, is_active=True),
+            'terms': Term.objects.filter(school=school).order_by('-start_date'),
         })
 
     def post(self, request):
         from core.models import Term
         school = request.school
-        class_id = request.POST.get('class_id', '')
-        term_id = request.POST.get('term_id', '')
-
-        if not class_id or not term_id:
-            messages.error(request, 'Please select a class and a term.')
-            return redirect('school_admin:fee_pricing')
-
-        if not SchoolClass.objects.filter(
-            school=school, pk=class_id
-        ).exists() or not Term.objects.filter(school=school, pk=term_id).exists():
-            messages.error(request, 'Invalid class or term selected.')
-            return redirect('school_admin:fee_pricing')
-
-        selected_class = SchoolClass.objects.get(school=school, pk=class_id)
-        selected_term = Term.objects.get(school=school, pk=term_id)
-
-        with transaction.atomic():
-            for category in FeeCategory.objects.filter(school=school):
-                raw = request.POST.get(f'amount_{category.pk}', '').strip()
-                if not raw:
-                    FeeStructure.objects.filter(
-                        school=school,
-                        school_class_id=class_id,
-                        term_id=term_id,
-                        category=category,
-                    ).delete()
-                    continue
-
-                try:
-                    amount = Decimal(raw)
-                except (ValueError, ArithmeticError):
-                    messages.error(
-                        request, f'Invalid amount for "{category.name}" — skipped.'
-                    )
-                    continue
-
-                if amount < 0:
-                    messages.error(
-                        request, f'Amount for "{category.name}" cannot be negative — skipped.'
-                    )
-                    continue
-
-                FeeStructure.objects.update_or_create(
-                    school=school,
-                    school_class_id=class_id,
-                    term_id=term_id,
-                    category=category,
-                    defaults={'amount': amount},
-                )
-
-        messages.success(
-            request, f'Pricing saved for {selected_class.name} — {selected_term.name}.'
-        )
-        return redirect('school_admin:fee_structure_list')
-
-
-class FeeStructureEditView(RoleRequiredMixin, View):
-    """Edit a single fee structure row."""
-
-    allowed_roles = [Roles.ADMIN]
-
-    def get(self, request, pk):
-        from core.models import Term
-        school = request.school
-        fs = get_object_or_404(FeeStructure, school=school, pk=pk)
-        classes = SchoolClass.objects.filter(school=school, is_active=True)
-        terms = Term.objects.filter(school=school).order_by('-start_date')
-        categories = FeeCategory.objects.filter(school=school)
-        return render(request, 'school_admin/fee_structure_form.html', {
-            'structure': fs,
-            'classes': classes,
-            'terms': terms,
-            'categories': categories,
-            'is_edit': True,
-        })
-
-    def post(self, request, pk):
-        from core.models import Term
-        school = request.school
-        fs = get_object_or_404(FeeStructure, school=school, pk=pk)
-
-        class_id = request.POST.get('class_id', '')
-        term_id = request.POST.get('term_id', '')
         category_id = request.POST.get('category_id', '')
+        class_id = request.POST.get('class_id', '')
+        term_id = request.POST.get('term_id', '')
         raw_amount = request.POST.get('amount', '').strip()
 
+        categories = FeeCategory.objects.filter(school=school)
         classes = SchoolClass.objects.filter(school=school, is_active=True)
         terms = Term.objects.filter(school=school).order_by('-start_date')
-        categories = FeeCategory.objects.filter(school=school)
 
         def re_render():
-            return render(request, 'school_admin/fee_structure_form.html', {
-                'structure': fs,
+            return render(request, 'school_admin/fee_pricing_form.html', {
+                'is_edit': False,
+                'categories': categories,
                 'classes': classes,
                 'terms': terms,
-                'categories': categories,
-                'is_edit': True,
+                'selected_category_id': category_id,
+                'selected_class_id': class_id,
+                'selected_term_id': term_id,
+                'entered_amount': raw_amount,
             })
 
-        if not class_id or not term_id or not category_id or not raw_amount:
+        if not category_id or not class_id or not term_id or not raw_amount:
             messages.error(request, 'All fields are required.')
             return re_render()
 
+        category = get_object_or_404(FeeCategory, school=school, pk=category_id)
         school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
         term = get_object_or_404(Term, school=school, pk=term_id)
-        category = get_object_or_404(FeeCategory, school=school, pk=category_id)
 
         try:
             amount = Decimal(raw_amount)
@@ -332,43 +225,136 @@ class FeeStructureEditView(RoleRequiredMixin, View):
             school_class_id=class_id,
             term_id=term_id,
             category_id=category_id,
-        ).exclude(pk=fs.pk).exists():
+        ).exists():
             messages.error(
-                request, 'A structure for that class, term and category already exists.'
+                request, 'Pricing already exists for that category, class and term.'
             )
             return re_render()
 
-        fs.school_class_id = school_class.pk
-        fs.term_id = term.pk
-        fs.category_id = category.pk
-        fs.amount = amount
-        fs.save()
-        messages.success(request, 'Fee structure updated successfully.')
-        return redirect('school_admin:fee_structure_list')
+        FeeStructure.objects.create(
+            school=school,
+            school_class=school_class,
+            term=term,
+            category=category,
+            amount=amount,
+        )
+        messages.success(
+            request,
+            f'Pricing added: {category.name} — {school_class.name} ({term.name}).',
+        )
+        return redirect('school_admin:fee_pricing_list')
 
 
-class FeeStructureDeleteView(RoleRequiredMixin, View):
-    """Delete a single fee structure row with confirmation."""
+class FeePricingEditView(RoleRequiredMixin, View):
+    """Edit a single fee price line."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request, pk):
+        from core.models import Term
+        school = request.school
+        structure = get_object_or_404(FeeStructure, school=school, pk=pk)
+        return render(request, 'school_admin/fee_pricing_form.html', {
+            'is_edit': True,
+            'structure': structure,
+            'categories': FeeCategory.objects.filter(school=school),
+            'classes': SchoolClass.objects.filter(school=school, is_active=True),
+            'terms': Term.objects.filter(school=school).order_by('-start_date'),
+            'selected_category_id': structure.category_id,
+            'selected_class_id': structure.school_class_id,
+            'selected_term_id': structure.term_id,
+        })
+
+    def post(self, request, pk):
+        from core.models import Term
+        school = request.school
+        structure = get_object_or_404(FeeStructure, school=school, pk=pk)
+
+        category_id = request.POST.get('category_id', '')
+        class_id = request.POST.get('class_id', '')
+        term_id = request.POST.get('term_id', '')
+        raw_amount = request.POST.get('amount', '').strip()
+
+        categories = FeeCategory.objects.filter(school=school)
+        classes = SchoolClass.objects.filter(school=school, is_active=True)
+        terms = Term.objects.filter(school=school).order_by('-start_date')
+
+        def re_render():
+            return render(request, 'school_admin/fee_pricing_form.html', {
+                'is_edit': True,
+                'structure': structure,
+                'categories': categories,
+                'classes': classes,
+                'terms': terms,
+                'selected_category_id': category_id,
+                'selected_class_id': class_id,
+                'selected_term_id': term_id,
+                'entered_amount': raw_amount,
+            })
+
+        if not category_id or not class_id or not term_id or not raw_amount:
+            messages.error(request, 'All fields are required.')
+            return re_render()
+
+        category = get_object_or_404(FeeCategory, school=school, pk=category_id)
+        school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
+        term = get_object_or_404(Term, school=school, pk=term_id)
+
+        try:
+            amount = Decimal(raw_amount)
+        except (ValueError, ArithmeticError):
+            messages.error(request, 'Invalid amount.')
+            return re_render()
+
+        if amount < 0:
+            messages.error(request, 'Amount cannot be negative.')
+            return re_render()
+
+        if FeeStructure.objects.filter(
+            school=school,
+            school_class_id=class_id,
+            term_id=term_id,
+            category_id=category_id,
+        ).exclude(pk=pk).exists():
+            messages.error(
+                request, 'Pricing already exists for that category, class and term.'
+            )
+            return re_render()
+
+        structure.school_class = school_class
+        structure.term = term
+        structure.category = category
+        structure.amount = amount
+        structure.save()
+        messages.success(
+            request,
+            f'Pricing updated: {category.name} — {school_class.name} ({term.name}).',
+        )
+        return redirect('school_admin:fee_pricing_list')
+
+
+class FeePricingDeleteView(RoleRequiredMixin, View):
+    """Delete a single fee price line with confirmation."""
 
     allowed_roles = [Roles.ADMIN]
 
     def get(self, request, pk):
         school = request.school
-        fs = get_object_or_404(FeeStructure, school=school, pk=pk)
-        return render(request, 'school_admin/fee_structure_confirm_delete.html', {
-            'structure': fs,
+        structure = get_object_or_404(FeeStructure, school=school, pk=pk)
+        return render(request, 'school_admin/fee_pricing_confirm_delete.html', {
+            'structure': structure,
         })
 
     def post(self, request, pk):
         school = request.school
-        fs = get_object_or_404(FeeStructure, school=school, pk=pk)
-        class_name = fs.school_class.name
-        category_name = fs.category.name
-        fs.delete()
-        messages.success(
-            request, f'Pricing removed for {class_name} — {category_name}.'
+        structure = get_object_or_404(FeeStructure, school=school, pk=pk)
+        message = (
+            f'Pricing removed: {structure.category.name} — '
+            f'{structure.school_class.name} ({structure.term.name}).'
         )
-        return redirect('school_admin:fee_structure_list')
+        structure.delete()
+        messages.success(request, message)
+        return redirect('school_admin:fee_pricing_list')
 
 
 class InvoiceListView(RoleRequiredMixin, View):
