@@ -1,0 +1,14 @@
+{
+  "agent": "executor",
+  "status": "complete",
+  "timestamp": "2026-08-13T00:00:00Z",
+  "files_changed": [
+    "school_admin/templates/school_admin/session_list.html",
+    "school_admin/templates/school_admin/session_form.html"
+  ],
+  "next_steps": [
+    "Wire up school_admin:session_list / session_create / session_set_current / term_set_current views + urls",
+    "Commit via git-wrangler when backend contract is in place"
+  ],
+  "packages_installed": []
+}

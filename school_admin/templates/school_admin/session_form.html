@@ -1,0 +1,51 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Add Session — School Admin{% endblock %}
+{% block page_header %}Add Session{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+
+    {# ── Auto-term note banner ── #}
+    <div class="bg-violet-50 border border-violet-100 rounded-xl p-4 mb-6 text-sm text-violet-700">
+      <div class="flex items-start gap-3">
+        <i data-lucide="info" class="w-4.5 h-4.5 mt-0.5 flex-shrink-0"></i>
+        <p>Three terms — First, Second and Third Term — will be created automatically.</p>
+      </div>
+    </div>
+
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Session Name <span class="text-red-500">*</span></label>
+        <input type="text" name="name" required placeholder="e.g. 2026/2027"
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Start Date <span class="text-red-500">*</span></label>
+          <input type="date" name="start_date" required
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">End Date <span class="text-red-500">*</span></label>
+          <input type="date" name="end_date" required
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4 pt-2">
+        <button type="submit"
+                class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4 mr-2"></i>Create Session
+        </button>
+        <a href="{% url 'school_admin:session_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

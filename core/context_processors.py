@@ -89,6 +89,7 @@ def sidebar_nav(request):
         _nav_item(path, 'Projects', '/school-admin/finance/projects/', 'folder-kanban', section='Finance'),
         _nav_item(path, 'Import', '/school-admin/import/', 'upload', section='System'),
         _nav_item(path, 'Notifications', '/school-admin/notifications/', 'bell', section='System'),
+        _nav_item(path, 'Sessions & Terms', '/school-admin/sessions/', 'calendar', section='System'),
     ]
 
     teacher_nav = [
