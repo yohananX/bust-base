@@ -77,6 +77,14 @@
     </div>
 
   {% elif section == 'structures' %}
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-display font-semibold text-gray-900">Fee Structures</h2>
+      <a href="{% url 'school_admin:fee_pricing' %}"
+         class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <i data-lucide="sliders-horizontal" class="w-4 h-4 mr-1.5"></i>Set Pricing
+      </a>
+    </div>
+
     <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
       <form method="GET" class="flex flex-wrap gap-4 items-end">
         <input type="hidden" name="section" value="structures">
@@ -114,6 +122,7 @@
               <th class="px-6 py-3 font-medium">Term</th>
               <th class="px-6 py-3 font-medium">Category</th>
               <th class="px-6 py-3 font-medium text-right">Amount</th>
+              <th class="px-6 py-3 font-medium text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-50">
@@ -125,10 +134,24 @@
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">{{ fs.category.name }}</span>
               </td>
               <td class="px-6 py-3.5 text-sm font-semibold text-gray-900 text-right">NGN {{ fs.amount|floatformat:2 }}</td>
+              <td class="px-6 py-3.5">
+                <div class="flex items-center justify-end gap-1">
+                  <a href="{% url 'school_admin:fee_structure_edit' fs.pk %}"
+                     title="Edit"
+                     class="p-2 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                  </a>
+                  <a href="{% url 'school_admin:fee_structure_delete' fs.pk %}"
+                     title="Delete"
+                     class="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </a>
+                </div>
+              </td>
             </tr>
             {% empty %}
             <tr>
-              <td colspan="4" class="py-12 text-center">
+              <td colspan="5" class="py-12 text-center">
                 <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="layers" class="w-5 h-5 text-gray-400"></i></div>
                 <p class="text-sm text-gray-400">No fee structures found</p>
               </td>

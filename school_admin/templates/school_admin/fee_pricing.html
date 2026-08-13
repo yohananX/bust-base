@@ -1,0 +1,127 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Fee Pricing — School Admin{% endblock %}
+{% block page_header %}Set Fee Pricing{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+  {# ── Tab navigation ── #}
+  <div class="flex gap-2">
+    <a href="{% url 'school_admin:fee_category_list' %}"
+       class="px-4 py-2 rounded-xl text-sm font-medium transition-colors bg-white text-gray-700 border border-gray-200 hover:bg-gray-50">
+      Categories
+    </a>
+    <a href="{% url 'school_admin:fee_structure_list' %}"
+       class="px-4 py-2 rounded-xl text-sm font-medium transition-colors bg-primary text-white shadow-sm">
+      Fee Structures
+    </a>
+  </div>
+
+  {# ── Class + term selection ── #}
+  <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+    <form method="GET" action="{% url 'school_admin:fee_pricing' %}" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Class</label>
+        <select name="class_id" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">Select Class</option>
+          {% for c in classes %}
+            <option value="{{ c.id }}" {% if selected_class_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Term</label>
+        <select name="term_id" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">Select Term</option>
+          {% for t in terms %}
+            <option value="{{ t.id }}" {% if selected_term_id == t.id|stringformat:'s' %}selected{% endif %}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+          <i data-lucide="search" class="w-4 h-4 mr-1.5"></i>Load
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if not selected_class %}
+    {# ── Hint when nothing selected yet ── #}
+    <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
+      <div class="w-12 h-12 rounded-full bg-violet-50 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="sliders-horizontal" class="w-5 h-5 text-violet-600"></i>
+      </div>
+      <h3 class="text-base font-display font-semibold text-gray-900">Select a class and term to set pricing</h3>
+      <p class="text-sm text-gray-500 mt-1">Choose a class and term above, then click Load to edit every category at once.</p>
+    </div>
+  {% else %}
+    {# ── Summary line ── #}
+    <div class="flex justify-between items-center">
+      <h2 class="text-lg font-display font-semibold text-gray-900">{{ selected_class.name }} — {{ selected_term.name }}</h2>
+    </div>
+
+    <form method="post" action="{% url 'school_admin:fee_pricing' %}">
+      {% csrf_token %}
+      <input type="hidden" name="class_id" value="{{ selected_class.id }}">
+      <input type="hidden" name="term_id" value="{{ selected_term.id }}">
+
+      {% if not categories %}
+        {# ── Empty state: no categories ── #}
+        <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
+          <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="tags" class="w-5 h-5 text-gray-400"></i></div>
+          <p class="text-sm text-gray-400">No fee categories found yet.</p>
+          <a href="{% url 'school_admin:fee_category_create' %}" class="inline-flex items-center mt-4 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+            <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Create fee categories first
+          </a>
+        </div>
+      {% else %}
+        {# ── Pricing table: one row per category ── #}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+                  <th class="px-6 py-3 font-medium">Category</th>
+                  <th class="px-6 py-3 font-medium text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+                {% for category in categories %}
+                <tr class="hover:bg-gray-50/50 transition-colors">
+                  <td class="px-6 py-3.5">
+                    <div class="flex items-center gap-3">
+                      <div class="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="tags" class="w-4 h-4 text-violet-600"></i>
+                      </div>
+                      <span class="text-sm font-medium text-gray-900">{{ category.name }}</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-3.5">
+                    <div class="flex justify-end">
+                      <input type="number" name="amount_{{ category.pk }}" step="0.01" min="0" placeholder="0.00"
+                             value="{% for key, val in existing.items %}{% if key == category.pk %}{{ val }}{% endif %}{% endfor %}"
+                             class="w-40 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all text-right">
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="flex items-center gap-4 pt-4">
+        <button type="submit"
+                class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+          <i data-lucide="save" class="w-4 h-4 mr-2"></i>Save Pricing
+        </button>
+        <a href="{% url 'school_admin:fee_structure_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
+      </div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}
