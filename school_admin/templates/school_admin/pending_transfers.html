@@ -1,0 +1,100 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Pending Payments — School Admin{% endblock %}
+{% block page_header %}Pending Payments{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+  {# ── Summary Cards ── #}
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+      <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Pending Transfers</span>
+      <div class="text-3xl font-bold text-gray-900 mt-1">{{ payments|length }}</div>
+      <p class="text-xs text-gray-400 mt-1">Bank-transfer payments awaiting confirmation</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+      <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Pending</span>
+      <div class="text-3xl font-bold text-[var(--color-signal-gold)] mt-1">NGN {{ total_pending|floatformat:2 }}</div>
+      <p class="text-xs text-gray-400 mt-1">Sum of unconfirmed bank transfers</p>
+    </div>
+  </div>
+
+  {# ── Payments Table ── #}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-800">Pending Bank Transfers</h3>
+      <span class="text-xs text-gray-400">{{ payments|length }} payment{{ payments|length|pluralize }}</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Student</th>
+            <th class="px-6 py-3 font-medium">Term</th>
+            <th class="px-6 py-3 font-medium">Line Items</th>
+            <th class="px-6 py-3 font-medium text-right">Amount</th>
+            <th class="px-6 py-3 font-medium">Paid On</th>
+            <th class="px-6 py-3 font-medium">Status</th>
+            <th class="px-6 py-3 font-medium text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for p in payments %}
+          <tr class="hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5">
+              <div class="flex items-center">
+                {% include "components/avatar.html" with name=p.student.user.get_full_name size="sm" %}
+                <div class="ml-3">
+                  <div class="text-sm font-medium text-gray-900">{{ p.student.user.get_full_name|default:p.invoice.student.user.get_full_name|default:p.student.user.username }}</div>
+                  {% if p.invoice.student.admission_number %}<div class="text-xs text-gray-400">{{ p.invoice.student.admission_number }}</div>{% endif %}
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ p.invoice.term.name|default:'—' }}</td>
+            <td class="px-6 py-3.5">
+              {% if p.invoice %}
+              <ul class="space-y-0.5">
+                {% for li in p.invoice.line_items.all %}
+                <li class="text-xs text-gray-600">{{ li.category.name }} <span class="text-gray-400">·</span> <span class="font-medium text-gray-900">NGN {{ li.amount|floatformat:2 }}</span></li>
+                {% empty %}
+                <li class="text-xs text-gray-400">No line items</li>
+                {% endfor %}
+              </ul>
+              {% else %}
+              <span class="text-xs text-gray-400">—</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-3.5 text-sm font-semibold text-gray-900 text-right">NGN {{ p.amount|floatformat:2 }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ p.paid_on|date:'M d, Y H:i' }}</td>
+            <td class="px-6 py-3.5">{% include "components/badge.html" with status="warning" text=p.get_status_display %}</td>
+            <td class="px-6 py-3.5 text-right whitespace-nowrap">
+              <form method="POST" action="{% url 'school_admin:pending_transfer_confirm' p.pk %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm">
+                  <i data-lucide="check" class="w-3.5 h-3.5 mr-1"></i>Confirm
+                </button>
+              </form>
+              <form method="POST" action="{% url 'school_admin:pending_transfer_reject' p.pk %}" class="inline ml-1">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-medium rounded-lg transition-colors border border-red-100">
+                  <i data-lucide="x" class="w-3.5 h-3.5 mr-1"></i>Reject
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="py-12 text-center">
+              <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="banknote" class="w-5 h-5 text-gray-400"></i></div>
+              <p class="text-sm text-gray-400">No pending bank-transfer payments.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

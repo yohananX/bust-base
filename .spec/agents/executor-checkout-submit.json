@@ -1,0 +1,38 @@
+{
+  "agent": "executor",
+  "status": "complete",
+  "timestamp": "2026-08-13T00:00:00Z",
+  "task": "Checkout submission views for fees app",
+  "files_changed": [
+    "fees/views.py",
+    "fees/urls.py"
+  ],
+  "views_added": [
+    "CheckoutSubmitView",
+    "CheckoutContinueView"
+  ],
+  "urls_added": [
+    "fees:checkout-submit",
+    "fees:checkout-continue"
+  ],
+  "existing_views_modified": [
+    "PaymentStatusPartialView (added sibling_pending context)",
+    "VerifyPaymentView (added sibling_pending context to all 3 render calls)"
+  ],
+  "verification": {
+    "py_compile": "PASS (fees/views.py, fees/urls.py)",
+    "django_test": "fees.tests.FlexibleInitiateTest: 8 tests, OK (ran, checkout.py existed)"
+  },
+  "judgment_calls": [
+    "Split Paystack branch: spec text said 'create BOTH PENDING rows first, then initiate ONLY the FIRST allocation' without mentioning existing_reference. To avoid creating a duplicate orphan row for the first allocation, the first initiate reuses first_payment.reference via existing_reference (consistent with step 9's 'reused reference path refreshes the row'). The second row stays PENDING with authorization_url='' for sibling-continue.",
+    "Single-invoice Paystack branch passes student=None (exactly like InitiatePaymentView's invoice-backed path, lines 257-291); the invoice on the allocation provides the student via invoice.student fallback in sibling_pending lookups.",
+    "CheckoutContinueView: STUDENT scope requires student is not None AND self (strict); PARENT follows the _resolve_receipt_payment convention (student None passes, else must be guardian-linked).",
+    "Bank transfer success message formats amount as f'Payment of \u20a6{amount}...' per spec (Decimal str formatting).",
+    "reference='' used for BANK_TRANSFER rows (spec literal; model allows null/blank); PAYSTACK rows get generated GH-<invoice>-<uuid8> references to satisfy Payment.clean() which requires reference for PAYSTACK."
+  ],
+  "packages_installed": [],
+  "next_steps": [
+    "Template agent renders sibling_pending in fees/partials/payment_status.html",
+    "git-wrangler to commit"
+  ]
+}

@@ -139,9 +139,13 @@ class DashboardView(RoleRequiredMixin, View):
         for p in Payment.objects.filter(
             school=school, status=Payment.Status.CONFIRMED
         ).select_related(
-            'invoice__student__user'
-        ).prefetch_related('invoice__student__enrollments')[:5]:
-            student = p.invoice.student
+            'invoice__student__user', 'student__user'
+        ).prefetch_related(
+            'invoice__student__enrollments', 'student__enrollments'
+        )[:5]:
+            student = p.student if p.invoice is None else p.invoice.student
+            if student is None:
+                continue
             enrollment = next(
                 (e for e in student.enrollments.all() if e.is_current), None
             )

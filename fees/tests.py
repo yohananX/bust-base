@@ -1197,3 +1197,437 @@ class ReceiptViewTest(BaseFeesTest):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(FeeReceipt.objects.count(), 0)
+
+
+# ─── Flexible Fee Payments (2026): Partial + Invoice-less Payments ────────
+
+class FlexibleInitiateTest(BaseFeesTest):
+    """InitiatePaymentView: partial amounts and invoice-less ("other") payments.
+
+    The view validates and delegates to fees.paystack.initiate_payment, which
+    creates the PENDING payment row. Only the outgoing Paystack HTTP call is
+    faked here — the payment row is created by the real code path.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def _post_initiate(self, data, user=None):
+        """POST the initiate view as `user`, mocking only the Paystack HTTP call."""
+        from unittest.mock import patch
+
+        self.client.force_login(user or self.parent_user)
+
+        class FakePaystackResponse:
+            def __init__(self, reference):
+                self._reference = reference
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {
+                    'status': True,
+                    'data': {
+                        'authorization_url': 'https://paystack.test/start',
+                        'access_code': 'ACC001',
+                        'reference': self._reference,
+                    },
+                }
+
+        def _fake_post(url, json=None, headers=None, timeout=None):
+            return FakePaystackResponse(json['reference'])
+
+        with patch(
+            'fees.paystack.http_requests.post', side_effect=_fake_post,
+        ) as mock_post:
+            response = self.client.post(reverse('fees:initiate-payment'), data)
+        return response, mock_post
+
+    def test_partial_payment_amount_respected(self):
+        """A partial amount creates a PENDING payment for that exact amount."""
+        response, _ = self._post_initiate({
+            'invoice_id': self.invoice.id,
+            'amount': '25000.00',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(
+            response, 'https://paystack.test/start', fetch_redirect_response=False,
+        )
+
+        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 1)
+        payment = Payment.objects.get(status=Payment.Status.PENDING)
+        self.assertEqual(payment.amount, Decimal('25000.00'))
+        self.assertEqual(payment.status, Payment.Status.PENDING)
+        self.assertEqual(payment.invoice, self.invoice)
+
+        # Balance untouched — PENDING payments never count toward amount_paid
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
+
+    def test_amount_exceeding_balance_rejected(self):
+        """An amount above the invoice balance is rejected — no payment row."""
+        response, mock_post = self._post_initiate({
+            'invoice_id': self.invoice.id,
+            'amount': '70000.00',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('parent-pay'), fetch_redirect_response=False)
+        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 0)
+        mock_post.assert_not_called()
+
+    def test_zero_amount_rejected(self):
+        """A zero amount is rejected — no payment row is created."""
+        response, mock_post = self._post_initiate({
+            'invoice_id': self.invoice.id,
+            'amount': '0',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 0)
+        mock_post.assert_not_called()
+
+    def test_other_payment_no_invoice(self):
+        """An invoice-less payment is created against the student directly."""
+        response, _ = self._post_initiate({
+            'student_id': self.student.pk,
+            'amount': '5000.00',
+            'description': 'Books',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(
+            response, 'https://paystack.test/start', fetch_redirect_response=False,
+        )
+
+        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 1)
+        payment = Payment.objects.get(status=Payment.Status.PENDING)
+        self.assertIsNone(payment.invoice)
+        self.assertEqual(payment.student, self.student)
+        self.assertEqual(payment.description, 'Books')
+        self.assertEqual(payment.amount, Decimal('5000.00'))
+        self.assertEqual(payment.status, Payment.Status.PENDING)
+
+    def test_other_payment_requires_student(self):
+        """An invoice-less payment without student_id is rejected."""
+        response, mock_post = self._post_initiate({
+            'amount': '5000.00',
+            'description': 'Books',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 0)
+        mock_post.assert_not_called()
+
+    def test_student_role_can_pay_own_invoice(self):
+        """The student user can initiate payment on their own invoice."""
+        response, _ = self._post_initiate({
+            'invoice_id': self.invoice.id,
+            'amount': '25000.00',
+        }, user=self.student_user)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 1)
+        payment = Payment.objects.get(status=Payment.Status.PENDING)
+        self.assertEqual(payment.amount, Decimal('25000.00'))
+        self.assertEqual(payment.invoice, self.invoice)
+
+    def test_unauthorized_parent_other_payment_rejected(self):
+        """A parent not linked to the student cannot pay for that student."""
+        parent2 = User.objects.create_user(
+            username='parent_unlinked',
+            email='unlinked@test.com',
+            password='testpass123',
+            school=self.school,
+            role=Roles.PARENT,
+            first_name='Unlinked',
+            last_name='Parent',
+        )
+
+        response, mock_post = self._post_initiate({
+            'student_id': self.student.pk,
+            'amount': '5000.00',
+            'description': 'Books',
+        }, user=parent2)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 0)
+        mock_post.assert_not_called()
+
+    def test_callback_url_uses_pay_page(self):
+        """The Paystack callback URL points at the portal pay page, not the old return page."""
+        response, mock_post = self._post_initiate({
+            'invoice_id': self.invoice.id,
+            'amount': '25000.00',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(mock_post.called)
+        payload = mock_post.call_args.kwargs['json']
+        self.assertIn('callback_url', payload)
+        self.assertIn('parent/pay', payload['callback_url'])
+
+
+class ReferenceOnlyStatusTest(BaseFeesTest):
+    """PaymentStatusPartialView resolves payments by reference alone (no invoice_id)."""
+
+    def setUp(self):
+        super().setUp()
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def test_status_partial_without_invoice_id(self):
+        """Reference-only polling works for an invoice-based payment."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference='PARTIAL_REF_001',
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        self.client.force_login(self.parent_user)
+
+        # PENDING state renders the polling partial (reference only)
+        response = self.client.get(
+            reverse('fees:payment-status-partial'),
+            {'reference': payment.reference},
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Confirm as the webhook would, then poll again → confirmed state
+        payment.status = Payment.Status.CONFIRMED
+        payment.save()
+        response = self.client.get(
+            reverse('fees:payment-status-partial'),
+            {'reference': payment.reference},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Payment Confirmed')
+
+    def test_status_partial_other_payment(self):
+        """Reference-only polling works for an invoice-less (student) payment."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=None,
+            student=self.student,
+            amount=Decimal('5000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference='PARTIAL_REF_002',
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+            description='Books',
+        )
+        self.client.force_login(self.parent_user)
+
+        response = self.client.get(
+            reverse('fees:payment-status-partial'),
+            {'reference': payment.reference},
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payment.status = Payment.Status.CONFIRMED
+        payment.save()
+        response = self.client.get(
+            reverse('fees:payment-status-partial'),
+            {'reference': payment.reference},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Payment Confirmed')
+
+
+class OtherPaymentWebhookTest(BaseFeesTest):
+    """Webhook-first path: charge.success creates invoice-less payments from metadata."""
+
+    def setUp(self):
+        super().setUp()
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def _post_webhook(self, reference, amount_kobo=6000000, metadata=None):
+        """Simulate a Paystack charge.success webhook with custom metadata."""
+        import json
+        from unittest.mock import patch
+        from django.test.client import RequestFactory
+        from fees.paystack import handle_webhook as webhook_view
+
+        data = {
+            'reference': reference,
+            'amount': amount_kobo,
+            'paid_at': '2026-01-15T10:30:00.000Z',
+            'metadata': metadata if metadata is not None else {},
+        }
+        payload = json.dumps({'event': 'charge.success', 'data': data})
+        factory = RequestFactory()
+        request = factory.post(
+            '/fees/api/paystack-webhook/',
+            data=payload,
+            content_type='application/json',
+            HTTP_X_PAYSTACK_SIGNATURE='test_signature',
+        )
+        with patch('fees.paystack.verify_webhook_signature', return_value=True):
+            return webhook_view(request)
+
+    def test_webhook_creates_other_payment_from_student_id(self):
+        """Webhook with student_id metadata creates a CONFIRMED invoice-less payment."""
+        from fees.models import FeeReceipt, Payment
+
+        reference = 'WEBHOOK_REF_OTHER_001'
+        response = self._post_webhook(
+            reference,
+            amount_kobo=500000,
+            metadata={
+                'student_id': self.student.pk,
+                'school_id': self.school.pk,
+                'description': 'Books',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Payment.objects.count(), 1)
+
+        payment = Payment.objects.get(reference=reference)
+        self.assertIsNone(payment.invoice)
+        self.assertEqual(payment.student, self.student)
+        self.assertEqual(payment.description, 'Books')
+        self.assertEqual(payment.amount, Decimal('5000.00'))
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+        self.assertTrue(payment.webhook_processed)
+        self.assertEqual(FeeReceipt.objects.count(), 1)
+
+    def test_webhook_missing_invoice_and_student_400(self):
+        """Webhook with neither invoice_id nor student_id is rejected with 400."""
+        from fees.models import Payment
+
+        response = self._post_webhook('WEBHOOK_REF_OTHER_002', metadata={})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Payment.objects.count(), 0)
+
+    def test_webhook_updates_description_on_existing_payment(self):
+        """A webhook for an existing payment fills in a blank description."""
+        from fees.models import FeeReceipt, Payment
+
+        reference = 'WEBHOOK_REF_OTHER_003'
+        Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference=reference,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+
+        response = self._post_webhook(
+            reference,
+            amount_kobo=6000000,
+            metadata={'invoice_id': self.invoice.id, 'description': 'Books'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payment = Payment.objects.get(reference=reference)
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+        self.assertEqual(payment.description, 'Books')
+        self.assertTrue(payment.webhook_processed)
+        self.assertEqual(FeeReceipt.objects.count(), 1)
+
+
+class MakePaymentPageTest(BaseFeesTest):
+    """Portal pay pages ('parent-pay' / 'student-pay') render child + invoice data."""
+
+    def setUp(self):
+        super().setUp()
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+        # Second child so the parent page shows more than one child
+        user2 = User.objects.create_user(
+            username='student2',
+            email='student2@test.com',
+            password='testpass123',
+            school=self.school,
+            role=Roles.STUDENT,
+            first_name='Jane',
+            last_name='Doe',
+        )
+        self.student2 = Student.objects.create(
+            school=self.school,
+            user=user2,
+            admission_number='STU002',
+            date_of_birth=date(2011, 3, 3),
+            gender=Student.FEMALE,
+            admission_date=date(2025, 9, 1),
+            status=Student.ACTIVE,
+        )
+        StudentGuardianLink.objects.create(
+            school=self.school,
+            student=self.student2,
+            guardian=self.parent_user,
+            relationship=StudentGuardianLink.MOTHER,
+        )
+        self.invoice2 = Invoice.objects.create(
+            school=self.school,
+            student=self.student2,
+            term=self.term,
+            total_amount=Decimal('45000.00'),
+        )
+
+    def test_parent_pay_page_renders(self):
+        """Parent pay page lists children and their balances."""
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('parent-pay'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Make a Payment')
+        self.assertContains(response, 'John Doe')
+        self.assertContains(response, 'Jane Doe')
+        # Invoice term names show the outstanding fees for each child
+        self.assertContains(response, 'First Term')
+
+    def test_student_pay_page_renders(self):
+        """Student pay page renders for the student's own user."""
+        self.client.force_login(self.student_user)
+        response = self.client.get(reverse('student-pay'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Make a Payment')
+
+    def test_pay_page_context(self):
+        """Context exposes invoices_by_child with the children's invoices and totals."""
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('parent-pay'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Make a Payment')
+
+        if response.context is not None:
+            self.assertIn('invoices_by_child', response.context)
+            self.assertTrue(response.context['invoices_by_child'])
+            self.assertEqual(
+                Decimal(str(response.context['total_owed'])),
+                Decimal('105000.00'),
+            )
+        else:
+            # Context unavailable — fall back to the rendered invoice term name
+            self.assertContains(response, 'First Term')

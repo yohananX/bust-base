@@ -16,6 +16,7 @@ from .fees import (
     FeeCategoryListView, FeeStructureListView,
     InvoiceListView, InvoiceDetailView, GenerateInvoicesView,
     OutstandingFeesReportView,
+    PendingTransfersView, PendingTransferConfirmView, PendingTransferRejectView,
 )
 from .payroll import (
     PayGradeListView, AllowanceDeductionListView,

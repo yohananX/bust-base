@@ -5,8 +5,7 @@
 {% block page_header %}Payment Receipt{% endblock %}
 
 {% block content %}
-{% with student_obj=student|default:payment.invoice.student %}
-{% with term_obj=term|default:payment.invoice.term %}
+{% with student_obj=student|default:payment.student|default:payment.invoice.student %}
 {% with school_obj=school|default:payment.invoice.school %}
 {% with receipt_obj=receipt|default:payment.receipt %}
 {% with current_enrollment=student_obj.enrollments.all|first %}
@@ -15,12 +14,12 @@
   {# ===== Back Link ===== #}
   <div>
     {% if user.role == 'PARENT' %}
-    <a href="{% url 'parent-invoices' %}" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
-      <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to Invoices
+    <a href="{% url 'parent-pay' %}" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
+      <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to Payments
     </a>
     {% elif user.role == 'STUDENT' %}
-    <a href="{% url 'student-overview' %}" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
-      <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to Dashboard
+    <a href="{% url 'student-pay' %}" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
+      <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to Payments
     </a>
     {% else %}
     <a href="#" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
@@ -32,11 +31,14 @@
   {# ===== Receipt Card ===== #}
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 
-    {# Violet header strip #}
+    {# Violet header strip — student name always, term or description when available #}
     <div class="bg-violet-600 px-6 py-5 flex items-center justify-between gap-4">
       <div class="min-w-0">
         <p class="text-[11px] font-bold uppercase tracking-[0.15em] text-violet-200">Official Receipt</p>
         <h1 class="text-lg font-semibold text-white mt-0.5 truncate">{{ school_obj.name|default:"Grace House School" }}</h1>
+        {% if student_obj %}
+        <p class="text-sm text-violet-200 mt-1 truncate">{{ student_obj.user.get_full_name }}{% if invoice %} &middot; {{ invoice.term.name }}{% elif payment.description %} &middot; {{ payment.description }}{% endif %}</p>
+        {% endif %}
       </div>
       <div class="text-right flex-shrink-0">
         {% if receipt_obj %}
@@ -55,20 +57,30 @@
       </div>
     </div>
 
-    {# Receipt details grid #}
+    {# Receipt details grid — invoice-dependent rows are guarded #}
     <div class="p-6 pt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5 text-sm">
+      {% if student_obj %}
       <div>
         <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Student</p>
         <p class="font-semibold text-gray-900">{{ student_obj.user.get_full_name }}</p>
       </div>
+      {% endif %}
+      {% if invoice %}
       <div>
         <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Class</p>
         <p class="text-gray-700">{{ current_enrollment.school_class.name|default:"—" }}</p>
       </div>
       <div>
         <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Term</p>
-        <p class="text-gray-700">{{ term_obj.name }}</p>
+        <p class="text-gray-700">{{ invoice.term.name }}</p>
       </div>
+      {% endif %}
+      {% if payment.description %}
+      <div class="sm:col-span-2">
+        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Description</p>
+        <p class="text-gray-700">{{ payment.description }}</p>
+      </div>
+      {% endif %}
       <div>
         <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Method</p>
         <p class="text-gray-700">{{ payment.get_method_display|default:"Paystack" }}</p>
@@ -89,10 +101,12 @@
         <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Date Paid</p>
         <p class="text-gray-700 tabular-nums">{{ payment.paid_on|date:"d M Y H:i" }}</p>
       </div>
+      {% if invoice %}
       <div>
         <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Balance Remaining</p>
         <p class="text-gray-700 tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</p>
       </div>
+      {% endif %}
       <div>
         <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Status</p>
         {% include 'components/badge.html' with status='success' text=payment.get_status_display %}
@@ -112,7 +126,6 @@
     </div>
   </div>
 </div>
-{% endwith %}
 {% endwith %}
 {% endwith %}
 {% endwith %}

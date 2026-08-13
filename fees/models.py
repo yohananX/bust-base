@@ -142,8 +142,21 @@ class Payment(TenantScopedModel):
     invoice = models.ForeignKey(
         Invoice,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name='payments',
         verbose_name=_('invoice'),
+    )
+    student = models.ForeignKey(
+        'students.Student',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='payments',
+        verbose_name=_('student'),
+    )
+    description = models.CharField(
+        max_length=255, blank=True, default='', verbose_name=_('description')
     )
     amount = models.DecimalField(
         max_digits=10,

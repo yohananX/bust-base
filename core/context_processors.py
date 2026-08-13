@@ -29,12 +29,15 @@ def _badge_counts(request, role):
         badges['/school-admin/results/review/'] = Score.objects.filter(
             school=school, moderation_status='PENDING',
         ).count()
-        from fees.models import Invoice
+        from fees.models import Invoice, Payment
         from fees.selectors import invoices_with_balance
         invoices = invoices_with_balance(Invoice.objects.filter(school=school))
         badges['/school-admin/invoices/'] = sum(
             1 for inv in invoices if inv.balance_annotated > 0
         )
+        badges['/school-admin/fees/pending/'] = Payment.objects.filter(
+            school=school, status='PENDING', method='BANK_TRANSFER',
+        ).count()
     elif role == Roles.TEACHER:
         from academics.models import TeacherAssignment
         badges['/teacher/assignments/'] = TeacherAssignment.objects.filter(
@@ -81,6 +84,7 @@ def sidebar_nav(request):
         _nav_item(path, 'Structures', '/school-admin/fees/structures/', 'layers', section='Fees'),
         _nav_item(path, 'Invoices', '/school-admin/invoices/', 'file-text', section='Fees', badge=badges.get('/school-admin/invoices/')),
         _nav_item(path, 'Outstanding Fees', '/school-admin/fees/outstanding/', 'alert-circle', section='Fees'),
+        _nav_item(path, 'Pending Payments', '/school-admin/fees/pending/', 'clock', section='Fees', badge=badges.get('/school-admin/fees/pending/')),
         _nav_item(path, 'Pay Grades', '/school-admin/payroll/grades/', 'banknote', section='Payroll'),
         _nav_item(path, 'Runs', '/school-admin/payroll/runs/', 'wallet', section='Payroll'),
         _nav_item(path, 'Projects', '/school-admin/finance/projects/', 'folder-kanban', section='Finance'),
@@ -96,6 +100,7 @@ def sidebar_nav(request):
 
     student_nav = [
         _nav_item(path, 'Dashboard', '/student/', 'layout-dashboard', exact=True),
+        _nav_item(path, 'Pay Fees', '/student/pay/', 'banknote'),
         _nav_item(path, 'My Results', '/student/results/', 'file-text'),
         _nav_item(path, 'Change Password', '/student/password/', 'key-round'),
     ]
@@ -103,6 +108,7 @@ def sidebar_nav(request):
     parent_nav = [
         _nav_item(path, 'Dashboard', '/parent/', 'layout-dashboard', exact=True),
         _nav_item(path, 'My Children', '/parent/children/', 'users'),
+        _nav_item(path, 'Pay Fees', '/parent/pay/', 'banknote'),
         _nav_item(path, 'Invoices', '/parent/invoices/', 'credit-card', badge=badges.get('/parent/invoices/')),
     ]
 

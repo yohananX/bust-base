@@ -123,9 +123,9 @@ Usage:
     if (!shownResults.length) {
       dropdown.innerHTML =
         '<div class="flex items-center gap-2.5 px-4 py-6 text-gray-400 text-sm justify-center">' +
-          '<i data-lucide="search-x" class="w-4.5 h-4.5"></i>No results found' +
+          '<i data-lucide="search-x" class="w-[18px] h-[18px]"></i>No results found' +
         '</div>';
-      if (window.lucide) lucide.createIcons({ attrs: { class: undefined } }, dropdown);
+      if (window.lucide) lucide.createIcons({}, dropdown);
       dropdown.classList.remove('hidden');
       return;
     }
@@ -145,7 +145,7 @@ Usage:
       html += '<p class="px-4 py-2 text-xs text-gray-400 border-t border-gray-50">' + results.length + ' matches &mdash; keep typing…</p>';
     }
     dropdown.innerHTML = html;
-    if (window.lucide) lucide.createIcons({ attrs: { class: undefined } }, dropdown);
+    if (window.lucide) lucide.createIcons({}, dropdown);
     dropdown.classList.remove('hidden');
   }
 

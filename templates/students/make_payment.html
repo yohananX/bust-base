@@ -1,0 +1,560 @@
+{% extends 'base.html' %}
+{% block title %}Make a Payment - Grace House{% endblock %}
+{% block page_header %}Make a Payment{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+  {# ===== Payment status — polls while Paystack confirms the return ===== #}
+  {% if reference %}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+    <div id="payment-status"
+         hx-get="{% url 'fees:payment-status-partial' %}?reference={{ reference }}"
+         hx-trigger="every 2s"
+         hx-swap="innerHTML">
+      <div class="text-center py-8">
+        <div class="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p class="text-sm font-medium text-gray-600">Confirming your payment...</p>
+        <p class="text-xs text-gray-400 mt-2">This usually takes a few seconds.</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ===== How much do you owe? ===== #}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between">
+    <div class="min-w-0">
+      <p class="text-sm text-gray-600 mb-1">Total Outstanding</p>
+      <p class="text-2xl font-bold text-gray-900 tabular-nums truncate">&#8358;{{ total_owed|floatformat:2 }}</p>
+      <p class="text-xs text-gray-400 mt-1">{{ unpaid_invoices_count|default:"0" }} invoice{{ unpaid_invoices_count|default:"0"|pluralize }} unpaid</p>
+    </div>
+    <div class="w-10 h-10 rounded-xl bg-violet-200/50 text-violet-600 flex items-center justify-center flex-shrink-0">
+      <i data-lucide="wallet" class="w-5 h-5"></i>
+    </div>
+  </div>
+
+  {# ===== Payment form — cart + method step ===== #}
+  <form method="post" action="{% url 'fees:checkout-submit' %}" id="payment-form" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+    {% csrf_token %}
+
+    {# Child selector — parents only; students carry a hidden student_id #}
+    {% if children %}
+    <div>
+      <label for="child-select" class="block text-sm font-semibold text-gray-800 mb-2">Pay for</label>
+      <select name="student_id" id="child-select" required
+              class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        {% for child in children %}
+        <option value="{{ child.pk }}">{{ child.user.get_full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% elif student %}
+    <input type="hidden" name="student_id" value="{{ student.pk }}">
+    {% endif %}
+
+    {# Cart — one block per child, shown based on the selector #}
+    <div>
+      <p class="text-sm font-semibold text-gray-800 mb-2">What are you paying for?</p>
+      <div class="space-y-4">
+        {% if children %}
+          {% for child in children %}
+          <div class="child-cart space-y-3" data-child="{{ child.pk }}">
+            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{{ child.user.get_full_name }}</p>
+
+            {% if checkouts_by_child and child.pk in checkouts_by_child %}
+              {% for cid, co in checkouts_by_child.items %}
+                {% if cid == child.pk %}
+
+                  {# ---- Outstanding line (pre-checked, flexible amount) ---- #}
+                  {% if co.outstanding %}
+                  <div class="rounded-xl border border-gray-200 bg-white">
+                    <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+                      <input type="checkbox" name="item" value="{{ co.outstanding.key }}" data-role="outstanding"
+                             data-amount="{{ co.outstanding.amount }}"
+                             class="mt-1 accent-primary" checked>
+                      <span class="flex-1 min-w-0">
+                        <span class="flex items-center justify-between gap-2">
+                          <span class="text-sm font-semibold text-gray-900">{{ co.outstanding.label }}</span>
+                          {% if invoices_by_child and co.outstanding.invoice_id %}
+                            {% for cid2, invs2 in invoices_by_child.items %}
+                              {% if cid2 == child.pk %}
+                                {% for inv2 in invs2 %}
+                                  {% if inv2.pk == co.outstanding.invoice_id and inv2.status == 'PARTIAL' %}
+                                    {% include 'components/badge.html' with status='warning' text='PARTIAL' %}
+                                  {% endif %}
+                                {% endfor %}
+                              {% endif %}
+                            {% endfor %}
+                          {% endif %}
+                        </span>
+                        <span class="flex items-center justify-between gap-2 mt-1.5 text-xs text-gray-500">
+                          {% if co.outstanding.term_name %}<span>{{ co.outstanding.term_name }}</span>{% endif %}
+                          <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ co.outstanding.amount|floatformat:2 }}</span>
+                        </span>
+                      </span>
+                    </label>
+                    <div class="px-4 pb-4 -mt-1 flex flex-wrap items-center gap-2">
+                      <label for="outstanding-amount-{{ child.pk }}" class="text-xs font-medium text-gray-600">Amount</label>
+                      <div class="relative flex-1 min-w-[140px] max-w-[200px]">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-xs">&#8358;</span>
+                        <input type="number" name="amount" id="outstanding-amount-{{ child.pk }}" data-role="outstanding-amount"
+                               step="0.01" min="0" value="{{ co.outstanding.amount|floatformat:2 }}"
+                               class="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm tabular-nums font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                      </div>
+                      <span class="text-xs text-gray-400">Partial payment allowed on outstanding fees.</span>
+                    </div>
+                  </div>
+                  {% endif %}
+
+                  {# ---- Available extras (fixed price) ---- #}
+                  {% if co.extras %}
+                  <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider pt-1">Available extras</p>
+                  {% for opt in co.extras %}
+                  <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+                    <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
+                           class="mt-1 accent-primary">
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-900">{{ opt.label }}</span>
+                        <span class="text-sm font-semibold text-gray-900 tabular-nums">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                      </span>
+                      <span class="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
+                        {% if opt.category_name %}<span>{{ opt.category_name }}</span>{% endif %}
+                        <span class="text-gray-300">&middot;</span>
+                        <span>Non-negotiable</span>
+                      </span>
+                    </span>
+                  </label>
+                  {% endfor %}
+                  {% endif %}
+
+                  {# ---- Next term fees (fixed price) ---- #}
+                  {% if co.next_term %}
+                  <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider pt-1">Next Term Fees &mdash; {{ co.next_term.term_name }}</p>
+                  {% for opt in co.next_term.options %}
+                  <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+                    <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
+                           class="mt-1 accent-primary">
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-900">{{ opt.label }}</span>
+                        <span class="text-sm font-semibold text-gray-900 tabular-nums">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                      </span>
+                      {% if opt.term_name %}
+                      <span class="block mt-1 text-xs text-gray-400">{{ opt.term_name }}</span>
+                      {% endif %}
+                    </span>
+                  </label>
+                  {% endfor %}
+                  {% endif %}
+
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              {# ---- Fallback: invoice radio list when checkout data is missing ---- #}
+              <div class="space-y-2">
+                {% if invoices_by_child and child.pk in invoices_by_child %}
+                  {% for cid, invoices in invoices_by_child.items %}
+                    {% if cid == child.pk %}
+                      {% for invoice in invoices %}
+                        {% if invoice.status != 'PAID' %}
+                        <label class="invoice-option flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+                          <input type="radio" name="invoice_id" value="{{ invoice.pk }}"
+                                 data-balance="{{ invoice.balance }}"
+                                 class="mt-1 accent-primary"
+                                 {% if forloop.parentloop.parentloop.first and forloop.first %}checked{% endif %}>
+                          <span class="flex-1 min-w-0">
+                            <span class="flex items-center justify-between gap-2">
+                              <span class="text-sm font-semibold text-gray-900">{{ invoice.term.name }}{% if invoice.term.session.name %} &mdash; {{ invoice.term.session.name }}{% endif %}</span>
+                              {% if invoice.status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text=invoice.status %}
+                              {% else %}{% include 'components/badge.html' with status='danger' text=invoice.status %}{% endif %}
+                            </span>
+                            <span class="flex items-center justify-between gap-2 mt-1.5 text-xs text-gray-500">
+                              <span>Total: <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ invoice.total_amount|floatformat:2 }}</span></span>
+                              <span>Balance: <span class="font-medium {% if invoice.balance > 0 %}text-amber-600{% else %}text-green-600{% endif %} tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</span></span>
+                            </span>
+                          </span>
+                        </label>
+                        {% endif %}
+                      {% endfor %}
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <p class="text-sm text-gray-400 py-1.5">No fee invoices yet for this child.</p>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% elif student %}
+          <div class="child-cart space-y-3" data-child="{{ student.pk }}">
+
+            {% if checkouts_by_child and student.pk in checkouts_by_child %}
+              {% for cid, co in checkouts_by_child.items %}
+                {% if cid == student.pk %}
+
+                  {# ---- Outstanding line (pre-checked, flexible amount) ---- #}
+                  {% if co.outstanding %}
+                  <div class="rounded-xl border border-gray-200 bg-white">
+                    <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+                      <input type="checkbox" name="item" value="{{ co.outstanding.key }}" data-role="outstanding"
+                             data-amount="{{ co.outstanding.amount }}"
+                             class="mt-1 accent-primary" checked>
+                      <span class="flex-1 min-w-0">
+                        <span class="flex items-center justify-between gap-2">
+                          <span class="text-sm font-semibold text-gray-900">{{ co.outstanding.label }}</span>
+                          {% if invoices_by_child and co.outstanding.invoice_id %}
+                            {% for cid2, invs2 in invoices_by_child.items %}
+                              {% if cid2 == student.pk %}
+                                {% for inv2 in invs2 %}
+                                  {% if inv2.pk == co.outstanding.invoice_id and inv2.status == 'PARTIAL' %}
+                                    {% include 'components/badge.html' with status='warning' text='PARTIAL' %}
+                                  {% endif %}
+                                {% endfor %}
+                              {% endif %}
+                            {% endfor %}
+                          {% endif %}
+                        </span>
+                        <span class="flex items-center justify-between gap-2 mt-1.5 text-xs text-gray-500">
+                          {% if co.outstanding.term_name %}<span>{{ co.outstanding.term_name }}</span>{% endif %}
+                          <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ co.outstanding.amount|floatformat:2 }}</span>
+                        </span>
+                      </span>
+                    </label>
+                    <div class="px-4 pb-4 -mt-1 flex flex-wrap items-center gap-2">
+                      <label for="outstanding-amount-{{ student.pk }}" class="text-xs font-medium text-gray-600">Amount</label>
+                      <div class="relative flex-1 min-w-[140px] max-w-[200px]">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-xs">&#8358;</span>
+                        <input type="number" name="amount" id="outstanding-amount-{{ student.pk }}" data-role="outstanding-amount"
+                               step="0.01" min="0" value="{{ co.outstanding.amount|floatformat:2 }}"
+                               class="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm tabular-nums font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                      </div>
+                      <span class="text-xs text-gray-400">Partial payment allowed on outstanding fees.</span>
+                    </div>
+                  </div>
+                  {% endif %}
+
+                  {# ---- Available extras (fixed price) ---- #}
+                  {% if co.extras %}
+                  <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider pt-1">Available extras</p>
+                  {% for opt in co.extras %}
+                  <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+                    <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
+                           class="mt-1 accent-primary">
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-900">{{ opt.label }}</span>
+                        <span class="text-sm font-semibold text-gray-900 tabular-nums">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                      </span>
+                      <span class="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
+                        {% if opt.category_name %}<span>{{ opt.category_name }}</span>{% endif %}
+                        <span class="text-gray-300">&middot;</span>
+                        <span>Non-negotiable</span>
+                      </span>
+                    </span>
+                  </label>
+                  {% endfor %}
+                  {% endif %}
+
+                  {# ---- Next term fees (fixed price) ---- #}
+                  {% if co.next_term %}
+                  <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider pt-1">Next Term Fees &mdash; {{ co.next_term.term_name }}</p>
+                  {% for opt in co.next_term.options %}
+                  <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+                    <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
+                           class="mt-1 accent-primary">
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-900">{{ opt.label }}</span>
+                        <span class="text-sm font-semibold text-gray-900 tabular-nums">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                      </span>
+                      {% if opt.term_name %}
+                      <span class="block mt-1 text-xs text-gray-400">{{ opt.term_name }}</span>
+                      {% endif %}
+                    </span>
+                  </label>
+                  {% endfor %}
+                  {% endif %}
+
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              {# ---- Fallback: invoice radio list when checkout data is missing ---- #}
+              <div class="space-y-2">
+                {% if invoices_by_child and student.pk in invoices_by_child %}
+                  {% for cid, invoices in invoices_by_child.items %}
+                    {% if cid == student.pk %}
+                      {% for invoice in invoices %}
+                        {% if invoice.status != 'PAID' %}
+                        <label class="invoice-option flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+                          <input type="radio" name="invoice_id" value="{{ invoice.pk }}"
+                                 data-balance="{{ invoice.balance }}"
+                                 class="mt-1 accent-primary"
+                                 {% if forloop.parentloop.first and forloop.first %}checked{% endif %}>
+                          <span class="flex-1 min-w-0">
+                            <span class="flex items-center justify-between gap-2">
+                              <span class="text-sm font-semibold text-gray-900">{{ invoice.term.name }}{% if invoice.term.session.name %} &mdash; {{ invoice.term.session.name }}{% endif %}</span>
+                              {% if invoice.status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text=invoice.status %}
+                              {% else %}{% include 'components/badge.html' with status='danger' text=invoice.status %}{% endif %}
+                            </span>
+                            <span class="flex items-center justify-between gap-2 mt-1.5 text-xs text-gray-500">
+                              <span>Total: <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ invoice.total_amount|floatformat:2 }}</span></span>
+                              <span>Balance: <span class="font-medium {% if invoice.balance > 0 %}text-amber-600{% else %}text-green-600{% endif %} tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</span></span>
+                            </span>
+                          </span>
+                        </label>
+                        {% endif %}
+                      {% empty %}
+                        <p class="text-sm text-gray-400 py-1.5">No fee invoices yet.</p>
+                      {% endfor %}
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <p class="text-sm text-gray-400 py-1.5">No fee invoices yet.</p>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        {% else %}
+          <p class="text-sm text-gray-400 py-1.5">No fee invoices available.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ===== Running total (authoritative amount = cart total) ===== #}
+    <div id="cart-total" class="flex items-center justify-between pt-4 border-t border-gray-100">
+      <span class="text-sm font-semibold text-gray-800">Total</span>
+      <span id="cart-total-value" class="text-lg font-bold text-gray-900 tabular-nums">&#8358;0.00</span>
+      <input type="hidden" name="amount" id="amount-input" value="0.00">
+    </div>
+    <p id="cart-hint" class="hidden text-xs text-amber-600">Select at least one item to pay for.</p>
+
+    {# ===== Proceed to Payment — reveals the method step (does NOT submit) ===== #}
+    <button type="button" id="proceed-btn"
+            class="inline-flex items-center justify-center w-full px-4 py-3 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-xl transition-colors shadow-sm hover:shadow">
+      <i data-lucide="wallet" class="w-4 h-4 mr-2"></i>Proceed to Payment
+    </button>
+
+    {# ===== Payment method step — hidden until Proceed ===== #}
+    <div id="payment-method-step" class="hidden space-y-4 pt-4 border-t border-gray-100">
+      <p class="text-sm font-semibold text-gray-800">How would you like to pay?</p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+          <input type="radio" name="method" value="paystack" class="mt-1 accent-primary" checked>
+          <span class="flex-1 min-w-0">
+            <span class="flex items-center gap-2">
+              <i data-lucide="credit-card" class="w-4 h-4 text-primary"></i>
+              <span class="text-sm font-semibold text-gray-900">Paystack Card</span>
+            </span>
+            <span class="block text-xs text-gray-500 mt-0.5">Debit or credit card</span>
+          </span>
+        </label>
+        <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+          <input type="radio" name="method" value="bank_transfer" class="mt-1 accent-primary">
+          <span class="flex-1 min-w-0">
+            <span class="flex items-center gap-2">
+              <i data-lucide="landmark" class="w-4 h-4 text-gray-500"></i>
+              <span class="text-sm font-semibold text-gray-900">Bank Transfer</span>
+            </span>
+            <span class="block text-xs text-gray-500 mt-0.5">Transfer to our account</span>
+          </span>
+        </label>
+      </div>
+
+      {# Paystack panel — default #}
+      <div id="paystack-panel">
+        <button type="submit"
+                class="inline-flex items-center justify-center w-full px-4 py-3 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-xl transition-colors shadow-sm hover:shadow">
+          <i data-lucide="credit-card" class="w-4 h-4 mr-2"></i>Proceed to Paystack Checkout
+        </button>
+      </div>
+
+      {# Bank transfer panel #}
+      <div id="bank-transfer-panel" class="hidden space-y-4">
+        {% if bank_details %}
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Transfer to</p>
+          <p class="text-sm font-semibold text-gray-900">{{ bank_details.bank }}</p>
+          <p class="text-sm text-gray-600">{{ bank_details.account_name }}</p>
+          <p class="text-lg font-bold text-gray-900 tabular-nums tracking-[0.15em]">{{ bank_details.account_number }}</p>
+        </div>
+        {% endif %}
+        <button type="submit"
+                class="inline-flex items-center justify-center w-full px-4 py-3 bg-white border-2 border-gray-300 text-gray-800 text-sm font-semibold rounded-xl transition-colors hover:border-primary hover:text-primary">
+          <i data-lucide="check-circle" class="w-4 h-4 mr-2"></i>I've Transferred &mdash; Pending Confirmation
+        </button>
+        <p class="text-xs text-gray-500">Your payment will show as <span class="font-medium text-amber-600">Pending</span> until the school confirms the transfer.</p>
+      </div>
+    </div>
+  </form>
+
+  {# ===== Recent payments ===== #}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-800">Recent Payments</h3>
+    </div>
+    {% if recent_payments %}
+    <ul class="divide-y divide-gray-50">
+      {% for payment in recent_payments %}
+      <li class="flex items-center justify-between gap-3 px-6 py-3.5">
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-gray-900 truncate">
+            {% if payment.invoice %}{{ payment.invoice.term.name }}{% elif payment.description %}{{ payment.description }}{% else %}Fee payment{% endif %}
+          </p>
+          <p class="text-xs text-gray-500 mt-0.5">
+            {% if children and payment.student %}{{ payment.student.user.get_full_name }} &middot; {% endif %}{{ payment.paid_on|date:"d M Y H:i" }}
+          </p>
+        </div>
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <span class="text-sm font-semibold text-gray-900 tabular-nums">&#8358;{{ payment.amount|floatformat:2 }}</span>
+          {% if payment.status == 'PENDING' %}
+            {% include 'components/badge.html' with status='warning' text='Pending' %}
+          {% else %}
+            {% include 'components/badge.html' with status='success' text=payment.get_status_display %}
+          {% endif %}
+          {% if payment.status == 'CONFIRMED' %}
+          <a href="{% url 'fees:payment-receipt' payment.pk %}" class="text-xs font-medium text-primary hover:underline">Receipt</a>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="py-10 text-center">
+      <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="banknote" class="w-5 h-5 text-gray-400"></i></div>
+      <p class="text-sm text-gray-400">No payments yet.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  var form = document.getElementById('payment-form');
+  var childSelect = document.getElementById('child-select');
+  var blocks = Array.prototype.slice.call(document.querySelectorAll('.child-cart'));
+  var amountInput = document.getElementById('amount-input');
+  var totalValue = document.getElementById('cart-total-value');
+  var cartHint = document.getElementById('cart-hint');
+  var proceedBtn = document.getElementById('proceed-btn');
+  var methodStep = document.getElementById('payment-method-step');
+  var paystackPanel = document.getElementById('paystack-panel');
+  var bankPanel = document.getElementById('bank-transfer-panel');
+
+  function fmt(v) { return '\u20A6' + Number(v || 0).toFixed(2); }
+  function activeChild() { return childSelect ? childSelect.value : null; }
+
+  /* The visible block for the selected child (or the only block for students). */
+  function activeBlock() {
+    var c = activeChild();
+    for (var i = 0; i < blocks.length; i++) {
+      if (!c || blocks[i].getAttribute('data-child') === c) return blocks[i];
+    }
+    return null;
+  }
+
+  /* Total for one block: checked invoice balance (fallback mode) or
+     outstanding (flexible sub-amount) + checked extras + next-term options. */
+  function blockTotal(block) {
+    if (!block) return 0;
+    var radio = block.querySelector('input[name="invoice_id"]:checked');
+    if (radio) {
+      var b = parseFloat(radio.getAttribute('data-balance'));
+      return isNaN(b) ? 0 : b;
+    }
+    var total = 0, n;
+    var sub = block.querySelector('input[data-role="outstanding-amount"]');
+    var out = block.querySelector('input[name="item"][data-role="outstanding"]');
+    if (out && out.checked) {
+      n = sub ? parseFloat(sub.value) : NaN;
+      if (isNaN(n)) n = parseFloat(out.getAttribute('data-amount'));
+      if (!isNaN(n)) total += n;
+    }
+    var checks = block.querySelectorAll('input[name="item"]:checked');
+    for (var i = 0; i < checks.length; i++) {
+      if (checks[i].getAttribute('data-role') === 'outstanding') continue;
+      n = parseFloat(checks[i].getAttribute('data-amount'));
+      if (!isNaN(n)) total += n;
+    }
+    return total;
+  }
+
+  /* Recompute the active child's total and write the authoritative amount. */
+  function recalc() {
+    var block = activeBlock();
+    var total = blockTotal(block);
+    if (amountInput) amountInput.value = total.toFixed(2);
+    if (totalValue) totalValue.textContent = fmt(total);
+  }
+
+  /* Show only the selected child's cart; disable inactive blocks so only the
+     active child's items (and its amount) are submitted. */
+  function updateVisibility() {
+    var c = activeChild();
+    blocks.forEach(function (el) {
+      var show = !c || el.getAttribute('data-child') === c;
+      el.classList.toggle('hidden', !show);
+      var inputs = el.querySelectorAll('input, select');
+      for (var i = 0; i < inputs.length; i++) inputs[i].disabled = !show;
+    });
+    /* Fallback mode: keep exactly one invoice radio selected in the visible block. */
+    var block = activeBlock();
+    if (block && !block.querySelector('input[name="invoice_id"]:checked')) {
+      var first = block.querySelector('input[name="invoice_id"]');
+      if (first) first.checked = true;
+    }
+    recalc();
+  }
+
+  /* Swap the bank/paystack panels to match the selected method. */
+  function syncMethodPanels() {
+    var checked = form ? form.querySelector('input[name="method"]:checked') : null;
+    var isBank = !!(checked && checked.value === 'bank_transfer');
+    if (bankPanel) bankPanel.classList.toggle('hidden', !isBank);
+    if (paystackPanel) paystackPanel.classList.toggle('hidden', isBank);
+  }
+
+  if (childSelect) childSelect.addEventListener('change', updateVisibility);
+
+  if (form) {
+    form.addEventListener('change', function (e) {
+      var t = e.target;
+      if (t && (t.name === 'item' || t.name === 'invoice_id')) recalc();
+      if (t && t.name === 'method') syncMethodPanels();
+    });
+    form.addEventListener('input', function (e) {
+      var t = e.target;
+      if (t && t.dataset && t.dataset.role === 'outstanding-amount') recalc();
+    });
+  }
+
+  if (proceedBtn) {
+    proceedBtn.addEventListener('click', function () {
+      var block = activeBlock();
+      var any = block && block.querySelector('input[name="item"]:checked, input[name="invoice_id"]:checked');
+      if (!any) {
+        if (cartHint) {
+          cartHint.classList.remove('hidden');
+          if (cartHint.scrollIntoView) cartHint.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        return;
+      }
+      if (cartHint) cartHint.classList.add('hidden');
+      recalc();
+      if (methodStep) {
+        methodStep.classList.remove('hidden');
+        syncMethodPanels();
+        if (methodStep.scrollIntoView) methodStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+
+  /* Init: collapse to the first child and compute the initial total. */
+  updateVisibility();
+  syncMethodPanels();
+})();
+</script>
+{% endblock %}

@@ -1,4 +1,5 @@
-from django.db.models import Sum
+from decimal import Decimal
+from django.db.models import Sum, Q, Prefetch
 from django.shortcuts import get_object_or_404, render, redirect
 from django.views.generic.base import View
 from django.contrib import messages
@@ -7,7 +8,8 @@ from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from core.models import Term
 from students.models import Student, StudentGuardianLink, ClassEnrollment
-from fees.models import Invoice
+from fees.checkout import get_checkout_options, current_term
+from fees.models import Invoice, Payment
 
 from academics.models import Score, TermResult
 
@@ -225,6 +227,129 @@ class ParentInvoiceDetailView(RoleRequiredMixin, View):
             'payments': payments,
             'line_items': line_items,
         })
+
+
+class MakePaymentView(RoleRequiredMixin, View):
+    """Pay page — one view serving both the parent and student portals.
+
+    PARENT  (/parent/pay/): lists all linked children with their invoices and
+            outstanding balances; recent confirmed payments across children.
+    STUDENT (/student/pay/): lists the student's own invoices and balance.
+
+    The page renders 'students/make_payment.html' once, with role-conditional
+    context. Payment initiation itself happens via fees:initiate-payment; this
+    page just presents the data and the forms (and the Paystack return state).
+    Cart data (``checkouts_by_child``, ``bank_details``) is now passed so the
+    template can render fee options and the bank-transfer reveal.
+    """
+    allowed_roles = [Roles.PARENT, Roles.STUDENT]
+
+    def get(self, request):
+        role = request.user.role
+        context = {
+            'role': role,
+            'reference': request.GET.get('reference'),
+        }
+
+        if role == Roles.PARENT:
+            children = Student.objects.filter(
+                guardian_links__guardian=request.user,
+            ).select_related('user').distinct()
+            context['children'] = children
+            invoices = Invoice.objects.filter(student__in=children)
+        else:
+            student = request.user.student_profile
+            children = Student.objects.none()
+            context['children'] = children
+            context['student'] = student
+            invoices = Invoice.objects.filter(student=student)
+
+        # Prefetch confirmed payments so invoice.balance/status don't N+1
+        invoices = invoices.select_related(
+            'term', 'student', 'student__user',
+        ).prefetch_related(Prefetch(
+            'payments',
+            queryset=Payment.objects.filter(status=Payment.Status.CONFIRMED),
+        ))
+
+        invoices_by_child = {}
+        total_owed = Decimal('0.00')
+        unpaid_invoices_count = 0
+        for inv in invoices:
+            invoices_by_child.setdefault(inv.student_id, []).append(inv)
+            if inv.balance > 0:
+                total_owed += inv.balance
+                unpaid_invoices_count += 1
+
+        totals_by_child = {
+            child_id: sum(
+                (inv.balance for inv in inv_list if inv.balance > 0),
+                Decimal('0.00'),
+            )
+            for child_id, inv_list in invoices_by_child.items()
+        }
+
+        # Cart data — checkout options per child (or the single student). The
+        # term is the latest unpaid invoice's term (carried-over debt) when one
+        # exists, otherwise the school's current term.
+        checkouts_by_child = {}
+        checkout_term = current_term(request.school)
+        checkout_students = list(children) if role == Roles.PARENT else [student]
+        for child in checkout_students:
+            unpaid_terms = [
+                inv.term
+                for inv in invoices_by_child.get(child.pk, [])
+                if inv.balance > 0 and inv.term
+            ]
+            term = max(
+                unpaid_terms, key=lambda t: t.start_date, default=checkout_term,
+            )
+            if term is None:
+                continue
+            checkouts_by_child[child.pk] = get_checkout_options(child, term)
+
+        # Bank transfer details for the "I've Transferred" reveal.
+        bank_details = {
+            'bank': 'First Bank',
+            'account_name': 'Grace House School System',
+            'account_number': '0000000000',
+        }
+
+        # Recent confirmed + pending bank-transfer payments — pending transfers
+        # show immediately after submission. Invoice may be None (invoice-less
+        # payments); templates should fall back to payment.description.
+        visible_status_q = Q(status=Payment.Status.CONFIRMED) | Q(
+            status=Payment.Status.PENDING, method=Payment.Method.BANK_TRANSFER,
+        )
+        if role == Roles.PARENT:
+            recent_qs = Payment.objects.filter(
+                school=request.school,
+            ).filter(
+                visible_status_q
+                & (Q(student__in=children) | Q(invoice__student__in=children)),
+            )
+        else:
+            recent_qs = Payment.objects.filter(
+                school=request.school,
+            ).filter(
+                visible_status_q
+                & (Q(student=student) | Q(invoice__student=student)),
+            )
+        recent_payments = recent_qs.select_related(
+            'student', 'student__user',
+            'invoice', 'invoice__student', 'invoice__student__user',
+        )[:5]
+
+        context.update({
+            'invoices_by_child': invoices_by_child,
+            'totals_by_child': totals_by_child,
+            'total_owed': total_owed,
+            'unpaid_invoices_count': unpaid_invoices_count,
+            'recent_payments': recent_payments,
+            'checkouts_by_child': checkouts_by_child,
+            'bank_details': bank_details,
+        })
+        return render(request, 'students/make_payment.html', context)
 
 
 class StudentOverviewView(RoleRequiredMixin, View):

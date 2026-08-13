@@ -7,7 +7,12 @@
 
   {# ===== Header + Filter ===== #}
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-    <p class="text-sm text-gray-500">{{ invoices|length }} invoice(s)</p>
+    <div class="flex items-center gap-3 flex-wrap">
+      <p class="text-sm text-gray-500">{{ invoices|length }} invoice(s)</p>
+      <a href="{% url 'parent-pay' %}" class="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm hover:shadow">
+        <i data-lucide="wallet" class="w-4 h-4 mr-2"></i>Make a Payment
+      </a>
+    </div>
     <form method="get" class="flex items-center gap-2">
       <label for="child-filter" class="text-sm text-gray-500">Filter by child:</label>
       <select id="child-filter" name="child" onchange="this.form.submit()" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
@@ -59,7 +64,7 @@
             </td>
             <td class="px-5 py-3.5 text-right">
               {% if invoice.status == 'UNPAID' or invoice.status == 'PARTIAL' %}
-              <a href="/fees/pay/{{ invoice.pk }}/" class="inline-flex items-center px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-lg transition-colors shadow-sm">
+              <a href="{% url 'parent-pay' %}" class="inline-flex items-center px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-lg transition-colors shadow-sm">
                 <i data-lucide="wallet" class="w-3.5 h-3.5 mr-1.5"></i>Pay Now
               </a>
               {% else %}

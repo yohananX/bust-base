@@ -7,14 +7,24 @@
 {% block content %}
 <div class="max-w-lg mx-auto">
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-    {# Invoice summary #}
+    {# Payment summary #}
     <div class="text-center mb-8">
       <div class="w-12 h-12 rounded-full bg-violet-50 flex items-center justify-center mx-auto mb-4">
         <i data-lucide="receipt" class="w-6 h-6 text-violet-600"></i>
       </div>
+      {% if invoice %}
       <h1 class="text-lg font-semibold text-gray-900 mb-1">Invoice #{{ invoice.id }}</h1>
       <p class="text-sm text-gray-500">{{ invoice.student }} &mdash; {{ invoice.term }}</p>
-      <p class="font-display text-2xl font-bold text-gray-900 mt-2">&pound;{{ invoice.balance }}</p>
+      <p class="font-display text-2xl font-bold text-gray-900 mt-2">&#8358;{{ invoice.balance|floatformat:2 }}</p>
+      {% else %}
+      <h1 class="text-lg font-semibold text-gray-900 mb-1">Payment</h1>
+      {% if payment and payment.description %}
+      <p class="text-sm text-gray-500">{{ payment.description }}</p>
+      {% endif %}
+      {% if reference %}
+      <p class="text-sm text-gray-500 mt-1">Reference: <span class="font-mono">{{ reference }}</span></p>
+      {% endif %}
+      {% endif %}
     </div>
 
     {# Payment status — htmx polls this unless already confirmed #}
@@ -22,7 +32,7 @@
       {% include 'fees/partials/payment_status.html' %}
     {% else %}
     <div id="payment-status"
-         hx-get="{% url 'fees:payment-status-partial' %}?reference={{ reference }}&invoice_id={{ invoice.id }}"
+         hx-get="{% url 'fees:payment-status-partial' %}?reference={{ reference }}{% if invoice %}&invoice_id={{ invoice.id }}{% endif %}"
          hx-trigger="every 2s"
          hx-swap="innerHTML">
       {# Initial loading state #}
@@ -34,9 +44,11 @@
     {% endif %}
 
     {# Timeout message after 2 minutes #}
+    {% if invoice %}
     <div hx-trigger="revealed delay:120s"
          hx-get="{% url 'fees:payment-timeout-help' %}?invoice_id={{ invoice.id }}"
          hx-swap="innerHTML"></div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

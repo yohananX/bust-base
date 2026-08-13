@@ -97,6 +97,12 @@ def _resolve_event_school(event):
         invoice = Invoice.objects.filter(pk=invoice_id).first()
         if invoice:
             return invoice.school
+    student_id = metadata.get('student_id')
+    if student_id:
+        from students.models import Student
+        student = Student.objects.filter(pk=student_id).first()
+        if student:
+            return student.school
     return None
 
 
@@ -144,6 +150,59 @@ def issue_receipt(payment):
     return receipt
 
 
+def confirm_payment_from_verify(payment, data):
+    """
+    Confirm a PENDING payment from a successful Paystack verify response.
+
+    Tamper-reconciles the paid amount (kobo) against the recorded amount
+    before confirming. Idempotent for the caller: already-confirmed rows are
+    left untouched. Issues a receipt on success.
+    """
+    if payment.status == Payment.Status.CONFIRMED:
+        return payment
+
+    expected_kobo = int(payment.amount * 100)
+    if expected_kobo != data.get('amount'):
+        # Amount mismatch — mark failed, never credit.
+        payment.status = Payment.Status.FAILED
+        payment.webhook_processed = True
+        payment.webhook_payload = {'verified': data}
+        payment.save(update_fields=['status', 'webhook_processed', 'webhook_payload'])
+        return payment
+
+    payment.status = Payment.Status.CONFIRMED
+    payment.verified_at = timezone.now()
+    payment.webhook_processed = True
+    payment.webhook_payload = {'verified': data}
+    payment.currency = data.get('currency') or _default_currency()
+    payment.fees_charged = Decimal(str(data.get('fees') or 0)) / Decimal('100')
+    if not payment.paid_on:
+        payment.paid_on = timezone.now()
+
+    authorization = data.get('authorization') or {}
+    payment.channel = authorization.get('channel') or payment.channel
+    payment.card_last4 = str(authorization.get('last4') or '') or payment.card_last4
+    payment.card_brand = authorization.get('card_type') or payment.card_brand
+    payment.bank_name = authorization.get('bank') or payment.bank_name
+
+    customer = data.get('customer') or {}
+    payment.paid_by_email = customer.get('email') or payment.paid_by_email
+    payment.paid_by_name = (
+        (customer.get('first_name') or '') + ' ' + (customer.get('last_name') or '')
+    ).strip() or payment.paid_by_name
+    payment.paid_by_phone = str(customer.get('phone') or '') or payment.paid_by_phone
+
+    payment.save(update_fields=[
+        'status', 'verified_at', 'webhook_processed', 'webhook_payload',
+        'currency', 'fees_charged', 'paid_on', 'channel', 'card_last4',
+        'card_brand', 'bank_name', 'paid_by_email', 'paid_by_name',
+        'paid_by_phone',
+    ])
+    issue_receipt(payment)
+    logger.info(f'Payment {payment.reference} confirmed via verify fallback')
+    return payment
+
+
 def _handle_charge_success(event, data, webhook_log):
     """Process a charge.success webhook event (idempotent, tamper-checked)."""
     reference = data.get('reference')
@@ -177,6 +236,14 @@ def _handle_charge_success(event, data, webhook_log):
             return JsonResponse({'status': 'amount mismatch'})
 
         # Amount matches — confirm the existing payment row
+        metadata = data.get('metadata') or {}
+        if not payment.student_id and metadata.get('student_id'):
+            from students.models import Student
+            student = Student.objects.filter(pk=metadata['student_id']).first()
+            if student:
+                payment.student = student
+        if not payment.description and metadata.get('description'):
+            payment.description = metadata['description']
         payment.status = Payment.Status.CONFIRMED
         payment.paid_on = _parse_paid_at(paid_at)
         payment.webhook_processed = True
@@ -199,7 +266,7 @@ def _handle_charge_success(event, data, webhook_log):
             'status', 'paid_on', 'webhook_processed', 'webhook_payload',
             'verified_at', 'currency', 'fees_charged', 'channel',
             'card_last4', 'card_brand', 'bank_name', 'paid_by_email',
-            'paid_by_name', 'paid_by_phone',
+            'paid_by_name', 'paid_by_phone', 'student', 'description',
         ])
         issue_receipt(payment)
         _mark_webhook_log_processed(webhook_log)
@@ -209,28 +276,59 @@ def _handle_charge_success(event, data, webhook_log):
     # No existing payment row — webhook-first fallback
     metadata = data.get('metadata', {})
     invoice_id = metadata.get('invoice_id')
+    student_id = metadata.get('student_id')
 
-    if not invoice_id:
-        logger.error(f'Webhook charge.success for {reference} without invoice_id in metadata')
-        return JsonResponse({'status': 'missing invoice_id'}, status=400)
+    if not invoice_id and not student_id:
+        logger.error(
+            f'Webhook charge.success for {reference} without invoice_id or student_id in metadata'
+        )
+        return JsonResponse({'status': 'missing invoice_id or student_id'}, status=400)
 
     if not amount_kobo or amount_kobo <= 0:
         logger.error(f'Webhook charge.success for {reference} with invalid amount')
         return JsonResponse({'status': 'invalid amount'}, status=400)
 
-    try:
-        invoice = Invoice.objects.get(pk=invoice_id)
-    except Invoice.DoesNotExist:
-        logger.error(f'Invoice {invoice_id} not found for reference {reference}')
-        return JsonResponse({'status': 'invoice not found'}, status=404)
+    invoice = None
+    if invoice_id:
+        try:
+            invoice = Invoice.objects.get(pk=invoice_id)
+        except Invoice.DoesNotExist:
+            logger.error(f'Invoice {invoice_id} not found for reference {reference}')
+            return JsonResponse({'status': 'invoice not found'}, status=404)
+
+    student = None
+    if student_id:
+        from students.models import Student
+        student = Student.objects.filter(pk=student_id).first()
+        if student is None:
+            logger.error(f'Student {student_id} not found for reference {reference}')
+            return JsonResponse({'status': 'student not found'}, status=404)
+    elif invoice is not None:
+        student = invoice.student
+
+    if invoice is None and student is None:
+        logger.error(
+            f'Webhook charge.success for {reference} without student for non-invoice payment'
+        )
+        return JsonResponse({'status': 'missing student_id'}, status=400)
+
+    # Resolve the tenant school, falling back to the student's school
+    school = _resolve_event_school(event)
+    if school is None and student is not None:
+        school = student.school
+    if school is None:
+        logger.error(f'Could not resolve school for webhook event {reference}')
+        return JsonResponse({'status': 'school not found'}, status=400)
 
     authorization = data.get('authorization') or {}
     customer = data.get('customer') or {}
 
     # Create the payment as CONFIRMED (it's already been charged by Paystack)
     payment = Payment.objects.create(
-        school=invoice.school,
+        school=school,
         invoice=invoice,
+        student=student,
+        description=metadata.get('description') or '',
         amount=Decimal(amount_kobo) / Decimal('100'),
         method=Payment.Method.PAYSTACK,
         reference=reference,
@@ -322,7 +420,8 @@ def handle_webhook(request):
         return JsonResponse({'status': 'ignored'})
 
 
-def initiate_payment(invoice, parent_email, callback_url, existing_reference=None):
+def initiate_payment(invoice, parent_email, callback_url, existing_reference=None,
+                     amount=None, description=None, student=None):
     """
     Initiate a Paystack transaction.
 
@@ -330,59 +429,107 @@ def initiate_payment(invoice, parent_email, callback_url, existing_reference=Non
     Otherwise creates a new PENDING payment row and generates a new reference.
 
     Args:
-        invoice: The Invoice to be paid
+        invoice: The Invoice to be paid (None for payments not tied to an invoice)
         parent_email: Email of the parent making payment
         callback_url: URL to redirect after payment
         existing_reference: Optional reference from a recent PENDING payment
+        amount: Optional amount (Decimal) to charge. Defaults to invoice.balance
+            (partial payments supported). Required when invoice is None.
+        description: Optional free-text description (e.g. 'Books')
+        student: Optional Student, required when invoice is None (other payments)
 
     Returns:
         dict with 'authorization_url' and 'reference', or 'error' key on failure.
     """
-    if existing_reference:
-        reference = existing_reference
-        payment = Payment.objects.filter(reference=existing_reference).first()
-    else:
-        reference = f'GH-{invoice.id}-{uuid.uuid4().hex[:8].upper()}'
-        # Create PENDING payment row BEFORE calling Paystack
-        payment = Payment.objects.create(
-            school=invoice.school,
+    if invoice is None and (amount is None or student is None):
+        return {'error': 'Student and amount are required for payments without an invoice.'}
+
+    def _create_pending(reference):
+        """Create a new PENDING Paystack payment row for the given reference."""
+        return Payment.objects.create(
+            school=invoice.school if invoice is not None else student.school,
             invoice=invoice,
-            amount=invoice.balance,  # Server-side computed, never from client
+            student=student,
+            amount=amount if amount is not None else invoice.balance,  # Server-side computed, never from client
             method=Payment.Method.PAYSTACK,
             reference=reference,
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
             initiated_at=timezone.now(),
             recorded_by=None,
+            description=description or '',
         )
+
+    if existing_reference:
+        reference = existing_reference
+        payment = Payment.objects.filter(reference=existing_reference).first()
+        if payment is not None:
+            # Refresh amount/description/student on the reused row when provided
+            updates = {}
+            if amount is not None:
+                updates['amount'] = amount
+            if description is not None:
+                updates['description'] = description
+            if student is not None:
+                updates['student'] = student
+            if updates:
+                Payment.objects.filter(pk=payment.pk).update(**updates)
+
+    else:
+        reference = f'GH-{invoice.id if invoice is not None else student.pk}-{uuid.uuid4().hex[:8].upper()}'
+        # Create PENDING payment row BEFORE calling Paystack
+        payment = _create_pending(reference)
+
+    # Paystack requires a valid email on initialize. Users may not have one
+    # recorded — fall back to a username-based address.
+    email = (parent_email or '').strip()
+    if not email:
+        resolved_student = student if student is not None else (
+            invoice.student if invoice is not None else None
+        )
+        user = resolved_student.user if resolved_student is not None else None
+        email = f"{user.username if user is not None and user.username else 'parent'}@ghss.edu.ng"
 
     url = f'{_paystack_base_url()}/transaction/initialize'
     headers = {
         'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
         'Content-Type': 'application/json',
     }
-    payload = {
-        'email': parent_email,
-        'amount': int(invoice.balance * 100),  # kobo
-        'reference': reference,
-        'callback_url': callback_url,
-        'metadata': {
-            'invoice_id': invoice.id,
-            'school_id': str(invoice.school_id),
-            'custom_fields': [
-                {
-                    'display_name': 'Invoice',
-                    'variable_name': 'invoice',
-                    'value': str(invoice.id),
-                },
-            ],
-        },
+    resolved_student = student if student is not None else (
+        invoice.student if invoice is not None else None
+    )
+    metadata = {
+        'school_id': str(
+            invoice.school_id if invoice is not None else student.school_id
+        ),
+        'student_id': resolved_student.pk if resolved_student is not None else None,
+        'description': description or '',
     }
+    if invoice is not None:
+        metadata['invoice_id'] = invoice.id
+        metadata['custom_fields'] = [
+            {
+                'display_name': 'Invoice',
+                'variable_name': 'invoice',
+                'value': str(invoice.id),
+            },
+        ]
 
-    try:
+    def _initialize(reference):
+        """POST initialize to Paystack and persist the session on success."""
+        payload = {
+            'email': email,
+            'amount': int((amount if amount is not None else invoice.balance) * 100),  # kobo
+            'reference': reference,
+            'callback_url': callback_url,
+            'metadata': metadata,
+        }
         resp = http_requests.post(url, json=payload, headers=headers, timeout=15)
         resp.raise_for_status()
-        data = resp.json()
+        return resp.json()
+
+    try:
+        data = _initialize(reference)
         if data.get('status'):
             # Persist the Paystack session details onto the payment row
             if payment is not None:
@@ -398,6 +545,27 @@ def initiate_payment(invoice, parent_email, callback_url, existing_reference=Non
         return {'error': data.get('message', 'Paystack initialization failed')}
     except Exception as e:
         logger.error(f'Paystack API error: {e}')
+        # A reused reference is already registered with Paystack (e.g. the parent
+        # abandoned the previous checkout), so re-initializing it is rejected as a
+        # duplicate. Drop it and start a fresh transaction instead.
+        if existing_reference is not None:
+            reference = f'GH-{invoice.id if invoice is not None else student.pk}-{uuid.uuid4().hex[:8].upper()}'
+            payment = _create_pending(reference)
+            try:
+                data = _initialize(reference)
+                if data.get('status'):
+                    Payment.objects.filter(pk=payment.pk).update(
+                        authorization_url=data['data'].get('authorization_url', ''),
+                        access_code=data['data'].get('access_code', ''),
+                        initiated_at=timezone.now(),
+                    )
+                    return {
+                        'authorization_url': data['data']['authorization_url'],
+                        'reference': reference,
+                    }
+                return {'error': data.get('message', 'Paystack initialization failed')}
+            except Exception as e2:
+                logger.error(f'Paystack API error (new reference): {e2}')
         return {'error': 'Payment gateway error. Please try again.'}
 
 

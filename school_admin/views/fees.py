@@ -398,3 +398,76 @@ class OutstandingFeesReportView(RoleRequiredMixin, View):
                 row['age_bucket'],
             ])
         return response
+
+
+class PendingTransfersView(RoleRequiredMixin, View):
+    """List bank-transfer payments awaiting admin confirmation."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request):
+        school = request.school
+        payments = Payment.objects.filter(
+            school=school,
+            status=Payment.Status.PENDING,
+            method=Payment.Method.BANK_TRANSFER,
+        ).select_related(
+            'student__user', 'invoice__student__user', 'invoice__term',
+        ).prefetch_related('invoice__line_items__category').order_by('-paid_on')
+
+        total_pending = payments.aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+
+        return render(request, 'school_admin/pending_transfers.html', {
+            'payments': payments,
+            'total_pending': total_pending,
+        })
+
+
+class PendingTransferConfirmView(RoleRequiredMixin, View):
+    """Confirm a pending bank-transfer payment and issue its receipt."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk):
+        school = request.school
+        payment = get_object_or_404(Payment, school=school, pk=pk)
+
+        if payment.status != Payment.Status.PENDING:
+            messages.info(request, 'This payment has already been processed.')
+            return redirect('school_admin:pending_transfers')
+
+        with transaction.atomic():
+            payment.status = Payment.Status.CONFIRMED
+            payment.paid_on = timezone.now()
+            payment.recorded_by = request.user
+            payment.webhook_processed = True
+            payment.save(update_fields=[
+                'status', 'paid_on', 'recorded_by', 'webhook_processed',
+            ])
+            from fees.paystack import issue_receipt
+            issue_receipt(payment)
+
+        messages.success(request, f'Payment of ₦{payment.amount:,.2f} confirmed.')
+        return redirect('school_admin:pending_transfers')
+
+
+class PendingTransferRejectView(RoleRequiredMixin, View):
+    """Mark a pending bank-transfer payment as failed."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk):
+        school = request.school
+        payment = get_object_or_404(Payment, school=school, pk=pk)
+
+        if payment.status != Payment.Status.PENDING:
+            messages.info(request, 'This payment has already been processed.')
+            return redirect('school_admin:pending_transfers')
+
+        payment.status = Payment.Status.FAILED
+        payment.save(update_fields=['status'])
+
+        messages.info(request, 'Payment marked failed.')
+        return redirect('school_admin:pending_transfers')

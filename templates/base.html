@@ -128,8 +128,8 @@
         </div>
         <div class="ml-auto flex items-center gap-1">
           <button onclick="toggleCollapseSidebar()" class="hidden lg:flex p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/60 transition-colors" title="Collapse sidebar">
-            <i data-lucide="panel-left-close" class="collapse-close w-4.5 h-4.5"></i>
-            <i data-lucide="panel-left-open" class="collapse-open w-4.5 h-4.5"></i>
+            <i data-lucide="panel-left-close" class="collapse-close w-[18px] h-[18px]"></i>
+            <i data-lucide="panel-left-open" class="collapse-open w-[18px] h-[18px]"></i>
           </button>
           <button onclick="toggleSidebar()" class="sidebar-close-btn lg:hidden text-gray-500 p-1.5"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
@@ -248,7 +248,12 @@
         }[type] || { border: '#3B82F6', icon: 'info', iconColor: '#3B82F6' };
 
         while (this.container.children.length >= this.maxVisible) {
-          this.remove(this.container.firstElementChild.dataset.toastId);
+          const oldest = this.container.firstElementChild;
+          if (oldest && oldest._timers) {
+            const tid = oldest.dataset.toastId;
+            if (oldest._timers[tid]) { clearTimeout(oldest._timers[tid]); delete oldest._timers[tid]; }
+          }
+          oldest.remove();
         }
 
         const id = 't' + Date.now() + Math.random().toString(36).slice(2, 6);
@@ -264,7 +269,7 @@
           '</button>';
         el.querySelector('p').textContent = message;
         el.querySelector('.toast-close').addEventListener('click', () => this.remove(id));
-        if (window.lucide) lucide.createIcons({ attrs: { class: undefined } }, el);
+        if (window.lucide) lucide.createIcons({}, el);
 
         const timers = {};
         el.addEventListener('mouseenter', () => { clearTimeout(timers[id]); el.classList.add('hover-paused'); });
@@ -315,8 +320,8 @@
   </script>
 
   <script>
-    lucide.createIcons();
-    document.body.addEventListener('htmx:afterSwap', function() { lucide.createIcons(); });
+    if (window.lucide) lucide.createIcons();
+    document.body.addEventListener('htmx:afterSwap', function() { if (window.lucide) lucide.createIcons(); });
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
       const overlay = document.getElementById('mobile-overlay');
