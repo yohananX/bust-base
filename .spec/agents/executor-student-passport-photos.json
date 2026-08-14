@@ -1,0 +1,39 @@
+{
+  "agent": "executor",
+  "status": "complete",
+  "timestamp": "2026-08-13T00:00:00Z",
+  "task": "Wire student passport photos into forms and avatars (HTML templates only)",
+  "files_changed": [
+    "school_admin/templates/school_admin/student_form.html",
+    "templates/components/avatar.html",
+    "school_admin/templates/school_admin/student_detail.html",
+    "school_admin/templates/school_admin/student_list.html"
+  ],
+  "changes": {
+    "student_form.html": [
+      "<form method=\"post\"> -> <form method=\"post\" enctype=\"multipart/form-data\"> (line 17)",
+      "Added Passport Photo section before SUBMIT/CANCEL: h3 'Passport Photo' matching existing section style, photo preview (w-20 h-20 rounded-full object-cover border) if is_edit and student.passport else violet camera-icon placeholder circle, file input name=passport accept=png/jpeg/webp with file: styled classes, note text (PNG, JPG or WebP. Max 5MB. Leave empty to keep the current photo.)"
+    ],
+    "avatar.html": [
+      "Backward-compatible: added {% if photo %} branch rendering <img src={{ photo }}> with same size classes (lg=w-12 h-12, md=w-9 h-9, default w-7 h-7) rounded-full object-cover flex-shrink-0; else branch keeps original initials div. All 14 existing usages (name/size only) unaffected."
+    ],
+    "student_detail.html": [
+      "Header identity area: if student.passport shows w-16 h-16 rounded-full object-cover border img next to name; else keeps existing avatar.html include (size lg) as placeholder."
+    ],
+    "student_list.html": [
+      "student_list already had avatar include (size sm) at row name cell — upgraded it to pass photo=s.passport.url; avatar falls back to initials when no passport. Kept size sm for table-row consistency."
+    ]
+  },
+  "verification": {
+    "command": "venv\\Scripts\\python.exe -m django shell -c \"from django.template.loader import get_template; [print(t,'OK') for t in [...] ]\" --settings=school.settings",
+    "result": [
+      "school_admin/student_form.html OK",
+      "components/avatar.html OK",
+      "school_admin/student_detail.html OK",
+      "school_admin/student_list.html OK"
+    ],
+    "full_test_suite_run": false
+  },
+  "not_touched": ["views", "urls", "models", "git"],
+  "next_steps": ["Verify upload flow manually via browser (backend handled by other agent)", "Confirm lucide camera icon loads (no existing usage found in codebase)"]
+}

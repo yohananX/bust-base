@@ -19,7 +19,11 @@
   {# ── Student Info ── #}
   <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
     <div class="flex items-center gap-4 mb-5">
+      {% if student.passport %}
+      <img src="{{ student.passport.url }}" class="w-16 h-16 rounded-full object-cover border border-gray-200 flex-shrink-0">
+      {% else %}
       {% include "components/avatar.html" with name=student.user.get_full_name size="lg" %}
+      {% endif %}
       <div>
         <h2 class="text-base font-semibold text-gray-900">{{ student.user.get_full_name|default:student.user.username }}</h2>
         <p class="text-sm text-gray-500">{{ student.user.email|default:'No email on file' }}</p>

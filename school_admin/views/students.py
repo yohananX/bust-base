@@ -225,6 +225,14 @@ class StudentCreateView(RoleRequiredMixin, View):
                     status=status,
                 )
 
+                # Attach uploaded passport to student and user
+                uploaded = request.FILES.get('passport')
+                if uploaded:
+                    student.passport = uploaded
+                    student.save(update_fields=['passport'])
+                    student.user.passport = uploaded
+                    student.user.save(update_fields=['passport'])
+
                 # Auto-enroll if class and session provided
                 if class_id and session_id:
                     school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
@@ -355,6 +363,14 @@ class StudentEditView(RoleRequiredMixin, View):
                 student.admission_date = parse_date(admission_date)
                 student.status = status
                 student.save()
+
+                # Attach uploaded passport to student and user
+                uploaded = request.FILES.get('passport')
+                if uploaded:
+                    student.passport = uploaded
+                    student.save(update_fields=['passport'])
+                    student.user.passport = uploaded
+                    student.user.save(update_fields=['passport'])
 
                 # Handle enrollment change
                 if class_id and session_id:

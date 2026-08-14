@@ -14,7 +14,7 @@
   {% endif %}
 
   <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
 
       {# ============================================================ #}
@@ -227,6 +227,25 @@
         <p class="text-xs text-gray-400 mt-2">Email and phone are optional — the parent account will be created without them if left blank.</p>
       </div>
       {% endif %}
+
+      {# ============================================================ #}
+      {# PASSPORT PHOTO                                                #}
+      {# ============================================================ #}
+      <hr class="my-6 border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">Passport Photo</h3>
+      <div class="flex items-center gap-4 mb-2">
+        {% if is_edit and student.passport %}
+        <img src="{{ student.passport.url }}" class="w-20 h-20 rounded-full object-cover border border-gray-200 flex-shrink-0">
+        {% else %}
+        <div class="w-20 h-20 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="camera" class="w-7 h-7 text-primary"></i>
+        </div>
+        {% endif %}
+        <div class="flex-1">
+          <input type="file" name="passport" accept="image/png,image/jpeg,image/webp" class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-gray-100 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200">
+        </div>
+      </div>
+      <p class="text-xs text-gray-400">PNG, JPG or WebP. Max 5MB. Leave empty to keep the current photo.</p>
 
       {# ============================================================ #}
       {# SUBMIT / CANCEL                                                #}

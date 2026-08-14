@@ -1,3 +1,7 @@
+{% if photo %}
+<img src="{{ photo }}" class="{% if size == 'lg' %}w-12 h-12{% elif size == 'md' %}w-9 h-9{% else %}w-7 h-7{% endif %} rounded-full object-cover flex-shrink-0">
+{% else %}
 <div class="{% if size == 'lg' %}w-12 h-12 text-base{% elif size == 'md' %}w-9 h-9 text-sm{% else %}w-7 h-7 text-xs{% endif %} rounded-full bg-violet-100 text-primary flex items-center justify-center font-bold flex-shrink-0">
     {{ name|first|upper }}{% if name.split|length > 1 %}{{ name.split|last|first|upper }}{% endif %}
 </div>
+{% endif %}

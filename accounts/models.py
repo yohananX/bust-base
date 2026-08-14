@@ -55,6 +55,11 @@ class User(AbstractUser, TenantScopedModel):
         blank=True,
         verbose_name=_('phone number'),
     )
+    passport = models.ImageField(
+        upload_to='passports/',
+        blank=True,
+        verbose_name=_('passport'),
+    )
 
     REQUIRED_FIELDS = ['email']
 

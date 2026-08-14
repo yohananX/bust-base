@@ -69,6 +69,11 @@ class Student(TenantScopedModel):
         default=ACTIVE,
         verbose_name=_('status'),
     )
+    passport = models.ImageField(
+        upload_to='passports/',
+        blank=True,
+        verbose_name=_('passport'),
+    )
     updated_at = models.DateTimeField(
         auto_now=True,
         db_index=True,
