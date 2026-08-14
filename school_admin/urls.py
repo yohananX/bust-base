@@ -34,8 +34,9 @@ from school_admin.views import (
     SchoolSettingsView,
     NotificationLogView,
     UserListView, UserCreateView, UserEditView, UserToggleActiveView,
-    CredentialSlipView, CredentialBatchView, CredentialBatchPrintView,
-    StudentSearchAPIView, StaffSearchAPIView, UserSearchAPIView,
+    CredentialSlipView, CredentialBatchView, CredentialBatchPrintView, CredentialSingleResetView,
+    CredentialMemberConfirmView,
+    StudentSearchAPIView, StaffSearchAPIView, UserSearchAPIView, MemberSearchAPIView,
     InvoiceSearchAPIView, ClassSearchAPIView, SubjectSearchAPIView,
     NotificationSearchAPIView,
 )
@@ -51,6 +52,7 @@ urlpatterns = [
     path('api/students/', StudentSearchAPIView.as_view(), name='student_search_api'),
     path('api/staff/', StaffSearchAPIView.as_view(), name='staff_search_api'),
     path('api/users/', UserSearchAPIView.as_view(), name='user_search_api'),
+    path('api/members/', MemberSearchAPIView.as_view(), name='member_search_api'),
     path('api/invoices/', InvoiceSearchAPIView.as_view(), name='invoice_search_api'),
     path('api/classes/', ClassSearchAPIView.as_view(), name='class_search_api'),
     path('api/subjects/', SubjectSearchAPIView.as_view(), name='subject_search_api'),
@@ -146,6 +148,8 @@ urlpatterns = [
     path('credentials/user/<int:pk>/', CredentialSlipView.as_view(), name='credential_slip'),
     path('credentials/batch/', CredentialBatchView.as_view(), name='credential_batch'),
     path('credentials/print/', CredentialBatchPrintView.as_view(), name='credential_batch_print'),
+    path('credentials/user/<int:pk>/reset/', CredentialSingleResetView.as_view(), name='credential_single_reset'),
+    path('credentials/member/<int:pk>/', CredentialMemberConfirmView.as_view(), name='credential_member_confirm'),
 
     # Data Import
     path('import/', DataImportView.as_view(), name='import'),

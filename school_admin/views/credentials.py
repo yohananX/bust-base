@@ -112,3 +112,40 @@ class CredentialBatchPrintView(RoleRequiredMixin, View):
 
         context = {'slips': slips}
         return render(request, 'school_admin/credential_batch_print.html', context)
+
+
+class CredentialSingleResetView(RoleRequiredMixin, View):
+    """Reset one user's password and show their printable slip."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk):
+        user = get_object_or_404(
+            User,
+            school=request.school,
+            pk=pk,
+            role__in=[Roles.TEACHER, Roles.STUDENT, Roles.PARENT],
+        )
+        raw_password = _random_password()
+        user.set_password(raw_password)
+        user.save()
+        # Drop stale slips so the print page only shows this card.
+        _clear_slip_keys(request.session)
+        request.session[_session_key(user.pk)] = raw_password
+        messages.success(request, f'New password generated for "{user.get_full_name() or user.username}".')
+        return redirect('school_admin:credential_slip', pk=user.pk)
+
+
+class CredentialMemberConfirmView(RoleRequiredMixin, View):
+    """Confirm page reached from the member autocomplete before resetting."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request, pk):
+        user = get_object_or_404(
+            User,
+            school=request.school,
+            pk=pk,
+            role__in=[Roles.TEACHER, Roles.STUDENT, Roles.PARENT],
+        )
+        return render(request, 'school_admin/credential_member_confirm.html', {'member': user})

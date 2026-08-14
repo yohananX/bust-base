@@ -9,11 +9,18 @@
 
   {# ── Toolbar ── #}
   {% url 'school_admin:student_create' as add_student_url %}
+  {% url 'school_admin:credential_batch' as print_passwords_url %}
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
       <p class="text-sm text-gray-500">{{ students|length }} student(s)</p>
     </div>
-    {% include "components/button_primary.html" with text="Add Student" icon="plus" href=add_student_url %}
+    <div class="flex flex-wrap gap-2">
+      <a href="{{ print_passwords_url }}"
+         class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+        <i data-lucide="printer" class="w-4 h-4 mr-2 text-gray-400"></i>Print Passwords
+      </a>
+      {% include "components/button_primary.html" with text="Add Student" icon="plus" href=add_student_url %}
+    </div>
   </div>
 
   {# ── Filters ── #}

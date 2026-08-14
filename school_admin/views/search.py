@@ -110,6 +110,29 @@ class UserSearchAPIView(EntitySearchAPIView):
         return _user_payload(user)
 
 
+class MemberSearchAPIView(EntitySearchAPIView):
+    """Autocomplete for resettable school members (staff/student/parent)."""
+
+    def get_queryset(self, request):
+        return User.objects.filter(
+            school=request.school,
+            role__in=[Roles.TEACHER, Roles.STUDENT, Roles.PARENT],
+        ).select_related('student_profile').order_by('role', 'last_name', 'first_name')
+
+    def serialize(self, user):
+        payload = _user_payload(user)
+        # Make the admission number searchable (and visible) for students.
+        admission = getattr(user, 'student_profile', None)
+        if admission is not None:
+            payload['name'] = user.get_full_name() or user.username
+            payload['subtitle'] = ' · '.join(filter(None, [
+                admission.admission_number,
+                user.email,
+                user.get_role_display(),
+            ]))
+        return payload
+
+
 class InvoiceSearchAPIView(EntitySearchAPIView):
     def get_queryset(self, request):
         return Invoice.objects.filter(school=request.school).select_related(

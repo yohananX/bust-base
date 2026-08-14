@@ -40,9 +40,10 @@ from .users import (
 )
 from .credentials import (
     CredentialSlipView, CredentialBatchView, CredentialBatchPrintView,
+    CredentialSingleResetView, CredentialMemberConfirmView,
 )
 from .search import (
-    StudentSearchAPIView, StaffSearchAPIView, UserSearchAPIView,
+    StudentSearchAPIView, StaffSearchAPIView, UserSearchAPIView, MemberSearchAPIView,
     InvoiceSearchAPIView, ClassSearchAPIView, SubjectSearchAPIView,
     NotificationSearchAPIView,
 )
