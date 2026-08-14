@@ -20,7 +20,8 @@ current session, a current term plus a later (next) term, a school class
 with one enrolled student, a parent linked via ``StudentGuardianLink``, two
 fee categories (Tuition billed on the current-term invoice, Books open), and
 a Books structure on the next term. The current-term invoice carries only
-the Tuition line so its balance is > 0 and Books is the available extra.
+the Tuition line so its balance is > 0; both categories surface as extras,
+with Tuition flagged ``billed=True`` and Books unbilled (selectable).
 """
 from decimal import Decimal
 from datetime import date
@@ -217,18 +218,48 @@ class FeeCheckoutTest(TestCase):
         self.assertIsNone(options.outstanding)
 
     def test_get_checkout_options_extras(self):
-        """Only unbilled categories appear as extras; billed ones are excluded."""
+        """Every category appears as an extra; billed ones are flagged."""
         options = get_checkout_options(self.student, self.term)
 
-        self.assertEqual(len(options.extras), 1)
-        extra = options.extras[0]
-        self.assertEqual(extra.category_id, self.books_category.pk)
-        self.assertEqual(extra.amount, BOOKS_AMOUNT)
-        # The already-billed Tuition category must NOT be offered again
-        self.assertNotIn(
-            self.tuition_category.pk,
-            [e.category_id for e in options.extras],
+        self.assertEqual(len(options.extras), 2)
+        by_category = {e.category_id: e for e in options.extras}
+
+        # Tuition is on the term invoice → paid badge
+        tuition = by_category[self.tuition_category.pk]
+        self.assertTrue(tuition.billed)
+
+        # Books is unbilled → still selectable
+        books = by_category[self.books_category.pk]
+        self.assertFalse(books.billed)
+        self.assertEqual(books.amount, BOOKS_AMOUNT)
+
+    def test_get_checkout_options_all_billed_when_fully_paid(self):
+        """A fully-paid student sees paid badges on every billed category."""
+        # Bill the remaining category, then settle the whole invoice.
+        InvoiceLineItem.objects.create(
+            invoice=self.invoice,
+            category=self.books_category,
+            amount=BOOKS_AMOUNT,
         )
+        self.invoice.total_amount = self.invoice.total_amount + BOOKS_AMOUNT
+        self.invoice.save(update_fields=['total_amount'])
+        Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=TUITION_AMOUNT + BOOKS_AMOUNT,
+            method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+
+        options = get_checkout_options(self.student, self.term)
+
+        self.assertIsNone(options.outstanding)
+        self.assertEqual(len(options.extras), 2)
+        billed = {e.category_id: e.billed for e in options.extras}
+        self.assertTrue(billed[self.tuition_category.pk])
+        self.assertTrue(billed[self.books_category.pk])
 
     def test_get_checkout_options_next_term_omitted(self):
         """No later term → next_term is None (not an empty group)."""
@@ -293,8 +324,7 @@ class FeeCheckoutTest(TestCase):
         self.assertEqual(self.invoice.total_amount, TUITION_AMOUNT + BOOKS_AMOUNT)
 
     def test_reconcile_checkout_two_invoice_split(self):
-        """Outstanding + next-term selection splits into two invoices/allocations."""
-        next_fixed = NEXT_BOOKS_AMOUNT
+        """Outstanding + next-term selection splits proportionally across invoices."""
         amount = Decimal('30000.00')
 
         result = reconcile_checkout(
@@ -306,32 +336,46 @@ class FeeCheckoutTest(TestCase):
         self.assertTrue(result.is_split)
         self.assertEqual(len(result.invoices), 2)
         self.assertEqual(len(result.allocations), 2)
-        self.assertEqual(result.minimum_payable, next_fixed)
+        self.assertEqual(result.minimum_payable, Decimal('0.00'))
         self.assertEqual(
             result.total_balance,
             TUITION_AMOUNT + NEXT_BOOKS_AMOUNT,
         )
 
+        # Proportional: current gets amount * current_balance / total_balance.
+        expected_current = (amount * TUITION_AMOUNT / (TUITION_AMOUNT + NEXT_BOOKS_AMOUNT)).quantize(Decimal('0.01'))
         by_invoice = {a.invoice.pk: a.amount for a in result.allocations}
-        self.assertEqual(by_invoice[self.invoice.pk], amount - next_fixed)
+        self.assertEqual(by_invoice[self.invoice.pk], expected_current)
+        self.assertEqual(sum(by_invoice.values()), amount)
 
         next_invoice = Invoice.objects.get(student=self.student, term=self.next_term)
-        self.assertEqual(by_invoice[next_invoice.pk], next_fixed)
-        self.assertEqual(next_invoice.total_amount, next_fixed)
+        self.assertEqual(by_invoice[next_invoice.pk], amount - expected_current)
+        self.assertEqual(next_invoice.total_amount, NEXT_BOOKS_AMOUNT)
         self.assertEqual(
             next_invoice.line_items.filter(category=self.books_category).count(),
             1,
         )
 
-    def test_validation_below_minimum_payable(self):
-        """Amount below the fixed extras sum raises ValidationError."""
+    def test_reconcile_checkout_partial_payment_allowed(self):
+        """Amounts below the selected items' total are accepted (negotiable fees)."""
         options = get_checkout_options(self.student, self.term)
         extra_key = options.extras[0].key
 
-        with self.assertRaises(ValidationError):
-            reconcile_checkout(
-                self.student, self.term, [extra_key], Decimal('5000.00'),
-            )
+        # Pay only a fraction of the selected Books extra — the remainder is owed.
+        result = reconcile_checkout(
+            self.student, self.term, [extra_key], Decimal('5000.00'),
+        )
+        self.assertEqual(result.allocations[0].amount, Decimal('5000.00'))
+        self.assertEqual(result.minimum_payable, Decimal('0.00'))
+        self.invoice.refresh_from_db()
+        # The full extra is billed onto the invoice; reconcile itself only
+        # returns the allocation (payment creation happens in the view), so the
+        # stored balance reflects the full billed amount, not the partial one.
+        self.assertEqual(self.invoice.total_amount, TUITION_AMOUNT + options.extras[0].amount)
+        self.assertEqual(
+            self.invoice.balance,
+            TUITION_AMOUNT + options.extras[0].amount,
+        )
 
     def test_validation_above_balance(self):
         """Amount above the current invoice balance (post-add) raises ValidationError."""
@@ -379,12 +423,13 @@ class FeeCheckoutTest(TestCase):
         )
         self.assertEqual(payments.count(), 2)
 
+        expected_current = (Decimal('30000.00') * TUITION_AMOUNT / (TUITION_AMOUNT + NEXT_BOOKS_AMOUNT)).quantize(Decimal('0.01'))
         current = payments.get(invoice=self.invoice)
-        self.assertEqual(current.amount, Decimal('18000.00'))
+        self.assertEqual(current.amount, expected_current)
 
         next_invoice = Invoice.objects.get(student=self.student, term=self.next_term)
         next_payment = payments.get(invoice=next_invoice)
-        self.assertEqual(next_payment.amount, NEXT_BOOKS_AMOUNT)
+        self.assertEqual(next_payment.amount, Decimal('30000.00') - expected_current)
 
     def test_checkout_submit_scope_denied(self):
         """A user with no link to the student is redirected and nothing is created."""

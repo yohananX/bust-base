@@ -92,9 +92,15 @@ class InvoiceStatusListFilter(admin.SimpleListFilter):
 
 @admin.register(FeeCategory)
 class FeeCategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'school']
-    list_filter = ['school']
+    list_display = ['name', 'compulsory_badge', 'school']
+    list_filter = ['is_compulsory', 'school']
     search_fields = ['name']
+
+    @admin.display(description=_('Compulsory'))
+    def compulsory_badge(self, obj):
+        if obj.is_compulsory:
+            return format_html('<span style="color: #b45309; font-weight: bold;">Compulsory</span>')
+        return format_html('<span style="color: #2563eb; font-weight: bold;">Optional</span>')
 
 
 # ─── FeeStructure Admin ──────────────────────────────────────────────────────
@@ -181,6 +187,7 @@ class InvoiceAdmin(admin.ModelAdmin):
                     school=term.school,
                     school_class=enrollment.school_class,
                     term=term,
+                    category__is_compulsory=True,
                 )
 
                 if not fee_structures.exists():

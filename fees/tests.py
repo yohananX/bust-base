@@ -269,6 +269,42 @@ class InvoiceComputedPropertiesTest(BaseFeesTest):
         self.assertEqual(self.invoice.balance, Decimal('60000.00'))
 
 
+    def test_pending_bank_transfer_counts_toward_amount_paid(self):
+        """A PENDING bank transfer counts immediately (money already sent)."""
+        Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=Decimal('40000.00'),
+            method=Payment.Method.BANK_TRANSFER,
+            reference=None,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+        self.assertEqual(self.invoice.amount_paid, Decimal('40000.00'))
+        self.assertEqual(self.invoice.status, 'PARTIAL')
+        self.assertEqual(self.invoice.balance, Decimal('20000.00'))
+
+    def test_rejected_bank_transfer_stops_counting(self):
+        """A rejected transfer (FAILED) no longer counts toward amount_paid."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=Decimal('40000.00'),
+            method=Payment.Method.BANK_TRANSFER,
+            reference=None,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+        self.assertEqual(self.invoice.balance, Decimal('20000.00'))
+
+        payment.status = Payment.Status.FAILED
+        payment.save()
+        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
+        self.assertEqual(self.invoice.balance, Decimal('60000.00'))
+
+
 # ─── Invoice Generation Tests ─────────────────────────────────────────────
 
 class InvoiceGenerationTest(BaseFeesTest):
@@ -773,6 +809,23 @@ class InvoicesWithBalanceSelectorTest(BaseFeesTest):
         self.assertEqual(inv.amount_paid_annotated, Decimal('0.00'))
         self.assertEqual(inv.balance_annotated, Decimal('100000.00'))
         self.assertEqual(inv.balance, Decimal('100000.00'))
+
+    def test_pending_bank_transfer_counts_in_annotation(self):
+        """Business rule: PENDING bank transfers count toward amount_paid."""
+        Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=Decimal('40000.00'),
+            method=Payment.Method.BANK_TRANSFER,
+            reference=None,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+        inv = self._annotated()
+        self.assertEqual(inv.amount_paid_annotated, Decimal('40000.00'))
+        self.assertEqual(inv.balance_annotated, Decimal('60000.00'))
+        self.assertEqual(inv.balance, Decimal('60000.00'))
 
     def test_failed_payments_do_not_count(self):
         """Business rule: FAILED payments never count toward amount_paid."""

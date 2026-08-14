@@ -22,6 +22,15 @@
                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
       </div>
 
+      <div class="flex items-start gap-3 bg-gray-50 rounded-xl p-4">
+        <input type="checkbox" id="is_compulsory" name="is_compulsory" {% if category.is_compulsory|default_if_none:True %}checked{% endif %}
+               class="mt-0.5 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary/20">
+        <label for="is_compulsory" class="text-sm text-gray-700">
+          <span class="font-medium text-gray-900">Compulsory category</span>
+          <span class="block text-xs text-gray-500 mt-0.5">Compulsory categories (e.g. school fees) are billed automatically on every term invoice. Optional categories (e.g. uniform) only appear as payable extras a parent chooses to pay.</span>
+        </label>
+      </div>
+
       <div class="flex items-center gap-4 pt-2">
         <button type="submit"
                 class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">

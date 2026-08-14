@@ -8,6 +8,15 @@ from accounts.models import Roles
 
 class FeeCategory(TenantScopedModel):
     name = models.CharField(max_length=200, verbose_name=_('name'))
+    is_compulsory = models.BooleanField(
+        default=True,
+        verbose_name=_('compulsory'),
+        help_text=_(
+            'Compulsory categories (e.g. school fees) are billed automatically on every '
+            'term invoice. Optional categories (e.g. uniform) only appear as payable '
+            'extras a parent chooses to pay.'
+        ),
+    )
 
     class Meta:
         verbose_name = _('fee category')
@@ -80,10 +89,11 @@ class Invoice(TenantScopedModel):
 
     @property
     def amount_paid(self):
-        from django.db.models import Sum
-        result = self.payments.filter(status=Payment.Status.CONFIRMED).aggregate(
-            total=Sum('amount')
-        )['total']
+        from django.db.models import Q, Sum
+        result = self.payments.filter(
+            Q(status=Payment.Status.CONFIRMED)
+            | Q(status=Payment.Status.PENDING, method=Payment.Method.BANK_TRANSFER)
+        ).aggregate(total=Sum('amount'))['total']
         return result or Decimal('0.00')
 
     @property

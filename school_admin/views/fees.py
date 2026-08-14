@@ -44,6 +44,7 @@ class FeeCategoryCreateView(RoleRequiredMixin, View):
     def post(self, request):
         school = request.school
         name = request.POST.get('name', '').strip()
+        is_compulsory = request.POST.get('is_compulsory') == 'on'
 
         if not name:
             messages.error(request, 'Category name is required.')
@@ -57,7 +58,9 @@ class FeeCategoryCreateView(RoleRequiredMixin, View):
                 'is_edit': False,
             })
 
-        FeeCategory.objects.create(school=school, name=name)
+        FeeCategory.objects.create(
+            school=school, name=name, is_compulsory=is_compulsory,
+        )
         messages.success(request, f'Category "{name}" created successfully.')
         return redirect('school_admin:fee_category_list')
 
@@ -79,6 +82,7 @@ class FeeCategoryEditView(RoleRequiredMixin, View):
         school = request.school
         category = get_object_or_404(FeeCategory, school=school, pk=pk)
         name = request.POST.get('name', '').strip()
+        is_compulsory = request.POST.get('is_compulsory') == 'on'
 
         if not name:
             messages.error(request, 'Category name is required.')
@@ -97,6 +101,7 @@ class FeeCategoryEditView(RoleRequiredMixin, View):
             })
 
         category.name = name
+        category.is_compulsory = is_compulsory
         category.save()
         messages.success(request, f'Category "{name}" updated successfully.')
         return redirect('school_admin:fee_category_list')
@@ -497,6 +502,7 @@ class GenerateInvoicesView(RoleRequiredMixin, View):
                 school=school,
                 school_class=enrollment.school_class,
                 term=term,
+                category__is_compulsory=True,
             )
             if not fee_structures.exists():
                 continue

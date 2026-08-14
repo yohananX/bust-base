@@ -6,14 +6,18 @@ and reconciles a submitted checkout (``reconcile_checkout``).
 Business rules:
 - ONE invoice per student per term (``unique_together`` on ``Invoice``).
 - ``Invoice.total_amount`` is the only stored money field; balance, amount-paid
-  and status are computed live from CONFIRMED payments only.
+  and status are computed live from CONFIRMED payments plus PENDING bank
+  transfers (money already sent; rejected transfers stop counting once FAILED).
 - Line-item additions only ever ADD to ``total_amount``; balance is never
   mutated directly.
+- Payments are fully negotiable: a parent selects what to pay for and enters
+  any amount up to the total balance; selecting an optional category bills its
+  full amount onto the invoice (remainder becomes owed).
 - All money is ``Decimal``.
 """
 
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -41,6 +45,10 @@ class CheckoutOption:
     term_id: int
     term_name: str
     invoice_id: int | None    # existing invoice pk for outstanding, else None
+    billed: bool = False      # category already on the term invoice
+    settled: bool = False     # True when billed and its invoice is fully paid
+    total_amount: Decimal | None = None  # term invoice total (outstanding only)
+    paid_amount: Decimal | None = None   # amount already paid (outstanding only)
 
 
 @dataclass
@@ -77,17 +85,22 @@ def _billed_category_ids(invoice):
 
 
 def _extra_options(term, enrollment, invoice, student):
-    """Build 'extra' options from FeeStructure rows not yet billed this term."""
+    """Build 'extra' options from all FeeStructure rows for the term.
+
+    Billed categories (already on the term invoice) are still included,
+    marked ``billed=True`` so the frontend can render them as paid/disabled.
+    ``settled`` reflects whether the term invoice is fully paid (so billed
+    categories on a partially-paid invoice read as "included", not "paid").
+    """
     options = []
     billed = _billed_category_ids(invoice)
+    settled = invoice is not None and invoice.balance <= 0
     fee_structures = FeeStructure.objects.filter(
         school=student.school,
         school_class=enrollment.school_class,
         term=term,
     ).select_related('category')
     for fs in fee_structures:
-        if fs.category_id in billed:
-            continue
         options.append(CheckoutOption(
             key=f'extra:{fs.category_id}',
             kind='extra',
@@ -99,6 +112,8 @@ def _extra_options(term, enrollment, invoice, student):
             term_id=term.pk,
             term_name=term.name,
             invoice_id=None,
+            billed=(fs.category_id in billed),
+            settled=settled,
         ))
     options.sort(key=lambda option: option.category_name)
     return options
@@ -107,8 +122,10 @@ def _extra_options(term, enrollment, invoice, student):
 def _next_term_options(term, enrollment, student):
     """Build 'next' options from FeeStructure rows for the following term.
 
-    Returns ``None`` when there is no following term, no current enrollment,
-    or no billable categories — callers must not render an empty group.
+    Billed categories (already on the next-term invoice, if any) are still
+    included, marked ``billed=True``. Returns ``None`` when there is no
+    following term, no current enrollment, or no billable categories —
+    callers must not render an empty group.
     """
     next_term = Term.objects.filter(
         school=term.school, start_date__gt=term.start_date
@@ -116,7 +133,9 @@ def _next_term_options(term, enrollment, student):
     if next_term is None or enrollment is None:
         return None
 
-    billed = _billed_category_ids(_invoice_for(student, next_term))
+    next_invoice = _invoice_for(student, next_term)
+    billed = _billed_category_ids(next_invoice)
+    settled = next_invoice is not None and next_invoice.balance <= 0
     options = []
     fee_structures = FeeStructure.objects.filter(
         school=student.school,
@@ -124,8 +143,6 @@ def _next_term_options(term, enrollment, student):
         term=next_term,
     ).select_related('category')
     for fs in fee_structures:
-        if fs.category_id in billed:
-            continue
         options.append(CheckoutOption(
             key=f'next:{fs.category_id}',
             kind='next',
@@ -137,6 +154,8 @@ def _next_term_options(term, enrollment, student):
             term_id=next_term.pk,
             term_name=next_term.name,
             invoice_id=None,
+            billed=(fs.category_id in billed),
+            settled=settled,
         ))
     options.sort(key=lambda option: option.category_name)
 
@@ -154,8 +173,9 @@ def get_checkout_options(student, term) -> CheckoutOptions:
 
     - ``outstanding``: the student's existing invoice for ``term`` when its
       computed balance is positive.
-    - ``extras``: FeeStructure rows for the student's current class + ``term``
-      whose category is not already represented on the term invoice.
+    - ``extras``: every FeeStructure row for the student's current class +
+      ``term``. Categories already billed on the term invoice are flagged
+      ``billed=True`` (rendered as paid); the rest stay selectable.
     - ``next_term``: the same for the following term, or ``None`` when there is
       no following term (never an empty/disabled group).
     """
@@ -174,6 +194,8 @@ def get_checkout_options(student, term) -> CheckoutOptions:
             term_id=term.pk,
             term_name=term.name,
             invoice_id=invoice.pk,
+            total_amount=invoice.total_amount,
+            paid_amount=invoice.amount_paid,
         )
 
     extras = []
@@ -255,6 +277,8 @@ def reconcile_checkout(student, term, selected_keys, amount) -> ReconcileResult:
         amount = Decimal(amount)
     except (TypeError, ValueError, InvalidOperation):
         raise ValidationError('Enter a valid amount.')
+    if amount <= 0:
+        raise ValidationError('Enter an amount greater than 0.')
 
     involves_outstanding = 'outstanding' in keys
     extra_keys = [k for k in keys if k.startswith('extra:')]
@@ -313,7 +337,6 @@ def reconcile_checkout(student, term, selected_keys, amount) -> ReconcileResult:
                 defaults={'total_amount': Decimal('0.00')},
             )
 
-        extras_fixed = Decimal('0.00')
         if current_invoice is not None and extra_fee_structures:
             for fs in extra_fee_structures:
                 already_billed = current_invoice.line_items.filter(
@@ -327,10 +350,8 @@ def reconcile_checkout(student, term, selected_keys, amount) -> ReconcileResult:
                     )
                     current_invoice.total_amount = current_invoice.total_amount + fs.amount
                     current_invoice.save(update_fields=['total_amount'])
-                extras_fixed += fs.amount
 
         next_invoice = None
-        next_fixed = Decimal('0.00')
         if next_keys and next_term is not None:
             next_invoice, _ = Invoice.objects.get_or_create(
                 school=student.school,
@@ -350,15 +371,6 @@ def reconcile_checkout(student, term, selected_keys, amount) -> ReconcileResult:
                     )
                     next_invoice.total_amount = next_invoice.total_amount + fs.amount
                     next_invoice.save(update_fields=['total_amount'])
-                next_fixed += fs.amount
-
-        minimum_payable = extras_fixed + next_fixed
-
-        if amount < minimum_payable:
-            raise ValidationError(
-                f'Amount must be at least ₦{minimum_payable:,.2f} '
-                '(extras and next-term fees cannot be reduced).'
-            )
 
         invoices = []
         if current_invoice is not None:
@@ -366,39 +378,43 @@ def reconcile_checkout(student, term, selected_keys, amount) -> ReconcileResult:
         if next_invoice is not None:
             invoices.append(next_invoice)
 
-        if current_invoice is not None and next_invoice is not None:
-            # Two invoices: next-term share is fixed, the rest lands on the
-            # current-term invoice, capped by its balance AFTER additions.
-            current_portion = amount - next_fixed
-            if current_portion < extras_fixed:
-                raise ValidationError(
-                    f'Amount must be at least ₦{minimum_payable:,.2f} '
-                    '(extras and next-term fees cannot be reduced).'
-                )
-            if current_portion > current_invoice.balance:
-                raise ValidationError(
-                    f'Amount must be at most ₦{current_invoice.balance:,.2f} '
-                    f'for {term.name}.'
-                )
-            allocations = [
-                Allocation(current_invoice, current_portion),
-                Allocation(next_invoice, next_fixed),
-            ]
-        else:
+        # Everything is negotiable: any positive amount up to the total balance
+        # AFTER additions is acceptable (partial payments on any item).
+        if not invoices:
+            raise ValidationError('Select at least one item to pay for.')
+
+        total_balance = sum(i.balance for i in invoices)
+        if amount > total_balance:
+            raise ValidationError(
+                f'Amount must be at most ₦{total_balance:,.2f}.'
+            )
+
+        if len(invoices) == 1:
             # One invoice involved (current-term or next-term only): the whole
             # amount lands on it, capped by its balance AFTER additions.
-            target_invoice = current_invoice if current_invoice is not None else next_invoice
-            if amount > target_invoice.balance:
-                raise ValidationError(
-                    f'Amount must be at most ₦{target_invoice.balance:,.2f} '
-                    f'for {target_invoice.term.name}.'
-                )
-            allocations = [Allocation(target_invoice, amount)]
+            allocations = [Allocation(invoices[0], amount)]
+        else:
+            # Two invoices involved: split proportionally to each invoice's
+            # balance after additions so both receive a fair share.
+            current_inv, next_inv = invoices
+            current_share = (
+                amount * current_inv.balance / total_balance
+            ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            if current_share > current_inv.balance:
+                current_share = current_inv.balance
+            next_share = amount - current_share
+            if next_share > next_inv.balance:
+                next_share = next_inv.balance
+                current_share = amount - next_share
+            allocations = [
+                Allocation(current_inv, current_share),
+                Allocation(next_inv, next_share),
+            ]
 
     return ReconcileResult(
         invoices=invoices,
         allocations=allocations,
-        minimum_payable=minimum_payable,
-        total_balance=sum(i.balance for i in invoices),
+        minimum_payable=Decimal('0.00'),
+        total_balance=total_balance,
         is_split=len(invoices) == 2,
     )

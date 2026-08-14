@@ -1,6 +1,16 @@
 {% extends 'base.html' %}
 {% block title %}Make a Payment - Grace House{% endblock %}
 {% block page_header %}Make a Payment{% endblock %}
+{% block extra_css %}
+<style>
+  @keyframes check-pop {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .check-pop { animation: check-pop 0.45s ease-out; }
+</style>
+{% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto space-y-6">
 
@@ -21,6 +31,31 @@
   {% endif %}
 
   {# ===== How much do you owe? ===== #}
+  {% if not any_payable %}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 opacity-70">
+    <div class="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+      <svg viewBox="0 0 24 24" class="w-6 h-6 text-green-600 check-pop" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <div class="min-w-0">
+      <p class="text-sm font-semibold text-green-700 mb-0.5">All fees paid — nothing to pay</p>
+      <p class="text-xs text-gray-500">There are no outstanding balances or unpaid categories for this term.</p>
+    </div>
+  </div>
+  {% elif fully_paid %}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+    <div class="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+      <svg viewBox="0 0 24 24" class="w-6 h-6 text-green-600 check-pop" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <div class="min-w-0">
+      <p class="text-sm font-semibold text-green-700 mb-0.5">All fees paid</p>
+      <p class="text-xs text-gray-500">You have no outstanding balance. You can still select a category below to pay for something else.</p>
+    </div>
+  </div>
+  {% else %}
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between">
     <div class="min-w-0">
       <p class="text-sm text-gray-600 mb-1">Total Outstanding</p>
@@ -31,10 +66,20 @@
       <i data-lucide="wallet" class="w-5 h-5"></i>
     </div>
   </div>
+  {% endif %}
 
   {# ===== Payment form — cart + method step ===== #}
-  <form method="post" action="{% url 'fees:checkout-submit' %}" id="payment-form" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+  <form method="post" action="{% url 'fees:checkout-submit' %}" id="payment-form" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6 {% if not any_payable %}opacity-60 pointer-events-none select-none{% endif %}">
     {% csrf_token %}
+    {% if not any_payable %}
+    <div class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+      <div class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><i data-lucide="lock" class="w-4 h-4 text-gray-400"></i></div>
+      <div>
+        <p class="text-sm font-semibold text-gray-700">Payments are disabled</p>
+        <p class="text-xs text-gray-500 mt-0.5">You've settled everything for this term. Nothing more to pay.</p>
+      </div>
+    </div>
+    {% endif %}
 
     {# Child selector — parents only; students carry a hidden student_id #}
     {% if children %}
@@ -64,51 +109,57 @@
               {% for cid, co in checkouts_by_child.items %}
                 {% if cid == child.pk %}
 
-                  {# ---- Outstanding line (pre-checked, flexible amount) ---- #}
+                  {# ---- Outstanding line (pre-checked, shows term total) ---- #}
                   {% if co.outstanding %}
-                  <div class="rounded-xl border border-gray-200 bg-white">
-                    <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
-                      <input type="checkbox" name="item" value="{{ co.outstanding.key }}" data-role="outstanding"
-                             data-amount="{{ co.outstanding.amount }}"
-                             class="mt-1 accent-primary" checked>
-                      <span class="flex-1 min-w-0">
-                        <span class="flex items-center justify-between gap-2">
-                          <span class="text-sm font-semibold text-gray-900">{{ co.outstanding.label }}</span>
-                          {% if invoices_by_child and co.outstanding.invoice_id %}
-                            {% for cid2, invs2 in invoices_by_child.items %}
-                              {% if cid2 == child.pk %}
-                                {% for inv2 in invs2 %}
-                                  {% if inv2.pk == co.outstanding.invoice_id and inv2.status == 'PARTIAL' %}
-                                    {% include 'components/badge.html' with status='warning' text='PARTIAL' %}
-                                  {% endif %}
-                                {% endfor %}
-                              {% endif %}
-                            {% endfor %}
-                          {% endif %}
-                        </span>
-                        <span class="flex items-center justify-between gap-2 mt-1.5 text-xs text-gray-500">
-                          {% if co.outstanding.term_name %}<span>{{ co.outstanding.term_name }}</span>{% endif %}
-                          <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ co.outstanding.amount|floatformat:2 }}</span>
-                        </span>
+                  <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+                    <input type="checkbox" name="item" value="{{ co.outstanding.key }}" data-role="outstanding"
+                           data-amount="{{ co.outstanding.amount }}"
+                           class="mt-1 accent-primary" checked>
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-900">{{ co.outstanding.term_name|default:co.outstanding.label }}</span>
+                        {% if invoices_by_child and co.outstanding.invoice_id %}
+                          {% for cid2, invs2 in invoices_by_child.items %}
+                            {% if cid2 == child.pk %}
+                              {% for inv2 in invs2 %}
+                                {% if inv2.pk == co.outstanding.invoice_id and inv2.status == 'PARTIAL' %}
+                                  {% include 'components/badge.html' with status='warning' text='PARTIAL' %}
+                                {% endif %}
+                              {% endfor %}
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
                       </span>
-                    </label>
-                    <div class="px-4 pb-4 -mt-1 flex flex-wrap items-center gap-2">
-                      <label for="outstanding-amount-{{ child.pk }}" class="text-xs font-medium text-gray-600">Amount</label>
-                      <div class="relative flex-1 min-w-[140px] max-w-[200px]">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-xs">&#8358;</span>
-                        <input type="number" name="amount" id="outstanding-amount-{{ child.pk }}" data-role="outstanding-amount"
-                               step="0.01" min="0" value="{{ co.outstanding.amount|floatformat:2 }}"
-                               class="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm tabular-nums font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-                      </div>
-                      <span class="text-xs text-gray-400">Partial payment allowed on outstanding fees.</span>
-                    </div>
-                  </div>
+                      <span class="flex items-center justify-between gap-2 mt-1.5 text-xs text-gray-500">
+                        {% if co.outstanding.total_amount is not None %}
+                        <span>Total <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ co.outstanding.total_amount|floatformat:2 }}</span> &middot; Paid <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ co.outstanding.paid_amount|floatformat:2 }}</span></span>
+                        {% else %}
+                        <span>{{ co.outstanding.term_name }}</span>
+                        {% endif %}
+                        <span class="font-semibold text-amber-600 tabular-nums">Owing &#8358;{{ co.outstanding.amount|floatformat:2 }}</span>
+                      </span>
+                    </span>
+                  </label>
                   {% endif %}
 
                   {# ---- Available extras (fixed price) ---- #}
                   {% if co.extras %}
                   <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider pt-1">Available extras</p>
                   {% for opt in co.extras %}
+                  {% if opt.billed %}
+                  <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50 opacity-70 cursor-not-allowed">
+                    <span class="w-4 h-4 mt-0.5 rounded bg-gray-200 border border-gray-200 flex-shrink-0"></span>
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-400">{{ opt.label }}</span>
+                        <span class="text-sm font-semibold text-gray-400 tabular-nums">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                      </span>
+                      <span class="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
+                        <span>Paid</span>
+                      </span>
+                    </span>
+                  </label>
+                  {% else %}
                   <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
                     <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
                            class="mt-1 accent-primary">
@@ -120,10 +171,11 @@
                       <span class="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
                         {% if opt.category_name %}<span>{{ opt.category_name }}</span>{% endif %}
                         <span class="text-gray-300">&middot;</span>
-                        <span>Non-negotiable</span>
+                        <span>Optional — select to add</span>
                       </span>
                     </span>
                   </label>
+                  {% endif %}
                   {% endfor %}
                   {% endif %}
 
@@ -131,6 +183,20 @@
                   {% if co.next_term %}
                   <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider pt-1">Next Term Fees &mdash; {{ co.next_term.term_name }}</p>
                   {% for opt in co.next_term.options %}
+                  {% if opt.billed %}
+                  <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50 opacity-70 cursor-not-allowed">
+                    <span class="w-4 h-4 mt-0.5 rounded bg-gray-200 border border-gray-200 flex-shrink-0"></span>
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-400">{{ opt.label }}</span>
+                        <span class="text-sm font-semibold text-gray-400 tabular-nums">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                      </span>
+                      <span class="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
+                        <span>Paid</span>
+                      </span>
+                    </span>
+                  </label>
+                  {% else %}
                   <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
                     <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
                            class="mt-1 accent-primary">
@@ -144,8 +210,21 @@
                       {% endif %}
                     </span>
                   </label>
+                  {% endif %}
                   {% endfor %}
                   {% endif %}
+
+                  {# ---- Negotiable amount for this child ---- #}
+                  <div class="pt-1">
+                    <label for="child-amount-{{ child.pk }}" class="text-xs font-medium text-gray-600">Enter amount to pay</label>
+                    <div class="relative mt-1.5 max-w-[220px]">
+                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-xs">&#8358;</span>
+                      <input type="number" id="child-amount-{{ child.pk }}" data-role="child-amount"
+                             step="0.01" min="0"
+                             class="w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm tabular-nums font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">Pay any amount — full or partial. Selecting an optional category adds it to what you owe.</p>
+                  </div>
 
                 {% endif %}
               {% endfor %}
@@ -192,51 +271,57 @@
               {% for cid, co in checkouts_by_child.items %}
                 {% if cid == student.pk %}
 
-                  {# ---- Outstanding line (pre-checked, flexible amount) ---- #}
+                  {# ---- Outstanding line (pre-checked, shows term total) ---- #}
                   {% if co.outstanding %}
-                  <div class="rounded-xl border border-gray-200 bg-white">
-                    <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
-                      <input type="checkbox" name="item" value="{{ co.outstanding.key }}" data-role="outstanding"
-                             data-amount="{{ co.outstanding.amount }}"
-                             class="mt-1 accent-primary" checked>
-                      <span class="flex-1 min-w-0">
-                        <span class="flex items-center justify-between gap-2">
-                          <span class="text-sm font-semibold text-gray-900">{{ co.outstanding.label }}</span>
-                          {% if invoices_by_child and co.outstanding.invoice_id %}
-                            {% for cid2, invs2 in invoices_by_child.items %}
-                              {% if cid2 == student.pk %}
-                                {% for inv2 in invs2 %}
-                                  {% if inv2.pk == co.outstanding.invoice_id and inv2.status == 'PARTIAL' %}
-                                    {% include 'components/badge.html' with status='warning' text='PARTIAL' %}
-                                  {% endif %}
-                                {% endfor %}
-                              {% endif %}
-                            {% endfor %}
-                          {% endif %}
-                        </span>
-                        <span class="flex items-center justify-between gap-2 mt-1.5 text-xs text-gray-500">
-                          {% if co.outstanding.term_name %}<span>{{ co.outstanding.term_name }}</span>{% endif %}
-                          <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ co.outstanding.amount|floatformat:2 }}</span>
-                        </span>
+                  <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+                    <input type="checkbox" name="item" value="{{ co.outstanding.key }}" data-role="outstanding"
+                           data-amount="{{ co.outstanding.amount }}"
+                           class="mt-1 accent-primary" checked>
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-900">{{ co.outstanding.term_name|default:co.outstanding.label }}</span>
+                        {% if invoices_by_child and co.outstanding.invoice_id %}
+                          {% for cid2, invs2 in invoices_by_child.items %}
+                            {% if cid2 == student.pk %}
+                              {% for inv2 in invs2 %}
+                                {% if inv2.pk == co.outstanding.invoice_id and inv2.status == 'PARTIAL' %}
+                                  {% include 'components/badge.html' with status='warning' text='PARTIAL' %}
+                                {% endif %}
+                              {% endfor %}
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
                       </span>
-                    </label>
-                    <div class="px-4 pb-4 -mt-1 flex flex-wrap items-center gap-2">
-                      <label for="outstanding-amount-{{ student.pk }}" class="text-xs font-medium text-gray-600">Amount</label>
-                      <div class="relative flex-1 min-w-[140px] max-w-[200px]">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-xs">&#8358;</span>
-                        <input type="number" name="amount" id="outstanding-amount-{{ student.pk }}" data-role="outstanding-amount"
-                               step="0.01" min="0" value="{{ co.outstanding.amount|floatformat:2 }}"
-                               class="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm tabular-nums font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-                      </div>
-                      <span class="text-xs text-gray-400">Partial payment allowed on outstanding fees.</span>
-                    </div>
-                  </div>
+                      <span class="flex items-center justify-between gap-2 mt-1.5 text-xs text-gray-500">
+                        {% if co.outstanding.total_amount is not None %}
+                        <span>Total <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ co.outstanding.total_amount|floatformat:2 }}</span> &middot; Paid <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ co.outstanding.paid_amount|floatformat:2 }}</span></span>
+                        {% else %}
+                        <span>{{ co.outstanding.term_name }}</span>
+                        {% endif %}
+                        <span class="font-semibold text-amber-600 tabular-nums">Owing &#8358;{{ co.outstanding.amount|floatformat:2 }}</span>
+                      </span>
+                    </span>
+                  </label>
                   {% endif %}
 
                   {# ---- Available extras (fixed price) ---- #}
                   {% if co.extras %}
                   <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider pt-1">Available extras</p>
                   {% for opt in co.extras %}
+                  {% if opt.billed %}
+                  <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50 opacity-70 cursor-not-allowed">
+                    <span class="w-4 h-4 mt-0.5 rounded bg-gray-200 border border-gray-200 flex-shrink-0"></span>
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-400">{{ opt.label }}</span>
+                        <span class="text-sm font-semibold text-gray-400 tabular-nums">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                      </span>
+                      <span class="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
+                        <span>Paid</span>
+                      </span>
+                    </span>
+                  </label>
+                  {% else %}
                   <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
                     <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
                            class="mt-1 accent-primary">
@@ -248,10 +333,11 @@
                       <span class="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
                         {% if opt.category_name %}<span>{{ opt.category_name }}</span>{% endif %}
                         <span class="text-gray-300">&middot;</span>
-                        <span>Non-negotiable</span>
+                        <span>Optional — select to add</span>
                       </span>
                     </span>
                   </label>
+                  {% endif %}
                   {% endfor %}
                   {% endif %}
 
@@ -259,6 +345,20 @@
                   {% if co.next_term %}
                   <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider pt-1">Next Term Fees &mdash; {{ co.next_term.term_name }}</p>
                   {% for opt in co.next_term.options %}
+                  {% if opt.billed %}
+                  <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50 opacity-70 cursor-not-allowed">
+                    <span class="w-4 h-4 mt-0.5 rounded bg-gray-200 border border-gray-200 flex-shrink-0"></span>
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-400">{{ opt.label }}</span>
+                        <span class="text-sm font-semibold text-gray-400 tabular-nums">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                      </span>
+                      <span class="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
+                        <span>Paid</span>
+                      </span>
+                    </span>
+                  </label>
+                  {% else %}
                   <label class="cart-item flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
                     <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
                            class="mt-1 accent-primary">
@@ -272,8 +372,21 @@
                       {% endif %}
                     </span>
                   </label>
+                  {% endif %}
                   {% endfor %}
                   {% endif %}
+
+                  {# ---- Negotiable amount for this child ---- #}
+                  <div class="pt-1">
+                    <label for="child-amount-{{ student.pk }}" class="text-xs font-medium text-gray-600">Enter amount to pay</label>
+                    <div class="relative mt-1.5 max-w-[220px]">
+                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-xs">&#8358;</span>
+                      <input type="number" id="child-amount-{{ student.pk }}" data-role="child-amount"
+                             step="0.01" min="0"
+                             class="w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm tabular-nums font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">Pay any amount — full or partial. Selecting an optional category adds it to what you owe.</p>
+                  </div>
 
                 {% endif %}
               {% endfor %}
@@ -457,7 +570,7 @@
   }
 
   /* Total for one block: checked invoice balance (fallback mode) or
-     outstanding (flexible sub-amount) + checked extras + next-term options. */
+     outstanding + checked extras + next-term options. */
   function blockTotal(block) {
     if (!block) return 0;
     var radio = block.querySelector('input[name="invoice_id"]:checked');
@@ -466,11 +579,9 @@
       return isNaN(b) ? 0 : b;
     }
     var total = 0, n;
-    var sub = block.querySelector('input[data-role="outstanding-amount"]');
     var out = block.querySelector('input[name="item"][data-role="outstanding"]');
     if (out && out.checked) {
-      n = sub ? parseFloat(sub.value) : NaN;
-      if (isNaN(n)) n = parseFloat(out.getAttribute('data-amount'));
+      n = parseFloat(out.getAttribute('data-amount'));
       if (!isNaN(n)) total += n;
     }
     var checks = block.querySelectorAll('input[name="item"]:checked');
@@ -482,10 +593,22 @@
     return total;
   }
 
-  /* Recompute the active child's total and write the authoritative amount. */
+  /* Recompute the active child's total and write the authoritative amount.
+     The negotiable amount is editable: it starts at the full total of the
+     checked items, but the user may lower it to pay any partial amount. */
   function recalc() {
     var block = activeBlock();
-    var total = blockTotal(block);
+    var full = blockTotal(block);
+    var amountField = block ? block.querySelector('input[data-role="child-amount"]') : null;
+    var total = full;
+    if (amountField) {
+      if (amountField.value === '' || amountField.value === '0.00') {
+        amountField.value = full.toFixed(2);
+      } else {
+        var v = parseFloat(amountField.value);
+        if (!isNaN(v) && v <= full) total = v;
+      }
+    }
     if (amountInput) amountInput.value = total.toFixed(2);
     if (totalValue) totalValue.textContent = fmt(total);
   }
@@ -527,7 +650,7 @@
     });
     form.addEventListener('input', function (e) {
       var t = e.target;
-      if (t && t.dataset && t.dataset.role === 'outstanding-amount') recalc();
+      if (t && t.dataset && t.dataset.role === 'child-amount') recalc();
     });
   }
 

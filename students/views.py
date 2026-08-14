@@ -264,12 +264,16 @@ class MakePaymentView(RoleRequiredMixin, View):
             context['student'] = student
             invoices = Invoice.objects.filter(student=student)
 
-        # Prefetch confirmed payments so invoice.balance/status don't N+1
+        # Prefetch payments that count toward the balance so invoice.balance/status
+        # don't N+1: confirmed payments plus pending bank transfers.
+        visible_status_q = Q(status=Payment.Status.CONFIRMED) | Q(
+            status=Payment.Status.PENDING, method=Payment.Method.BANK_TRANSFER,
+        )
         invoices = invoices.select_related(
             'term', 'student', 'student__user',
         ).prefetch_related(Prefetch(
             'payments',
-            queryset=Payment.objects.filter(status=Payment.Status.CONFIRMED),
+            queryset=Payment.objects.filter(visible_status_q),
         ))
 
         invoices_by_child = {}
@@ -280,6 +284,9 @@ class MakePaymentView(RoleRequiredMixin, View):
             if inv.balance > 0:
                 total_owed += inv.balance
                 unpaid_invoices_count += 1
+
+        # Fully paid when the student/children have invoices and owe nothing.
+        fully_paid = bool(invoices_by_child) and total_owed == 0
 
         totals_by_child = {
             child_id: sum(
@@ -308,19 +315,43 @@ class MakePaymentView(RoleRequiredMixin, View):
                 continue
             checkouts_by_child[child.pk] = get_checkout_options(child, term)
 
-        # Bank transfer details for the "I've Transferred" reveal.
-        bank_details = {
-            'bank': 'First Bank',
-            'account_name': 'Grace House School System',
-            'account_number': '0000000000',
-        }
+        # A child has something to pay for when they carry an outstanding balance
+        # OR have a selectable (unbilled, unpaid) category in their cart. When no
+        # child has anything payable, the payment section is greyed out.
+        can_pay_by_child = {}
+        for child in checkout_students:
+            co = checkouts_by_child.get(child.pk)
+            can_pay = False
+            if co is not None:
+                if co.outstanding is not None:
+                    can_pay = True
+                else:
+                    payable = [
+                        o for o in co.extras if not o.billed
+                    ]
+                    if co.next_term is not None:
+                        payable += [
+                            o for o in co.next_term.options if not o.billed
+                        ]
+                    if payable:
+                        can_pay = True
+            can_pay_by_child[child.pk] = can_pay
+        any_payable = any(can_pay_by_child.values())
+
+        # Bank transfer details for the "I've Transferred" reveal. Comes from
+        # the school's settings; hidden when no account number has been entered.
+        school = request.school
+        bank_details = None
+        if school.account_number:
+            bank_details = {
+                'bank': school.bank_name,
+                'account_name': school.account_name,
+                'account_number': school.account_number,
+            }
 
         # Recent confirmed + pending bank-transfer payments — pending transfers
         # show immediately after submission. Invoice may be None (invoice-less
         # payments); templates should fall back to payment.description.
-        visible_status_q = Q(status=Payment.Status.CONFIRMED) | Q(
-            status=Payment.Status.PENDING, method=Payment.Method.BANK_TRANSFER,
-        )
         if role == Roles.PARENT:
             recent_qs = Payment.objects.filter(
                 school=request.school,
@@ -344,9 +375,12 @@ class MakePaymentView(RoleRequiredMixin, View):
             'invoices_by_child': invoices_by_child,
             'totals_by_child': totals_by_child,
             'total_owed': total_owed,
+            'fully_paid': fully_paid,
             'unpaid_invoices_count': unpaid_invoices_count,
             'recent_payments': recent_payments,
             'checkouts_by_child': checkouts_by_child,
+            'can_pay_by_child': can_pay_by_child,
+            'any_payable': any_payable,
             'bank_details': bank_details,
         })
         return render(request, 'students/make_payment.html', context)
@@ -394,15 +428,6 @@ class StudentOverviewView(RoleRequiredMixin, View):
         outstanding = sum(inv.balance for inv in unpaid_invoices)
         unpaid_count = len(unpaid_invoices)
 
-        # Academic trend — average per published term (chart)
-        term_chart_labels = []
-        term_chart_values = []
-        for tr in TermResult.objects.filter(
-            student__user=request.user, term__results_published=True,
-        ).select_related('term', 'term__session').order_by('term__start_date'):
-            term_chart_labels.append(tr.term.session.name)
-            term_chart_values.append(float(tr.average))
-
         return render(request, 'students/student/overview.html', {
             'enrollment': enrollment,
             'invoices': invoices,
@@ -412,8 +437,6 @@ class StudentOverviewView(RoleRequiredMixin, View):
             'term_result': term_result,
             'outstanding': outstanding,
             'unpaid_count': unpaid_count,
-            'term_chart_labels': term_chart_labels,
-            'term_chart_values': term_chart_values,
         })
 
 
