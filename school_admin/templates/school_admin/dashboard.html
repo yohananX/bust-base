@@ -7,239 +7,368 @@
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
 
-  {# ── KPI ROW ── #}
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-
-    {# Students #}
-    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-      <div class="absolute top-0 left-0 w-1 h-full bg-violet-500 rounded-l-2xl"></div>
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total Active Students</p>
-          <p class="text-3xl font-bold text-gray-900">{{ total_students|default:"0" }}</p>
-          <p class="text-xs text-emerald-600 font-medium mt-1 flex items-center">
-            <i data-lucide="trending-up" class="w-3.5 h-3.5 mr-1"></i>
-            {{ student_growth|default:"0" }}% this term
-          </p>
+  {# ── ATTENTION ZONE ── #}
+  <div class="space-y-3">
+    {% if pending_transfers %}
+    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="clock" class="w-5 h-5 text-rose-600"></i>
         </div>
-        <div class="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:scale-105 transition-transform">
-          <i data-lucide="users" class="w-6 h-6"></i>
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-gray-800">{{ pending_transfers }} pending bank transfers awaiting confirmation</p>
+          <p class="text-xs text-gray-500">Verify and confirm incoming transfers to keep fee records accurate.</p>
         </div>
       </div>
+      <a href="{% url 'school_admin:pending_transfers' %}" class="text-sm font-medium text-rose-600 hover:text-rose-800 hover:underline shrink-0">Review</a>
     </div>
+    {% endif %}
 
-    {# Outstanding Fees #}
-    <a href="{% url 'school_admin:outstanding_fees' %}" class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow block">
-      <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500 rounded-l-2xl"></div>
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Outstanding Fees</p>
-          <p class="text-3xl font-bold text-gray-900">&#8358;{{ outstanding_fees|floatformat:0 }}</p>
-          <p class="text-xs text-gray-400 mt-1">{{ owing_students|default:"0" }} students owing</p>
+    {% if owing_students %}
+    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="banknote" class="w-5 h-5 text-amber-600"></i>
         </div>
-        <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
-          <i data-lucide="banknote" class="w-6 h-6"></i>
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-gray-800">&#8358;{{ outstanding_fees|floatformat:0 }} outstanding fees across {{ owing_students }} students</p>
+          <p class="text-xs text-gray-500">Follow up on outstanding balances to improve collection.</p>
         </div>
       </div>
-    </a>
-
-    {# Payroll #}
-    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-      <div class="absolute top-0 left-0 w-1 h-full bg-sky-500 rounded-l-2xl"></div>
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Payroll Runs</p>
-          <p class="text-3xl font-bold text-gray-900">{{ payroll_runs|default:"0" }}</p>
-          <p class="text-xs text-gray-400 mt-1">This academic year</p>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:scale-105 transition-transform">
-          <i data-lucide="wallet" class="w-6 h-6"></i>
-        </div>
-      </div>
+      <a href="{% url 'school_admin:outstanding_fees' %}" class="text-sm font-medium text-amber-600 hover:text-amber-800 hover:underline shrink-0">View report</a>
     </div>
+    {% endif %}
 
-    {# Projects #}
-    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-      <div class="absolute top-0 left-0 w-1 h-full bg-amber-500 rounded-l-2xl"></div>
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Active Projects</p>
-          <p class="text-3xl font-bold text-gray-900">{{ active_projects|default:"0" }}</p>
-          <p class="text-xs text-gray-400 mt-1">Ongoing school projects</p>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-105 transition-transform">
-          <i data-lucide="folder-kanban" class="w-6 h-6"></i>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {# ── RESULTS STATUS BANNER ── #}
-  {% if results_published %}
-    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
+    {% if results_published %}
+    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
           <i data-lucide="check-circle" class="w-5 h-5 text-emerald-600"></i>
         </div>
-        <div>
+        <div class="min-w-0">
           <p class="text-sm font-semibold text-emerald-800">Current term results are published</p>
           <p class="text-xs text-emerald-600">Students and parents can now view report cards.</p>
         </div>
       </div>
       <a href="{% url 'school_admin:review_results' %}" class="text-sm font-medium text-emerald-700 hover:text-emerald-900 hover:underline shrink-0">Manage</a>
     </div>
-  {% else %}
-    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
+    {% else %}
+    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
           <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
         </div>
-        <div>
+        <div class="min-w-0">
           <p class="text-sm font-semibold text-amber-800">Results for the current term are not yet published</p>
           <p class="text-xs text-amber-600">Review and publish results to make report cards visible.</p>
         </div>
       </div>
       <a href="{% url 'school_admin:publish_results' %}" class="text-sm font-medium text-amber-700 hover:text-amber-900 hover:underline shrink-0">Publish now</a>
     </div>
-  {% endif %}
+    {% endif %}
+  </div>
 
-  {# ── QUICK ACTIONS ── #}
-  <div>
-    <h3 class="text-sm font-semibold text-gray-800 mb-3">Quick Actions</h3>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      <a href="{% url 'school_admin:student_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-violet-200 hover:bg-violet-50/30 transition-all group">
-        <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:bg-violet-100 transition-colors">
+  {# ── KPI ROW ── #}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+    {# Students #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <div class="flex items-start justify-between">
+        <div class="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600">
           <i data-lucide="users" class="w-5 h-5"></i>
         </div>
-        <span class="text-xs font-medium text-gray-700 group-hover:text-violet-700">View Students</span>
-      </a>
-      <a href="{% url 'school_admin:invoice_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group">
-        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-100 transition-colors">
-          <i data-lucide="file-text" class="w-5 h-5"></i>
-        </div>
-        <span class="text-xs font-medium text-gray-700 group-hover:text-emerald-700">View Invoices</span>
-      </a>
-      <a href="{% url 'school_admin:payroll_run_list' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-sky-200 hover:bg-sky-50/30 transition-all group">
-        <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:bg-sky-100 transition-colors">
+        {% if student_growth > 0 %}
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
+            <i data-lucide="trending-up" class="w-3 h-3"></i>+{{ student_growth }}%
+          </span>
+        {% elif student_growth < 0 %}
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700">
+            <i data-lucide="trending-down" class="w-3 h-3"></i>{{ student_growth }}%
+          </span>
+        {% else %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">0%</span>
+        {% endif %}
+      </div>
+      <p class="text-2xl font-bold text-gray-900 mt-4">{{ total_students|default:"0" }}</p>
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Total Active Students</p>
+      <div class="mt-3 h-10">
+        <canvas id="sparkStudents"></canvas>
+      </div>
+    </div>
+
+    {# Outstanding Fees #}
+    <a href="{% url 'school_admin:outstanding_fees' %}" class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm block hover:shadow-md transition-shadow">
+      <div class="flex items-start justify-between">
+        <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
           <i data-lucide="banknote" class="w-5 h-5"></i>
         </div>
-        <span class="text-xs font-medium text-gray-700 group-hover:text-sky-700">Payroll Runs</span>
-      </a>
-      <a href="{% url 'school_admin:generate_invoices' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-amber-200 hover:bg-amber-50/30 transition-all group">
-        <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:bg-amber-100 transition-colors">
-          <i data-lucide="plus-circle" class="w-5 h-5"></i>
+        {% if outstanding_fees_change is not None %}
+          {% if outstanding_fees_change > 0 %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
+              <i data-lucide="trending-up" class="w-3 h-3"></i>+{{ outstanding_fees_change }}%
+            </span>
+          {% elif outstanding_fees_change < 0 %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700">
+              <i data-lucide="trending-down" class="w-3 h-3"></i>{{ outstanding_fees_change }}%
+            </span>
+          {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">0%</span>
+          {% endif %}
+        {% else %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">&mdash;</span>
+        {% endif %}
+      </div>
+      <p class="text-2xl font-bold text-gray-900 mt-4">&#8358;{{ outstanding_fees|floatformat:0 }}</p>
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Outstanding Fees</p>
+      <div class="mt-3 h-10">
+        <canvas id="sparkFees"></canvas>
+      </div>
+    </a>
+
+    {# Payroll #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <div class="flex items-start justify-between">
+        <div class="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600">
+          <i data-lucide="wallet" class="w-5 h-5"></i>
         </div>
-        <span class="text-xs font-medium text-gray-700 group-hover:text-amber-700">Generate Invoices</span>
-      </a>
-      <a href="{% url 'school_admin:publish_results' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-pink-200 hover:bg-pink-50/30 transition-all group">
-        <div class="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center text-pink-600 group-hover:bg-pink-100 transition-colors">
-          <i data-lucide="send" class="w-5 h-5"></i>
+        {% if payroll_change is not None %}
+          {% if payroll_change > 0 %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
+              <i data-lucide="trending-up" class="w-3 h-3"></i>+{{ payroll_change }}%
+            </span>
+          {% elif payroll_change < 0 %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700">
+              <i data-lucide="trending-down" class="w-3 h-3"></i>{{ payroll_change }}%
+            </span>
+          {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">0%</span>
+          {% endif %}
+        {% else %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">&mdash;</span>
+        {% endif %}
+      </div>
+      <p class="text-2xl font-bold text-gray-900 mt-4">{{ payroll_runs|default:"0" }}</p>
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Payroll Runs</p>
+      <div class="mt-3 h-10">
+        <canvas id="sparkPayroll"></canvas>
+      </div>
+    </div>
+
+    {# Projects #}
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <div class="flex items-start justify-between">
+        <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+          <i data-lucide="folder-kanban" class="w-5 h-5"></i>
         </div>
-        <span class="text-xs font-medium text-gray-700 group-hover:text-pink-700">Publish Results</span>
-      </a>
+        {% if projects_change is not None %}
+          {% if projects_change > 0 %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
+              <i data-lucide="trending-up" class="w-3 h-3"></i>+{{ projects_change }}%
+            </span>
+          {% elif projects_change < 0 %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700">
+              <i data-lucide="trending-down" class="w-3 h-3"></i>{{ projects_change }}%
+            </span>
+          {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">0%</span>
+          {% endif %}
+        {% else %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">&mdash;</span>
+        {% endif %}
+      </div>
+      <p class="text-2xl font-bold text-gray-900 mt-4">{{ active_projects|default:"0" }}</p>
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Active Projects</p>
+      <div class="mt-3 h-10">
+        <canvas id="sparkProjects"></canvas>
+      </div>
     </div>
   </div>
 
-  {# ── CHARTS + OVERVIEW ── #}
+  {# ── CHARTS + PENDING ACTIONS ── #}
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     {# Fee Collection Trend #}
-    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-      <h3 class="text-sm font-semibold text-gray-800 mb-4">Fee Collection Trend</h3>
+    <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-gray-800">Fee Collection Trend</h3>
+        <div class="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
+          <button type="button" data-fee-range="6M" class="px-3 py-1 text-xs font-medium rounded-md text-gray-600 hover:text-gray-800 transition-colors">6M</button>
+          <button type="button" data-fee-range="12M" class="px-3 py-1 text-xs font-medium rounded-md bg-primary text-white">12M</button>
+        </div>
+      </div>
+      {% if fee_trend_has_data %}
       <div class="h-64 relative">
         <canvas id="feeChart"></canvas>
       </div>
+      {% else %}
+      <div class="h-64 flex items-center justify-center">
+        <p class="text-sm text-gray-400">No fee collection data yet</p>
+      </div>
+      {% endif %}
     </div>
 
-    {# Student Overview #}
-    <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-      <h3 class="text-sm font-semibold text-gray-800 mb-4">Student Overview</h3>
-      <div class="relative w-36 h-36 mx-auto">
-        <canvas id="studentChart"></canvas>
-        <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-          <span class="text-xl font-bold text-gray-900">{{ total_students|default:"0" }}</span>
-          <span class="text-[10px] text-gray-500 uppercase tracking-wide">Total</span>
-        </div>
+    {# Pending Actions #}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-100">
+        <h3 class="text-sm font-semibold text-gray-800">Pending Actions</h3>
       </div>
-      <div class="flex justify-center gap-5 mt-5 text-xs">
-        <div class="flex items-center gap-1.5">
-          <span class="w-2.5 h-2.5 rounded-full bg-violet-500"></span>
-          <span class="text-gray-600">Male {{ male_count|default:"0" }}</span>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <span class="w-2.5 h-2.5 rounded-full bg-pink-400"></span>
-          <span class="text-gray-600">Female {{ female_count|default:"0" }}</span>
-        </div>
+      {% if pending_transfers or results_to_review or owing_students %}
+      <div class="divide-y divide-gray-50">
+        {% if pending_transfers %}
+        <a href="{% url 'school_admin:pending_transfers' %}" class="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group">
+          <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 flex-shrink-0">
+            <i data-lucide="clock" class="w-4 h-4"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-800">Transfers to confirm</p>
+            <p class="text-[11px] text-gray-400">Bank transfers awaiting confirmation</p>
+          </div>
+          <span class="text-sm font-bold text-gray-900">{{ pending_transfers }}</span>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0"></i>
+        </a>
+        {% endif %}
+        {% if results_to_review %}
+        <a href="{% url 'school_admin:review_results' %}" class="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group">
+          <div class="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600 flex-shrink-0">
+            <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-800">Results to review</p>
+            <p class="text-[11px] text-gray-400">Scores awaiting moderation</p>
+          </div>
+          <span class="text-sm font-bold text-gray-900">{{ results_to_review }}</span>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0"></i>
+        </a>
+        {% endif %}
+        {% if owing_students %}
+        <a href="{% url 'school_admin:outstanding_fees' %}" class="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group">
+          <div class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
+            <i data-lucide="banknote" class="w-4 h-4"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-800">Students owing</p>
+            <p class="text-[11px] text-gray-400">Outstanding balances to follow up on</p>
+          </div>
+          <span class="text-sm font-bold text-gray-900">{{ owing_students }}</span>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0"></i>
+        </a>
+        {% endif %}
       </div>
-      <div class="mt-5 pt-4 border-t border-gray-100 space-y-2">
-        <div class="flex justify-between text-xs">
-          <span class="text-gray-500">New Admissions</span>
-          <span class="font-semibold text-gray-900">{{ new_admissions|default:"0" }}</span>
+      {% else %}
+      <div class="px-5 py-10 flex flex-col items-center justify-center text-center">
+        <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center mb-3">
+          <i data-lucide="check-circle" class="w-6 h-6 text-emerald-600"></i>
         </div>
-        <div class="flex justify-between text-xs">
-          <span class="text-gray-500">Active Classes</span>
-          <span class="font-semibold text-gray-900">{{ active_classes|default:"0" }}</span>
-        </div>
+        <p class="text-sm font-medium text-gray-700">All caught up</p>
+        <p class="text-xs text-gray-400 mt-1">Nothing needs your attention right now.</p>
       </div>
+      {% endif %}
     </div>
   </div>
 
-  {# ── RECENT PAYMENTS TABLE ── #}
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-gray-800">Recent Fee Payments</h3>
-      <a href="{% url 'school_admin:invoice_list' %}" class="text-xs text-violet-600 hover:text-violet-700 font-medium">View All</a>
-    </div>
-    <div class="overflow-x-auto">
-      <table class="w-full">
-        <thead>
-          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
-            <th class="px-6 py-3 font-medium">Student</th>
-            <th class="px-6 py-3 font-medium">Class</th>
-            <th class="px-6 py-3 font-medium">Amount</th>
-            <th class="px-6 py-3 font-medium">Method</th>
-            <th class="px-6 py-3 font-medium">Date</th>
-            <th class="px-6 py-3 font-medium text-right">Status</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-          {% for payment in recent_payments %}
-          <tr class="hover:bg-gray-50/50 transition-colors">
-            <td class="px-6 py-3.5">
-              <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold mr-2.5 flex-shrink-0">
-                  {{ payment.student_name|first }}
+  {# ── TABLES ── #}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    {# Recent Fee Payments #}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-800">Recent Fee Payments</h3>
+        <a href="{% url 'school_admin:invoice_list' %}" class="text-xs text-violet-600 hover:text-violet-700 font-medium">View All</a>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+              <th class="px-5 py-3 font-medium">Student</th>
+              <th class="px-5 py-3 font-medium">Class</th>
+              <th class="px-5 py-3 font-medium">Amount</th>
+              <th class="px-5 py-3 font-medium">Method</th>
+              <th class="px-5 py-3 font-medium">Date</th>
+              <th class="px-5 py-3 font-medium text-right">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            {% for payment in recent_payments %}
+            <tr class="hover:bg-gray-50/50 transition-colors">
+              <td class="px-5 py-3.5">
+                <div class="flex items-center">
+                  <div class="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold mr-2.5 flex-shrink-0">
+                    {{ payment.student_name|first }}
+                  </div>
+                  <span class="text-sm font-medium text-gray-900">{{ payment.student_name }}</span>
                 </div>
-                <span class="text-sm font-medium text-gray-900">{{ payment.student_name }}</span>
-              </div>
-            </td>
-            <td class="px-6 py-3.5 text-sm text-gray-600">{{ payment.class_name|default:"—" }}</td>
-            <td class="px-6 py-3.5 text-sm font-semibold text-gray-900">&#8358;{{ payment.amount|floatformat:2 }}</td>
-            <td class="px-6 py-3.5 text-sm text-gray-600">{{ payment.method|default:"Cash" }}</td>
-            <td class="px-6 py-3.5 text-sm text-gray-500">{{ payment.paid_on|date:"M d, Y" }}</td>
-            <td class="px-6 py-3.5 text-right">
-              {% if payment.status == 'CONFIRMED' %}
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></span> Paid
-                </span>
-              {% elif payment.status == 'PENDING' %}
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-100">
-                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1"></span> Pending
-                </span>
-              {% else %}
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-100">
-                  <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1"></span> Failed
-                </span>
-              {% endif %}
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="6" class="py-10 text-center text-sm text-gray-400">No recent payments</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+              </td>
+              <td class="px-5 py-3.5 text-sm text-gray-600">{{ payment.class_name|default:"—" }}</td>
+              <td class="px-5 py-3.5 text-sm font-semibold text-gray-900">&#8358;{{ payment.amount|floatformat:2 }}</td>
+              <td class="px-5 py-3.5 text-sm text-gray-600">{{ payment.method|default:"Cash" }}</td>
+              <td class="px-5 py-3.5 text-sm text-gray-500">{{ payment.paid_on|date:"M d, Y" }}</td>
+              <td class="px-5 py-3.5 text-right">
+                {% if payment.status == 'CONFIRMED' %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></span> Paid
+                  </span>
+                {% elif payment.status == 'PENDING' %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-100">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1"></span> Pending
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-100">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1"></span> Failed
+                  </span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="py-10 text-center text-sm text-gray-400">No recent payments</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {# Top Owing Students #}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-800">Top Owing Students</h3>
+        <a href="{% url 'school_admin:outstanding_fees' %}" class="text-xs text-violet-600 hover:text-violet-700 font-medium">View All</a>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+              <th class="px-5 py-3 font-medium">Student</th>
+              <th class="px-5 py-3 font-medium">Class</th>
+              <th class="px-5 py-3 font-medium text-right">Balance</th>
+              <th class="px-5 py-3 font-medium text-right">Profile</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            {% for student in top_owing_students %}
+            <tr class="hover:bg-gray-50/50 transition-colors">
+              <td class="px-5 py-3.5">
+                <div class="flex items-center">
+                  <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold mr-2.5 flex-shrink-0">
+                    {{ student.student_name|first }}
+                  </div>
+                  <span class="text-sm font-medium text-gray-900">{{ student.student_name }}</span>
+                </div>
+              </td>
+              <td class="px-5 py-3.5 text-sm text-gray-600">{{ student.class_name|default:"—" }}</td>
+              <td class="px-5 py-3.5 text-sm font-semibold text-gray-900 text-right">&#8358;{{ student.balance|floatformat:2 }}</td>
+              <td class="px-5 py-3.5 text-right">
+                <a href="{% url 'school_admin:student_detail' student.student_id %}" class="text-xs font-medium text-violet-600 hover:text-violet-700">View</a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="py-10 text-center text-sm text-gray-400">No outstanding balances</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -250,16 +379,23 @@
 (function () {
   if (typeof Chart === 'undefined') return;
 
-  // Fee Collection Bar Chart
+  const feeRanges = {
+    '6M': { labels: {{ monthly_labels_6m|safe }}, values: {{ monthly_fees_6m|safe }} },
+    '12M': { labels: {{ monthly_labels_12m|safe }}, values: {{ monthly_fees_12m|safe }} }
+  };
+
   const feeEl = document.getElementById('feeChart');
-  if (feeEl) {
-    new Chart(feeEl.getContext('2d'), {
+  let feeChart = null;
+  function renderFee(range) {
+    const data = feeRanges[range];
+    if (feeChart) feeChart.destroy();
+    feeChart = new Chart(feeEl.getContext('2d'), {
       type: 'bar',
       data: {
-        labels: {{ monthly_labels|safe }},
+        labels: data.labels,
         datasets: [{
           label: 'Collected (₦)',
-          data: {{ monthly_fees|safe }},
+          data: data.values,
           backgroundColor: '#7C3AED',
           borderRadius: 6,
           barThickness: 28,
@@ -277,27 +413,50 @@
     });
   }
 
-  // Student Distribution Donut
-  const studentEl = document.getElementById('studentChart');
-  if (studentEl) {
-    new Chart(studentEl.getContext('2d'), {
-      type: 'doughnut',
+  if (feeEl) {
+    renderFee('12M');
+    document.querySelectorAll('[data-fee-range]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('[data-fee-range]').forEach(function (b) {
+          b.classList.remove('bg-primary', 'text-white');
+          b.classList.add('bg-gray-100', 'text-gray-600');
+        });
+        btn.classList.remove('bg-gray-100', 'text-gray-600');
+        btn.classList.add('bg-primary', 'text-white');
+        renderFee(btn.dataset.feeRange);
+      });
+    });
+  }
+
+  function makeSpark(id, data, color) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    new Chart(el.getContext('2d'), {
+      type: 'line',
       data: {
-        labels: ['Male', 'Female'],
+        labels: data.map(function (_, i) { return i; }),
         datasets: [{
-          data: [{{ male_count|default:0 }}, {{ female_count|default:0 }}],
-          backgroundColor: ['#8B5CF6', '#F472B6'],
-          borderWidth: 0,
-          cutout: '78%'
+          data: data,
+          borderColor: color,
+          borderWidth: 2,
+          fill: false,
+          tension: 0.4,
+          pointRadius: 0,
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } }
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { display: false } }
       }
     });
   }
+
+  makeSpark('sparkStudents', {{ students_spark|safe }}, '#7C3AED');
+  makeSpark('sparkFees', {{ fees_spark|safe }}, '#10B981');
+  makeSpark('sparkPayroll', {{ payroll_spark|safe }}, '#0EA5E9');
+  makeSpark('sparkProjects', {{ projects_spark|safe }}, '#F59E0B');
 })();
 </script>
 {% endblock %}

@@ -51,8 +51,7 @@
 
   <style>
     .sidebar-active {
-      background: white;
-      border-left: 4px solid #7C3AED;
+      background: #EDE9FE;
       color: #7C3AED;
     }
     .htmx-indicator { display: none; }
@@ -64,7 +63,7 @@
 
     /* ===== Sidebar width (collapsible to icon rail on desktop) ===== */
     #sidebar { width: 16rem; }
-    @media (min-width: 1024px) { #sidebar { width: 14rem; } }
+    @media (min-width: 1024px) { #sidebar { width: 15rem; } }
     #sidebar.sidebar-collapsed { width: 4.25rem; }
 
     /* Collapsed: hide labels, center icons, hide section headers & badges */
@@ -119,10 +118,14 @@
     <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 bg-sidebar-bg flex-shrink-0 flex flex-col z-50 transform -translate-x-full lg:translate-x-0 transition-all duration-200">
       {# Brand #}
       <div class="h-16 flex items-center px-5 border-b border-gray-200/50 flex-shrink-0">
-        <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-sm mr-2.5 flex-shrink-0">
+        {% if request.school.logo %}
+        <img src="{{ request.school.logo.url }}" alt="{{ request.school.name }}" class="w-12 h-12 rounded-xl object-contain bg-white border border-gray-200 flex-shrink-0">
+        {% else %}
+        <div class="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
           {{ request.school.short_code|first|default:'G' }}
         </div>
-        <div class="brand-text min-w-0">
+        {% endif %}
+        <div class="brand-text min-w-0 ml-3">
           <p class="font-bold text-gray-800 text-sm tracking-tight leading-tight truncate">{{ request.school.name|default:'Grace House' }}</p>
           <p class="text-[10px] text-gray-400">School System</p>
         </div>
@@ -140,9 +143,9 @@
         {% for section in sidebar_sections %}
           {% if section.section %}
             <button type="button" data-section="{{ section.section }}"
-                    class="section-toggle w-full flex items-center justify-between px-5 pt-4 pb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors">
+                    class="section-toggle w-full flex items-center justify-between pl-7 pr-5 pt-3 pb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors{% if forloop.counter0 %} border-t border-gray-200/50{% endif %}">
               <span class="section-toggle-text truncate">{{ section.section }}</span>
-              <i data-lucide="chevron-down" class="section-chev w-3.5 h-3.5 flex-shrink-0"></i>
+              <i data-lucide="chevron-down" class="section-chev w-3.5 h-3.5 flex-shrink-0 text-gray-400/70"></i>
             </button>
             <div class="section-body">
               {% for item in section.items %}{% include 'components/nav_item.html' %}{% endfor %}
@@ -154,23 +157,25 @@
       </nav>
 
       {# Profile + logout #}
-      <div class="p-4 border-t border-gray-200/50 flex-shrink-0">
+      <div class="p-3 border-t border-gray-200/50 flex-shrink-0">
         {% if user.is_authenticated %}
-          <div class="profile-inner flex items-center mb-2">
-            <div class="w-9 h-9 rounded-full bg-violet-100 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">
-              {{ user.first_name|first|default:'U' }}{{ user.last_name|first|default:'' }}
+          <div class="profile-inner bg-white rounded-2xl border border-gray-100 shadow-sm p-3">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-violet-100 text-primary ring-1 ring-violet-200 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                {{ user.first_name|first|default:'U' }}{{ user.last_name|first|default:'' }}
+              </div>
+              <div class="profile-text min-w-0 flex-1">
+                <p class="text-xs font-semibold text-gray-900 truncate">{{ user.get_full_name|default:user.username }}</p>
+                <p class="text-[11px] text-gray-500">{{ user.get_role_display }}</p>
+              </div>
             </div>
-            <div class="profile-text ml-3 min-w-0">
-              <p class="text-xs font-semibold text-gray-900 truncate">{{ user.get_full_name|default:user.username }}</p>
-              <p class="text-[11px] text-gray-500">{{ user.get_role_display }}</p>
-            </div>
+            <form method="post" action="{% url 'logout' %}" class="mt-2 pt-2 border-t border-gray-100">
+              {% csrf_token %}
+              <button type="submit" class="flex items-center w-full px-3 py-2 rounded-lg text-rose-500 hover:bg-rose-50 text-xs font-medium transition-all">
+                <i data-lucide="log-out" class="w-4 h-4 mr-3 flex-shrink-0"></i><span class="profile-logout-label">Logout</span>
+              </button>
+            </form>
           </div>
-          <form method="post" action="{% url 'logout' %}" class="mt-1">
-            {% csrf_token %}
-            <button type="submit" class="flex items-center w-full px-3 py-2 rounded-lg text-rose-500 hover:bg-rose-50 text-xs font-medium transition-all">
-              <i data-lucide="log-out" class="w-4 h-4 mr-3 flex-shrink-0"></i><span class="profile-logout-label">Logout</span>
-            </button>
-          </form>
         {% else %}
           <a href="{% url 'login' %}" class="flex items-center px-3 py-2 rounded-lg text-gray-600 hover:bg-white/60 text-xs font-medium transition-all">
             <i data-lucide="log-in" class="w-4 h-4 mr-3 flex-shrink-0"></i><span class="profile-logout-label">Login</span>

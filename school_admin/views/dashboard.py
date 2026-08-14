@@ -8,6 +8,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.generic.base import View
 
+from academics.models import Score
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from core.models import AcademicSession, Term
@@ -16,6 +17,24 @@ from fees.models import Invoice, Payment
 from fees.selectors import invoices_with_balance
 from payroll.models import PayrollRun
 from finance.models import Project
+
+
+def _month_keys(year, month, count):
+    keys = []
+    for _ in range(count):
+        keys.append((year, month))
+        month -= 1
+        if month == 0:
+            month = 12
+            year -= 1
+    keys.reverse()
+    return keys
+
+
+def _pct_change(series):
+    if len(series) < 2 or not series[-2]:
+        return None
+    return round((series[-1] - series[-2]) / series[-2] * 100)
 
 
 class DashboardView(RoleRequiredMixin, View):
@@ -102,21 +121,16 @@ class DashboardView(RoleRequiredMixin, View):
 
         active_classes = SchoolClass.objects.filter(school=school).count()
 
-        # Fee collection trend — last 6 calendar months of confirmed payments
-        month_keys = []
-        year, month = now.year, now.month
-        for _ in range(6):
-            month_keys.append((year, month))
-            month -= 1
-            if month == 0:
-                month = 12
-                year -= 1
-        month_keys.reverse()
-        monthly_labels = [month_abbr[m] for _, m in month_keys]
+        # Fee collection trend — last 6/12 calendar months of confirmed payments
+        month_keys_6 = _month_keys(now.year, now.month, 6)
+        month_keys_12 = _month_keys(now.year, now.month, 12)
+        monthly_labels = [month_abbr[m] for _, m in month_keys_6]
+        monthly_labels_6m = monthly_labels
+        monthly_labels_12m = [month_abbr[m] for _, m in month_keys_12]
 
-        first_month = month_keys[0]
+        first_month_12 = month_keys_12[0]
         earliest = timezone.datetime(
-            first_month[0], first_month[1], 1,
+            first_month_12[0], first_month_12[1], 1,
             tzinfo=timezone.get_current_timezone(),
         )
         confirmed_payments = Payment.objects.filter(
@@ -131,8 +145,67 @@ class DashboardView(RoleRequiredMixin, View):
             by_month[key] = by_month.get(key, Decimal('0')) + amount
         monthly_fees = [
             float(by_month.get(key, Decimal('0')))
-            for key in month_keys
+            for key in month_keys_6
         ]
+        monthly_fees_6m = monthly_fees
+        monthly_fees_12m = [
+            float(by_month.get(key, Decimal('0')))
+            for key in month_keys_12
+        ]
+        fee_trend_has_data = any(monthly_fees_6m) or any(monthly_fees_12m)
+
+        first_month_6 = month_keys_6[0]
+        earliest_6 = timezone.datetime(
+            first_month_6[0], first_month_6[1], 1,
+            tzinfo=timezone.get_current_timezone(),
+        )
+
+        students_by_month = {}
+        for d in Student.objects.filter(
+            school=school,
+            admission_date__gte=earliest_6.date(),
+        ).values_list('admission_date', flat=True):
+            if d is None:
+                continue
+            key = (d.year, d.month)
+            students_by_month[key] = students_by_month.get(key, 0) + 1
+        students_spark = [students_by_month.get(key, 0) for key in month_keys_6]
+
+        fees_by_month = {}
+        for paid_on in Payment.objects.filter(
+            school=school,
+            status=Payment.Status.CONFIRMED,
+            paid_on__gte=earliest_6,
+        ).values_list('paid_on', flat=True):
+            key = (paid_on.year, paid_on.month)
+            fees_by_month[key] = fees_by_month.get(key, 0) + 1
+        fees_spark = [fees_by_month.get(key, 0) for key in month_keys_6]
+
+        payroll_by_month = {}
+        for d in PayrollRun.objects.filter(
+            school=school,
+            cancelled_at__isnull=True,
+            generated_on__gte=earliest_6,
+        ).values_list('generated_on', flat=True):
+            key = (d.year, d.month)
+            payroll_by_month[key] = payroll_by_month.get(key, 0) + 1
+        payroll_spark = [payroll_by_month.get(key, 0) for key in month_keys_6]
+
+        projects_by_month = {}
+        for d in Project.objects.filter(
+            school=school,
+        ).exclude(status='CANCELLED').exclude(
+            start_date__isnull=True,
+        ).filter(
+            start_date__gte=earliest_6.date(),
+        ).values_list('start_date', flat=True):
+            key = (d.year, d.month)
+            projects_by_month[key] = projects_by_month.get(key, 0) + 1
+        projects_spark = [projects_by_month.get(key, 0) for key in month_keys_6]
+
+        outstanding_fees_change = _pct_change(fees_spark)
+        payroll_change = _pct_change(payroll_spark)
+        projects_change = _pct_change(projects_spark)
 
         # Recent confirmed payments
         recent_payments = []
@@ -158,6 +231,35 @@ class DashboardView(RoleRequiredMixin, View):
                 'status': p.status,
             })
 
+        pending_transfers = Payment.objects.filter(
+            school=school,
+            status=Payment.Status.PENDING,
+            method=Payment.Method.BANK_TRANSFER,
+        ).count()
+
+        results_to_review = Score.objects.filter(
+            school=school, moderation_status='PENDING'
+        ).count()
+
+        top_owing_students = []
+        for inv in invoices.filter(
+            balance_annotated__gt=0
+        ).order_by('-balance_annotated').select_related(
+            'student__user'
+        ).prefetch_related('student__enrollments')[:5]:
+            student = inv.student
+            if student is None:
+                continue
+            enrollment = next(
+                (e for e in student.enrollments.all() if e.is_current), None
+            )
+            top_owing_students.append({
+                'student_id': student.pk,
+                'student_name': student.user.get_full_name() or student.user.username,
+                'class_name': enrollment.school_class.name if enrollment else '',
+                'balance': inv.balance_annotated,
+            })
+
         context = {
             'total_students': total_students,
             'student_growth': student_growth,
@@ -171,7 +273,22 @@ class DashboardView(RoleRequiredMixin, View):
             'new_admissions': new_admissions,
             'active_classes': active_classes,
             'monthly_labels': monthly_labels,
+            'monthly_labels_6m': monthly_labels_6m,
+            'monthly_labels_12m': monthly_labels_12m,
             'monthly_fees': monthly_fees,
+            'monthly_fees_6m': monthly_fees_6m,
+            'monthly_fees_12m': monthly_fees_12m,
+            'fee_trend_has_data': fee_trend_has_data,
+            'students_spark': students_spark,
+            'fees_spark': fees_spark,
+            'payroll_spark': payroll_spark,
+            'projects_spark': projects_spark,
+            'outstanding_fees_change': outstanding_fees_change,
+            'payroll_change': payroll_change,
+            'projects_change': projects_change,
+            'pending_transfers': pending_transfers,
+            'results_to_review': results_to_review,
+            'top_owing_students': top_owing_students,
             'recent_payments': recent_payments,
         }
         return render(request, 'school_admin/dashboard.html', context)

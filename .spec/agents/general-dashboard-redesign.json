@@ -1,0 +1,17 @@
+{
+  "agent": "general",
+  "description": "dashboard-redesign",
+  "status": "complete",
+  "timestamp": "2026-08-13T00:00:00Z",
+  "files_changed": [
+    "school_admin/views/dashboard.py",
+    "school_admin/templates/school_admin/dashboard.html"
+  ],
+  "summary": "Redesigned school-admin dashboard: attention zone (pending transfers / outstanding fees / results banner), KPI row with sparklines and % badges, fee collection trend with 6M/12M client-side toggle, pending actions widget, top owing students table. Removed Quick Actions and Student Overview donut. Added 6M+12M fee series, 4 sparkline series, KPI change values, pending_transfers, results_to_review, top_owing_students to view context.",
+  "verification": {
+    "manage_check": "System check identified no issues (0 silenced)",
+    "tests": "Ran 11 tests in 108.230s OK (school_admin.tests)",
+    "note": "-m django test required DJANGO_SETTINGS_MODULE=school.settings"
+  },
+  "git": "no git operations performed"
+}

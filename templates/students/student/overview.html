@@ -4,189 +4,67 @@
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
 
-  {# ── KPI ROW ── #}
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+  {# ── FEE STATUS + RESULTS ── #}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    {# Class #}
-    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-      <div class="absolute top-0 left-0 w-1 h-full bg-violet-500 rounded-l-2xl"></div>
-      <div class="flex items-center justify-between">
-        <div class="min-w-0">
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">My Class</p>
-          <p class="text-3xl font-bold text-gray-900 truncate">{{ enrollment.school_class.name|default:"—" }}</p>
-          <p class="text-xs text-gray-400 mt-1">{{ enrollment.session.name|default:"Not enrolled" }}</p>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:scale-105 transition-transform flex-shrink-0">
-          <i data-lucide="building-2" class="w-6 h-6"></i>
-        </div>
-      </div>
-    </div>
-
-    {# Outstanding Fees #}
-    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-      <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500 rounded-l-2xl"></div>
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Outstanding Fees</p>
-          <p class="text-3xl font-bold text-gray-900">&#8358;{{ outstanding|floatformat:0 }}</p>
-          <p class="text-xs text-gray-400 mt-1">{{ unpaid_count|default:"0" }} invoice{{ unpaid_count|pluralize }} unpaid</p>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
+    {# Fee status #}
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
           <i data-lucide="banknote" class="w-6 h-6"></i>
         </div>
+        <h3 class="text-sm font-semibold text-gray-800">Fees</h3>
+      </div>
+      <p class="text-4xl font-bold text-gray-900 tabular-nums mb-1">&#8358;{{ outstanding|floatformat:2 }}</p>
+      <p class="text-sm text-gray-500 mb-5">{{ unpaid_count }} unpaid invoice{{ unpaid_count|pluralize }}</p>
+      {% if unpaid_count == 0 %}
+      <p class="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg">
+        <i data-lucide="check-circle" class="w-4 h-4"></i>All fees settled
+      </p>
+      {% else %}
+      <p class="inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>You have {{ unpaid_count }} unpaid invoice{{ unpaid_count|pluralize }}
+      </p>
+      {% endif %}
+      <div class="mt-6 pt-5 border-t border-gray-100">
+        <a href="{% url 'student-pay' %}" class="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+          <i data-lucide="wallet" class="w-4 h-4 mr-2"></i>Pay Fees
+        </a>
       </div>
     </div>
 
-    {# Average #}
-    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-      <div class="absolute top-0 left-0 w-1 h-full bg-sky-500 rounded-l-2xl"></div>
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">My Average</p>
-          <p class="text-3xl font-bold text-gray-900">
-            {% if term_result and term_result.average %}{{ term_result.average|floatformat:1 }}{% else %}—{% endif %}
-          </p>
-          <p class="text-xs text-gray-400 mt-1">Current term</p>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:scale-105 transition-transform">
-          <i data-lucide="trending-up" class="w-6 h-6"></i>
-        </div>
-      </div>
-    </div>
-
-    {# Position #}
-    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-      <div class="absolute top-0 left-0 w-1 h-full bg-amber-500 rounded-l-2xl"></div>
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Position</p>
-          <p class="text-3xl font-bold text-gray-900">
-            {% if term_result and term_result.overall_position %}{{ term_result.overall_position }}{% else %}—{% endif %}
-          </p>
-          <p class="text-xs text-gray-400 mt-1">In class</p>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-105 transition-transform">
-          <i data-lucide="trophy" class="w-6 h-6"></i>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {# ── RESULTS BANNER ── #}
-  {% if term_result %}
-    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
+    {# Conditional results card #}
+    {% if term_result and current_term.results_published %}
+    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex flex-col">
+      <div class="flex items-center gap-3 mb-4">
         <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
           <i data-lucide="check-circle" class="w-5 h-5 text-emerald-600"></i>
         </div>
+        <h3 class="text-sm font-semibold text-emerald-800">Results published</h3>
+      </div>
+      <div class="flex items-end justify-between mb-1">
         <div>
-          <p class="text-sm font-semibold text-emerald-800">Your results for the current term are published</p>
-          <p class="text-xs text-emerald-600">View your report card below.</p>
+          <p class="text-xs font-medium text-emerald-600 uppercase tracking-wider mb-1">My Average</p>
+          <p class="text-3xl font-bold text-emerald-900 tabular-nums">{{ term_result.average|floatformat:1 }}</p>
+        </div>
+        <div class="text-right">
+          <p class="text-xs font-medium text-emerald-600 uppercase tracking-wider mb-1">Position</p>
+          <p class="text-3xl font-bold text-emerald-900">{{ term_result.overall_position }}</p>
         </div>
       </div>
-      <a href="{% url 'student-results-history' %}" class="text-sm font-medium text-emerald-700 hover:text-emerald-900 hover:underline shrink-0">View Results</a>
-    </div>
-  {% else %}
-    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
-        </div>
-        <div>
-          <p class="text-sm font-semibold text-amber-800">Results for the current term are not yet published</p>
-          <p class="text-xs text-amber-600">They will appear here once released by the school.</p>
-        </div>
-      </div>
-    </div>
-  {% endif %}
-
-  {# ── QUICK ACTIONS ── #}
-  <div>
-    <h3 class="text-sm font-semibold text-gray-800 mb-3">Quick Actions</h3>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-      <a href="{% url 'student-results-history' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-violet-200 hover:bg-violet-50/30 transition-all group">
-        <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 group-hover:bg-violet-100 transition-colors">
-          <i data-lucide="file-text" class="w-5 h-5"></i>
-        </div>
-        <span class="text-xs font-medium text-gray-700 group-hover:text-violet-700">My Results</span>
-      </a>
-      <a href="#booklets" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-sky-200 hover:bg-sky-50/30 transition-all group">
-        <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 group-hover:bg-sky-100 transition-colors">
-          <i data-lucide="book-open" class="w-5 h-5"></i>
-        </div>
-        <span class="text-xs font-medium text-gray-700 group-hover:text-sky-700">Result Booklets</span>
-      </a>
-      <a href="#invoices" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group">
-        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-100 transition-colors">
-          <i data-lucide="credit-card" class="w-5 h-5"></i>
-        </div>
-        <span class="text-xs font-medium text-gray-700 group-hover:text-emerald-700">My Invoices</span>
-      </a>
-      <a href="{% url 'student-password-change' %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-amber-200 hover:bg-amber-50/30 transition-all group">
-        <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:bg-amber-100 transition-colors">
-          <i data-lucide="key" class="w-5 h-5"></i>
-        </div>
-        <span class="text-xs font-medium text-gray-700 group-hover:text-amber-700">Change Password</span>
+      <a href="{% url 'student-results-history' %}" class="mt-5 inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+        View Results
       </a>
     </div>
-  </div>
-
-  {# ── CHART + TERM OVERVIEW ── #}
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-    {# Academic trend chart #}
-    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-      <h3 class="text-sm font-semibold text-gray-800 mb-4">My Average by Term</h3>
-      {% if term_chart_labels %}
-      <div class="h-64 relative">
-        <canvas id="termChart"></canvas>
+    {% else %}
+    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-6">
+      <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center mb-3">
+        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
       </div>
-      {% else %}
-      <div class="py-16 text-center">
-        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="bar-chart-3" class="w-5 h-5 text-gray-400"></i></div>
-        <p class="text-sm text-gray-400">No published results yet.</p>
-      </div>
-      {% endif %}
+      <h3 class="text-sm font-semibold text-amber-800">Results for the current term are not yet published</h3>
+      <p class="text-xs text-amber-600 mt-1.5">They will appear here once released by the school.</p>
     </div>
-
-    {# This term summary #}
-    <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-      <h3 class="text-sm font-semibold text-gray-800 mb-4">This Term</h3>
-      {% if enrollment %}
-      <div class="space-y-2.5 text-sm">
-        <div class="flex justify-between items-center">
-          <span class="text-gray-500">Class</span>
-          <span class="font-semibold text-gray-900">{{ enrollment.school_class.name }}</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-gray-500">Session</span>
-          <span class="font-semibold text-gray-900">{{ enrollment.session.name }}</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-gray-500">Subjects</span>
-          <span class="font-semibold text-gray-900">{{ scores|length }}</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-gray-500">Position</span>
-          <span class="font-semibold text-gray-900">
-            {% if term_result and term_result.overall_position %}{{ term_result.overall_position }}{% else %}—{% endif %}
-          </span>
-        </div>
-      </div>
-      {% else %}
-      <p class="text-sm text-gray-400 py-8 text-center">Not currently enrolled.</p>
-      {% endif %}
-      <div class="mt-5 pt-4 border-t border-gray-100 space-y-2">
-        <div class="flex justify-between text-xs">
-          <span class="text-gray-500">Unpaid invoices</span>
-          <span class="font-semibold text-gray-900">{{ unpaid_count|default:"0" }}</span>
-        </div>
-        <div class="flex justify-between text-xs">
-          <span class="text-gray-500">Published terms</span>
-          <span class="font-semibold text-gray-900">{{ published_terms|length }}</span>
-        </div>
-      </div>
-    </div>
+    {% endif %}
   </div>
 
   {# ── INVOICES TABLE ── #}
@@ -252,38 +130,4 @@
   </div>
   {% endif %}
 </div>
-{% endblock %}
-
-{% block extra_scripts %}
-<script>
-(function () {
-  if (typeof Chart === 'undefined') return;
-  const labels = [{% for l in term_chart_labels %}'{{ l|escapejs }}',{% endfor %}];
-  const values = [{% for v in term_chart_values %}{{ v }},{% endfor %}];
-  const el = document.getElementById('termChart');
-  if (!el || !labels.length) return;
-  new Chart(el.getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Average',
-        data: values,
-        backgroundColor: '#7C3AED',
-        borderRadius: 6,
-        barThickness: 28,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, grid: { color: '#F3F4F6', drawBorder: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } },
-        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } }
-      }
-    }
-  });
-})();
-</script>
 {% endblock %}
