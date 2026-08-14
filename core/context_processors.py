@@ -60,6 +60,17 @@ def _badge_counts(request, role):
     return badges
 
 
+SECTION_ICONS = {
+    'Students': 'school',
+    'Staff & Users': 'id-card',
+    'Academics': 'graduation-cap',
+    'Fees': 'receipt',
+    'Payroll': 'coins',
+    'Finance': 'bar-chart-3',
+    'System': 'server',
+}
+
+
 def sidebar_nav(request):
     """Role-scoped sidebar items for base.html, using real portal URLs."""
     if not request.user.is_authenticated:
@@ -126,6 +137,10 @@ def sidebar_nav(request):
         if sections and sections[-1]['section'] == item['section']:
             sections[-1]['items'].append(item)
         else:
-            sections.append({'section': item['section'], 'items': [item]})
+            sections.append({
+                'section': item['section'],
+                'icon': SECTION_ICONS.get(item['section']),
+                'items': [item],
+            })
 
     return {'sidebar_items': items, 'sidebar_sections': sections}

@@ -75,6 +75,8 @@
     .sidebar-collapsed .profile-logout-label,
     .sidebar-collapsed .section-toggle-text,
     .sidebar-collapsed .section-chev { display: none; }
+    .sidebar-collapsed .brand-banner { display: none; }
+    .sidebar-collapsed .brand-wrap { padding-left: 0.75rem; padding-right: 0.75rem; }
     .sidebar-collapsed #sidebar-nav a { justify-content: center; padding-left: 0; padding-right: 0; }
     .sidebar-collapsed #sidebar-nav a i { margin-right: 0; }
     .sidebar-collapsed .section-toggle { justify-content: center; padding-left: 0; padding-right: 0; }
@@ -117,25 +119,23 @@
     {# ===== SIDEBAR ===== #}
     <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 bg-sidebar-bg flex-shrink-0 flex flex-col z-50 transform -translate-x-full lg:translate-x-0 transition-all duration-200">
       {# Brand #}
-      <div class="h-16 flex items-center px-5 border-b border-gray-200/50 flex-shrink-0">
-        {% if request.school.logo %}
-        <img src="{{ request.school.logo.url }}" alt="{{ request.school.name }}" class="w-12 h-12 rounded-xl object-contain bg-white border border-gray-200 flex-shrink-0">
-        {% else %}
-        <div class="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-          {{ request.school.short_code|first|default:'G' }}
-        </div>
-        {% endif %}
-        <div class="brand-text min-w-0 ml-3">
-          <p class="font-bold text-gray-800 text-sm tracking-tight leading-tight truncate">{{ request.school.name|default:'Grace House' }}</p>
-          <p class="text-[10px] text-gray-400">School System</p>
-        </div>
-        <div class="ml-auto flex items-center gap-1">
-          <button onclick="toggleCollapseSidebar()" class="hidden lg:flex p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/60 transition-colors" title="Collapse sidebar">
+      <div class="brand-wrap relative px-5 pt-5 pb-4 border-b border-gray-200/50 flex-shrink-0">
+        <div class="relative">
+          {% if request.school.logo %}
+          <div class="brand-banner h-20 flex items-center justify-center overflow-hidden">
+            <img src="{{ request.school.logo.url }}" alt="{{ request.school.name }}" class="max-h-full max-w-full object-contain">
+          </div>
+          {% else %}
+          <div class="brand-banner h-20 rounded-2xl bg-primary flex items-center justify-center text-white font-bold text-2xl">
+            {{ request.school.short_code|first|default:'G' }}
+          </div>
+          {% endif %}
+          <button onclick="toggleCollapseSidebar()" class="hidden lg:flex absolute top-1.5 right-1.5 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/80 transition-colors" title="Collapse sidebar">
             <i data-lucide="panel-left-close" class="collapse-close w-[18px] h-[18px]"></i>
             <i data-lucide="panel-left-open" class="collapse-open w-[18px] h-[18px]"></i>
           </button>
-          <button onclick="toggleSidebar()" class="sidebar-close-btn lg:hidden text-gray-500 p-1.5"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
+        <button onclick="toggleSidebar()" class="sidebar-close-btn lg:hidden absolute top-4 right-4 text-gray-500 p-1.5"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
       {# Nav #}
@@ -143,12 +143,15 @@
         {% for section in sidebar_sections %}
           {% if section.section %}
             <button type="button" data-section="{{ section.section }}"
-                    class="section-toggle w-full flex items-center justify-between pl-7 pr-5 pt-3 pb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors{% if forloop.counter0 %} border-t border-gray-200/50{% endif %}">
-              <span class="section-toggle-text truncate">{{ section.section }}</span>
+                    class="section-toggle w-full flex items-center justify-between pl-7 pr-5 pt-3 pb-2 text-sm font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors{% if forloop.counter0 %} border-t border-gray-200/50{% endif %}">
+              <span class="flex items-center gap-2 min-w-0">
+                {% if section.icon %}<i data-lucide="{{ section.icon }}" class="w-[18px] h-[18px] flex-shrink-0"></i>{% endif %}
+                <span class="section-toggle-text truncate">{{ section.section }}</span>
+              </span>
               <i data-lucide="chevron-down" class="section-chev w-3.5 h-3.5 flex-shrink-0 text-gray-400/70"></i>
             </button>
             <div class="section-body">
-              {% for item in section.items %}{% include 'components/nav_item.html' %}{% endfor %}
+              {% for item in section.items %}{% include 'components/nav_item.html' with indented=True %}{% endfor %}
             </div>
           {% else %}
             {% for item in section.items %}{% include 'components/nav_item.html' %}{% endfor %}
