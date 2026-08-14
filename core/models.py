@@ -38,6 +38,9 @@ class School(models.Model):
     email = models.EmailField(blank=True, verbose_name=_('email'))
     logo = models.ImageField(upload_to='school_logos/', blank=True, verbose_name=_('logo'))
     principal_name = models.CharField(max_length=200, blank=True, verbose_name=_('principal name'))
+    bank_name = models.CharField(max_length=100, blank=True, verbose_name=_('bank name'))
+    account_name = models.CharField(max_length=200, blank=True, verbose_name=_('account name'))
+    account_number = models.CharField(max_length=50, blank=True, verbose_name=_('account number'))
     is_active = models.BooleanField(default=True, verbose_name=_('active'))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('created at'))
 

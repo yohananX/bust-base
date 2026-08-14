@@ -31,6 +31,7 @@ from school_admin.views import (
     ExpenditureListView, FinancialReportView,
     PublishResultsView, ResultReviewView,
     SessionListView, SessionCreateView, SessionSetCurrentView, TermSetCurrentView,
+    SchoolSettingsView,
     NotificationLogView,
     UserListView, UserCreateView, UserEditView, UserToggleActiveView,
     CredentialSlipView, CredentialBatchView, CredentialBatchPrintView,
@@ -131,6 +132,9 @@ urlpatterns = [
     path('sessions/new/', SessionCreateView.as_view(), name='session_create'),
     path('sessions/<int:pk>/current/', SessionSetCurrentView.as_view(), name='session_set_current'),
     path('sessions/terms/<int:pk>/current/', TermSetCurrentView.as_view(), name='term_set_current'),
+
+    # School Settings
+    path('settings/', SchoolSettingsView.as_view(), name='school_settings'),
 
     # User Management
     path('users/', UserListView.as_view(), name='user_list'),

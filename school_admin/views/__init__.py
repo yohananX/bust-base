@@ -33,6 +33,7 @@ from .results import PublishResultsView, ResultReviewView
 from .sessions import (
     SessionListView, SessionCreateView, SessionSetCurrentView, TermSetCurrentView,
 )
+from .school_settings import SchoolSettingsView
 from .notifications import NotificationLogView
 from .users import (
     UserListView, UserCreateView, UserEditView, UserToggleActiveView,
