@@ -107,6 +107,13 @@ class ResultReviewView(RoleRequiredMixin, View):
 
         terms = Term.objects.filter(school=school).order_by('-start_date')
 
+        # Default to the current active term when none is explicitly selected,
+        # so the review page always shows content on load.
+        if not term_id:
+            current = Term.objects.filter(school=school, is_current=True).first()
+            if current:
+                term_id = str(current.pk)
+
         # Get classes that have scores in selected term
         classes = SchoolClass.objects.none()
         scores = Score.objects.none()
