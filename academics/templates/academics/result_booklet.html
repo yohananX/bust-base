@@ -25,33 +25,18 @@
       padding-bottom: 10px;
       margin-bottom: 14px;
     }
-    .header-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 14px;
-    }
     .logo-img {
-      width: 60px;
-      height: 60px;
+      height: 80px;
+      width: auto;
+      max-width: 100%;
       object-fit: contain;
-    }
-    .school-name {
-      font-size: 16pt;
-      font-weight: 700;
-      color: #1B2430;
-      letter-spacing: 0.5px;
-    }
-    .school-address {
-      font-size: 8pt;
-      color: #555;
-      margin-top: 2px;
+      margin: 0 auto;
     }
     .report-title {
       font-size: 13pt;
       font-weight: 600;
       color: #B8863A;
-      margin-top: 6px;
+      margin-top: 8px;
     }
 
     /* ── Student Info ── */
@@ -271,17 +256,9 @@
 
   <!-- ═══ HEADER ═══ -->
   <div class="header">
-    <div class="header-row">
-      {% if logo_url %}
-        <img src="{{ logo_url }}" alt="School Logo" class="logo-img">
-      {% endif %}
-      <div>
-        <div class="school-name">{{ school.name }}</div>
-        {% if school.address %}
-          <div class="school-address">{{ school.address }}</div>
-        {% endif %}
-      </div>
-    </div>
+    {% if logo_url %}
+      <img src="{{ logo_url }}" alt="School Logo" class="logo-img">
+    {% endif %}
     <div class="report-title">STUDENT RESULT BOOKLET</div>
   </div>
 
