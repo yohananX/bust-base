@@ -37,11 +37,6 @@ def _badge_counts(request, role):
             1 for inv in invoices if inv.balance_annotated > 0
         )
         badges['/school-admin/fees/pending/'] = pending_transfer_count(school)
-    elif role == Roles.TEACHER:
-        from academics.models import TeacherAssignment
-        badges['/teacher/assignments/'] = TeacherAssignment.objects.filter(
-            school=school, teacher=request.user,
-        ).count()
     elif role == Roles.PARENT:
         from students.models import StudentGuardianLink
         from fees.models import Invoice
@@ -105,6 +100,7 @@ def sidebar_nav(request):
 
     teacher_nav = [
         _nav_item(path, 'Dashboard', '/teacher/', 'layout-dashboard', exact=True),
+        _nav_item(path, 'My Assignments', '/teacher/assignments/', 'clipboard-list'),
         _nav_item(path, 'My Payslips', '/payroll/payslips/', 'banknote'),
     ]
 
