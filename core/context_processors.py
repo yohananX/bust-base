@@ -105,8 +105,7 @@ def sidebar_nav(request):
 
     teacher_nav = [
         _nav_item(path, 'Dashboard', '/teacher/', 'layout-dashboard', exact=True),
-        _nav_item(path, 'My Assignments', '/teacher/assignments/', 'clipboard-list', badge=badges.get('/teacher/assignments/')),
-        _nav_item(path, 'My Payslips', '/teacher/payslips/', 'banknote'),
+        _nav_item(path, 'My Payslips', '/payroll/payslips/', 'banknote'),
     ]
 
     student_nav = [
