@@ -21,7 +21,6 @@ FIELD_MAX_VALUES = {
 
 class TeacherAssignmentListView(RoleRequiredMixin, View):
     """Dashboard for the teacher portal — assignments, stats, chart, recent scores."""
-
     allowed_roles = [Roles.TEACHER]
 
     def get(self, request):
@@ -101,6 +100,21 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
             'subject_values': subject_values,
             'subject_averages': subject_averages,
             'recent_scores': recent_scores,
+        })
+
+
+class TeacherAssignmentsView(RoleRequiredMixin, View):
+    """Focused list of the teacher's assignments (separate from the dashboard)."""
+
+    allowed_roles = [Roles.TEACHER]
+
+    def get(self, request):
+        assignments = TeacherAssignment.objects.filter(
+            teacher=request.user,
+            session__is_current=True,
+        ).select_related('subject', 'school_class', 'session').order_by('school_class__name', 'subject__name')
+        return render(request, 'academics/teacher/assignments.html', {
+            'assignments': assignments,
         })
 
 
