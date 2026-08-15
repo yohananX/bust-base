@@ -85,8 +85,8 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
                 p['assignment'].subject.name,
             ))
 
-            # "X of Y students fully scored this term": a student counts as
-            # fully scored when every score for their class+subject this term
+            # "X of Y students fully graded this term": a student counts as
+            # fully graded when every score for their class+subject this term
             # is complete.
             students_total = len(set(student_class.keys()))
             all_students_scored = 0
@@ -122,13 +122,13 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
         incomplete_assignments = sum(1 for p in assignment_progress if p['needs_action'])
         all_complete = bool(assignments) and incomplete_assignments == 0
 
-        # One-time success toast when everything is fully scored (once per login)
+        # One-time success toast when everything is fully graded (once per login)
         if all_complete and not request.session.get('_teacher_all_complete_toast'):
             request.session['_teacher_all_complete_toast'] = True
             messages.success(
                 request,
-                'All assignments fully scored — every student in your classes has '
-                'complete scores for the current term.',
+                'All assignments fully graded — every student in your classes has '
+                'complete marks for the current term.',
             )
 
         # Most recently entered scores

@@ -529,8 +529,8 @@ class StudentModelTests(TestCase):
 
 
 class StudentDashboardFeeToastTests(TestCase):
-    """The 'All fees settled' green confirmation is a one-time toast that
-    fires only when a student's balance transitions from owing to settled."""
+    """The 'All fees paid' green confirmation is a one-time toast that
+    fires only when a student's balance transitions from owing to paid."""
 
     def setUp(self):
         self.school = School.objects.create(
@@ -596,19 +596,19 @@ class StudentDashboardFeeToastTests(TestCase):
     def test_fee_settled_toast_fires_once_after_payment(self):
         resp = self._get_dashboard()
         self.assertEqual(resp.status_code, 200)
-        self.assertNotContains(resp, "All fees settled. Nice work!")
+        self.assertNotContains(resp, "All fees paid. Nice work!")
 
         self._confirm_full_payment()
         self.assertEqual(self.invoice.balance, Decimal("0.00"))
 
         resp = self._get_dashboard()
-        self.assertContains(resp, "All fees settled. Nice work!")
+        self.assertContains(resp, "All fees paid. Nice work!")
 
         resp = self._get_dashboard()
-        self.assertNotContains(resp, "All fees settled. Nice work!")
+        self.assertNotContains(resp, "All fees paid. Nice work!")
 
     def test_no_toast_when_student_was_always_settled(self):
         self._confirm_full_payment()
         resp = self._get_dashboard()
         self.assertEqual(resp.status_code, 200)
-        self.assertNotContains(resp, "All fees settled. Nice work!")
+        self.assertNotContains(resp, "All fees paid. Nice work!")

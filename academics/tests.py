@@ -660,7 +660,7 @@ class TeacherDashboardSmokeTests(BaseTest):
         self.assertContains(resp, "Scoring Progress")
         self.assertContains(resp, "still need")
         self.assertContains(resp, "Incomplete")
-        self.assertNotContains(resp, "All assignments fully scored")
+        self.assertNotContains(resp, "All assignments fully graded")
 
     def test_dashboard_shows_term_aware_kpis(self):
         """KPI row reports term-aware status instead of lifetime counts."""
@@ -668,7 +668,7 @@ class TeacherDashboardSmokeTests(BaseTest):
         resp = self.client.get("/teacher/")
 
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "All Students Scored")
+        self.assertContains(resp, "All Students Graded")
         self.assertContains(resp, "/ 1")
         self.assertContains(resp, "Current Term")
         self.assertContains(resp, "First Term")
@@ -678,7 +678,7 @@ class TeacherDashboardSmokeTests(BaseTest):
         self.assertNotContains(resp, "Scores Entered")
 
     def test_dashboard_shows_all_complete_state(self):
-        """An assignment fully scored shows a complete state (toast, no banner)."""
+        """An assignment fully graded shows a complete state (toast, no banner)."""
         Score.objects.create(
             school=self.school,
             student=self.student_profile,
@@ -695,10 +695,10 @@ class TeacherDashboardSmokeTests(BaseTest):
         self.assertNotContains(resp, "still need")
         # The green confirmation is a one-time toast, not a static banner:
         # it renders as a Django message the first time only.
-        self.assertContains(resp, "All assignments fully scored")
+        self.assertContains(resp, "All assignments fully graded")
 
     def test_dashboard_all_complete_toast_is_one_time(self):
-        """The 'fully scored' toast appears only once per session."""
+        """The 'fully graded' toast appears only once per session."""
         Score.objects.create(
             school=self.school,
             student=self.student_profile,
@@ -709,10 +709,10 @@ class TeacherDashboardSmokeTests(BaseTest):
         )
         self.client.force_login(self.teacher_user)
         first = self.client.get("/teacher/")
-        self.assertContains(first, "All assignments fully scored")
+        self.assertContains(first, "All assignments fully graded")
 
         second = self.client.get("/teacher/")
-        self.assertNotContains(second, "All assignments fully scored")
+        self.assertNotContains(second, "All assignments fully graded")
 
     def test_dashboard_shows_progress_fraction(self):
         """Progress panel reports scored/total students for each assignment."""

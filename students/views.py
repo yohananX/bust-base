@@ -432,13 +432,13 @@ class StudentOverviewView(RoleRequiredMixin, View):
         outstanding = sum(inv.balance for inv in unpaid_invoices)
         unpaid_count = len(unpaid_invoices)
 
-        # One-time success toast when fees just became fully settled: fires only
-        # when the balance transitions from owing → settled (once), so students
-        # who were always settled don't get a spur-of-the-moment confirmation.
+        # One-time success toast when fees just became fully paid: fires only
+        # when the balance transitions from owing → paid (once), so students
+        # who were always paid don't get a spur-of-the-moment confirmation.
         prev_owing = request.session.get('_fees_prev_owing', False)
         if outstanding == 0:
             if prev_owing:
-                messages.success(request, 'All fees settled. Nice work!')
+                messages.success(request, 'All fees paid. Nice work!')
             request.session['_fees_prev_owing'] = False
         else:
             request.session['_fees_prev_owing'] = True
