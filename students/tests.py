@@ -1,9 +1,13 @@
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.urls import reverse
+from django.utils import timezone
+from decimal import Decimal
 
-from core.models import School, AcademicSession
+from core.models import School, AcademicSession, Term
 from accounts.models import Roles
+from fees.models import Invoice, Payment
 from .models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 
 
@@ -522,3 +526,89 @@ class StudentModelTests(TestCase):
         )
         self.assertIn("JSS1A", str(enrollment))
         self.assertIn("2025/2026", str(enrollment))
+
+
+class StudentDashboardFeeToastTests(TestCase):
+    """The 'All fees settled' green confirmation is a one-time toast that
+    fires only when a student's balance transitions from owing to settled."""
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Grace House School",
+            short_code="grace-house",
+        )
+        User = get_user_model()
+        self.student_user = User.objects.create_user(
+            username="fee_student",
+            email="fee@grace.edu",
+            password="testpass123",
+            school=self.school,
+            role=Roles.STUDENT,
+            first_name="Fee",
+            last_name="Student",
+        )
+        self.student = Student.objects.create(
+            school=self.school,
+            user=self.student_user,
+            admission_number="GH-900",
+            date_of_birth="2010-05-15",
+            gender=Student.MALE,
+            admission_date="2025-09-01",
+        )
+        session = AcademicSession.objects.create(
+            school=self.school,
+            name="2025/2026",
+            start_date="2025-09-01",
+            end_date="2026-07-31",
+            is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school,
+            session=session,
+            name="First Term",
+            start_date="2025-09-01",
+            end_date="2025-12-19",
+            is_current=True,
+        )
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal("50000.00"),
+        )
+
+    def _get_dashboard(self):
+        self.client.force_login(self.student_user)
+        return self.client.get(reverse("student-overview"))
+
+    def _confirm_full_payment(self):
+        Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("50000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+            reference="REF-FULL-001",
+        )
+
+    def test_fee_settled_toast_fires_once_after_payment(self):
+        resp = self._get_dashboard()
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "All fees settled. Nice work!")
+
+        self._confirm_full_payment()
+        self.assertEqual(self.invoice.balance, Decimal("0.00"))
+
+        resp = self._get_dashboard()
+        self.assertContains(resp, "All fees settled. Nice work!")
+
+        resp = self._get_dashboard()
+        self.assertNotContains(resp, "All fees settled. Nice work!")
+
+    def test_no_toast_when_student_was_always_settled(self):
+        self._confirm_full_payment()
+        resp = self._get_dashboard()
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "All fees settled. Nice work!")

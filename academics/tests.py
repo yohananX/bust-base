@@ -642,3 +642,82 @@ class RankingTests(TestCase):
         self.assertEqual(result, 0)
         score = Score.objects.get(student=student)
         self.assertIsNone(score.position)
+
+
+# ---------------------------------------------------------------------------
+# Teacher dashboard smoke tests
+# ---------------------------------------------------------------------------
+
+class TeacherDashboardSmokeTests(BaseTest):
+    """The teacher dashboard answers 'what needs action' with scoring progress."""
+
+    def test_dashboard_flags_incomplete_assignment(self):
+        """An assignment with incomplete scores shows a needs-action state."""
+        self.client.force_login(self.teacher_user)
+        resp = self.client.get("/teacher/")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Scoring Progress")
+        self.assertContains(resp, "still need")
+        self.assertContains(resp, "Incomplete")
+        self.assertNotContains(resp, "All assignments fully scored")
+
+    def test_dashboard_shows_term_aware_kpis(self):
+        """KPI row reports term-aware status instead of lifetime counts."""
+        self.client.force_login(self.teacher_user)
+        resp = self.client.get("/teacher/")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "All Students Scored")
+        self.assertContains(resp, "/ 1")
+        self.assertContains(resp, "Current Term")
+        self.assertContains(resp, "First Term")
+        self.assertContains(resp, "Results not published")
+        self.assertContains(resp, "My Subjects")
+        self.assertContains(resp, "My Classes")
+        self.assertNotContains(resp, "Scores Entered")
+
+    def test_dashboard_shows_all_complete_state(self):
+        """An assignment fully scored shows a complete state (toast, no banner)."""
+        Score.objects.create(
+            school=self.school,
+            student=self.student_profile,
+            subject=self.subject,
+            term=self.term,
+            test_1=8, test_2=7, test_3=9, exam_score=60,
+            entered_by=self.teacher_user,
+        )
+        self.client.force_login(self.teacher_user)
+        resp = self.client.get("/teacher/")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Complete")
+        self.assertNotContains(resp, "still need")
+        # The green confirmation is a one-time toast, not a static banner:
+        # it renders as a Django message the first time only.
+        self.assertContains(resp, "All assignments fully scored")
+
+    def test_dashboard_all_complete_toast_is_one_time(self):
+        """The 'fully scored' toast appears only once per session."""
+        Score.objects.create(
+            school=self.school,
+            student=self.student_profile,
+            subject=self.subject,
+            term=self.term,
+            test_1=8, test_2=7, test_3=9, exam_score=60,
+            entered_by=self.teacher_user,
+        )
+        self.client.force_login(self.teacher_user)
+        first = self.client.get("/teacher/")
+        self.assertContains(first, "All assignments fully scored")
+
+        second = self.client.get("/teacher/")
+        self.assertNotContains(second, "All assignments fully scored")
+
+    def test_dashboard_shows_progress_fraction(self):
+        """Progress panel reports scored/total students for each assignment."""
+        self.client.force_login(self.teacher_user)
+        resp = self.client.get("/teacher/")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "0/1 scored")

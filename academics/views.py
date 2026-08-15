@@ -2,6 +2,7 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.generic.base import View
+from django.contrib import messages
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
@@ -20,7 +21,7 @@ FIELD_MAX_VALUES = {
 
 
 class TeacherAssignmentListView(RoleRequiredMixin, View):
-    """Dashboard for the teacher portal — assignments, stats, chart, recent scores."""
+    """Dashboard for the teacher portal — status, alerts, scoring progress."""
     allowed_roles = [Roles.TEACHER]
 
     def get(self, request):
@@ -33,44 +34,102 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
         class_count = len(set(a.school_class_id for a in assignments))
 
         class_ids = [a.school_class_id for a in assignments]
-        student_count = 0
-        if class_ids:
-            student_count = ClassEnrollment.objects.filter(
-                school_class_id__in=class_ids, is_current=True,
-            ).values_list('student_id', flat=True).distinct().count()
-
-        scores_entered = Score.objects.filter(
-            entered_by=request.user
-        ).count()
 
         current_term = Term.objects.filter(
             school=request.school, is_current=True,
         ).first()
 
-        # Subject averages for the current term (complete scores only)
-        subject_averages = []
-        if current_term:
+        # Per-assignment progress + term-aware aggregates for the current term
+        assignment_progress = []
+        if current_term and assignments:
             subject_ids = list({a.subject_id for a in assignments})
-            totals = {}
-            counts = {}
-            for sc in Score.objects.filter(
+
+            # Map each student to their class in the current session
+            student_class = {}
+            for student_id, class_id in ClassEnrollment.objects.filter(
+                school_class_id__in=class_ids,
+                session__is_current=True,
+                is_current=True,
+            ).values_list('student_id', 'school_class_id'):
+                student_class.setdefault(student_id, class_id)
+
+            term_scores = list(Score.objects.filter(
                 subject_id__in=subject_ids, term=current_term,
-            ).select_related('subject'):
-                if not sc.is_complete:
-                    continue
-                totals.setdefault(sc.subject.name, []).append(sc.total_score)
-                counts[sc.subject.name] = counts.get(sc.subject.name, 0) + 1
-            subject_averages = [
-                {
-                    'subject': name,
-                    'average': round(sum(vals) / len(vals), 1),
-                    'count': counts[name],
-                }
-                for name, vals in totals.items()
-            ]
-            subject_averages.sort(key=lambda a: a['average'], reverse=True)
-        subject_labels = [a['subject'] for a in subject_averages]
-        subject_values = [a['average'] for a in subject_averages]
+            ).select_related('subject', 'student'))
+
+            for a in assignments:
+                total = ClassEnrollment.objects.filter(
+                    school_class=a.school_class, session=a.session, is_current=True,
+                ).count()
+                complete = 0
+                entered = 0
+                for sc in term_scores:
+                    if sc.subject_id != a.subject_id:
+                        continue
+                    if student_class.get(sc.student_id) != a.school_class_id:
+                        continue
+                    entered += 1
+                    if sc.is_complete:
+                        complete += 1
+                assignment_progress.append({
+                    'assignment': a,
+                    'total': total,
+                    'entered': entered,
+                    'complete': complete,
+                    'pct': round(complete / total * 100) if total else 0,
+                    'needs_action': total > 0 and complete < total,
+                })
+            assignment_progress.sort(key=lambda p: (
+                p['needs_action'] is False,
+                p['assignment'].school_class.name,
+                p['assignment'].subject.name,
+            ))
+
+            # "X of Y students fully scored this term": a student counts as
+            # fully scored when every score for their class+subject this term
+            # is complete.
+            students_total = len(set(student_class.keys()))
+            all_students_scored = 0
+            if students_total:
+                complete_per_student = {}
+                for sc in term_scores:
+                    if not sc.is_complete:
+                        continue
+                    sid = sc.student_id
+                    if sid not in student_class:
+                        continue
+                    class_id = student_class[sid]
+                    # Only count scores for subjects the teacher owns in this class
+                    if not any(
+                        a.school_class_id == class_id and a.subject_id == sc.subject_id
+                        for a in assignments
+                    ):
+                        continue
+                    complete_per_student.setdefault(sid, 0)
+                    complete_per_student[sid] += 1
+                # Expected score count per student = subjects taught in their class
+                subjects_per_class = {}
+                for a in assignments:
+                    subjects_per_class.setdefault(a.school_class_id, set()).add(a.subject_id)
+                for sid, class_id in student_class.items():
+                    expected = len(subjects_per_class.get(class_id, set()))
+                    if expected and complete_per_student.get(sid, 0) >= expected:
+                        all_students_scored += 1
+        else:
+            students_total = 0
+            all_students_scored = 0
+
+        incomplete_assignments = sum(1 for p in assignment_progress if p['needs_action'])
+        all_complete = bool(assignments) and incomplete_assignments == 0
+
+        # One-time success toast when everything is fully scored (once per login)
+        if all_complete and not request.session.get('_teacher_all_complete_toast'):
+            request.session['_teacher_all_complete_toast'] = True
+            messages.success(
+                request,
+                'All assignments fully scored — every student in your classes has '
+                'complete scores for the current term.',
+            )
 
         # Most recently entered scores
         recent_scores = []
@@ -94,11 +153,12 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
             'assignments': assignments,
             'subject_count': subject_count,
             'class_count': class_count,
-            'student_count': student_count,
-            'scores_entered': scores_entered,
-            'subject_labels': subject_labels,
-            'subject_values': subject_values,
-            'subject_averages': subject_averages,
+            'students_total': students_total,
+            'all_students_scored': all_students_scored,
+            'current_term': current_term,
+            'assignment_progress': assignment_progress,
+            'incomplete_assignments': incomplete_assignments,
+            'all_complete': all_complete,
             'recent_scores': recent_scores,
         })
 
