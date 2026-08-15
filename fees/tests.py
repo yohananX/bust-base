@@ -1,7 +1,7 @@
 from decimal import Decimal
-from datetime import date, datetime
+from datetime import date
 
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
@@ -269,8 +269,8 @@ class InvoiceComputedPropertiesTest(BaseFeesTest):
         self.assertEqual(self.invoice.balance, Decimal('60000.00'))
 
 
-    def test_pending_bank_transfer_counts_toward_amount_paid(self):
-        """A PENDING bank transfer counts immediately (money already sent)."""
+    def test_pending_bank_transfer_does_not_count_toward_amount_paid(self):
+        """A PENDING bank transfer never reduces the balance until confirmed."""
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
@@ -281,12 +281,12 @@ class InvoiceComputedPropertiesTest(BaseFeesTest):
             paid_on=timezone.now(),
             recorded_by=self.admin_user,
         )
-        self.assertEqual(self.invoice.amount_paid, Decimal('40000.00'))
-        self.assertEqual(self.invoice.status, 'PARTIAL')
-        self.assertEqual(self.invoice.balance, Decimal('20000.00'))
+        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
+        self.assertEqual(self.invoice.status, 'UNPAID')
+        self.assertEqual(self.invoice.balance, Decimal('60000.00'))
 
-    def test_rejected_bank_transfer_stops_counting(self):
-        """A rejected transfer (FAILED) no longer counts toward amount_paid."""
+    def test_rejected_bank_transfer_never_counts(self):
+        """A bank transfer counts only once CONFIRMED; pending/failed never count."""
         payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
@@ -297,12 +297,30 @@ class InvoiceComputedPropertiesTest(BaseFeesTest):
             paid_on=timezone.now(),
             recorded_by=self.admin_user,
         )
-        self.assertEqual(self.invoice.balance, Decimal('20000.00'))
+        self.assertEqual(self.invoice.balance, Decimal('60000.00'))
 
         payment.status = Payment.Status.FAILED
         payment.save()
         self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
         self.assertEqual(self.invoice.balance, Decimal('60000.00'))
+
+    def test_confirmed_bank_transfer_counts(self):
+        """Once an admin confirms the transfer it counts toward amount_paid."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=Decimal('40000.00'),
+            method=Payment.Method.BANK_TRANSFER,
+            reference=None,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+        payment.status = Payment.Status.CONFIRMED
+        payment.save()
+        self.assertEqual(self.invoice.amount_paid, Decimal('40000.00'))
+        self.assertEqual(self.invoice.status, 'PARTIAL')
+        self.assertEqual(self.invoice.balance, Decimal('20000.00'))
 
 
 # ─── Invoice Generation Tests ─────────────────────────────────────────────
@@ -810,8 +828,8 @@ class InvoicesWithBalanceSelectorTest(BaseFeesTest):
         self.assertEqual(inv.balance_annotated, Decimal('100000.00'))
         self.assertEqual(inv.balance, Decimal('100000.00'))
 
-    def test_pending_bank_transfer_counts_in_annotation(self):
-        """Business rule: PENDING bank transfers count toward amount_paid."""
+    def test_pending_bank_transfer_does_not_count_in_annotation(self):
+        """Business rule: PENDING bank transfers never count toward amount_paid."""
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
@@ -819,6 +837,23 @@ class InvoicesWithBalanceSelectorTest(BaseFeesTest):
             method=Payment.Method.BANK_TRANSFER,
             reference=None,
             status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+        inv = self._annotated()
+        self.assertEqual(inv.amount_paid_annotated, Decimal('0.00'))
+        self.assertEqual(inv.balance_annotated, Decimal('100000.00'))
+        self.assertEqual(inv.balance, Decimal('100000.00'))
+
+    def test_confirmed_bank_transfer_counts_in_annotation(self):
+        """Business rule: CONFIRMED bank transfers count toward amount_paid."""
+        Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=Decimal('40000.00'),
+            method=Payment.Method.BANK_TRANSFER,
+            reference=None,
+            status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
             recorded_by=self.admin_user,
         )
@@ -1033,7 +1068,6 @@ class WebhookSecurityTest(BaseFeesTest):
 
     def test_receipt_issued_once_on_duplicate_webhook(self):
         """Duplicate webhooks issue exactly one receipt and never duplicate the payment."""
-        import re
         from fees.models import FeeReceipt, Payment
 
         payment = self._create_pending_payment('SEC_REF_005')
@@ -1684,3 +1718,58 @@ class MakePaymentPageTest(BaseFeesTest):
         else:
             # Context unavailable — fall back to the rendered invoice term name
             self.assertContains(response, 'First Term')
+
+    def test_pending_bank_transfer_visible_but_balance_unchanged(self):
+        """A pending transfer shows in recent payments but never reduces the owed total."""
+        Payment.objects.create(
+            school=self.school,
+            student=self.student,
+            invoice=self.invoice,
+            amount=Decimal('30000.00'),
+            method=Payment.Method.BANK_TRANSFER,
+            reference=None,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('parent-pay'))
+
+        self.assertEqual(response.status_code, 200)
+        # Still owing the full amount — pending transfer doesn't count yet
+        self.assertContains(response, '&#8358;60000.00')
+        # The pending transaction is visible for the parent
+        self.assertContains(response, 'Pending')
+        self.assertNotContains(response, 'Receipt')
+
+        if response.context is not None:
+            self.assertEqual(
+                Decimal(str(response.context['total_owed'])),
+                Decimal('105000.00'),
+            )
+            recent = list(response.context['recent_payments'])
+            self.assertTrue(any(p.status == 'PENDING' for p in recent))
+
+    def test_confirmed_bank_transfer_reduces_balance(self):
+        """Once confirmed, the transfer reduces the balance and a receipt is offered."""
+        payment = Payment.objects.create(
+            school=self.school,
+            student=self.student,
+            invoice=self.invoice,
+            amount=Decimal('30000.00'),
+            method=Payment.Method.BANK_TRANSFER,
+            reference=None,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        payment.status = Payment.Status.CONFIRMED
+        payment.save()
+
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('parent-pay'))
+
+        self.assertEqual(response.status_code, 200)
+        if response.context is not None:
+            self.assertEqual(
+                Decimal(str(response.context['total_owed'])),
+                Decimal('75000.00'),
+            )

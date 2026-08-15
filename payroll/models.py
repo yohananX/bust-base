@@ -257,7 +257,7 @@ class PayrollRun(TenantScopedModel):
 
     @property
     def total_disbursed(self):
-        from django.db.models import Sum, Subquery, OuterRef
+        from django.db.models import Sum
         # Sum of all CONFIRMED SalaryDisbursement for all payslips in this run
         confirmed = SalaryDisbursement.objects.filter(
             payslip__in=self.payslips.all(),

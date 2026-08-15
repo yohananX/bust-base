@@ -125,22 +125,15 @@ class StudentCreateView(RoleRequiredMixin, View):
         school = request.school
         classes = SchoolClass.objects.filter(school=school, is_active=True)
         sessions = AcademicSession.objects.filter(school=school)
-        users = User.objects.filter(school=school, role=Roles.STUDENT, is_active=True)
-        users_with_no_student = users.exclude(
-            pk__in=Student.objects.filter(school=school).values_list('user_id', flat=True)
-        )
         context = {
             'classes': classes,
             'sessions': sessions,
-            'users': users,
-            'users_with_no_student': users_with_no_student,
             'is_edit': False,
         }
         return render(request, 'school_admin/student_form.html', context)
 
     def post(self, request):
         school = request.school
-        user_mode = request.POST.get('user_mode', 'existing')
         admission_number = request.POST.get('admission_number')
         date_of_birth = request.POST.get('date_of_birth')
         gender = request.POST.get('gender')
@@ -161,58 +154,47 @@ class StudentCreateView(RoleRequiredMixin, View):
 
         try:
             with transaction.atomic():
-                if user_mode == 'new':
-                    # --- Create new user ---
-                    first_name = request.POST.get('first_name', '').strip()
-                    last_name = request.POST.get('last_name', '').strip()
-                    email = request.POST.get('new_email', '').strip()
-                    phone_number = request.POST.get('new_phone_number', '').strip()
-                    username_input = request.POST.get('new_username', '').strip()
+                # --- Create new user ---
+                first_name = request.POST.get('first_name', '').strip()
+                last_name = request.POST.get('last_name', '').strip()
+                email = request.POST.get('new_email', '').strip()
+                phone_number = request.POST.get('new_phone_number', '').strip()
+                username_input = request.POST.get('new_username', '').strip()
 
-                    if not first_name or not last_name:
-                        messages.error(request, 'First name and last name are required for new users.')
-                        return redirect('school_admin:student_create')
+                if not first_name or not last_name:
+                    messages.error(request, 'First name and last name are required for new users.')
+                    return redirect('school_admin:student_create')
 
-                    # Auto-generate username if empty
-                    if not username_input:
-                        username_input = _sanitize_username(first_name, last_name)
+                # Auto-generate username if empty
+                if not username_input:
+                    username_input = _sanitize_username(first_name, last_name)
 
-                    # Ensure unique username
-                    base_username = username_input
-                    counter = 1
-                    while User.objects.filter(username=username_input).exists():
-                        username_input = f"{base_username}{counter}"
-                        counter += 1
+                # Ensure unique username
+                base_username = username_input
+                counter = 1
+                while User.objects.filter(username=username_input).exists():
+                    username_input = f"{base_username}{counter}"
+                    counter += 1
 
-                    # Generate random password
-                    password = secrets.token_urlsafe(6)
+                # Generate random password
+                password = secrets.token_urlsafe(6)
 
-                    user = User.objects.create_user(
-                        username=username_input,
-                        email=email,
-                        password=password,
-                        first_name=first_name,
-                        last_name=last_name,
-                        role=Roles.STUDENT,
-                        school=school,
-                        phone_number=phone_number,
-                    )
+                user = User.objects.create_user(
+                    username=username_input,
+                    email=email,
+                    password=password,
+                    first_name=first_name,
+                    last_name=last_name,
+                    role=Roles.STUDENT,
+                    school=school,
+                    phone_number=phone_number,
+                )
 
-                    messages.success(
-                        request,
-                        f'User "{user.get_full_name() or user.username}" created. '
-                        f'Password: {password}',
-                    )
-                else:
-                    # --- Use existing user ---
-                    user_id = request.POST.get('user')
-                    if not user_id:
-                        messages.error(request, 'Please select a user.')
-                        return redirect('school_admin:student_create')
-                    user = get_object_or_404(
-                        User, school=school, pk=user_id, role=Roles.STUDENT
-                    )
-                    password = None
+                messages.success(
+                    request,
+                    f'User "{user.get_full_name() or user.username}" created. '
+                    f'Password: {password}',
+                )
 
                 # Create student record
                 student = Student.objects.create(
@@ -244,6 +226,8 @@ class StudentCreateView(RoleRequiredMixin, View):
                         session=session,
                         is_current=True,
                     )
+                    from fees.generation import generate_invoice_for_current_term
+                    generate_invoice_for_current_term(student)
 
                 # --- Optional parent/guardian creation ---
                 parent_name = request.POST.get('parent_name', '').strip()
@@ -395,6 +379,8 @@ class StudentEditView(RoleRequiredMixin, View):
                             session=new_session,
                             is_current=True,
                         )
+                        from fees.generation import generate_invoice_for_current_term
+                        generate_invoice_for_current_term(student)
 
                 messages.success(
                     request,
@@ -475,11 +461,21 @@ class StudentChangeClassView(RoleRequiredMixin, View):
                     is_current=True,
                 )
 
-            messages.success(
-                request,
-                f'{student.user.get_full_name()} moved to {school_class.name} '
-                f'({session.name}).',
-            )
+                from fees.generation import generate_invoice_for_current_term
+                generated = generate_invoice_for_current_term(student)
+
+            if generated:
+                messages.success(
+                    request,
+                    f'{student.user.get_full_name()} moved to {school_class.name} '
+                    f'({session.name}). Term invoice generated.',
+                )
+            else:
+                messages.success(
+                    request,
+                    f'{student.user.get_full_name()} moved to {school_class.name} '
+                    f'({session.name}).',
+                )
 
         except Exception as e:
             messages.error(request, f'Error changing class: {e}')
@@ -492,8 +488,8 @@ class StudentGuardianLinkCreateView(RoleRequiredMixin, View):
 
     allowed_roles = [Roles.ADMIN]
 
-    def post(self, request):
-        student_id = request.POST.get('student_id')
+    def post(self, request, pk):
+        student_id = pk
         guardian_id = request.POST.get('guardian_id')
         relationship = request.POST.get('relationship')
         is_primary_contact = request.POST.get('is_primary_contact') == 'on'

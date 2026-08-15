@@ -112,9 +112,7 @@ class TeacherScoreGridView(RoleRequiredMixin, View):
     def get(self, request, pk):
         assignment = get_object_or_404(TeacherAssignment, pk=pk)
         if assignment.teacher != request.user:
-            resp = HttpResponseForbidden("Not your assignment")
-        from core.toasts import attach_toast
-        return attach_toast(resp, "Not your assignment", "error")
+            return HttpResponseForbidden("Not your assignment")
 
         current_term = Term.objects.filter(
             school=request.school,
@@ -155,6 +153,8 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
     allowed_roles = [Roles.TEACHER]
 
     def post(self, request, pk, score_pk):
+        from core.toasts import attach_toast
+
         score = get_object_or_404(Score, pk=score_pk)
 
         # Verify teacher owns this score's assignment
@@ -171,8 +171,7 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
             session=score.term.session,
         ).exists():
             resp = HttpResponseForbidden("Not your assignment")
-        from core.toasts import attach_toast
-        return attach_toast(resp, "Not your assignment", "error")
+            return attach_toast(resp, "Not your assignment", "error")
 
         # htmx sends the field name as the POST key (e.g. test_1=8)
         field_name = None
@@ -185,8 +184,7 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
 
         if field_name is None:
             resp = HttpResponse("Invalid field", status=400)
-        from core.toasts import attach_toast
-        return attach_toast(resp, "Invalid field", "error")
+            return attach_toast(resp, "Invalid field", "error")
 
         if raw_value == '':
             value = None
@@ -195,14 +193,12 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
                 value = int(raw_value)
             except (ValueError, TypeError):
                 resp = HttpResponse("Value must be a whole number", status=400)
-        from core.toasts import attach_toast
-        return attach_toast(resp, "Value must be a whole number", "error")
+                return attach_toast(resp, "Value must be a whole number", "error")
 
         max_value = FIELD_MAX_VALUES[field_name]
         if value is not None and (value < 0 or value > max_value):
             msg = f"{field_name.replace('_', ' ').title()} must be between 0 and {max_value}"
             resp = HttpResponse(msg, status=400)
-            from core.toasts import attach_toast
             return attach_toast(resp, msg, "error")
 
         setattr(score, field_name, value)
@@ -258,5 +254,4 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
             f'<div id="status-{score.pk}" hx-swap-oob="innerHTML">{status_html}</div>'
         )
         response = HttpResponse(response_html)
-        from core.toasts import attach_toast
         return attach_toast(response, 'Score saved.', 'success')

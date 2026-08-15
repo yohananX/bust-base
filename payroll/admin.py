@@ -3,7 +3,6 @@ from decimal import Decimal
 from django.contrib import admin, messages
 from django.db import models
 from django.shortcuts import render
-from django.urls import path
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from django.http import HttpResponseRedirect
@@ -61,30 +60,21 @@ class PayslipStatusListFilter(admin.SimpleListFilter):
 
     def queryset(self, request, queryset):
         value = self.value()
+        paid_subq = models.Subquery(
+            SalaryDisbursement.objects.filter(
+                payslip=models.OuterRef('pk'),
+                status=SalaryDisbursement.Status.CONFIRMED,
+            ).values('payslip').annotate(
+                total=models.Sum('amount')
+            ).values('total')[:1],
+            output_field=models.DecimalField(max_digits=12, decimal_places=2),
+        )
         if value == 'PAID':
-            paid_subq = models.Subquery(
-                SalaryDisbursement.objects.filter(
-                    payslip=models.OuterRef('pk'),
-                    status=SalaryDisbursement.Status.CONFIRMED,
-                ).values('payslip').annotate(
-                    total=models.Sum('amount')
-                ).values('total')[:1],
-                output_field=models.DecimalField(max_digits=12, decimal_places=2),
-            )
             return queryset.filter(net_pay__lte=paid_subq)
         elif value == 'PARTIAL':
-            paid_subq = models.Subquery(
-                SalaryDisbursement.objects.filter(
-                    payslip=models.OuterRef('pk'),
-                    status=SalaryDisbursement.Status.CONFIRMED,
-                ).values('payslip').annotate(
-                    total=models.Sum('amount')
-                ).values('total')[:1],
-                output_field=models.DecimalField(max_digits=12, decimal_places=2),
-            )
-            return queryset.filter(
-                net_pay__gt=paid_subq,
-                paid_subq__gt=Decimal('0.00'),
+            return queryset.annotate(paid_total=paid_subq).filter(
+                net_pay__gt=models.F('paid_total'),
+                paid_total__gt=Decimal('0.00'),
             )
         elif value == 'UNPAID':
             return queryset.filter(
@@ -198,7 +188,6 @@ class PayrollRunAdmin(admin.ModelAdmin):
                 )
                 return HttpResponseRedirect(request.get_full_path())
 
-            from datetime import datetime
             from django.utils.dateparse import parse_date
 
             from .utils import generate_payroll_run as run_generation

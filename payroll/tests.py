@@ -1,6 +1,6 @@
 """Comprehensive test suite for the payroll module (~25 tests)."""
 from decimal import Decimal
-from datetime import date, datetime
+from datetime import date
 
 from django.test import TestCase, override_settings
 from django.db import IntegrityError
@@ -316,7 +316,6 @@ class PayrollRunGenerationTest(BasePayrollTest):
 
     def test_staff_filter_limits_generation(self):
         """Test that staff_filter limits which staff get payslips."""
-        from django.db.models import Q
 
         # Only generate for staff1
         staff_filter = StaffProfile.objects.filter(pk=self.staff1.pk)

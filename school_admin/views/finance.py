@@ -2,7 +2,7 @@
 from decimal import Decimal
 from datetime import date
 
-from django.db.models import Sum, Q
+from django.db.models import Sum
 from django.shortcuts import render, get_object_or_404
 from django.views.generic.base import View
 

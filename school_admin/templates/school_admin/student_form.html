@@ -53,33 +53,7 @@
       {# ============================================================ #}
       {% else %}
       <h3 class="text-sm font-semibold text-gray-800 mb-4">User Account</h3>
-
-      {# --- Radio toggle --- #}
-      <div class="flex items-center gap-6 mb-4">
-        <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-          <input type="radio" name="user_mode" value="existing" checked class="rounded border-gray-300 text-primary focus:ring-primary">
-          Select Existing User
-        </label>
-        <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-          <input type="radio" name="user_mode" value="new" class="rounded border-gray-300 text-primary focus:ring-primary">
-          Create New User
-        </label>
-      </div>
-
-      {# --- Existing user section --- #}
-      <div id="existing-user-section" class="mb-4">
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">User <span class="text-red-500">*</span></label>
-        <select name="user" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-          <option value="">— Select User —</option>
-          {% for u in users_with_no_student %}
-          <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
-          {% endfor %}
-        </select>
-        <p class="text-xs text-gray-400 mt-1">Only users without an existing student record are shown.</p>
-      </div>
-
-      {# --- New user section --- #}
-      <div id="new-user-section" style="display:none;" class="mb-4">
+      <div class="mb-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1.5">First Name <span class="text-red-500">*</span></label>
@@ -260,15 +234,4 @@
     </form>
   </div>
 </div>
-{% endblock %}
-
-{% block extra_scripts %}
-<script>
-document.querySelectorAll('input[name="user_mode"]').forEach(function(radio) {
-  radio.addEventListener('change', function() {
-    document.getElementById('existing-user-section').style.display = this.value === 'existing' ? 'block' : 'none';
-    document.getElementById('new-user-section').style.display = this.value === 'new' ? 'block' : 'none';
-  });
-});
-</script>
 {% endblock %}

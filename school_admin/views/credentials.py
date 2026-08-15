@@ -41,11 +41,11 @@ class CredentialSlipView(RoleRequiredMixin, View):
         user = get_object_or_404(User, school=request.school, pk=pk)
         # Pop the key so a refresh (or a later visit) shows the expired state.
         raw_password = request.session.pop(_session_key(pk), None)
-        context = {
-            'slip': {'user': user, 'password': raw_password} if raw_password is not None else None,
-            'user_obj': user,
-        }
-        return render(request, 'school_admin/credential_slip.html', context)
+        slips = []
+        if raw_password is not None:
+            slips = [{'user': user, 'password': raw_password}]
+        # Reuse the same printable layout as the batch print page.
+        return render(request, 'school_admin/credential_batch_print.html', {'slips': slips})
 
 
 class CredentialBatchView(RoleRequiredMixin, View):

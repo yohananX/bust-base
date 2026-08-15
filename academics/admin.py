@@ -235,7 +235,6 @@ class TermResultAdmin(admin.ModelAdmin):
     def compute_term_summaries(self, request, queryset):
         """Compute term summaries for selected term results."""
         from .ranking import compute_term_summary
-        from students.models import SchoolClass
 
         # Get unique (school_class, term) pairs
         pairs = set()

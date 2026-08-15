@@ -26,11 +26,11 @@ class ClassListView(RoleRequiredMixin, View):
                 Q(name__icontains=q) | Q(level__icontains=q)
             )
 
-        # Filter by active status (yes / no / all)
+        # Filter by active status (active / inactive / all)
         status = request.GET.get('status', '')
-        if status == 'yes':
+        if status == 'active':
             classes = classes.filter(is_active=True)
-        elif status == 'no':
+        elif status == 'inactive':
             classes = classes.filter(is_active=False)
 
         # Annotate with count of currently enrolled students

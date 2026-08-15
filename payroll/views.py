@@ -1,10 +1,7 @@
 """HTML views for payroll — payslip list, detail, and run overview."""
-from decimal import Decimal
-
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, get_object_or_404
-from django.utils.decorators import method_decorator
 from django.views.generic import ListView, DetailView
 
 from accounts.mixins import RoleRequiredMixin

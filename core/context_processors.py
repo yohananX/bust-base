@@ -24,20 +24,19 @@ def _badge_counts(request, role):
         return {}
     badges = {}
 
+    from core.stats import (
+        outstanding_invoices,
+        pending_score_review_count,
+        pending_transfer_count,
+    )
+
     if role == Roles.ADMIN:
-        from academics.models import Score
-        badges['/school-admin/results/review/'] = Score.objects.filter(
-            school=school, moderation_status='PENDING',
-        ).count()
-        from fees.models import Invoice, Payment
-        from fees.selectors import invoices_with_balance
-        invoices = invoices_with_balance(Invoice.objects.filter(school=school))
+        badges['/school-admin/results/review/'] = pending_score_review_count(school)
+        invoices = outstanding_invoices(school)
         badges['/school-admin/invoices/'] = sum(
             1 for inv in invoices if inv.balance_annotated > 0
         )
-        badges['/school-admin/fees/pending/'] = Payment.objects.filter(
-            school=school, status='PENDING', method='BANK_TRANSFER',
-        ).count()
+        badges['/school-admin/fees/pending/'] = pending_transfer_count(school)
     elif role == Roles.TEACHER:
         from academics.models import TeacherAssignment
         badges['/teacher/assignments/'] = TeacherAssignment.objects.filter(

@@ -1,11 +1,9 @@
 """Payroll management views for school admin portal."""
 from decimal import Decimal
-from datetime import datetime
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic.base import View
 from django.contrib import messages
-from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
@@ -13,7 +11,7 @@ from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from payroll.models import (
     PayGrade, AllowanceDefinition, DeductionDefinition,
-    PayrollRun, Payslip, SalaryDisbursement, StaffProfile,
+    PayrollRun, Payslip, SalaryDisbursement,
 )
 
 

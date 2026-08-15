@@ -2,13 +2,12 @@ import csv
 import os
 import tempfile
 
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase
 from django.core.management import call_command
-from django.utils import timezone
 
 from core.models import School, AcademicSession
 from accounts.models import User, Roles
-from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from students.models import SchoolClass, Student
 from academics.models import Subject
 from data_import.importers import (
     ClassImporter, SubjectImporter, StudentImporter, StaffImporter,

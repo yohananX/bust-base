@@ -5,7 +5,6 @@ from decimal import Decimal, InvalidOperation
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST, require_GET
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.urls import reverse
@@ -16,7 +15,7 @@ from django.views.generic.base import View
 
 from .checkout import reconcile_checkout, current_term
 from .models import Invoice, Payment
-from .paystack import initiate_payment as paystack_initiate, handle_webhook as paystack_webhook
+from .paystack import initiate_payment as paystack_initiate
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from students.models import Student, StudentGuardianLink
@@ -90,7 +89,6 @@ def make_payment(request, invoice_id):
 @require_POST
 def record_cash_payment(request, invoice_id):
     """Record a cash payment (admin only)."""
-    from accounts.mixins import Roles
     if request.user.role != Roles.ADMIN:
         return JsonResponse({'error': 'Forbidden'}, status=403)
 

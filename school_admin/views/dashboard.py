@@ -3,18 +3,15 @@ from calendar import month_abbr
 
 from decimal import Decimal
 
-from django.db.models import Sum
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.generic.base import View
 
-from academics.models import Score
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from core.models import AcademicSession, Term
 from students.models import Student, SchoolClass, ClassEnrollment
-from fees.models import Invoice, Payment
-from fees.selectors import invoices_with_balance
+from fees.models import Payment
 from payroll.models import PayrollRun
 from finance.models import Project
 
@@ -60,15 +57,12 @@ class DashboardView(RoleRequiredMixin, View):
         ).count()
 
         # Outstanding fees — sum of balances, and how many students owe
-        invoices = invoices_with_balance(Invoice.objects.filter(school=school))
-        outstanding_fees = invoices.aggregate(
-            total=Sum('balance_annotated')
-        )['total'] or Decimal('0.00')
-        owing_students = len(set(
-            invoices.filter(
-                balance_annotated__gt=0
-            ).values_list('student_id', flat=True)
-        ))
+        from core.stats import (
+            outstanding_fees_total,
+            owing_student_count,
+        )
+        outstanding_fees = outstanding_fees_total(school)
+        owing_students = owing_student_count(school)
 
         # Payroll runs — active (not cancelled) runs
         payroll_runs = PayrollRun.objects.filter(
@@ -231,15 +225,14 @@ class DashboardView(RoleRequiredMixin, View):
                 'status': p.status,
             })
 
-        pending_transfers = Payment.objects.filter(
-            school=school,
-            status=Payment.Status.PENDING,
-            method=Payment.Method.BANK_TRANSFER,
-        ).count()
-
-        results_to_review = Score.objects.filter(
-            school=school, moderation_status='PENDING'
-        ).count()
+        from core.stats import (
+            outstanding_invoices,
+            pending_score_review_count,
+            pending_transfer_count,
+        )
+        invoices = outstanding_invoices(school)
+        pending_transfers = pending_transfer_count(school)
+        results_to_review = pending_score_review_count(school)
 
         top_owing_students = []
         for inv in invoices.filter(

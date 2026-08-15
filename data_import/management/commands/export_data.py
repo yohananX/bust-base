@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 
 from core.models import School
 from accounts.models import User, Roles
-from students.models import SchoolClass, Student, ClassEnrollment
+from students.models import SchoolClass, Student
 from academics.models import Subject
 
 

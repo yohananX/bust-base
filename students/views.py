@@ -1,6 +1,7 @@
 from decimal import Decimal
-from django.db.models import Sum, Q, Prefetch
+from django.db.models import Q, Prefetch
 from django.shortcuts import get_object_or_404, render, redirect
+from django.urls import reverse                                       
 from django.views.generic.base import View
 from django.contrib import messages
 
@@ -265,15 +266,18 @@ class MakePaymentView(RoleRequiredMixin, View):
             invoices = Invoice.objects.filter(student=student)
 
         # Prefetch payments that count toward the balance so invoice.balance/status
-        # don't N+1: confirmed payments plus pending bank transfers.
-        visible_status_q = Q(status=Payment.Status.CONFIRMED) | Q(
+        # don't N+1: only CONFIRMED payments reduce the balance. Pending bank
+        # transfers stay visible in the recent list but never count until confirmed.
+        balance_status_q = Q(status=Payment.Status.CONFIRMED)
+        # Recent payments still show pending bank transfers (pending approval).
+        visible_status_q = balance_status_q | Q(
             status=Payment.Status.PENDING, method=Payment.Method.BANK_TRANSFER,
         )
         invoices = invoices.select_related(
             'term', 'student', 'student__user',
         ).prefetch_related(Prefetch(
             'payments',
-            queryset=Payment.objects.filter(visible_status_q),
+            queryset=Payment.objects.filter(balance_status_q),
         ))
 
         invoices_by_child = {}
@@ -449,59 +453,16 @@ class StudentResultBookletView(RoleRequiredMixin, View):
         student = request.user.student_profile
         term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
 
-        from academics.models import Score, GradeScale, TermResult
+        from academics.booklet import build_booklet_context
 
-        enrollment = ClassEnrollment.objects.filter(
-            student=student, session=term.session
-        ).select_related('school_class').first()
-
+        context, enrollment = build_booklet_context(student, term, request.school)
         if not enrollment:
             messages.error(request, 'No enrollment found for this term.')
             return redirect('student-overview')
 
-        scores = Score.objects.filter(
-            student=student, term=term
-        ).select_related('subject').order_by('subject__name')
-
-        term_result = TermResult.objects.filter(
-            student=student, term=term
-        ).first()
-
-        grade_scale = GradeScale.objects.filter(school=request.school).order_by('-min_score')
-
-        score_data = []
-        for score in scores:
-            grade_obj = GradeScale.objects.filter(
-                school=request.school, label=GradeScale.get_grade(request.school, score.total_score)
-            ).first() if GradeScale.get_grade(request.school, score.total_score) else None
-            score_data.append({
-                'subject': score.subject.name,
-                'test_1': score.test_1 or 0,
-                'test_2': score.test_2 or 0,
-                'test_3': score.test_3 or 0,
-                'exam': score.exam_score or 0,
-                'total': score.total_score,
-                'grade': GradeScale.get_grade(request.school, score.total_score) or '-',
-                'position': score.position,
-                'remark': grade_obj.remark if grade_obj else '-',
-            })
-
-        class_size = ClassEnrollment.objects.filter(
-            school_class=enrollment.school_class, session=term.session, is_current=True
-        ).count()
-
-        context = {
-            'student': student,
-            'term': term,
-            'enrollment': enrollment,
-            'school_class': enrollment.school_class,
-            'scores': score_data,
-            'term_result': term_result,
-            'grade_scale': grade_scale,
-            'class_size': class_size,
-            'school': request.school,
-        }
-        return render(request, 'students/student/result_booklet.html', context)
+        context['booklet_back_url'] = reverse('student-overview')
+        context['booklet_download_url'] = reverse('student-result-download', kwargs={'term_id': term.pk})
+        return render(request, 'students/result_booklet.html', context)
 
 
 class StudentResultDownloadView(RoleRequiredMixin, View):
@@ -535,60 +496,18 @@ class ParentChildResultBookletView(RoleRequiredMixin, View):
 
         term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
 
-        from academics.models import Score, GradeScale, TermResult
+        from academics.booklet import build_booklet_context
 
-        enrollment = ClassEnrollment.objects.filter(
-            student=child, session=term.session
-        ).select_related('school_class').first()
-
+        context, enrollment = build_booklet_context(child, term, request.school)
         if not enrollment:
             messages.error(request, 'No enrollment found for this term.')
             return redirect('parent-child-detail', pk=child_pk)
 
-        scores = Score.objects.filter(
-            student=child, term=term
-        ).select_related('subject').order_by('subject__name')
-
-        term_result = TermResult.objects.filter(
-            student=child, term=term
-        ).first()
-
-        grade_scale = GradeScale.objects.filter(school=request.school).order_by('-min_score')
-
-        score_data = []
-        for score in scores:
-            grade_obj = GradeScale.objects.filter(
-                school=request.school, label=GradeScale.get_grade(request.school, score.total_score)
-            ).first() if GradeScale.get_grade(request.school, score.total_score) else None
-            score_data.append({
-                'subject': score.subject.name,
-                'test_1': score.test_1 or 0,
-                'test_2': score.test_2 or 0,
-                'test_3': score.test_3 or 0,
-                'exam': score.exam_score or 0,
-                'total': score.total_score,
-                'grade': GradeScale.get_grade(request.school, score.total_score) or '-',
-                'position': score.position,
-                'remark': grade_obj.remark if grade_obj else '-',
-            })
-
-        class_size = ClassEnrollment.objects.filter(
-            school_class=enrollment.school_class, session=term.session, is_current=True
-        ).count()
-
-        context = {
-            'student': child,
-            'term': term,
-            'enrollment': enrollment,
-            'school_class': enrollment.school_class,
-            'scores': score_data,
-            'term_result': term_result,
-            'grade_scale': grade_scale,
-            'class_size': class_size,
-            'school': request.school,
-            'child_pk': child_pk,
-        }
-        return render(request, 'students/parent/result_booklet.html', context)
+        context['booklet_back_url'] = reverse('parent-child-detail', kwargs={'pk': child_pk})
+        context['booklet_download_url'] = reverse(
+            'parent-child-result-download', kwargs={'child_pk': child_pk, 'term_id': term.pk}
+        )
+        return render(request, 'students/result_booklet.html', context)
 
 
 class StudentResultsHistoryView(RoleRequiredMixin, View):

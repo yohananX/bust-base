@@ -37,7 +37,7 @@ from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from fees.models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment
-from fees.checkout import get_checkout_options, reconcile_checkout, current_term
+from fees.checkout import get_checkout_options, reconcile_checkout
 try:
     from fees.views import CheckoutSubmitView
 except ImportError:  # CheckoutSubmitView is built by a parallel agent (see views.py pattern)

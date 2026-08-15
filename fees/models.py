@@ -3,7 +3,6 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from core.models import TenantScopedModel
-from accounts.models import Roles
 
 
 class FeeCategory(TenantScopedModel):
@@ -92,7 +91,6 @@ class Invoice(TenantScopedModel):
         from django.db.models import Q, Sum
         result = self.payments.filter(
             Q(status=Payment.Status.CONFIRMED)
-            | Q(status=Payment.Status.PENDING, method=Payment.Method.BANK_TRANSFER)
         ).aggregate(total=Sum('amount'))['total']
         return result or Decimal('0.00')
 

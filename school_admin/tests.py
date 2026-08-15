@@ -3,13 +3,14 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 from decimal import Decimal
 
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
-from students.models import SchoolClass, Student, ClassEnrollment
-from fees.models import FeeCategory, Invoice, Payment
+from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from fees.models import FeeCategory, FeeStructure, Invoice, Payment
 
 
 User = get_user_model()
@@ -289,3 +290,104 @@ class OutstandingFeesReportViewTest(TestCase):
         self.client.force_login(teacher)
         response = self.client.get('/school-admin/fees/outstanding/')
         self.assertEqual(response.status_code, 403)
+
+
+class FlowReproTest(TestCase):
+    """Repro checks for guardian linking and staff-create redirect."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Repro School', short_code='repro')
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2026/2027',
+            start_date=date(2026, 9, 1), end_date=date(2027, 8, 31), is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school, session=self.session, name='First Term',
+            start_date=date(2026, 9, 1), end_date=date(2026, 12, 15), is_current=True,
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1', level='JSS1',
+        )
+        self.tuition_cat = FeeCategory.objects.create(
+            school=self.school, name='Tuition', is_compulsory=True,
+        )
+        FeeStructure.objects.create(
+            school=self.school, school_class=self.school_class,
+            term=self.term, category=self.tuition_cat, amount=Decimal('54000.00'),
+        )
+        self.admin = User.objects.create_user(
+            username='adminx', email='adminx@test.com', password='pass123',
+            school=self.school, role=Roles.ADMIN, first_name='Admin', last_name='X',
+        )
+        self.parent1 = User.objects.create_user(
+            username='parent1', email='p1@test.com', password='pass123',
+            school=self.school, role=Roles.PARENT, first_name='Papa', last_name='One',
+        )
+        self.parent2 = User.objects.create_user(
+            username='parent2', email='p2@test.com', password='pass123',
+            school=self.school, role=Roles.PARENT, first_name='Mama', last_name='Two',
+        )
+        self.student_user = User.objects.create_user(
+            username='stud1', email='s@test.com', password='pass123',
+            school=self.school, role=Roles.STUDENT, first_name='Kid', last_name='One',
+        )
+        self.student = Student.objects.create(
+            school=self.school, user=self.student_user, admission_number='S001',
+            date_of_birth=date(2012, 1, 1), gender='MALE',
+            admission_date=date(2026, 9, 1), status='ACTIVE',
+        )
+        StudentGuardianLink.objects.create(
+            school=self.school, student=self.student, guardian=self.parent1,
+            relationship='FATHER', is_primary_contact=True,
+        )
+
+    def test_link_second_guardian(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:student_add_guardian', args=[self.student.pk]), {
+            'student_id': self.student.pk,
+            'guardian_id': self.parent2.pk,
+            'relationship': 'MOTHER',
+            'is_primary_contact': 'on',
+        })
+        self.assertEqual(resp.status_code, 302)
+        links = StudentGuardianLink.objects.filter(student=self.student)
+        self.assertEqual(links.count(), 2)
+        primary = links.filter(is_primary_contact=True)
+        self.assertEqual(primary.count(), 1)
+        self.assertEqual(primary.first().guardian, self.parent2)
+
+    def test_staff_create_redirects_to_assignments(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:staff_create'), {
+            'username': 'teacher1', 'first_name': 'Tee', 'last_name': 'Cher',
+            'phone_number': '08012345678', 'email': 't@test.com', 'role': 'TEACHER',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('/school-admin/assignments/', resp.url)
+        self.assertIn('teacher_id=', resp.url)
+
+    def test_student_create_creates_new_user(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'New', 'last_name': 'Kid',
+            'admission_number': 'S002',
+            'date_of_birth': '2013-05-05', 'gender': 'FEMALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+        })
+        self.assertEqual(resp.status_code, 302)
+        student = Student.objects.get(admission_number='S002')
+        self.assertEqual(student.user.first_name, 'New')
+        self.assertEqual(student.user.role, Roles.STUDENT)
+        self.assertTrue(
+            ClassEnrollment.objects.filter(student=student, is_current=True).exists()
+        )
+        invoice = Invoice.objects.filter(student=student).first()
+        self.assertIsNotNone(invoice, 'expected an auto-generated invoice')
+        self.assertEqual(invoice.total_amount, Decimal('54000.00'))
+        self.assertEqual(invoice.line_items.count(), 1)
+        resp = self.client.get(reverse('school_admin:student_create'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, 'user_mode')
+        self.assertNotContains(resp, 'existing-user-section')

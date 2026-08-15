@@ -16,7 +16,6 @@ urlpatterns = [
     path('student/', include('students.student_urls')),
     path('fees/', include('fees.urls')),
     path('payroll/', include('payroll.urls')),
-    path('finance/', include('finance.urls')),
     path('notifications/', include('notifications.urls')),
     path('school-admin/', include('school_admin.urls')),
     path('', RedirectView.as_view(url='/accounts/redirect/', permanent=False), name='home'),

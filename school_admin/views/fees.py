@@ -377,13 +377,16 @@ class InvoiceListView(RoleRequiredMixin, View):
         if term_id:
             invoices = invoices.filter(term_id=term_id)
 
+        from fees.selectors import invoices_with_balance
+        invoices = invoices_with_balance(invoices)
+
         status = request.GET.get('status', '')
         if status == 'PAID':
-            invoices = [inv for inv in invoices if inv.status == 'PAID']
+            invoices = invoices.filter(balance_annotated__lte=0)
         elif status == 'PARTIAL':
-            invoices = [inv for inv in invoices if inv.status == 'PARTIAL']
+            invoices = invoices.filter(balance_annotated__gt=0, amount_paid_annotated__gt=0)
         elif status == 'UNPAID':
-            invoices = [inv for inv in invoices if inv.status == 'UNPAID']
+            invoices = invoices.filter(amount_paid_annotated__lte=0)
 
         student_q = request.GET.get('q', '')
         if student_q:
@@ -476,6 +479,8 @@ class GenerateInvoicesView(RoleRequiredMixin, View):
 
         term = get_object_or_404(Term, school=school, pk=term_id)
 
+        from fees.generation import generate_invoice_for_student
+
         generated = 0
         skipped = 0
 
@@ -490,37 +495,10 @@ class GenerateInvoicesView(RoleRequiredMixin, View):
             if Invoice.objects.filter(school=school, student=student, term=term).exists():
                 skipped += 1
                 continue
-
-            enrollment = ClassEnrollment.objects.filter(
-                student=student, session=term.session, is_current=True
-            ).first()
-            if not enrollment:
+            if generate_invoice_for_student(student, term) is None:
                 skipped += 1
-                continue
-
-            fee_structures = FeeStructure.objects.filter(
-                school=school,
-                school_class=enrollment.school_class,
-                term=term,
-                category__is_compulsory=True,
-            )
-            if not fee_structures.exists():
-                continue
-
-            line_items_data = []
-            total = Decimal('0.00')
-            for fs in fee_structures:
-                line_items_data.append({'category': fs.category, 'amount': fs.amount})
-                total += fs.amount
-
-            invoice = Invoice.objects.create(
-                school=school, student=student, term=term, total_amount=total,
-            )
-            for li in line_items_data:
-                InvoiceLineItem.objects.create(
-                    invoice=invoice, category=li['category'], amount=li['amount'],
-                )
-            generated += 1
+            else:
+                generated += 1
 
         messages.success(
             request,

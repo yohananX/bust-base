@@ -1,6 +1,5 @@
-from django.contrib import admin, messages
+from django.contrib import admin
 from django.shortcuts import render, redirect
-from django.urls import path
 from django.utils.translation import gettext_lazy as _
 
 from .models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
@@ -131,27 +130,10 @@ class StudentAdmin(admin.ModelAdmin):
                 'action': 'promote_students',
                 'select_across': request.POST.get('select_across', 0),
                 'action_checkbox_name': admin.helpers.ACTION_CHECKBOX_NAME,
-            },
+},
         )
 
     promote_students.short_description = _('Promote selected students to a new session')
-
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path(
-                'promote-students/',
-                self.admin_site.admin_view(self.promote_students_view),
-                name='students_student_promote',
-            ),
-        ]
-        return custom_urls + urls
-
-    def promote_students_view(self, request):
-        """Standalone view for promotion (optional, kept for future extensibility)."""
-        # This is a placeholder — the main promotion flow uses the action pattern above.
-        from django.http import HttpResponseNotAllowed
-        return HttpResponseNotAllowed(['GET'])
 
 
 # ---------------------------------------------------------------------------

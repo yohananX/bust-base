@@ -1,6 +1,5 @@
 import csv
 import io
-import json
 import os
 import tempfile
 
@@ -11,7 +10,6 @@ from django.contrib import messages
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
-from core.models import School
 from data_import.importers import ClassImporter, SubjectImporter, StudentImporter, StaffImporter
 from data_import.models import ImportLog
 

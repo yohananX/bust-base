@@ -6,8 +6,8 @@ and reconciles a submitted checkout (``reconcile_checkout``).
 Business rules:
 - ONE invoice per student per term (``unique_together`` on ``Invoice``).
 - ``Invoice.total_amount`` is the only stored money field; balance, amount-paid
-  and status are computed live from CONFIRMED payments plus PENDING bank
-  transfers (money already sent; rejected transfers stop counting once FAILED).
+  and status are computed live from CONFIRMED payments only. PENDING bank
+  transfers do NOT reduce the balance until an admin confirms them.
 - Line-item additions only ever ADD to ``total_amount``; balance is never
   mutated directly.
 - Payments are fully negotiable: a parent selects what to pay for and enters

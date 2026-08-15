@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
-from fees.models import Payment, Invoice, FeeCategory, FeeStructure
+from fees.models import Payment, Invoice, FeeCategory
 from payroll.models import (
     SalaryDisbursement,
     PayrollRun,
@@ -571,7 +571,7 @@ class FinancialReportTest(BaseFinanceTest):
         # Login as admin and hit the report view
         self.client.force_login(self.admin_user)
         response = self.client.get(
-            "/finance/report/",
+            "/school-admin/finance/report/",
             {"start_date": "2025-10-01", "end_date": "2025-10-31"},
         )
 
@@ -586,7 +586,7 @@ class FinancialReportTest(BaseFinanceTest):
         self._create_confirmed_payment(Decimal("25000.00"), day=1)
 
         self.client.force_login(self.admin_user)
-        response = self.client.get("/finance/report/")
+        response = self.client.get("/school-admin/finance/report/")
 
         self.assertEqual(response.status_code, 200)
         # Current term is 2025-09-01 to 2025-12-15, so 25000.00 should appear
@@ -601,7 +601,7 @@ class FinancialReportTest(BaseFinanceTest):
         self.client.force_login(self.admin_user)
         # Query a period before the data was created
         response = self.client.get(
-            "/finance/report/",
+            "/school-admin/finance/report/",
             {"start_date": "2025-01-01", "end_date": "2025-06-30"},
         )
 
@@ -612,8 +612,8 @@ class FinancialReportTest(BaseFinanceTest):
         """Empty period returns zeros, not errors."""
         self.client.force_login(self.admin_user)
         response = self.client.get(
-            "/finance/report/",
-            {"start_date": "2025-01-01", "end_date": "2025-01-31"},
+            "/school-admin/finance/report/",
+            {"start_date": "2025-10-01", "end_date": "2025-10-31"},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -630,7 +630,7 @@ class FinancialReportTest(BaseFinanceTest):
             role=Roles.TEACHER,
         )
         self.client.force_login(teacher_user)
-        response = self.client.get("/finance/report/")
+        response = self.client.get("/school-admin/finance/report/")
         self.assertEqual(response.status_code, 403)
 
     def test_report_net_negative_shown_correctly(self):
@@ -641,7 +641,7 @@ class FinancialReportTest(BaseFinanceTest):
 
         self.client.force_login(self.admin_user)
         response = self.client.get(
-            "/finance/report/",
+            "/school-admin/finance/report/",
             {"start_date": "2025-10-01", "end_date": "2025-10-31"},
         )
 

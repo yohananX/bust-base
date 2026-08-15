@@ -1,6 +1,5 @@
 from decimal import Decimal
 from django.contrib import admin, messages
-from django.db import models
 from django.shortcuts import render
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
@@ -49,41 +48,19 @@ class InvoiceStatusListFilter(admin.SimpleListFilter):
         ]
 
     def queryset(self, request, queryset):
+        from .selectors import invoices_with_balance
+
         value = self.value()
+        qs = invoices_with_balance(queryset)
         if value == 'PAID':
-            paid_subq = models.Subquery(
-                Payment.objects.filter(
-                    invoice=models.OuterRef('pk'),
-                    status=Payment.Status.CONFIRMED,
-                ).values('invoice').annotate(
-                    total=models.Sum('amount')
-                ).values('total')[:1],
-                output_field=models.DecimalField(max_digits=12, decimal_places=2),
-            )
-            return queryset.filter(total_amount__lte=paid_subq)
+            return qs.filter(balance_annotated__lte=Decimal('0.00'))
         elif value == 'PARTIAL':
-            paid_subq = models.Subquery(
-                Payment.objects.filter(
-                    invoice=models.OuterRef('pk'),
-                    status=Payment.Status.CONFIRMED,
-                ).values('invoice').annotate(
-                    total=models.Sum('amount')
-                ).values('total')[:1],
-                output_field=models.DecimalField(max_digits=12, decimal_places=2),
-            )
-            return queryset.filter(
-                total_amount__gt=paid_subq,
-                paid_subq__gt=Decimal('0.00'),
+            return qs.filter(
+                balance_annotated__gt=Decimal('0.00'),
+                amount_paid_annotated__gt=Decimal('0.00'),
             )
         elif value == 'UNPAID':
-            return queryset.filter(
-                ~models.Exists(
-                    Payment.objects.filter(
-                        invoice=models.OuterRef('pk'),
-                        status=Payment.Status.CONFIRMED,
-                    )
-                )
-            )
+            return qs.filter(amount_paid_annotated__lte=Decimal('0.00'))
         return queryset
 
 
@@ -142,6 +119,7 @@ class InvoiceAdmin(admin.ModelAdmin):
     def generate_invoices_for_term(self, request, queryset):
         """Generate invoices for all active students for selected terms."""
         from django.contrib.admin import helpers
+        from .generation import generate_invoice_for_student
 
         if 'apply' in request.POST:
             term_id = request.POST.get('term')
@@ -150,17 +128,13 @@ class InvoiceAdmin(admin.ModelAdmin):
                 return HttpResponseRedirect(request.get_full_path())
 
             from core.models import Term
-            from students.models import Student, ClassEnrollment
+            from students.models import Student
 
             try:
                 term = Term.objects.get(pk=term_id)
             except Term.DoesNotExist:
                 self.message_user(request, _('Selected term not found.'), level=messages.ERROR)
                 return HttpResponseRedirect(request.get_full_path())
-
-            generated = 0
-            skipped_already = 0
-            skipped_inactive = 0
 
             students = Student.objects.filter(
                 school=term.school,
@@ -169,74 +143,22 @@ class InvoiceAdmin(admin.ModelAdmin):
                 enrollments__is_current=True,
             ).distinct()
 
+            generated = 0
+            skipped_already = 0
+            skipped_inactive = 0
             for student in students:
-                if Invoice.objects.filter(school=term.school, student=student, term=term).exists():
+                if Invoice.objects.filter(
+                    school=term.school, student=student, term=term
+                ).exists():
                     skipped_already += 1
                     continue
-
-                enrollment = ClassEnrollment.objects.filter(
-                    student=student,
-                    session=term.session,
-                    is_current=True,
-                ).first()
-                if not enrollment:
+                if not student.enrollments.filter(
+                    session=term.session, is_current=True
+                ).exists():
                     skipped_inactive += 1
                     continue
-
-                fee_structures = FeeStructure.objects.filter(
-                    school=term.school,
-                    school_class=enrollment.school_class,
-                    term=term,
-                    category__is_compulsory=True,
-                )
-
-                if not fee_structures.exists():
-                    continue
-
-                line_items_data = []
-                total = Decimal('0.00')
-                for fs in fee_structures:
-                    line_items_data.append({
-                        'category': fs.category,
-                        'amount': fs.amount,
-                    })
-                    total += fs.amount
-
-                invoice = Invoice.objects.create(
-                    school=term.school,
-                    student=student,
-                    term=term,
-                    total_amount=total,
-                )
-
-                for li in line_items_data:
-                    InvoiceLineItem.objects.create(
-                        invoice=invoice,
-                        category=li['category'],
-                        amount=li['amount'],
-                    )
-
-                generated += 1
-
-                # Send notification to primary-contact guardian
-                guardian_link = student.guardian_links.filter(
-                    is_primary_contact=True
-                ).first()
-                if guardian_link:
-                    from notifications.utils import notify
-                    notify(
-                        recipient=guardian_link.guardian,
-                        channel='EMAIL',
-                        subject=_('New invoice for {first} {last}').format(
-                            first=student.user.first_name,
-                            last=student.user.last_name,
-                        ),
-                        message=_(
-                            'A new invoice for {term} has been generated. '
-                            'Amount: NGN{amount}'
-                        ).format(term=term.name, amount=invoice.total_amount),
-                        reference='invoice:{}'.format(invoice.id),
-                    )
+                if generate_invoice_for_student(student, term) is not None:
+                    generated += 1
 
             msg = _('Generated {} invoice(s). {} already existed (skipped). {} students without current enrollment (skipped).').format(
                 generated, skipped_already, skipped_inactive
