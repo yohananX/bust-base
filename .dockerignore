@@ -1,0 +1,36 @@
+# Version control
+.git
+.gitignore
+
+# Secrets
+.env
+.env.production
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# Django runtime data
+/db.sqlite3
+/media/
+/staticfiles/
+/static/
+
+# Tests / tooling
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Meta-architect
+.spec/

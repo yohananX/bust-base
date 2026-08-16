@@ -2,8 +2,14 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV DEBUG=False
 
-RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+# libpq: psycopg2 | pango/cairo/gdk-pixbuf: WeasyPrint PDF rendering | fonts: PDF text
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev gcc \
+    libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 libharfbuzz-subset0 \
+    fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
