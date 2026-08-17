@@ -739,6 +739,16 @@ class PendingTransferConfirmView(RoleRequiredMixin, View):
             ])
             from fees.paystack import issue_receipt
             issue_receipt(payment)
+            from notifications.utils import notify
+            guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
+            if guardian_link:
+                notify(
+                    recipient=guardian_link.guardian,
+                    channel='IN_APP',
+                    subject=f'Bank transfer confirmed: ₦{payment.amount:,.2f}',
+                    message=f'Your bank transfer of ₦{payment.amount:,.2f} has been confirmed.',
+                    reference=f'transfer-confirm:{payment.id}',
+                )
 
         messages.success(request, f'Payment of ₦{payment.amount:,.2f} confirmed.')
         return redirect('school_admin:pending_transfers')
@@ -759,6 +769,17 @@ class PendingTransferRejectView(RoleRequiredMixin, View):
 
         payment.status = Payment.Status.FAILED
         payment.save(update_fields=['status'])
+        from notifications.utils import notify
+        if payment.student:
+            guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
+            if guardian_link:
+                notify(
+                    recipient=guardian_link.guardian,
+                    channel='IN_APP',
+                    subject=f'Bank transfer rejected: ₦{payment.amount:,.2f}',
+                    message=f'Your bank transfer of ₦{payment.amount:,.2f} was rejected. Please contact the school.',
+                    reference=f'transfer-reject:{payment.id}',
+                )
 
         messages.info(request, 'Payment marked failed.')
         return redirect('school_admin:pending_transfers')
@@ -872,5 +893,15 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
         )
         from fees.paystack import issue_receipt
         issue_receipt(payment)
+        from notifications.utils import notify
+        guardian_link = student.guardian_links.filter(is_primary_contact=True).first()
+        if guardian_link:
+            notify(
+                recipient=guardian_link.guardian,
+                channel='IN_APP',
+                subject=f'Payment recorded: ₦{amount:,.2f}',
+                message=f'Payment of ₦{amount:,.2f} has been recorded for {student}.',
+                reference=f'payment-record:{payment.id}',
+            )
         messages.success(request, f'Payment of ₦{amount:,.2f} recorded.')
         return redirect('school_admin:student_detail', pk=student.pk)

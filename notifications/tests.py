@@ -423,8 +423,8 @@ class NotificationDedupTest(BaseNotificationTest):
 class InAppChannelTest(BaseNotificationTest):
     """Tests for the IN_APP notification channel."""
 
-    def test_process_in_app_flips_to_sent(self):
-        """Processing a queued IN_APP notification sets status to SENT."""
+    def test_process_in_app_stays_queued(self):
+        """Processing a queued IN_APP notification leaves it QUEUED (unread)."""
         log = NotificationLog.objects.create(
             school=self.school,
             recipient=self.parent_user,
@@ -436,8 +436,8 @@ class InAppChannelTest(BaseNotificationTest):
         process_notification(log.id)
 
         log.refresh_from_db()
-        self.assertEqual(log.status, NotificationLog.Status.SENT)
-        self.assertIsNotNone(log.sent_at)
+        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+        self.assertIsNone(log.sent_at)
 
     def test_in_app_notification_no_external_delivery(self):
         """IN_APP notifications do not trigger external delivery errors."""
@@ -452,7 +452,7 @@ class InAppChannelTest(BaseNotificationTest):
         process_notification(log.id)
 
         log.refresh_from_db()
-        self.assertEqual(log.status, NotificationLog.Status.SENT)
+        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
         self.assertEqual(log.error_message, '')
 
 

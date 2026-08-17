@@ -147,6 +147,17 @@ def issue_receipt(payment):
             'receipt_number': f'RCP-{timezone.now().year}-{payment.pk:06d}',
         },
     )
+    from notifications.utils import notify
+    if payment.student:
+        guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
+        if guardian_link:
+            notify(
+                recipient=guardian_link.guardian,
+                channel='IN_APP',
+                subject=f'Receipt issued: ₦{payment.amount:,.2f}',
+            message=f'Receipt {receipt.receipt_number} has been issued for your payment.',
+            reference=f'receipt:{payment.id}',
+        )
     return receipt
 
 
@@ -199,6 +210,17 @@ def confirm_payment_from_verify(payment, data):
         'paid_by_phone',
     ])
     issue_receipt(payment)
+    from notifications.utils import notify
+    if payment.student:
+        guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
+        if guardian_link:
+            notify(
+                recipient=guardian_link.guardian,
+                channel='IN_APP',
+                subject=f'Payment confirmed: ₦{payment.amount:,.2f}',
+                message=f'Payment of ₦{payment.amount:,.2f} for {payment.student} has been confirmed.',
+                reference=f'payment-confirm:{payment.id}',
+            )
     logger.info(f'Payment {payment.reference} confirmed via verify fallback')
     return payment
 
@@ -269,6 +291,17 @@ def _handle_charge_success(event, data, webhook_log):
             'paid_by_name', 'paid_by_phone', 'student', 'description',
         ])
         issue_receipt(payment)
+        from notifications.utils import notify
+        if payment.student:
+            guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
+            if guardian_link:
+                notify(
+                    recipient=guardian_link.guardian,
+                    channel='IN_APP',
+                    subject=f'Payment confirmed: ₦{payment.amount:,.2f}',
+                    message=f'Payment of ₦{payment.amount:,.2f} for {payment.student} has been confirmed.',
+                    reference=f'payment-confirm:{payment.id}',
+                )
         _mark_webhook_log_processed(webhook_log)
         logger.info(f'Payment {reference} confirmed (updated)')
         return JsonResponse({'status': 'confirmed'})
@@ -369,6 +402,17 @@ def _handle_charge_failure(event_name, event, data, webhook_log):
         payment.webhook_processed = True
         payment.webhook_payload = event
         payment.save(update_fields=['status', 'webhook_processed', 'webhook_payload'])
+        from notifications.utils import notify
+        if payment and payment.student:
+            guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
+            if guardian_link:
+                notify(
+                    recipient=guardian_link.guardian,
+                    channel='IN_APP',
+                    subject=f'Payment failed: ₦{payment.amount:,.2f}',
+                    message=f'Payment of ₦{payment.amount:,.2f} could not be processed. Please try again.',
+                    reference=f'payment-fail:{payment.id}',
+                )
         _mark_webhook_log_processed(webhook_log)
         logger.info(f'Payment {reference} recorded as failed via {event_name}')
         return JsonResponse({'status': 'recorded'})

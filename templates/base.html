@@ -255,8 +255,9 @@
               {% elif user.role == 'STUDENT' %}bg-success-tint text-success
               {% elif user.role == 'PARENT' %}bg-warning-tint text-warning
               {% endif %}">
-              {{ user.get_role_display }}
+{{ user.get_role_display }}
             </span>
+            {% include 'components/notification_bell.html' %}
           {% endif %}
         </div>
       </header>
@@ -420,5 +421,81 @@
 
   {% block extra_scripts %}{% endblock %}
   {% block extra_js %}{% endblock %}
+
+  {% if user.is_authenticated %}
+  <script>
+    (function() {
+      const bellBtn = document.getElementById('bell-btn');
+      const bellBadge = document.getElementById('bell-badge');
+      const bellDropdown = document.getElementById('bell-dropdown');
+      if (!bellBtn || !bellDropdown) return;
+
+      const bellCountUrl = '{% url 'notifications:bell_count' %}';
+      const bellDropdownUrl = '{% url 'notifications:bell_dropdown' %}';
+
+      function updateBadge() {
+        fetch(bellCountUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            var count = data.unread_count || 0;
+            if (count > 0) {
+              bellBadge.textContent = count > 99 ? '99+' : count;
+              bellBadge.classList.remove('hidden');
+              bellBadge.classList.add('flex');
+            } else {
+              bellBadge.classList.add('hidden');
+              bellBadge.classList.remove('flex');
+            }
+          })
+          .catch(function() {});
+      }
+
+      function loadDropdown() {
+        bellDropdown.classList.remove('hidden');
+        bellBtn.setAttribute('aria-expanded', 'true');
+        fetch(bellDropdownUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(function(r) { return r.text(); })
+          .then(function(html) {
+            bellDropdown.innerHTML = html;
+            updateBadge();
+          })
+          .catch(function() {
+            bellDropdown.innerHTML = '<div class="px-4 py-6 text-center text-sm text-ink-muted">Failed to load notifications.</div>';
+          });
+      }
+
+      function closeDropdown() {
+        bellDropdown.classList.add('hidden');
+        bellDropdown.innerHTML = '';
+        bellBtn.setAttribute('aria-expanded', 'false');
+      }
+
+      bellBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (bellDropdown.classList.contains('hidden')) {
+          loadDropdown();
+        } else {
+          closeDropdown();
+        }
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!bellDropdown.classList.contains('hidden') && !bellDropdown.contains(e.target) && e.target !== bellBtn) {
+          closeDropdown();
+        }
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !bellDropdown.classList.contains('hidden')) {
+          closeDropdown();
+        }
+      });
+
+      updateBadge();
+      setInterval(updateBadge, 30000);
+    })();
+  </script>
+  {% endif %}
 </body>
 </html>
+

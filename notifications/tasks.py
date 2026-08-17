@@ -16,6 +16,10 @@ def process_notification(notification_id):
             send_email(log.recipient, log.subject, log.message)
         elif log.channel == NotificationLog.Channel.SMS:
             send_sms(log.recipient, log.message)
+        elif log.channel == NotificationLog.Channel.IN_APP:
+            # In-app notifications are not delivered by the task; they stay
+            # QUEUED (unread) until the user opens the bell dropdown.
+            return
 
         log.status = NotificationLog.Status.SENT
         log.sent_at = timezone.now()

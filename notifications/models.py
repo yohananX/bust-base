@@ -10,6 +10,7 @@ class NotificationLog(TenantScopedModel):
     class Channel(models.TextChoices):
         EMAIL = 'EMAIL', _('Email')
         SMS = 'SMS', _('SMS')
+        IN_APP = 'IN_APP', _('In-App')
 
     class Status(models.TextChoices):
         QUEUED = 'QUEUED', _('Queued')

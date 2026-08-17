@@ -17,7 +17,17 @@ def notification_bell_count(request):
 
 @login_required
 def notification_bell_dropdown(request):
-    """Return the dropdown fragment with the last 10 notifications for the current user."""
+    """Return the dropdown fragment with the last 10 notifications for the current user.
+
+    Opening the dropdown marks the user's in-app notifications as read
+    (QUEUED -> SENT), so the badge reflects genuinely unread items.
+    """
+    NotificationLog.objects.filter(
+        recipient=request.user,
+        channel=NotificationLog.Channel.IN_APP,
+        status=NotificationLog.Status.QUEUED,
+    ).update(status=NotificationLog.Status.SENT)
+
     notifications_qs = NotificationLog.objects.filter(
         recipient=request.user,
     ).select_related('recipient').order_by('-created_at')[:10]

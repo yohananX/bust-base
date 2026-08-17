@@ -24,32 +24,48 @@ class ParentChildrenListView(RoleRequiredMixin, View):
     def get(self, request):
         guardian_links = StudentGuardianLink.objects.filter(
             guardian=request.user,
-        ).select_related('student', 'student__user')
+        ).select_related(
+            'student__user',
+        ).prefetch_related(
+            'student__enrollments__school_class',
+            'student__enrollments__session',
+        )
 
         current_term = Term.objects.filter(
             school=request.school, is_current=True,
         ).first()
+
+        student_ids = [link.student_id for link in guardian_links]
+        invoices_qs = Invoice.objects.filter(
+            student_id__in=student_ids,
+        ).select_related('term', 'student', 'student__user').prefetch_related('payments')
+        invoices_by_student = {}
+        for inv in invoices_qs:
+            invoices_by_student.setdefault(inv.student_id, []).append(inv)
+
+        if current_term and current_term.results_published:
+            term_results = {
+                tr.student_id: tr
+                for tr in TermResult.objects.filter(
+                    student_id__in=student_ids,
+                    term=current_term,
+                )
+            }
+        else:
+            term_results = {}
 
         children_data = []
         for link in guardian_links:
             student = link.student
 
             # Current enrollment
-            enrollment = ClassEnrollment.objects.filter(
-                student=student, is_current=True,
-            ).select_related('school_class', 'session').first()
+            enrollment = student.enrollments.filter(is_current=True).first()
 
             # Academic performance for current term
-            term_result = None
-            if current_term and current_term.results_published:
-                term_result = TermResult.objects.filter(
-                    student=student, term=current_term,
-                ).first()
+            term_result = term_results.get(student.pk)
 
             # Total amount owed
-            invoices = Invoice.objects.filter(
-                student=student,
-            )
+            invoices = invoices_by_student.get(student.pk, [])
             unpaid_invoices = [inv for inv in invoices if inv.balance > 0]
             total_owed = sum(inv.balance for inv in unpaid_invoices)
             unpaid_count = len(unpaid_invoices)

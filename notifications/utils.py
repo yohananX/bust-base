@@ -60,6 +60,11 @@ def notify(*, recipient, channel, subject='', message, reference=''):
         reference=reference,
         status=NotificationLog.Status.QUEUED,
     )
+    # In-app notifications need no delivery task — they stay QUEUED (unread)
+    # until the user opens the bell dropdown.
+    if channel == NotificationLog.Channel.IN_APP:
+        return log
+
     # Enqueue the send task — pass the log ID so the task can update it
     async_task('notifications.tasks.process_notification', log.id)
     return log
