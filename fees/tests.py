@@ -13,6 +13,7 @@ from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from fees.models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment
 from fees.selectors import invoices_with_balance
+from notifications.models import NotificationLog
 
 
 User = get_user_model()
@@ -1887,3 +1888,147 @@ class PaystackGatingTest(BaseFeesTest):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Paystack Card')
         self.assertContains(response, 'Proceed to Paystack Checkout')
+
+# --- In-App Notification Trigger Tests ---
+
+class InAppNotificationTriggerTest(BaseFeesTest):
+    """Tests that fee events create IN_APP NotificationLog rows with correct references."""
+
+    def setUp(self):
+        super().setUp()
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def test_payment_confirmation_creates_notification_log(self):
+        """confirm_payment_from_verify creates NotificationLog with reference 'payment-confirm:{id}'."""
+        from fees.paystack import confirm_payment_from_verify
+
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference='PAY_CONFIRM_REF',
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+
+        data = {
+            'status': 'success',
+            'amount': 6000000,  # kobo
+            'currency': 'NGN',
+            'fees': 15000,
+            'authorization': {'channel': 'card', 'last4': '4242', 'card_type': 'visa'},
+            'customer': {'email': 'p@x.com', 'first_name': 'Ada', 'last_name': 'Lovelace'},
+        }
+
+        confirm_payment_from_verify(payment, data)
+
+        log = NotificationLog.objects.get(reference='payment-confirm:%s' % payment.id)
+        self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
+        self.assertEqual(log.recipient, self.parent_user)
+        self.assertIn('Payment confirmed', log.subject)
+        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+
+    def test_payment_failure_creates_notification_log(self):
+        """charge.failed webhook creates NotificationLog with reference 'payment-fail:{id}'."""
+        from fees.paystack import _handle_charge_failure
+
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference='PAY_FAIL_REF',
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+
+        event = {'event': 'charge.failed', 'data': {'reference': 'PAY_FAIL_REF'}}
+        _handle_charge_failure('charge.failed', event, event['data'], webhook_log=None)
+
+        log = NotificationLog.objects.get(reference='payment-fail:%s' % payment.id)
+        self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
+        self.assertEqual(log.recipient, self.parent_user)
+        self.assertIn('Payment failed', log.subject)
+        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+
+    def test_bank_transfer_confirm_creates_notification_log(self):
+        """PendingTransferConfirmView creates NotificationLog with reference 'transfer-confirm:{id}'."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.BANK_TRANSFER,
+            reference=None,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+
+        self.client.force_login(self.admin_user)
+        response = self.client.post(
+            reverse('school_admin:pending_transfer_confirm', args=[payment.pk])
+        )
+
+        self.assertEqual(response.status_code, 302)
+        log = NotificationLog.objects.get(reference='transfer-confirm:%s' % payment.id)
+        self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
+        self.assertEqual(log.recipient, self.parent_user)
+        self.assertIn('Bank transfer confirmed', log.subject)
+        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+
+    def test_bank_transfer_reject_creates_notification_log(self):
+        """PendingTransferRejectView creates NotificationLog with reference 'transfer-reject:{id}'."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.BANK_TRANSFER,
+            reference=None,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+
+        self.client.force_login(self.admin_user)
+        response = self.client.post(
+            reverse('school_admin:pending_transfer_reject', args=[payment.pk])
+        )
+
+        self.assertEqual(response.status_code, 302)
+        log = NotificationLog.objects.get(reference='transfer-reject:%s' % payment.id)
+        self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
+        self.assertEqual(log.recipient, self.parent_user)
+        self.assertIn('Bank transfer rejected', log.subject)
+        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+
+    def test_receipt_issuance_creates_notification_log(self):
+        """issue_receipt creates NotificationLog with reference 'receipt:{id}'."""
+        from fees.paystack import issue_receipt
+
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference='RCPT_REF',
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+        )
+
+        receipt = issue_receipt(payment)
+
+        log = NotificationLog.objects.get(reference='receipt:%s' % payment.id)
+        self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
+        self.assertEqual(log.recipient, self.parent_user)
+        self.assertIn('Receipt issued', log.subject)
+        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+        self.assertIsNotNone(receipt)

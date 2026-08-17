@@ -2,6 +2,7 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import Roles
@@ -414,4 +415,132 @@ class NotificationDedupTest(BaseNotificationTest):
         # No new invoices -> no new notifications
         self.assertEqual(
             NotificationLog.objects.filter(reference__startswith='invoice:').count(), 2
+        )
+
+
+# --- IN_APP Channel Tests ---
+
+class InAppChannelTest(BaseNotificationTest):
+    """Tests for the IN_APP notification channel."""
+
+    def test_process_in_app_flips_to_sent(self):
+        """Processing a queued IN_APP notification sets status to SENT."""
+        log = NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='In-app test',
+            message='This is an in-app notification.',
+            status=NotificationLog.Status.QUEUED,
+        )
+        process_notification(log.id)
+
+        log.refresh_from_db()
+        self.assertEqual(log.status, NotificationLog.Status.SENT)
+        self.assertIsNotNone(log.sent_at)
+
+    def test_in_app_notification_no_external_delivery(self):
+        """IN_APP notifications do not trigger external delivery errors."""
+        log = NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='No external delivery',
+            message='Stored for in-app display only.',
+            status=NotificationLog.Status.QUEUED,
+        )
+        process_notification(log.id)
+
+        log.refresh_from_db()
+        self.assertEqual(log.status, NotificationLog.Status.SENT)
+        self.assertEqual(log.error_message, '')
+
+
+# --- Bell View Tests ---
+
+class NotificationBellViewTest(BaseNotificationTest):
+    """Tests for the notification bell views."""
+
+    def test_bell_count_returns_unread_count(self):
+        """notification_bell_count returns the count of QUEUED notifications."""
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Unread 1',
+            message='Unread message 1',
+            status=NotificationLog.Status.QUEUED,
+        )
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.EMAIL,
+            subject='Read 1',
+            message='Read message 1',
+            status=NotificationLog.Status.SENT,
+        )
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Unread 2',
+            message='Unread message 2',
+            status=NotificationLog.Status.QUEUED,
+        )
+
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('notifications:bell_count'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {'unread_count': 2})
+
+    def test_bell_count_zero_when_no_unread(self):
+        """notification_bell_count returns 0 when there are no QUEUED notifications."""
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.EMAIL,
+            subject='Read',
+            message='Read message',
+            status=NotificationLog.Status.SENT,
+        )
+
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('notifications:bell_count'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {'unread_count': 0})
+
+    def test_bell_dropdown_returns_last_10(self):
+        """notification_bell_dropdown returns the last 10 notifications for the user."""
+        from unittest.mock import patch
+        import time
+        from django.http import HttpResponse
+
+        for i in range(12):
+            NotificationLog.objects.create(
+                school=self.school,
+                recipient=self.parent_user,
+                channel=NotificationLog.Channel.IN_APP,
+                subject='Notification %d' % i,
+                message='Message %d' % i,
+            )
+            time.sleep(0.05)
+
+        self.client.force_login(self.parent_user)
+        with patch('notifications.views.render') as mock_render:
+            mock_render.return_value = HttpResponse('ok')
+            response = self.client.get(reverse('notifications:bell_dropdown'))
+
+        self.assertEqual(response.status_code, 200)
+        args, kwargs = mock_render.call_args
+        context = args[2]  # 3rd positional argument to render()
+        qs = context['notifications']
+        self.assertEqual(len(list(qs)), 10)
+        subjects = [n.subject for n in qs]
+        # Verify we got exactly 10 notifications back
+        self.assertEqual(len(subjects), 10)
+        # Verify the total count in DB is 12
+        self.assertEqual(
+            NotificationLog.objects.filter(recipient=self.parent_user).count(), 12
         )
