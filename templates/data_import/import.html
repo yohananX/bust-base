@@ -41,7 +41,8 @@
   {# Upload Form #}
   <div class="bg-white rounded-lg border border-gray-200 p-6">
     <h2 class="text-lg font-medium text-gray-900 mb-4">Upload CSV</h2>
-    <form method="post" action="{% url 'school_admin:import' %}" enctype="multipart/form-data">
+    <form method="post" action="{% url 'school_admin:import' %}" enctype="multipart/form-data"
+          hx-post="{% url 'school_admin:import' %}" hx-target="#import-preview" hx-swap="innerHTML">
       {% csrf_token %}
       <div class="space-y-4">
         <div>

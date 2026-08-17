@@ -1,0 +1,401 @@
+first_name,last_name,username,date_of_birth,gender,class_name,parent_name,parent_email,parent_phone
+Dare,Adeleke,dare.adeleke,2019-04-10,MALE,Basic 1,Mr Adeleke,parent.dare.adeleke.adeleke@gmail.com,080350155640
+Faith,Maduka,faith.maduka,2019-09-16,FEMALE,Basic 1,Mrs Maduka,parent.faith.maduka.maduka@gmail.com,080363352718
+Maryam,Amaechi,maryam.amaechi,2019-07-18,FEMALE,Basic 1,Mrs Amaechi,parent.maryam.amaechi.amaechi@gmail.com,080314866552
+Chioma,Eri,chioma.eri,2019-12-23,FEMALE,Basic 1,Mrs Eri,parent.chioma.eri.eri@gmail.com,080394342466
+Kosisochukwu,Adewale,kosisochukwu.adewale,2019-02-21,FEMALE,Basic 1,Mrs Adewale,parent.kosisochukwu.adewale.adewale@gmail.com,080358362112
+Funke,Osagie,funke.osagie,2019-03-15,FEMALE,Basic 1,Mrs Osagie,parent.funke.osagie.osagie@gmail.com,080311546333
+Ruth,Ezeugwu,ruth.ezeugwu,2018-10-26,FEMALE,Basic 1,Mrs Ezeugwu,parent.ruth.ezeugwu.ezeugwu@gmail.com,080344158025
+Chiamaka,Osuji,chiamaka.osuji,2019-11-25,FEMALE,Basic 1,Mrs Osuji,parent.chiamaka.osuji.osuji@gmail.com,080362596457
+Joy,Imoh,joy.imoh,2019-12-24,FEMALE,Basic 1,Mrs Imoh,parent.joy.imoh.imoh@gmail.com,080339157065
+Ruth,Adeleke,ruth.adeleke,2019-02-14,FEMALE,Basic 1,Mrs Adeleke,parent.ruth.adeleke.adeleke@gmail.com,080332270731
+Daniel,Abubakar,daniel.abubakar,2019-07-26,MALE,Basic 1,Mr Abubakar,parent.daniel.abubakar.abubakar@gmail.com,080338724671
+Kolawole,Okafor,kolawole.okafor,2018-07-03,MALE,Basic 1,Mr Okafor,parent.kolawole.okafor.okafor@gmail.com,080315821993
+Chima,Eze,chima.eze,2018-09-16,MALE,Basic 1,Mr Eze,parent.chima.eze.eze@gmail.com,080365094766
+Ogechi,Chukwu,ogechi.chukwu,2019-10-20,FEMALE,Basic 1,Mrs Chukwu,parent.ogechi.chukwu.chukwu@gmail.com,080332581855
+Tunde,Ajagbe,tunde.ajagbe,2019-08-20,MALE,Basic 1,Mr Ajagbe,parent.tunde.ajagbe.ajagbe@gmail.com,080341166158
+Ikenna,Ogunleye,ikenna.ogunleye,2018-01-21,MALE,Basic 1,Mr Ogunleye,parent.ikenna.ogunleye.ogunleye@gmail.com,080390808451
+Victoria,Nwogbo,victoria.nwogbo,2018-08-23,FEMALE,Basic 1,Mrs Nwogbo,parent.victoria.nwogbo.nwogbo@gmail.com,080312166605
+Tunde,Umeadi,tunde.umeadi,2018-03-22,MALE,Basic 1,Mr Umeadi,parent.tunde.umeadi.umeadi@gmail.com,080336542635
+Halima,Adepoju,halima.adepoju,2018-07-10,FEMALE,Basic 1,Mrs Adepoju,parent.halima.adepoju.adepoju@gmail.com,080335772469
+Hauwa,Chukwu,hauwa.chukwu,2019-05-15,FEMALE,Basic 1,Mrs Chukwu,parent.hauwa.chukwu.chukwu@gmail.com,080335465836
+Suleiman,Ajayi,suleiman.ajayi,2019-02-28,MALE,Basic 1,Mr Ajayi,parent.suleiman.ajayi.ajayi@gmail.com,080343881154
+Ifeoma,Akintola,ifeoma.akintola,2019-07-18,FEMALE,Basic 1,Mrs Akintola,parent.ifeoma.akintola.akintola@gmail.com,080330456084
+Ezinne,Adesina,ezinne.adesina,2018-02-20,FEMALE,Basic 1,Mrs Adesina,parent.ezinne.adesina.adesina@gmail.com,080359324772
+Sunday,Bakare,sunday.bakare,2019-10-09,MALE,Basic 1,Mr Bakare,parent.sunday.bakare.bakare@gmail.com,080392224963
+Simisola,Eri,simisola.eri,2019-03-04,FEMALE,Basic 1,Mrs Eri,parent.simisola.eri.eri@gmail.com,080315976939
+Onyekachi,Nwogbo,onyekachi.nwogbo,2018-09-11,MALE,Basic 1,Mr Nwogbo,parent.onyekachi.nwogbo.nwogbo@gmail.com,080359866824
+Ayodeji,Abdullahi,ayodeji.abdullahi,2018-05-09,MALE,Basic 1,Mr Abdullahi,parent.ayodeji.abdullahi.abdullahi@gmail.com,080320232708
+Amara,Suleiman,amara.suleiman,2019-01-02,FEMALE,Basic 1,Mrs Suleiman,parent.amara.suleiman.suleiman@gmail.com,080323946427
+Ogechi,Eri,ogechi.eri,2019-06-25,FEMALE,Basic 1,Mrs Eri,parent.ogechi.eri.eri@gmail.com,080380637716
+Tobi,Mba,tobi.mba,2018-10-15,MALE,Basic 1,Mr Mba,parent.tobi.mba.mba@gmail.com,080372003874
+Yusuf,Okeke,yusuf.okeke,2019-07-10,MALE,Basic 1,Mr Okeke,parent.yusuf.okeke.okeke@gmail.com,080360966882
+Abubakar,Eze,abubakar.eze,2019-12-11,MALE,Basic 1,Mr Eze,parent.abubakar.eze.eze@gmail.com,080352052109
+Aisha,Abdullahi,aisha.abdullahi,2018-09-11,FEMALE,Basic 1,Mrs Abdullahi,parent.aisha.abdullahi.abdullahi@gmail.com,080349409717
+Ogechi,Balogun,ogechi.balogun,2018-02-02,FEMALE,Basic 1,Mrs Balogun,parent.ogechi.balogun.balogun@gmail.com,080338767502
+Faith,Obiagwu,faith.obiagwu,2019-01-14,FEMALE,Basic 1,Mrs Obiagwu,parent.faith.obiagwu.obiagwu@gmail.com,080335972209
+Yetunde,Ojo,yetunde.ojo,2019-11-08,FEMALE,Basic 1,Mrs Ojo,parent.yetunde.ojo.ojo@gmail.com,080333078067
+John,Omojola,john.omojola,2019-05-26,MALE,Basic 1,Mr Omojola,parent.john.omojola.omojola@gmail.com,080333829496
+Temitope,Ezeugwu,temitope.ezeugwu,2018-07-09,FEMALE,Basic 2,Mrs Ezeugwu,parent.temitope.ezeugwu.ezeugwu@gmail.com,080362326285
+Daniel,Uzo,daniel.uzo,2017-09-02,MALE,Basic 2,Mr Uzo,parent.daniel.uzo.uzo@gmail.com,080394449700
+Rukaiya,Osuji,rukaiya.osuji,2018-01-22,FEMALE,Basic 2,Mrs Osuji,parent.rukaiya.osuji.osuji@gmail.com,080314073617
+Bisi,Ojewale,bisi.ojewale,2017-12-28,FEMALE,Basic 2,Mrs Ojewale,parent.bisi.ojewale.ojewale@gmail.com,080376038642
+Femi,Ike,femi.ike,2018-06-28,MALE,Basic 2,Mr Ike,parent.femi.ike.ike@gmail.com,080346286867
+Peace,Akintola,peace.akintola,2018-11-19,FEMALE,Basic 2,Mrs Akintola,parent.peace.akintola.akintola@gmail.com,080353152477
+Aisha,Osho,aisha.osho,2018-01-12,FEMALE,Basic 2,Mrs Osho,parent.aisha.osho.osho@gmail.com,080396850588
+Michael,Adeosun,michael.adeosun,2017-05-12,MALE,Basic 2,Mr Adeosun,parent.michael.adeosun.adeosun@gmail.com,080394446211
+Success,Eri,success.eri,2017-09-07,FEMALE,Basic 2,Mrs Eri,parent.success.eri.eri@gmail.com,080359607126
+Abike,Akinola,abike.akinola,2017-09-04,FEMALE,Basic 2,Mrs Akinola,parent.abike.akinola.akinola@gmail.com,080322380558
+Oluwafemi,Iheanacho,oluwafemi.iheanacho,2018-05-02,MALE,Basic 2,Mr Iheanacho,parent.oluwafemi.iheanacho.iheanacho@gmail.com,080342721443
+Ayodeji,Ezeugwu,ayodeji.ezeugwu,2018-06-05,MALE,Basic 2,Mr Ezeugwu,parent.ayodeji.ezeugwu.ezeugwu@gmail.com,080373165812
+Michael,Okafor,michael.okafor,2018-07-12,MALE,Basic 2,Mr Okafor,parent.michael.okafor.okafor@gmail.com,080392866978
+Obinna,Adeosun,obinna.adeosun,2018-09-05,MALE,Basic 2,Mr Adeosun,parent.obinna.adeosun.adeosun@gmail.com,080330476776
+Yusuf,Ogunbiyi,yusuf.ogunbiyi,2017-06-03,MALE,Basic 2,Mr Ogunbiyi,parent.yusuf.ogunbiyi.ogunbiyi@gmail.com,080365077604
+Uzoamaka,Maduka,uzoamaka.maduka,2017-03-04,FEMALE,Basic 2,Mrs Maduka,parent.uzoamaka.maduka.maduka@gmail.com,080368129648
+Queen,Onyeka,queen.onyeka,2018-05-20,FEMALE,Basic 2,Mrs Onyeka,parent.queen.onyeka.onyeka@gmail.com,080351972144
+Maryam,Ajayi,maryam.ajayi,2017-06-22,FEMALE,Basic 2,Mrs Ajayi,parent.maryam.ajayi.ajayi@gmail.com,080389819959
+Chidinma,Ukaegbu,chidinma.ukaegbu,2017-08-25,FEMALE,Basic 2,Mrs Ukaegbu,parent.chidinma.ukaegbu.ukaegbu@gmail.com,080354451062
+Femi,Falade,femi.falade,2018-07-17,MALE,Basic 2,Mr Falade,parent.femi.falade.falade@gmail.com,080395565214
+Queen,Odoemelam,queen.odoemelam,2018-07-11,FEMALE,Basic 2,Mrs Odoemelam,parent.queen.odoemelam.odoemelam@gmail.com,080333296482
+Femi,Okoro,femi.okoro,2018-06-14,MALE,Basic 2,Mr Okoro,parent.femi.okoro.okoro@gmail.com,080373571458
+Success,Ikegwu,success.ikegwu,2017-07-09,FEMALE,Basic 2,Mrs Ikegwu,parent.success.ikegwu.ikegwu@gmail.com,080361977129
+Amina,Fagbemi,amina.fagbemi,2017-09-21,FEMALE,Basic 2,Mrs Fagbemi,parent.amina.fagbemi.fagbemi@gmail.com,080353930782
+Uzoamaka,Ike,uzoamaka.ike,2017-05-10,FEMALE,Basic 2,Mrs Ike,parent.uzoamaka.ike.ike@gmail.com,080386731771
+Blessing,Omojola,blessing.omojola,2018-11-14,FEMALE,Basic 2,Mrs Omojola,parent.blessing.omojola.omojola@gmail.com,080361593937
+Hassan,Ojewale,hassan.ojewale,2017-07-12,MALE,Basic 2,Mr Ojewale,parent.hassan.ojewale.ojewale@gmail.com,080361007159
+Sunday,Adeosun,sunday.adeosun,2017-05-18,MALE,Basic 2,Mr Adeosun,parent.sunday.adeosun.adeosun@gmail.com,080352191090
+Faith,Nduka,faith.nduka,2018-08-28,FEMALE,Basic 2,Mrs Nduka,parent.faith.nduka.nduka@gmail.com,080385683223
+Victoria,Alabi,victoria.alabi,2017-11-28,FEMALE,Basic 2,Mrs Alabi,parent.victoria.alabi.alabi@gmail.com,080355479668
+Yemi,Uzoma,yemi.uzoma,2018-09-09,FEMALE,Basic 2,Mrs Uzoma,parent.yemi.uzoma.uzoma@gmail.com,080361325198
+Adebayo,Ezeilo,adebayo.ezeilo,2017-02-05,MALE,Basic 2,Mr Ezeilo,parent.adebayo.ezeilo.ezeilo@gmail.com,080363680993
+Tunde,Mba,tunde.mba,2017-12-10,MALE,Basic 2,Mr Mba,parent.tunde.mba.mba@gmail.com,080329523176
+Rukaiya,Okeke,rukaiya.okeke,2017-02-01,FEMALE,Basic 2,Mrs Okeke,parent.rukaiya.okeke.okeke@gmail.com,080357038640
+Blessing,Oparah,blessing.oparah,2017-08-22,FEMALE,Basic 2,Mrs Oparah,parent.blessing.oparah.oparah@gmail.com,080365763948
+Deborah,Asoegwu,deborah.asoegwu,2018-08-11,FEMALE,Basic 2,Mrs Asoegwu,parent.deborah.asoegwu.asoegwu@gmail.com,080350615983
+Somto,Nwosu,somto.nwosu,2018-06-09,MALE,Basic 2,Mr Nwosu,parent.somto.nwosu.nwosu@gmail.com,080383334204
+Safiya,Oparah,safiya.oparah,2017-05-07,FEMALE,Basic 3,Mrs Oparah,parent.safiya.oparah.oparah@gmail.com,080316893064
+Sunday,Onwuchekwa,sunday.onwuchekwa,2017-08-20,MALE,Basic 3,Mr Onwuchekwa,parent.sunday.onwuchekwa.onwuchekwa@gmail.com,080328550241
+Joshua,Usman,joshua.usman,2017-06-22,MALE,Basic 3,Mr Usman,parent.joshua.usman.usman@gmail.com,080366041128
+Blessing,Adeosun,blessing.adeosun,2017-09-17,FEMALE,Basic 3,Mrs Adeosun,parent.blessing.adeosun.adeosun@gmail.com,080371784495
+Tunde,Eze,tunde.eze,2017-04-07,MALE,Basic 3,Mr Eze,parent.tunde.eze.eze@gmail.com,080378523401
+Somto,Ekwueme,somto.ekwueme,2016-05-25,MALE,Basic 3,Mr Ekwueme,parent.somto.ekwueme.ekwueme@gmail.com,080382293628
+Tobi,Afolabi,tobi.afolabi,2017-09-20,MALE,Basic 3,Mr Afolabi,parent.tobi.afolabi.afolabi@gmail.com,080393171791
+Blessing,Olowu,blessing.olowu,2016-12-05,FEMALE,Basic 3,Mrs Olowu,parent.blessing.olowu.olowu@gmail.com,080339612378
+Joy,Obi,joy.obi,2017-05-27,FEMALE,Basic 3,Mrs Obi,parent.joy.obi.obi@gmail.com,080332335198
+Halima,Okoro,halima.okoro,2017-03-15,FEMALE,Basic 3,Mrs Okoro,parent.halima.okoro.okoro@gmail.com,080333130159
+Godwin,Adewale,godwin.adewale,2016-07-21,MALE,Basic 3,Mr Adewale,parent.godwin.adewale.adewale@gmail.com,080389161541
+Damilola,Alabi,damilola.alabi,2017-09-03,MALE,Basic 3,Mr Alabi,parent.damilola.alabi.alabi@gmail.com,080386824903
+Folake,Osun,folake.osun,2016-08-01,FEMALE,Basic 3,Mrs Osun,parent.folake.osun.osun@gmail.com,080311588064
+Precious,Okpara,precious.okpara,2017-06-25,FEMALE,Basic 3,Mrs Okpara,parent.precious.okpara.okpara@gmail.com,080312748282
+Chinedu,Adewale,chinedu.adewale,2017-04-27,MALE,Basic 3,Mr Adewale,parent.chinedu.adewale.adewale@gmail.com,080334045335
+Maryam,Bakare,maryam.bakare,2017-03-18,FEMALE,Basic 3,Mrs Bakare,parent.maryam.bakare.bakare@gmail.com,080377099740
+Modupe,Olowu,modupe.olowu,2016-05-21,FEMALE,Basic 3,Mrs Olowu,parent.modupe.olowu.olowu@gmail.com,080389378746
+Chinedu,Bakare,chinedu.bakare,2016-02-25,MALE,Basic 3,Mr Bakare,parent.chinedu.bakare.bakare@gmail.com,080325938050
+Samuel,Okoro,samuel.okoro,2016-02-06,MALE,Basic 3,Mr Okoro,parent.samuel.okoro.okoro@gmail.com,080347274380
+Fatima,Eze,fatima.eze,2016-11-21,FEMALE,Basic 3,Mrs Eze,parent.fatima.eze.eze@gmail.com,080354817017
+Musa,Okafor,musa.okafor,2017-09-15,MALE,Basic 3,Mr Okafor,parent.musa.okafor.okafor@gmail.com,080355942204
+Chinenye,Egbuna,chinenye.egbuna,2016-09-08,FEMALE,Basic 3,Mrs Egbuna,parent.chinenye.egbuna.egbuna@gmail.com,080367650692
+Peace,Iwuchukwu,peace.iwuchukwu,2016-12-22,FEMALE,Basic 3,Mrs Iwuchukwu,parent.peace.iwuchukwu.iwuchukwu@gmail.com,080395473593
+Joseph,Ibe,joseph.ibe,2017-08-12,MALE,Basic 3,Mr Ibe,parent.joseph.ibe.ibe@gmail.com,080398814702
+Emeka,Eno,emeka.eno,2017-01-03,MALE,Basic 3,Mr Eno,parent.emeka.eno.eno@gmail.com,080311178604
+Suleiman,Ikegwu,suleiman.ikegwu,2016-07-26,MALE,Basic 3,Mr Ikegwu,parent.suleiman.ikegwu.ikegwu@gmail.com,080388030089
+Chibueze,Abdullahi,chibueze.abdullahi,2016-01-04,MALE,Basic 3,Mr Abdullahi,parent.chibueze.abdullahi.abdullahi@gmail.com,080371541133
+Simisola,Nwosu,simisola.nwosu,2016-12-03,FEMALE,Basic 3,Mrs Nwosu,parent.simisola.nwosu.nwosu@gmail.com,080392007808
+Oluwafemi,Omojola,oluwafemi.omojola,2016-05-16,MALE,Basic 3,Mr Omojola,parent.oluwafemi.omojola.omojola@gmail.com,080345406523
+Abdullahi,Okoro,abdullahi.okoro,2016-07-08,MALE,Basic 3,Mr Okoro,parent.abdullahi.okoro.okoro@gmail.com,080395244852
+Maryam,Lawal,maryam.lawal,2016-08-07,FEMALE,Basic 3,Mrs Lawal,parent.maryam.lawal.lawal@gmail.com,080329871266
+Yetunde,Asoegwu,yetunde.asoegwu,2016-08-07,FEMALE,Basic 3,Mrs Asoegwu,parent.yetunde.asoegwu.asoegwu@gmail.com,080370571127
+Akin,Oyelaran,akin.oyelaran,2017-04-28,MALE,Basic 3,Mr Oyelaran,parent.akin.oyelaran.oyelaran@gmail.com,080395265969
+Fatima,Orji,fatima.orji,2016-06-20,FEMALE,Basic 3,Mrs Orji,parent.fatima.orji.orji@gmail.com,080392791061
+Kelechi,Ikegwu,kelechi.ikegwu,2017-04-19,MALE,Basic 3,Mr Ikegwu,parent.kelechi.ikegwu.ikegwu@gmail.com,080329305658
+Abike,Obiadi,abike.obiadi,2016-07-13,FEMALE,Basic 3,Mrs Obiadi,parent.abike.obiadi.obiadi@gmail.com,080314098937
+Simisola,Osuji,simisola.osuji,2016-09-09,FEMALE,Basic 3,Mrs Osuji,parent.simisola.osuji.osuji@gmail.com,080361418549
+Chiamaka,Bakare,chiamaka.bakare,2015-08-18,FEMALE,Basic 4,Mrs Bakare,parent.chiamaka.bakare.bakare@gmail.com,080315967134
+Victor,Amaechi,victor.amaechi,2015-04-21,MALE,Basic 4,Mr Amaechi,parent.victor.amaechi.amaechi@gmail.com,080380788770
+Ezinne,Obiagwu,ezinne.obiagwu,2015-05-07,FEMALE,Basic 4,Mrs Obiagwu,parent.ezinne.obiagwu.obiagwu@gmail.com,080314813396
+Ikenna,Anyadike,ikenna.anyadike,2016-02-23,MALE,Basic 4,Mr Anyadike,parent.ikenna.anyadike.anyadike@gmail.com,080392811798
+Bello,Imoh,bello.imoh,2015-08-27,MALE,Basic 4,Mr Imoh,parent.bello.imoh.imoh@gmail.com,080319087730
+Halima,Adebayo,halima.adebayo,2016-02-08,FEMALE,Basic 4,Mrs Adebayo,parent.halima.adebayo.adebayo@gmail.com,080310253851
+Blessing,Uzo,blessing.uzo,2016-11-20,FEMALE,Basic 4,Mrs Uzo,parent.blessing.uzo.uzo@gmail.com,080332878513
+Blessing,Ogunleye,blessing.ogunleye,2016-07-09,FEMALE,Basic 4,Mrs Ogunleye,parent.blessing.ogunleye.ogunleye@gmail.com,080337853573
+Bose,Onyeka,bose.onyeka,2015-10-28,FEMALE,Basic 4,Mrs Onyeka,parent.bose.onyeka.onyeka@gmail.com,080394080355
+Usman,Okoro,usman.okoro,2015-11-26,MALE,Basic 4,Mr Okoro,parent.usman.okoro.okoro@gmail.com,080362947862
+Ogechi,Oyelaran,ogechi.oyelaran,2015-07-03,FEMALE,Basic 4,Mrs Oyelaran,parent.ogechi.oyelaran.oyelaran@gmail.com,080387023433
+Oluwafemi,Ekwueme,oluwafemi.ekwueme,2016-02-24,MALE,Basic 4,Mr Ekwueme,parent.oluwafemi.ekwueme.ekwueme@gmail.com,080314232716
+Yetunde,Lawal,yetunde.lawal,2016-10-22,FEMALE,Basic 4,Mrs Lawal,parent.yetunde.lawal.lawal@gmail.com,080335148543
+Chukwuemeka,Eze,chukwuemeka.eze,2016-12-06,MALE,Basic 4,Mr Eze,parent.chukwuemeka.eze.eze@gmail.com,080389897014
+Joy,Anyadike,joy.anyadike,2015-10-17,FEMALE,Basic 4,Mrs Anyadike,parent.joy.anyadike.anyadike@gmail.com,080381898077
+Adaeze,Nduka,adaeze.nduka,2016-03-14,FEMALE,Basic 4,Mrs Nduka,parent.adaeze.nduka.nduka@gmail.com,080350340403
+Adesuwa,Osho,adesuwa.osho,2016-11-21,FEMALE,Basic 4,Mrs Osho,parent.adesuwa.osho.osho@gmail.com,080317450406
+Emeka,Ogundipe,emeka.ogundipe,2016-08-26,MALE,Basic 4,Mr Ogundipe,parent.emeka.ogundipe.ogundipe@gmail.com,080326462683
+Suleiman,Ugwu,suleiman.ugwu,2016-12-27,MALE,Basic 4,Mr Ugwu,parent.suleiman.ugwu.ugwu@gmail.com,080354209641
+Grace,Adenuga,grace.adenuga,2016-05-28,FEMALE,Basic 4,Mrs Adenuga,parent.grace.adenuga.adenuga@gmail.com,080362821124
+Blessing,Eze,blessing.eze,2015-04-23,FEMALE,Basic 4,Mrs Eze,parent.blessing.eze.eze@gmail.com,080356767442
+Gloria,Ogunbiyi,gloria.ogunbiyi,2016-03-26,FEMALE,Basic 4,Mrs Ogunbiyi,parent.gloria.ogunbiyi.ogunbiyi@gmail.com,080323856195
+Deborah,Hassan,deborah.hassan,2016-04-20,FEMALE,Basic 4,Mrs Hassan,parent.deborah.hassan.hassan@gmail.com,080395081476
+Idris,Akinola,idris.akinola,2016-06-28,MALE,Basic 4,Mr Akinola,parent.idris.akinola.akinola@gmail.com,080384069568
+Ayomide,Obi,ayomide.obi,2015-05-06,FEMALE,Basic 4,Mrs Obi,parent.ayomide.obi.obi@gmail.com,080379738602
+Yetunde,Nwafor,yetunde.nwafor,2016-11-02,FEMALE,Basic 4,Mrs Nwafor,parent.yetunde.nwafor.nwafor@gmail.com,080350606694
+Yusuf,Yusuf,yusuf.yusuf,2016-07-08,MALE,Basic 4,Mr Yusuf,parent.yusuf.yusuf.yusuf@gmail.com,080398571003
+Joy,Nduka,joy.nduka,2016-06-25,FEMALE,Basic 4,Mrs Nduka,parent.joy.nduka.nduka@gmail.com,080378820705
+Aisha,Enwere,aisha.enwere,2016-07-20,FEMALE,Basic 4,Mrs Enwere,parent.aisha.enwere.enwere@gmail.com,080364093701
+Kolawole,Adesina,kolawole.adesina,2015-02-08,MALE,Basic 4,Mr Adesina,parent.kolawole.adesina.adesina@gmail.com,080342933012
+Abike,Anyadike,abike.anyadike,2015-07-17,FEMALE,Basic 4,Mrs Anyadike,parent.abike.anyadike.anyadike@gmail.com,080346274582
+Ifeoma,Eri,ifeoma.eri,2015-04-13,FEMALE,Basic 4,Mrs Eri,parent.ifeoma.eri.eri@gmail.com,080327673305
+Michael,Emeka,michael.emeka,2015-07-08,MALE,Basic 4,Mr Emeka,parent.michael.emeka.emeka@gmail.com,080365211097
+Emeka,Nnamdi,emeka.nnamdi,2016-11-05,MALE,Basic 4,Mr Nnamdi,parent.emeka.nnamdi.nnamdi@gmail.com,080386943638
+Nkechi,Akinwunmi,nkechi.akinwunmi,2016-06-20,FEMALE,Basic 4,Mrs Akinwunmi,parent.nkechi.akinwunmi.akinwunmi@gmail.com,080332090683
+Ronke,Osho,ronke.osho,2016-08-28,FEMALE,Basic 4,Mrs Osho,parent.ronke.osho.osho@gmail.com,080329240032
+Abubakar,Osuji,abubakar.osuji,2015-02-01,MALE,Basic 4,Mr Osuji,parent.abubakar.osuji.osuji@gmail.com,080387097493
+Uchenna,Akinwale,uchenna.akinwale,2015-01-15,MALE,Basic 5,Mr Akinwale,parent.uchenna.akinwale.akinwale@gmail.com,080385897984
+Tochukwu,Adenuga,tochukwu.adenuga,2014-07-21,MALE,Basic 5,Mr Adenuga,parent.tochukwu.adenuga.adenuga@gmail.com,080324290582
+Bello,Lawal,bello.lawal,2015-02-12,MALE,Basic 5,Mr Lawal,parent.bello.lawal.lawal@gmail.com,080330183992
+Joshua,Mba,joshua.mba,2015-05-25,MALE,Basic 5,Mr Mba,parent.joshua.mba.mba@gmail.com,080371716886
+Wale,Osuji,wale.osuji,2014-07-21,MALE,Basic 5,Mr Osuji,parent.wale.osuji.osuji@gmail.com,080329694998
+Segun,Abdullahi,segun.abdullahi,2015-10-28,MALE,Basic 5,Mr Abdullahi,parent.segun.abdullahi.abdullahi@gmail.com,080353924803
+Joshua,Enwere,joshua.enwere,2014-09-14,MALE,Basic 5,Mr Enwere,parent.joshua.enwere.enwere@gmail.com,080350571319
+Segun,Enwere,segun.enwere,2015-05-14,MALE,Basic 5,Mr Enwere,parent.segun.enwere.enwere@gmail.com,080353488513
+Chima,Oparah,chima.oparah,2015-03-12,MALE,Basic 5,Mr Oparah,parent.chima.oparah.oparah@gmail.com,080395183555
+Damilola,Obiadi,damilola.obiadi,2014-01-07,MALE,Basic 5,Mr Obiadi,parent.damilola.obiadi.obiadi@gmail.com,080365338932
+Michael,Ajayi,michael.ajayi,2015-07-21,MALE,Basic 5,Mr Ajayi,parent.michael.ajayi.ajayi@gmail.com,080377747179
+Joseph,Egbuna,joseph.egbuna,2015-07-25,MALE,Basic 5,Mr Egbuna,parent.joseph.egbuna.egbuna@gmail.com,080389803783
+Yetunde,Adesina,yetunde.adesina,2014-06-13,FEMALE,Basic 5,Mrs Adesina,parent.yetunde.adesina.adesina@gmail.com,080364212575
+Chukwuemeka,Afolabi,chukwuemeka.afolabi,2015-08-02,MALE,Basic 5,Mr Afolabi,parent.chukwuemeka.afolabi.afolabi@gmail.com,080314931851
+Idris,Uzoma,idris.uzoma,2014-02-25,MALE,Basic 5,Mr Uzoma,parent.idris.uzoma.uzoma@gmail.com,080367243654
+Ayomide,Olowu,ayomide.olowu,2015-01-07,FEMALE,Basic 5,Mrs Olowu,parent.ayomide.olowu.olowu@gmail.com,080340967536
+Kosisochukwu,Anya,kosisochukwu.anya,2015-10-18,FEMALE,Basic 5,Mrs Anya,parent.kosisochukwu.anya.anya@gmail.com,080381730184
+Idris,Emeka,idris.emeka,2014-05-05,MALE,Basic 5,Mr Emeka,parent.idris.emeka.emeka@gmail.com,080327019061
+Gloria,Nnamdi,gloria.nnamdi,2014-02-19,FEMALE,Basic 5,Mrs Nnamdi,parent.gloria.nnamdi.nnamdi@gmail.com,080370617294
+Blessing,Orji,blessing.orji,2014-05-14,FEMALE,Basic 5,Mrs Orji,parent.blessing.orji.orji@gmail.com,080369340644
+Akin,Akinwale,akin.akinwale,2014-01-14,MALE,Basic 5,Mr Akinwale,parent.akin.akinwale.akinwale@gmail.com,080352509341
+Halima,Falade,halima.falade,2015-12-02,FEMALE,Basic 5,Mrs Falade,parent.halima.falade.falade@gmail.com,080327606610
+Ibrahim,Asoegwu,ibrahim.asoegwu,2015-11-21,MALE,Basic 5,Mr Asoegwu,parent.ibrahim.asoegwu.asoegwu@gmail.com,080330014039
+Amara,Eri,amara.eri,2014-07-07,FEMALE,Basic 5,Mrs Eri,parent.amara.eri.eri@gmail.com,080357751012
+Chibueze,Adeyemi,chibueze.adeyemi,2015-03-25,MALE,Basic 5,Mr Adeyemi,parent.chibueze.adeyemi.adeyemi@gmail.com,080350520742
+Adebayo,Amaechi,adebayo.amaechi,2015-02-12,MALE,Basic 5,Mr Amaechi,parent.adebayo.amaechi.amaechi@gmail.com,080371253124
+Chukwuemeka,Afolabi,chukwuemeka.afolabi2,2014-05-18,MALE,Basic 5,Mr Afolabi,parent.chukwuemeka.afolabi2.afolabi@gmail.com,080343261891
+Ifeoma,Ibrahim,ifeoma.ibrahim,2014-09-03,FEMALE,Basic 5,Mrs Ibrahim,parent.ifeoma.ibrahim.ibrahim@gmail.com,080347784346
+Akin,Umeadi,akin.umeadi,2014-03-05,MALE,Basic 5,Mr Umeadi,parent.akin.umeadi.umeadi@gmail.com,080349265966
+Ogechi,Alao,ogechi.alao,2015-10-21,FEMALE,Basic 5,Mrs Alao,parent.ogechi.alao.alao@gmail.com,080386092628
+Victoria,Adeosun,victoria.adeosun,2015-08-03,FEMALE,Basic 5,Mrs Adeosun,parent.victoria.adeosun.adeosun@gmail.com,080334814829
+Dare,Ezeilo,dare.ezeilo,2014-09-12,MALE,Basic 5,Mr Ezeilo,parent.dare.ezeilo.ezeilo@gmail.com,080344631390
+Chiamaka,Abubakar,chiamaka.abubakar,2014-05-15,FEMALE,Basic 5,Mrs Abubakar,parent.chiamaka.abubakar.abubakar@gmail.com,080371733938
+Ogechi,Fagbemi,ogechi.fagbemi,2015-02-16,FEMALE,Basic 5,Mrs Fagbemi,parent.ogechi.fagbemi.fagbemi@gmail.com,080364763862
+Gloria,Anya,gloria.anya,2014-05-25,FEMALE,Basic 5,Mrs Anya,parent.gloria.anya.anya@gmail.com,080371511236
+Peter,Ogunleye,peter.ogunleye,2014-01-11,MALE,Basic 5,Mr Ogunleye,parent.peter.ogunleye.ogunleye@gmail.com,080340465196
+Tobi,Eri,tobi.eri,2015-08-17,MALE,Basic 5,Mr Eri,parent.tobi.eri.eri@gmail.com,080375609470
+Samuel,Alabi,samuel.alabi,2012-06-27,MALE,JSS1,Mr Alabi,parent.samuel.alabi.alabi@gmail.com,080388197276
+Tochukwu,Nwankwo,tochukwu.nwankwo,2014-06-28,MALE,JSS1,Mr Nwankwo,parent.tochukwu.nwankwo.nwankwo@gmail.com,080363386520
+Segun,Ike,segun.ike,2014-09-12,MALE,JSS1,Mr Ike,parent.segun.ike.ike@gmail.com,080379014397
+Chinedu,Nwafor,chinedu.nwafor,2014-01-14,MALE,JSS1,Mr Nwafor,parent.chinedu.nwafor.nwafor@gmail.com,080380877631
+Ikenna,Anyadike,ikenna.anyadike2,2012-11-16,MALE,JSS1,Mr Anyadike,parent.ikenna.anyadike2.anyadike@gmail.com,080372018116
+Peter,Adesina,peter.adesina,2012-05-04,MALE,JSS1,Mr Adesina,parent.peter.adesina.adesina@gmail.com,080347091281
+Yemi,Eno,yemi.eno,2012-08-22,FEMALE,JSS1,Mrs Eno,parent.yemi.eno.eno@gmail.com,080312034374
+Rukaiya,Anyadike,rukaiya.anyadike,2013-03-13,FEMALE,JSS1,Mrs Anyadike,parent.rukaiya.anyadike.anyadike@gmail.com,080333337360
+Damilola,Adeosun,damilola.adeosun,2013-07-10,MALE,JSS1,Mr Adeosun,parent.damilola.adeosun.adeosun@gmail.com,080377316773
+Adebayo,Uzo,adebayo.uzo,2013-07-28,MALE,JSS1,Mr Uzo,parent.adebayo.uzo.uzo@gmail.com,080363609328
+Festus,Maduka,festus.maduka,2014-12-16,MALE,JSS1,Mr Maduka,parent.festus.maduka.maduka@gmail.com,080355323881
+Kunle,Oparah,kunle.oparah,2014-06-18,MALE,JSS1,Mr Oparah,parent.kunle.oparah.oparah@gmail.com,080323263775
+Onyekachi,Ibe,onyekachi.ibe,2013-03-08,MALE,JSS1,Mr Ibe,parent.onyekachi.ibe.ibe@gmail.com,080345180363
+Abdullahi,Akintola,abdullahi.akintola,2012-05-28,MALE,JSS1,Mr Akintola,parent.abdullahi.akintola.akintola@gmail.com,080351539789
+Oluwaseun,Ukaegbu,oluwaseun.ukaegbu,2013-06-23,MALE,JSS1,Mr Ukaegbu,parent.oluwaseun.ukaegbu.ukaegbu@gmail.com,080326502623
+Yusuf,Ajagbe,yusuf.ajagbe,2014-06-14,MALE,JSS1,Mr Ajagbe,parent.yusuf.ajagbe.ajagbe@gmail.com,080322007658
+Oluwaseun,Ajayi,oluwaseun.ajayi,2014-01-17,MALE,JSS1,Mr Ajayi,parent.oluwaseun.ajayi.ajayi@gmail.com,080334146391
+Dare,Ilo,dare.ilo,2013-04-09,MALE,JSS1,Mr Ilo,parent.dare.ilo.ilo@gmail.com,080350226910
+Nnamdi,Ikegwu,nnamdi.ikegwu,2013-08-09,MALE,JSS1,Mr Ikegwu,parent.nnamdi.ikegwu.ikegwu@gmail.com,080388687011
+Festus,Onyeka,festus.onyeka,2014-03-09,MALE,JSS1,Mr Onyeka,parent.festus.onyeka.onyeka@gmail.com,080356671347
+Abike,Uzo,abike.uzo,2014-06-13,FEMALE,JSS1,Mrs Uzo,parent.abike.uzo.uzo@gmail.com,080390127766
+Chukwuemeka,Nnamdi,chukwuemeka.nnamdi,2012-01-23,MALE,JSS1,Mr Nnamdi,parent.chukwuemeka.nnamdi.nnamdi@gmail.com,080315259430
+Obinna,Nwosu,obinna.nwosu,2013-01-25,MALE,JSS1,Mr Nwosu,parent.obinna.nwosu.nwosu@gmail.com,080319954853
+Suleiman,Ugwu,suleiman.ugwu2,2012-04-25,MALE,JSS1,Mr Ugwu,parent.suleiman.ugwu2.ugwu@gmail.com,080338266988
+Bisi,Obi,bisi.obi,2013-08-02,FEMALE,JSS1,Mrs Obi,parent.bisi.obi.obi@gmail.com,080340607188
+Safiya,Asoegwu,safiya.asoegwu,2013-12-17,FEMALE,JSS1,Mrs Asoegwu,parent.safiya.asoegwu.asoegwu@gmail.com,080327054969
+Musa,Onyeka,musa.onyeka,2012-05-13,MALE,JSS1,Mr Onyeka,parent.musa.onyeka.onyeka@gmail.com,080345963875
+Adaeze,Adewale,adaeze.adewale,2012-04-17,FEMALE,JSS1,Mrs Adewale,parent.adaeze.adewale.adewale@gmail.com,080340653184
+Ayomide,Okonkwo,ayomide.okonkwo,2014-04-01,FEMALE,JSS1,Mrs Okonkwo,parent.ayomide.okonkwo.okonkwo@gmail.com,080315190028
+Funke,Osuji,funke.osuji,2013-02-14,FEMALE,JSS1,Mrs Osuji,parent.funke.osuji.osuji@gmail.com,080381653921
+Bose,Adeosun,bose.adeosun,2014-04-02,FEMALE,JSS1,Mrs Adeosun,parent.bose.adeosun.adeosun@gmail.com,080322320274
+Chiamaka,Ekwueme,chiamaka.ekwueme,2014-02-26,FEMALE,JSS1,Mrs Ekwueme,parent.chiamaka.ekwueme.ekwueme@gmail.com,080337537245
+Kemi,Umeadi,kemi.umeadi,2013-10-24,FEMALE,JSS1,Mrs Umeadi,parent.kemi.umeadi.umeadi@gmail.com,080339807504
+Nnamdi,Adeyemi,nnamdi.adeyemi,2014-09-03,MALE,JSS1,Mr Adeyemi,parent.nnamdi.adeyemi.adeyemi@gmail.com,080343299140
+Chinenye,Awosika,chinenye.awosika,2014-02-17,FEMALE,JSS1,Mrs Awosika,parent.chinenye.awosika.awosika@gmail.com,080372063670
+Ogechi,Oyelaran,ogechi.oyelaran2,2014-10-20,FEMALE,JSS1,Mrs Oyelaran,parent.ogechi.oyelaran2.oyelaran@gmail.com,080324898915
+Obinna,Ogunbiyi,obinna.ogunbiyi,2013-08-27,MALE,JSS1,Mr Ogunbiyi,parent.obinna.ogunbiyi.ogunbiyi@gmail.com,080365268515
+Folake,Enyi,folake.enyi,2013-07-08,FEMALE,JSS1,Mrs Enyi,parent.folake.enyi.enyi@gmail.com,080361617280
+Aisha,Umeadi,aisha.umeadi,2013-03-27,FEMALE,JSS2,Mrs Umeadi,parent.aisha.umeadi.umeadi@gmail.com,080369760538
+Simisola,Iheanacho,simisola.iheanacho,2013-02-05,FEMALE,JSS2,Mrs Iheanacho,parent.simisola.iheanacho.iheanacho@gmail.com,080351990780
+Patience,Okeke,patience.okeke,2013-03-13,FEMALE,JSS2,Mrs Okeke,parent.patience.okeke.okeke@gmail.com,080353761205
+Festus,Adenuga,festus.adenuga,2012-03-17,MALE,JSS2,Mr Adenuga,parent.festus.adenuga.adenuga@gmail.com,080339605923
+Joy,Nduka,joy.nduka2,2011-01-17,FEMALE,JSS2,Mrs Nduka,parent.joy.nduka2.nduka@gmail.com,080335203021
+Uzoamaka,Eze,uzoamaka.eze,2013-05-05,FEMALE,JSS2,Mrs Eze,parent.uzoamaka.eze.eze@gmail.com,080372736998
+Abdullahi,Okoro,abdullahi.okoro2,2011-11-26,MALE,JSS2,Mr Okoro,parent.abdullahi.okoro2.okoro@gmail.com,080360741184
+Faith,Ajayi,faith.ajayi,2013-09-19,FEMALE,JSS2,Mrs Ajayi,parent.faith.ajayi.ajayi@gmail.com,080397545234
+Ogechi,Abdullahi,ogechi.abdullahi,2011-08-18,FEMALE,JSS2,Mrs Abdullahi,parent.ogechi.abdullahi.abdullahi@gmail.com,080311765758
+Success,Nwankwo,success.nwankwo,2011-06-28,FEMALE,JSS2,Mrs Nwankwo,parent.success.nwankwo.nwankwo@gmail.com,080336444134
+Festus,Ajagbe,festus.ajagbe,2013-04-21,MALE,JSS2,Mr Ajagbe,parent.festus.ajagbe.ajagbe@gmail.com,080388824340
+Dare,Oyelaran,dare.oyelaran,2012-07-23,MALE,JSS2,Mr Oyelaran,parent.dare.oyelaran.oyelaran@gmail.com,080318579174
+Gloria,Iwuchukwu,gloria.iwuchukwu,2012-11-04,FEMALE,JSS2,Mrs Iwuchukwu,parent.gloria.iwuchukwu.iwuchukwu@gmail.com,080331573916
+Bose,Adeleke,bose.adeleke,2011-08-02,FEMALE,JSS2,Mrs Adeleke,parent.bose.adeleke.adeleke@gmail.com,080312792655
+Halima,Adeleke,halima.adeleke,2013-10-13,FEMALE,JSS2,Mrs Adeleke,parent.halima.adeleke.adeleke@gmail.com,080363432609
+Chinenye,Awosika,chinenye.awosika2,2012-07-28,FEMALE,JSS2,Mrs Awosika,parent.chinenye.awosika2.awosika@gmail.com,080365378219
+Funke,Osagie,funke.osagie2,2012-02-02,FEMALE,JSS2,Mrs Osagie,parent.funke.osagie2.osagie@gmail.com,080317312562
+Queen,Awosika,queen.awosika,2011-12-23,FEMALE,JSS2,Mrs Awosika,parent.queen.awosika.awosika@gmail.com,080381218043
+Kelechi,Falade,kelechi.falade,2012-04-08,MALE,JSS2,Mr Falade,parent.kelechi.falade.falade@gmail.com,080361219821
+Blessing,Afolabi,blessing.afolabi,2011-10-28,FEMALE,JSS2,Mrs Afolabi,parent.blessing.afolabi.afolabi@gmail.com,080396818496
+Obinna,Ugwu,obinna.ugwu,2011-06-09,MALE,JSS2,Mr Ugwu,parent.obinna.ugwu.ugwu@gmail.com,080341817207
+Chiamaka,Akinwunmi,chiamaka.akinwunmi,2013-01-05,FEMALE,JSS2,Mrs Akinwunmi,parent.chiamaka.akinwunmi.akinwunmi@gmail.com,080335885628
+Nkechi,Adesina,nkechi.adesina,2011-01-12,FEMALE,JSS2,Mrs Adesina,parent.nkechi.adesina.adesina@gmail.com,080321411673
+Chinenye,Maduka,chinenye.maduka,2013-05-27,FEMALE,JSS2,Mrs Maduka,parent.chinenye.maduka.maduka@gmail.com,080328559984
+Ayodeji,Obiadi,ayodeji.obiadi,2013-01-28,MALE,JSS2,Mr Obiadi,parent.ayodeji.obiadi.obiadi@gmail.com,080392235657
+Yusuf,Adeleke,yusuf.adeleke,2013-11-03,MALE,JSS2,Mr Adeleke,parent.yusuf.adeleke.adeleke@gmail.com,080346290581
+Sunday,Obiadi,sunday.obiadi,2013-03-06,MALE,JSS2,Mr Obiadi,parent.sunday.obiadi.obiadi@gmail.com,080333625525
+Dare,Emeka,dare.emeka,2013-12-13,MALE,JSS2,Mr Emeka,parent.dare.emeka.emeka@gmail.com,080348202707
+Akin,Ezeilo,akin.ezeilo,2012-08-13,MALE,JSS2,Mr Ezeilo,parent.akin.ezeilo.ezeilo@gmail.com,080314850535
+Wale,Abubakar,wale.abubakar,2011-05-27,MALE,JSS2,Mr Abubakar,parent.wale.abubakar.abubakar@gmail.com,080378717621
+Ayodeji,Ojewale,ayodeji.ojewale,2011-05-05,MALE,JSS2,Mr Ojewale,parent.ayodeji.ojewale.ojewale@gmail.com,080387221847
+Chidinma,Nwafor,chidinma.nwafor,2013-03-20,FEMALE,JSS2,Mrs Nwafor,parent.chidinma.nwafor.nwafor@gmail.com,080385208076
+Peace,Akinwale,peace.akinwale,2012-07-02,FEMALE,JSS2,Mrs Akinwale,parent.peace.akinwale.akinwale@gmail.com,080357835480
+Grace,Ogundipe,grace.ogundipe,2012-12-02,FEMALE,JSS2,Mrs Ogundipe,parent.grace.ogundipe.ogundipe@gmail.com,080365713176
+Esther,Adebayo,esther.adebayo,2012-08-01,FEMALE,JSS2,Mrs Adebayo,parent.esther.adebayo.adebayo@gmail.com,080370806664
+Simisola,Okpara,simisola.okpara,2011-04-07,FEMALE,JSS2,Mrs Okpara,parent.simisola.okpara.okpara@gmail.com,080397811626
+Joseph,Mba,joseph.mba,2011-07-18,MALE,JSS2,Mr Mba,parent.joseph.mba.mba@gmail.com,080387795177
+Grace,Osuji,grace.osuji,2013-07-10,FEMALE,JSS2,Mrs Osuji,parent.grace.osuji.osuji@gmail.com,080354803833
+Deborah,Abubakar,deborah.abubakar,2010-04-15,FEMALE,JSS3,Mrs Abubakar,parent.deborah.abubakar.abubakar@gmail.com,080330446564
+Halima,Lawal,halima.lawal,2010-07-13,FEMALE,JSS3,Mrs Lawal,parent.halima.lawal.lawal@gmail.com,080318009610
+Safiya,Iwuchukwu,safiya.iwuchukwu,2011-06-03,FEMALE,JSS3,Mrs Iwuchukwu,parent.safiya.iwuchukwu.iwuchukwu@gmail.com,080375067508
+Hassan,Ike,hassan.ike,2012-03-02,MALE,JSS3,Mr Ike,parent.hassan.ike.ike@gmail.com,080349607406
+Chioma,Adewale,chioma.adewale,2010-10-21,FEMALE,JSS3,Mrs Adewale,parent.chioma.adewale.adewale@gmail.com,080397407438
+Kemi,Lawal,kemi.lawal,2012-12-20,FEMALE,JSS3,Mrs Lawal,parent.kemi.lawal.lawal@gmail.com,080381483736
+Ngozi,Ukaegbu,ngozi.ukaegbu,2012-09-20,FEMALE,JSS3,Mrs Ukaegbu,parent.ngozi.ukaegbu.ukaegbu@gmail.com,080386838511
+Obinna,Adeosun,obinna.adeosun2,2012-03-06,MALE,JSS3,Mr Adeosun,parent.obinna.adeosun2.adeosun@gmail.com,080318275187
+Ifeoma,Nwankwo,ifeoma.nwankwo,2011-10-05,FEMALE,JSS3,Mrs Nwankwo,parent.ifeoma.nwankwo.nwankwo@gmail.com,080394381238
+Maryam,Emeka,maryam.emeka,2010-01-23,FEMALE,JSS3,Mrs Emeka,parent.maryam.emeka.emeka@gmail.com,080372571417
+Temitope,Bakare,temitope.bakare,2010-08-25,FEMALE,JSS3,Mrs Bakare,parent.temitope.bakare.bakare@gmail.com,080384583411
+Chioma,Alao,chioma.alao,2011-04-06,FEMALE,JSS3,Mrs Alao,parent.chioma.alao.alao@gmail.com,080341896093
+Zainab,Akinwale,zainab.akinwale,2011-10-06,FEMALE,JSS3,Mrs Akinwale,parent.zainab.akinwale.akinwale@gmail.com,080324807093
+Modupe,Bakare,modupe.bakare,2011-05-15,FEMALE,JSS3,Mrs Bakare,parent.modupe.bakare.bakare@gmail.com,080377368810
+Bose,Adeosun,bose.adeosun2,2010-09-19,FEMALE,JSS3,Mrs Adeosun,parent.bose.adeosun2.adeosun@gmail.com,080313523500
+Chidinma,Adeleke,chidinma.adeleke,2012-07-23,FEMALE,JSS3,Mrs Adeleke,parent.chidinma.adeleke.adeleke@gmail.com,080378558294
+Ruth,Balogun,ruth.balogun,2010-08-27,FEMALE,JSS3,Mrs Balogun,parent.ruth.balogun.balogun@gmail.com,080323691517
+Chima,Ajayi,chima.ajayi,2010-10-09,MALE,JSS3,Mr Ajayi,parent.chima.ajayi.ajayi@gmail.com,080381523402
+Ngozi,Ogunbiyi,ngozi.ogunbiyi,2010-11-24,FEMALE,JSS3,Mrs Ogunbiyi,parent.ngozi.ogunbiyi.ogunbiyi@gmail.com,080362507071
+Tochukwu,Awosika,tochukwu.awosika,2011-03-11,MALE,JSS3,Mr Awosika,parent.tochukwu.awosika.awosika@gmail.com,080375388545
+Safiya,Akinwunmi,safiya.akinwunmi,2011-02-16,FEMALE,JSS3,Mrs Akinwunmi,parent.safiya.akinwunmi.akinwunmi@gmail.com,080373643358
+Uzoamaka,Ajagbe,uzoamaka.ajagbe,2010-12-14,FEMALE,JSS3,Mrs Ajagbe,parent.uzoamaka.ajagbe.ajagbe@gmail.com,080355277492
+Chidinma,Onyeka,chidinma.onyeka,2011-06-20,FEMALE,JSS3,Mrs Onyeka,parent.chidinma.onyeka.onyeka@gmail.com,080356892135
+Esther,Ajagbe,esther.ajagbe,2011-11-18,FEMALE,JSS3,Mrs Ajagbe,parent.esther.ajagbe.ajagbe@gmail.com,080355521426
+Ikenna,Eze,ikenna.eze,2011-11-09,MALE,JSS3,Mr Eze,parent.ikenna.eze.eze@gmail.com,080395426624
+Adesuwa,Ezeugwu,adesuwa.ezeugwu,2010-01-04,FEMALE,JSS3,Mrs Ezeugwu,parent.adesuwa.ezeugwu.ezeugwu@gmail.com,080343994682
+Adaobi,Akanji,adaobi.akanji,2011-01-09,FEMALE,JSS3,Mrs Akanji,parent.adaobi.akanji.akanji@gmail.com,080319298338
+Adebayo,Amaechi,adebayo.amaechi2,2012-12-03,MALE,JSS3,Mr Amaechi,parent.adebayo.amaechi2.amaechi@gmail.com,080367062119
+Adaeze,Onyeka,adaeze.onyeka,2010-02-19,FEMALE,JSS3,Mrs Onyeka,parent.adaeze.onyeka.onyeka@gmail.com,080364793406
+Damilola,Akinola,damilola.akinola,2010-06-04,MALE,JSS3,Mr Akinola,parent.damilola.akinola.akinola@gmail.com,080368188348
+Joy,Lawal,joy.lawal,2012-11-21,FEMALE,JSS3,Mrs Lawal,parent.joy.lawal.lawal@gmail.com,080331158994
+Ezinne,Idris,ezinne.idris,2011-10-28,FEMALE,JSS3,Mrs Idris,parent.ezinne.idris.idris@gmail.com,080312755590
+Uchenna,Iheanacho,uchenna.iheanacho,2012-09-20,MALE,JSS3,Mr Iheanacho,parent.uchenna.iheanacho.iheanacho@gmail.com,080314755370
+Oluwafemi,Lawal,oluwafemi.lawal,2010-05-06,MALE,JSS3,Mr Lawal,parent.oluwafemi.lawal.lawal@gmail.com,080348148189
+Tunde,Nwogbo,tunde.nwogbo,2011-11-19,MALE,JSS3,Mr Nwogbo,parent.tunde.nwogbo.nwogbo@gmail.com,080389499362
+Nkechi,Adepoju,nkechi.adepoju,2012-06-10,FEMALE,JSS3,Mrs Adepoju,parent.nkechi.adepoju.adepoju@gmail.com,080334507098
+Simisola,Onwuchekwa,simisola.onwuchekwa,2012-01-11,FEMALE,JSS3,Mrs Onwuchekwa,parent.simisola.onwuchekwa.onwuchekwa@gmail.com,080358412922
+Yetunde,Akanji,yetunde.akanji,2011-09-28,FEMALE,JSS3,Mrs Akanji,parent.yetunde.akanji.akanji@gmail.com,080367337365
+Chima,Oyelaran,chima.oyelaran,2009-03-18,MALE,SS1,Mr Oyelaran,parent.chima.oyelaran.oyelaran@gmail.com,080355421503
+Abubakar,Onyeka,abubakar.onyeka,2010-07-23,MALE,SS1,Mr Onyeka,parent.abubakar.onyeka.onyeka@gmail.com,080344390647
+Bose,Adeleke,bose.adeleke2,2008-04-12,FEMALE,SS1,Mrs Adeleke,parent.bose.adeleke2.adeleke@gmail.com,080386067868
+Ruth,Okpara,ruth.okpara,2009-03-14,FEMALE,SS1,Mrs Okpara,parent.ruth.okpara.okpara@gmail.com,080379072418
+Peter,Abubakar,peter.abubakar,2010-04-08,MALE,SS1,Mr Abubakar,parent.peter.abubakar.abubakar@gmail.com,080327822025
+Chinedu,Adeola,chinedu.adeola,2008-12-01,MALE,SS1,Mr Adeola,parent.chinedu.adeola.adeola@gmail.com,080384593861
+Amina,Alao,amina.alao,2008-11-26,FEMALE,SS1,Mrs Alao,parent.amina.alao.alao@gmail.com,080398710866
+Peter,Ikegwu,peter.ikegwu,2008-09-01,MALE,SS1,Mr Ikegwu,parent.peter.ikegwu.ikegwu@gmail.com,080354557458
+Fatima,Nnamdi,fatima.nnamdi,2008-11-21,FEMALE,SS1,Mrs Nnamdi,parent.fatima.nnamdi.nnamdi@gmail.com,080350769806
+Abubakar,Nduka,abubakar.nduka,2010-06-14,MALE,SS1,Mr Nduka,parent.abubakar.nduka.nduka@gmail.com,080341756692
+Adebayo,Imoh,adebayo.imoh,2010-06-09,MALE,SS1,Mr Imoh,parent.adebayo.imoh.imoh@gmail.com,080371857146
+Sunday,Akinwumi,sunday.akinwumi,2009-07-15,MALE,SS1,Mr Akinwumi,parent.sunday.akinwumi.akinwumi@gmail.com,080391895684
+Chibueze,Okoro,chibueze.okoro,2009-12-13,MALE,SS1,Mr Okoro,parent.chibueze.okoro.okoro@gmail.com,080374967182
+Uzoamaka,Okafor,uzoamaka.okafor,2008-09-27,FEMALE,SS1,Mrs Okafor,parent.uzoamaka.okafor.okafor@gmail.com,080359192412
+Joy,Hassan,joy.hassan,2010-01-26,FEMALE,SS1,Mrs Hassan,parent.joy.hassan.hassan@gmail.com,080336160735
+Abdullahi,Ozoemena,abdullahi.ozoemena,2010-11-15,MALE,SS1,Mr Ozoemena,parent.abdullahi.ozoemena.ozoemena@gmail.com,080391066778
+Kolawole,Emeka,kolawole.emeka,2010-08-17,MALE,SS1,Mr Emeka,parent.kolawole.emeka.emeka@gmail.com,080359589124
+Musa,Ugwu,musa.ugwu,2010-02-16,MALE,SS1,Mr Ugwu,parent.musa.ugwu.ugwu@gmail.com,080389076617
+Peter,Idris,peter.idris,2009-08-11,MALE,SS1,Mr Idris,parent.peter.idris.idris@gmail.com,080377195902
+Modupe,Afolabi,modupe.afolabi,2009-11-17,FEMALE,SS1,Mrs Afolabi,parent.modupe.afolabi.afolabi@gmail.com,080346894559
+Halima,Ezeugwu,halima.ezeugwu,2010-08-17,FEMALE,SS1,Mrs Ezeugwu,parent.halima.ezeugwu.ezeugwu@gmail.com,080363153192
+Kosisochukwu,Fagbemi,kosisochukwu.fagbemi,2009-09-15,FEMALE,SS1,Mrs Fagbemi,parent.kosisochukwu.fagbemi.fagbemi@gmail.com,080328206048
+Rukaiya,Ogunleye,rukaiya.ogunleye,2009-11-09,FEMALE,SS1,Mrs Ogunleye,parent.rukaiya.ogunleye.ogunleye@gmail.com,080313352901
+Chidinma,Ikegwu,chidinma.ikegwu,2008-08-06,FEMALE,SS1,Mrs Ikegwu,parent.chidinma.ikegwu.ikegwu@gmail.com,080330916615
+Folake,Akintola,folake.akintola,2009-01-11,FEMALE,SS1,Mrs Akintola,parent.folake.akintola.akintola@gmail.com,080390712031
+Maryam,Amaechi,maryam.amaechi2,2010-06-23,FEMALE,SS1,Mrs Amaechi,parent.maryam.amaechi2.amaechi@gmail.com,080355916400
+Ifeoma,Eze,ifeoma.eze,2008-07-19,FEMALE,SS1,Mrs Eze,parent.ifeoma.eze.eze@gmail.com,080333587363
+Bello,Akinwunmi,bello.akinwunmi,2008-08-03,MALE,SS1,Mr Akinwunmi,parent.bello.akinwunmi.akinwunmi@gmail.com,080384706550
+Ogechi,Oparah,ogechi.oparah,2009-04-11,FEMALE,SS1,Mrs Oparah,parent.ogechi.oparah.oparah@gmail.com,080321989746
+Yemi,Chukwu,yemi.chukwu,2010-09-15,FEMALE,SS1,Mrs Chukwu,parent.yemi.chukwu.chukwu@gmail.com,080346780730
+Amara,Umeadi,amara.umeadi,2010-05-16,FEMALE,SS1,Mrs Umeadi,parent.amara.umeadi.umeadi@gmail.com,080325148219
+Adebayo,Oyelaran,adebayo.oyelaran,2008-02-06,MALE,SS1,Mr Oyelaran,parent.adebayo.oyelaran.oyelaran@gmail.com,080356213185
+Amara,Iheanacho,amara.iheanacho,2009-08-04,FEMALE,SS1,Mrs Iheanacho,parent.amara.iheanacho.iheanacho@gmail.com,080342912654
+Oluwaseun,Suleiman,oluwaseun.suleiman,2008-05-08,MALE,SS1,Mr Suleiman,parent.oluwaseun.suleiman.suleiman@gmail.com,080319585871
+Oluwaseun,Adeosun,oluwaseun.adeosun,2010-03-10,MALE,SS1,Mr Adeosun,parent.oluwaseun.adeosun.adeosun@gmail.com,080342048220
+Tunde,Ogunleye,tunde.ogunleye,2009-10-03,MALE,SS1,Mr Ogunleye,parent.tunde.ogunleye.ogunleye@gmail.com,080393468772
+Emeka,Nwafor,emeka.nwafor,2009-12-20,MALE,SS1,Mr Nwafor,parent.emeka.nwafor.nwafor@gmail.com,080367961996
+Victoria,Musa,victoria.musa,2008-06-18,FEMALE,SS1,Mrs Musa,parent.victoria.musa.musa@gmail.com,080376621795
+Faith,Anyadike,faith.anyadike,2008-03-12,FEMALE,SS1,Mrs Anyadike,parent.faith.anyadike.anyadike@gmail.com,080330398968
+Blessing,Ibrahim,blessing.ibrahim,2010-03-13,MALE,SS1,Mr Ibrahim,parent.blessing.ibrahim.ibrahim@gmail.com,080361163704
+Patience,Okeke,patience.okeke2,2010-07-06,FEMALE,SS1,Mrs Okeke,parent.patience.okeke2.okeke@gmail.com,080375693367
+Babatunde,Osagie,babatunde.osagie,2009-01-06,MALE,SS2 Science,Mr Osagie,parent.babatunde.osagie.osagie@gmail.com,080381250010
+Precious,Afolabi,precious.afolabi,2007-09-27,FEMALE,SS2 Science,Mrs Afolabi,parent.precious.afolabi.afolabi@gmail.com,080375938184
+Damilola,Adewale,damilola.adewale,2007-06-12,MALE,SS2 Science,Mr Adewale,parent.damilola.adewale.adewale@gmail.com,080328572653
+Ngozi,Nwankwo,ngozi.nwankwo,2007-08-03,FEMALE,SS2 Science,Mrs Nwankwo,parent.ngozi.nwankwo.nwankwo@gmail.com,080356457931
+Modupe,Hassan,modupe.hassan,2008-03-23,FEMALE,SS2 Science,Mrs Hassan,parent.modupe.hassan.hassan@gmail.com,080333448225
+Bello,Ezeilo,bello.ezeilo,2009-04-02,MALE,SS2 Science,Mr Ezeilo,parent.bello.ezeilo.ezeilo@gmail.com,080332503464
+Kemi,Suleiman,kemi.suleiman,2009-01-17,FEMALE,SS2 Science,Mrs Suleiman,parent.kemi.suleiman.suleiman@gmail.com,080392871380
+Safiya,Adeola,safiya.adeola,2007-01-26,FEMALE,SS2 Science,Mrs Adeola,parent.safiya.adeola.adeola@gmail.com,080369935828
+Chukwuemeka,Okoro,chukwuemeka.okoro,2008-02-20,MALE,SS2 Science,Mr Okoro,parent.chukwuemeka.okoro.okoro@gmail.com,080332396700
+Wale,Usman,wale.usman,2007-06-10,MALE,SS2 Science,Mr Usman,parent.wale.usman.usman@gmail.com,080393998988
+Ayodeji,Chukwu,ayodeji.chukwu,2008-05-22,MALE,SS2 Arts,Mr Chukwu,parent.ayodeji.chukwu.chukwu@gmail.com,080361338128
+David,Abdullahi,david.abdullahi,2009-06-20,MALE,SS2 Arts,Mr Abdullahi,parent.david.abdullahi.abdullahi@gmail.com,080342782322
+Idris,Uzo,idris.uzo,2008-01-25,MALE,SS2 Arts,Mr Uzo,parent.idris.uzo.uzo@gmail.com,080346825891
+Funke,Okoro,funke.okoro,2009-08-07,FEMALE,SS2 Arts,Mrs Okoro,parent.funke.okoro.okoro@gmail.com,080314132316
+Uzoamaka,Adenuga,uzoamaka.adenuga,2009-01-11,FEMALE,SS2 Arts,Mrs Adenuga,parent.uzoamaka.adenuga.adenuga@gmail.com,080388754052
+Tochukwu,Usman,tochukwu.usman,2009-02-22,MALE,SS2 Arts,Mr Usman,parent.tochukwu.usman.usman@gmail.com,080393652644
+John,Anyadike,john.anyadike,2008-02-05,MALE,SS2 Arts,Mr Anyadike,parent.john.anyadike.anyadike@gmail.com,080364000573
+Emmanuel,Olowu,emmanuel.olowu,2007-06-16,MALE,SS2 Arts,Mr Olowu,parent.emmanuel.olowu.olowu@gmail.com,080363968690
+Queen,Orji,queen.orji,2008-04-01,FEMALE,SS2 Arts,Mrs Orji,parent.queen.orji.orji@gmail.com,080390135030
+Idris,Alao,idris.alao,2007-08-15,MALE,SS2 Arts,Mr Alao,parent.idris.alao.alao@gmail.com,080342209377
+Temitope,Usman,temitope.usman,2007-08-10,FEMALE,SS2 Commerce,Mrs Usman,parent.temitope.usman.usman@gmail.com,080347066682
+Chima,Okafor,chima.okafor,2008-04-04,MALE,SS2 Commerce,Mr Okafor,parent.chima.okafor.okafor@gmail.com,080314864714
+Emeka,Awosika,emeka.awosika,2007-07-03,MALE,SS2 Commerce,Mr Awosika,parent.emeka.awosika.awosika@gmail.com,080352285188
+Nkechi,Usman,nkechi.usman,2007-02-13,FEMALE,SS2 Commerce,Mrs Usman,parent.nkechi.usman.usman@gmail.com,080368124049
+Success,Uzoma,success.uzoma,2008-11-26,FEMALE,SS2 Commerce,Mrs Uzoma,parent.success.uzoma.uzoma@gmail.com,080336826649
+Blessing,Ojewale,blessing.ojewale,2009-02-17,FEMALE,SS2 Commerce,Mrs Ojewale,parent.blessing.ojewale.ojewale@gmail.com,080395828297
+David,Ugwu,david.ugwu,2007-09-08,MALE,SS2 Commerce,Mr Ugwu,parent.david.ugwu.ugwu@gmail.com,080339861093
+Obinna,Akinwumi,obinna.akinwumi,2008-01-20,MALE,SS2 Commerce,Mr Akinwumi,parent.obinna.akinwumi.akinwumi@gmail.com,080323754567
+Suleiman,Yusuf,suleiman.yusuf,2008-01-13,MALE,SS2 Commerce,Mr Yusuf,parent.suleiman.yusuf.yusuf@gmail.com,080312000599
+Yetunde,Asoegwu,yetunde.asoegwu2,2008-05-09,FEMALE,SS2 Commerce,Mrs Asoegwu,parent.yetunde.asoegwu2.asoegwu@gmail.com,080389976595
+Safiya,Ojo,safiya.ojo,2007-07-17,FEMALE,SS3 Science,Mrs Ojo,parent.safiya.ojo.ojo@gmail.com,080327821867
+Blessing,Ajagbe,blessing.ajagbe,2008-01-07,MALE,SS3 Science,Mr Ajagbe,parent.blessing.ajagbe.ajagbe@gmail.com,080352103439
+Folake,Olowu,folake.olowu,2008-07-23,FEMALE,SS3 Science,Mrs Olowu,parent.folake.olowu.olowu@gmail.com,080370725638
+Patience,Iheanacho,patience.iheanacho,2006-08-11,FEMALE,SS3 Science,Mrs Iheanacho,parent.patience.iheanacho.iheanacho@gmail.com,080357700619
+Kemi,Bello,kemi.bello,2007-08-22,FEMALE,SS3 Science,Mrs Bello,parent.kemi.bello.bello@gmail.com,080343655402
+Abdullahi,Bello,abdullahi.bello,2008-04-14,MALE,SS3 Science,Mr Bello,parent.abdullahi.bello.bello@gmail.com,080373172851
+Adaobi,Abubakar,adaobi.abubakar,2007-07-04,FEMALE,SS3 Science,Mrs Abubakar,parent.adaobi.abubakar.abubakar@gmail.com,080391544389
+Safiya,Ojo,safiya.ojo2,2006-02-16,FEMALE,SS3 Science,Mrs Ojo,parent.safiya.ojo2.ojo@gmail.com,080393084114
+Tobi,Abubakar,tobi.abubakar,2006-11-24,MALE,SS3 Science,Mr Abubakar,parent.tobi.abubakar.abubakar@gmail.com,080359664630
+Yemi,Adewale,yemi.adewale,2006-07-22,FEMALE,SS3 Science,Mrs Adewale,parent.yemi.adewale.adewale@gmail.com,080398074443
+Safiya,Olowu,safiya.olowu,2007-05-23,FEMALE,SS3 Arts,Mrs Olowu,parent.safiya.olowu.olowu@gmail.com,080341411815
+Aisha,Osuji,aisha.osuji,2007-06-03,FEMALE,SS3 Arts,Mrs Osuji,parent.aisha.osuji.osuji@gmail.com,080338330143
+Wale,Idris,wale.idris,2008-06-24,MALE,SS3 Arts,Mr Idris,parent.wale.idris.idris@gmail.com,080375461291
+Ayomide,Osuji,ayomide.osuji,2007-03-24,FEMALE,SS3 Arts,Mrs Osuji,parent.ayomide.osuji.osuji@gmail.com,080370677221
+Ifeoma,Oyelaran,ifeoma.oyelaran,2006-11-27,FEMALE,SS3 Arts,Mrs Oyelaran,parent.ifeoma.oyelaran.oyelaran@gmail.com,080336524923
+Kosisochukwu,Akinwale,kosisochukwu.akinwale,2008-08-07,FEMALE,SS3 Arts,Mrs Akinwale,parent.kosisochukwu.akinwale.akinwale@gmail.com,080377495007
+Musa,Adewale,musa.adewale,2008-08-03,MALE,SS3 Arts,Mr Adewale,parent.musa.adewale.adewale@gmail.com,080379957570
+Godwin,Ogunleye,godwin.ogunleye,2006-07-09,MALE,SS3 Arts,Mr Ogunleye,parent.godwin.ogunleye.ogunleye@gmail.com,080399522542
+David,Ekwueme,david.ekwueme,2008-05-01,MALE,SS3 Arts,Mr Ekwueme,parent.david.ekwueme.ekwueme@gmail.com,080347898395
+Abdullahi,Musa,abdullahi.musa,2008-07-06,MALE,SS3 Arts,Mr Musa,parent.abdullahi.musa.musa@gmail.com,080335098805
+Faith,Nwachukwu,faith.nwachukwu,2006-01-09,FEMALE,SS3 Commerce,Mrs Nwachukwu,parent.faith.nwachukwu.nwachukwu@gmail.com,080381913108
+Emmanuel,Abubakar,emmanuel.abubakar,2008-12-18,MALE,SS3 Commerce,Mr Abubakar,parent.emmanuel.abubakar.abubakar@gmail.com,080318338728
+Nnamdi,Adenuga,nnamdi.adenuga,2008-06-12,MALE,SS3 Commerce,Mr Adenuga,parent.nnamdi.adenuga.adenuga@gmail.com,080315094735
+Amara,Chukwu,amara.chukwu,2007-05-01,FEMALE,SS3 Commerce,Mrs Chukwu,parent.amara.chukwu.chukwu@gmail.com,080335871132
+Esther,Adewale,esther.adewale,2006-08-14,FEMALE,SS3 Commerce,Mrs Adewale,parent.esther.adewale.adewale@gmail.com,080348974651
+Tobi,Bakare,tobi.bakare,2007-02-23,MALE,SS3 Commerce,Mr Bakare,parent.tobi.bakare.bakare@gmail.com,080314854093
+Rukaiya,Uzoma,rukaiya.uzoma,2007-07-27,FEMALE,SS3 Commerce,Mrs Uzoma,parent.rukaiya.uzoma.uzoma@gmail.com,080323942062
+Chiamaka,Suleiman,chiamaka.suleiman,2008-11-19,FEMALE,SS3 Commerce,Mrs Suleiman,parent.chiamaka.suleiman.suleiman@gmail.com,080389914411
+Ezinne,Odoemelam,ezinne.odoemelam,2006-07-23,FEMALE,SS3 Commerce,Mrs Odoemelam,parent.ezinne.odoemelam.odoemelam@gmail.com,080334821361
+Kelechi,Odoemelam,kelechi.odoemelam,2007-11-01,MALE,SS3 Commerce,Mr Odoemelam,parent.kelechi.odoemelam.odoemelam@gmail.com,080389264255

@@ -161,12 +161,19 @@ class SubjectImporter(BaseImporter):
 
             code = _generate_code(subject_name)
 
-            # Check if subject with this code already exists for this school
-            if Subject.objects.filter(school=self.school, code=code).exists():
+            # Same-named subjects across classes are one shared Subject
+            if Subject.objects.filter(school=self.school, name__iexact=subject_name).exists():
                 skipped += 1
                 if self.verbose:
-                    self._log(f"Row {i}: SKIP — subject code '{code}' already exists")
+                    self._log(f"Row {i}: SKIP — subject '{subject_name}' already exists")
                 continue
+
+            # Distinct names may generate the same code — dedupe with a suffix
+            base_code = code
+            suffix = 1
+            while Subject.objects.filter(school=self.school, code=code).exists():
+                code = f'{base_code}{suffix}'
+                suffix += 1
 
             if not self.dry_run:
                 Subject.objects.create(

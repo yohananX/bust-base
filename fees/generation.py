@@ -6,6 +6,45 @@ from students.models import ClassEnrollment
 from .models import FeeStructure, Invoice, InvoiceLineItem
 
 
+def effective_fee_structures(school, school_class, term):
+    """Resolve compulsory pricing for a class + term, with inheritance.
+
+    Terms with explicit pricing use it. Any category missing for this term
+    (or every category, when the term has no pricing at all) falls back to
+    the most recent price set for that class and category — so fees stay
+    the same across sessions until the admin explicitly changes them.
+    """
+    explicit = list(
+        FeeStructure.objects.filter(
+            school=school,
+            school_class=school_class,
+            term=term,
+            category__is_compulsory=True,
+        ).select_related('category')
+    )
+    explicit_cats = {fs.category_id for fs in explicit}
+
+    fallbacks = []
+    candidates = list(
+        FeeStructure.objects.filter(
+            school=school,
+            school_class=school_class,
+            category__is_compulsory=True,
+        )
+        .exclude(term=term)
+        .select_related('category', 'term')
+        .order_by('-term__start_date', 'category__name')
+    )
+    seen = set(explicit_cats)
+    for fs in candidates:
+        if fs.category_id in seen:
+            continue
+        seen.add(fs.category_id)
+        fallbacks.append(fs)
+
+    return explicit + fallbacks
+
+
 def generate_invoice_for_student(student, term):
     """Create a term invoice for one student from their current compulsory fees.
 
@@ -25,13 +64,8 @@ def generate_invoice_for_student(student, term):
     if not enrollment:
         return None
 
-    fee_structures = FeeStructure.objects.filter(
-        school=school,
-        school_class=enrollment.school_class,
-        term=term,
-        category__is_compulsory=True,
-    )
-    if not fee_structures.exists():
+    fee_structures = effective_fee_structures(school, enrollment.school_class, term)
+    if not fee_structures:
         return None
 
     line_items = []
@@ -100,14 +134,7 @@ def sync_class_invoices(school_class, term):
 
     from .models import InvoiceLineItem
 
-    structures = list(
-        FeeStructure.objects.filter(
-            school=school_class.school,
-            school_class=school_class,
-            term=term,
-            category__is_compulsory=True,
-        )
-    )
+    structures = effective_fee_structures(school_class.school, school_class, term)
     if not structures:
         return 0
 

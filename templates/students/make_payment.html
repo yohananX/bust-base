@@ -69,7 +69,7 @@
   {% endif %}
 
   {# ===== Payment form — cart + method step ===== #}
-  <form method="post" action="{% url 'fees:checkout-submit' %}" id="payment-form" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6 {% if not any_payable %}opacity-60 pointer-events-none select-none{% endif %}">
+  <form method="post" action="{% url 'fees:checkout-submit' %}" id="payment-form" enctype="multipart/form-data" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6 {% if not any_payable %}opacity-60 pointer-events-none select-none{% endif %}">
     {% csrf_token %}
     {% if not any_payable %}
     <div class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
