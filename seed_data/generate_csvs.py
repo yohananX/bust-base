@@ -82,6 +82,10 @@ def write_students():
     rows = []
     for class_name, count in STUDENT_COUNTS.items():
         low, high = DOB_RANGES[class_name]
+        # One parent account per family: students sharing a surname share a
+        # parent name + email, so the importer's reuse-by-email logic links
+        # siblings to a single parent login.
+        families = {}
         for _ in range(count):
             gender = 'FEMALE' if RNG.random() < 0.5 else 'MALE'
             first = RNG.choice(FEMALE_NAMES if gender == 'FEMALE' else MALE_NAMES)
@@ -96,12 +100,15 @@ def write_students():
             month = RNG.randint(1, 12)
             day = RNG.randint(1, 28)
             dob = '{:04d}-{:02d}-{:02d}'.format(year, month, day)
-            parent_prefix = 'Mr' if gender == 'MALE' else 'Mrs'
-            parent_last = last
+            parent_name, parent_email = families.get(last, (None, None))
+            if parent_name is None:
+                parent_prefix = 'Mr' if gender == 'MALE' else 'Mrs'
+                parent_name = '{} {}'.format(parent_prefix, last)
+                parent_email = _email('parent.{}'.format(last), last)
+                families[last] = (parent_name, parent_email)
             rows.append([
                 first, last, username, dob, gender, class_name,
-                '{} {}'.format(parent_prefix, parent_last),
-                _email('parent.{}'.format(username), parent_last),
+                parent_name, parent_email,
                 _phone(),
             ])
     with open(path, 'w', newline='', encoding='utf-8') as fh:

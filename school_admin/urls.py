@@ -14,6 +14,7 @@ from school_admin.views import (
     StudentPasswordChangeView,
     StudentGuardianLinkCreateView, StudentGuardianLinkDeleteView,
     StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView,
+    ParentListView,
     ClassListView, ClassCreateView, ClassEditView, ClassDeleteView,
     SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView,
     TeacherAssignmentListView, AssignmentDeleteView, AssignmentAddView, AssignmentSubjectsPartialView,
@@ -69,6 +70,7 @@ urlpatterns = [
 
     # Staff
     path('staff/', StaffListView.as_view(), name='staff_list'),
+    path('parents/', ParentListView.as_view(), name='parent_list'),
     path('staff/new/', StaffCreateView.as_view(), name='staff_create'),
     path('staff/<int:pk>/edit/', StaffEditView.as_view(), name='staff_edit'),
     path('staff/<int:pk>/toggle-active/', StaffToggleActiveView.as_view(), name='staff_toggle_active'),

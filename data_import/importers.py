@@ -303,34 +303,11 @@ class StudentImporter(BaseImporter):
                         from fees.generation import generate_invoice_for_current_term
                         generate_invoice_for_current_term(student)
 
-                    # Create parent/guardian if parent_name is provided
+                    # Create parent/guardian if parent_name is provided.
                     if parent_name:
                         parent_parts = parent_name.split(None, 1)
                         parent_first = parent_parts[0]
                         parent_last = parent_parts[1] if len(parent_parts) > 1 else ''
-                        parent_username = _generate_username(parent_first, parent_last)
-
-                        # Ensure parent_username is unique
-                        base_parent_username = parent_username
-                        counter = 1
-                        while User.objects.filter(username=parent_username).exists():
-                            parent_username = f"{base_parent_username}{counter}"
-                            counter += 1
-
-                        parent_user = User.objects.create_user(
-                            username=parent_username,
-                            first_name=parent_first,
-                            last_name=parent_last,
-                            school=self.school,
-                            role=Roles.PARENT,
-                        )
-
-                        if parent_email:
-                            parent_user.email = parent_email
-                        if parent_phone:
-                            parent_user.phone_number = parent_phone
-                        if parent_email or parent_phone:
-                            parent_user.save()
 
                         # Determine relationship (guess from name or default)
                         relationship = 'OTHER'
@@ -338,6 +315,43 @@ class StudentImporter(BaseImporter):
                             relationship = 'FATHER'
                         elif parent_first.lower().startswith(('mrs', 'miss', 'mum', 'mom', 'ma')):
                             relationship = 'MOTHER'
+
+                        # Reuse an existing account with the same email in
+                        # this school, so siblings sharing one parent email
+                        # collapse into a single parent account (one login
+                        # per parent, linked to all their children).
+                        parent_user = None
+                        if parent_email:
+                            parent_user = User.objects.filter(
+                                school=self.school,
+                                role=Roles.PARENT,
+                                email__iexact=parent_email,
+                            ).first()
+
+                        if parent_user is None:
+                            parent_username = _generate_username(parent_first, parent_last)
+
+                            # Ensure parent_username is unique
+                            base_parent_username = parent_username
+                            counter = 1
+                            while User.objects.filter(username=parent_username).exists():
+                                parent_username = f"{base_parent_username}{counter}"
+                                counter += 1
+
+                            parent_user = User.objects.create_user(
+                                username=parent_username,
+                                first_name=parent_first,
+                                last_name=parent_last,
+                                school=self.school,
+                                role=Roles.PARENT,
+                            )
+
+                            if parent_email:
+                                parent_user.email = parent_email
+                            if parent_phone:
+                                parent_user.phone_number = parent_phone
+                            if parent_email or parent_phone:
+                                parent_user.save()
 
                         StudentGuardianLink.objects.create(
                             school=self.school,

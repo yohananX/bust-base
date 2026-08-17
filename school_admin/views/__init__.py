@@ -6,6 +6,7 @@ from .students import (
     StudentGuardianLinkCreateView, StudentGuardianLinkDeleteView,
 )
 from .staff import StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView
+from .parents import ParentListView
 from .classes import ClassListView, ClassCreateView, ClassEditView, ClassDeleteView
 from .academics import (
     SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView,

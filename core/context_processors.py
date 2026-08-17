@@ -123,6 +123,7 @@ def sidebar_nav(request):
         _nav_item(path, 'Dashboard', '/school-admin/', 'layout-dashboard', exact=True),
         _nav_item(path, 'Students', '/school-admin/students/', 'users', section='Students'),
         _nav_item(path, 'Classes', '/school-admin/classes/', 'building-2', section='Students'),
+        _nav_item(path, 'Parents', '/school-admin/parents/', 'users-round', section='Students'),
         _nav_item(path, 'Staff', '/school-admin/staff/', 'briefcase', section='Staff & Users'),
         _nav_item(path, 'Users', '/school-admin/users/', 'user-cog', section='Staff & Users'),
         _nav_item(path, 'Subjects', '/school-admin/subjects/', 'book-open', section='Academics'),
