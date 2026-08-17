@@ -1,9 +1,9 @@
-<a href="{{ item.url }}" title="{{ item.label }}"
-   class="group flex items-center {% if indented %}pl-11{% else %}px-5{% endif %} py-2.5 text-sm font-medium transition-all duration-150 mx-2 rounded-lg
-   {% if item.active %}sidebar-active shadow-sm{% else %}text-gray-600 hover:bg-white/60 hover:text-gray-900{% endif %}">
-  <i data-lucide="{{ item.icon }}" class="w-[18px] h-[18px] mr-3 flex-shrink-0 {% if item.active %}text-primary{% else %}text-gray-400{% endif %}"></i>
+<a href="{{ item.url }}" title="{{ item.label }}" {% if item.active %}aria-current="page"{% endif %}
+   class="group flex items-center {% if indented %}pl-11{% else %}px-5{% endif %} py-3 text-sm font-medium transition-all duration-150 mx-2 rounded-lg
+   {% if item.active %}sidebar-active{% else %}text-ink-muted hover:bg-white/70 hover:text-ink{% endif %}">
+  <i data-lucide="{{ item.icon }}" class="w-[18px] h-[18px] mr-3 flex-shrink-0 {% if item.active %}text-primary{% else %}text-ink-muted{% endif %}"></i>
   <span class="nav-label truncate flex-1">{{ item.label }}</span>
   {% if item.badge %}
-    <span class="nav-badge inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold {% if item.active %}bg-primary text-white{% else %}bg-violet-100 text-primary{% endif %}">{{ item.badge }}</span>
+    <span class="nav-badge inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold {% if item.active %}bg-ink text-white{% else %}bg-primary-tint text-primary{% endif %}">{{ item.badge }}</span>
   {% endif %}
 </a>

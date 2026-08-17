@@ -391,3 +391,162 @@ class FlowReproTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, 'user_mode')
         self.assertNotContains(resp, 'existing-user-section')
+
+
+class PaymentAdminActionsTest(TestCase):
+    """Admin payment recording, editing and deletion (school_admin portal)."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Test School', short_code='test')
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school, session=self.session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+        self.admin_user = User.objects.create_user(
+            username='admin1', email='admin@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', level='JSS1',
+        )
+        self.student = self._make_student('student1', 'John', 'Doe', 'STU001')
+        self.invoice = Invoice.objects.create(
+            school=self.school, student=self.student, term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def _make_student(self, username, first, last, admission):
+        user = User.objects.create_user(
+            username=username, email=f'{username}@test.com', password='testpass123',
+            school=self.school, role=Roles.STUDENT, first_name=first, last_name=last,
+        )
+        student = Student.objects.create(
+            school=self.school, user=user, admission_number=admission,
+            date_of_birth=date(2010, 1, 1), gender=Student.MALE,
+            admission_date=date(2025, 9, 1), status=Student.ACTIVE,
+        )
+        ClassEnrollment.objects.create(
+            school=self.school, student=student, school_class=self.school_class,
+            session=self.session, is_current=True,
+        )
+        return student
+
+    def test_invoice_detail_records_payment_with_method_and_payer(self):
+        """The invoice page records a POS payment with payer details."""
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(
+            reverse('school_admin:invoice_detail', kwargs={'pk': self.invoice.pk}),
+            {
+                'amount': '25000.00',
+                'method': 'POS',
+                'paid_by_name': 'Uncle Emeka',
+                'paid_by_relation': 'Uncle',
+                'reference': 'POS-001',
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        payment = Payment.objects.get(invoice=self.invoice)
+        self.assertEqual(payment.method, Payment.Method.POS)
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+        self.assertEqual(payment.paid_by_name, 'Uncle Emeka')
+        self.assertEqual(payment.paid_by_relation, 'Uncle')
+        self.assertEqual(self.invoice.balance, Decimal('35000.00'))
+
+    def test_record_payment_without_invoice(self):
+        """A payment can be recorded against a student with no invoice."""
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(
+            reverse('school_admin:student_record_payment', kwargs={'pk': self.student.pk}),
+            {
+                'amount': '5000.00',
+                'method': 'CHEQUE',
+                'paid_by_name': 'Sponsor Fund',
+                'description': 'Books',
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        payment = Payment.objects.get(student=self.student, invoice__isnull=True)
+        self.assertEqual(payment.method, Payment.Method.CHEQUE)
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+        self.assertEqual(payment.description, 'Books')
+        self.assertIsNotNone(payment.receipt)
+
+    def test_record_payment_attaches_to_invoice(self):
+        """An invoice-id in the record form links the payment to that invoice."""
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(
+            reverse('school_admin:student_record_payment', kwargs={'pk': self.student.pk}),
+            {'amount': '10000.00', 'method': 'CASH', 'invoice_id': str(self.invoice.pk)},
+        )
+        self.assertEqual(resp.status_code, 302)
+        payment = Payment.objects.get(invoice=self.invoice)
+        self.assertEqual(self.invoice.balance, Decimal('50000.00'))
+
+    def test_edit_payment_updates_amount_method_and_payer(self):
+        """A wrongly recorded payment can be corrected."""
+        payment = Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=Decimal('10000.00'), method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED, paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(
+            reverse('school_admin:payment_edit', kwargs={'pk': payment.pk}),
+            {
+                'amount': '15000.00',
+                'method': 'POS',
+                'paid_by_name': 'Ada',
+                'paid_by_relation': 'Mother',
+                'reference': '',
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        payment.refresh_from_db()
+        self.assertEqual(payment.amount, Decimal('15000.00'))
+        self.assertEqual(payment.method, Payment.Method.POS)
+        self.assertEqual(payment.paid_by_name, 'Ada')
+        self.assertEqual(self.invoice.balance, Decimal('45000.00'))
+
+    def test_delete_payment_restores_balance(self):
+        """Deleting a wrong payment restores the invoice balance."""
+        payment = Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=Decimal('20000.00'), method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED, paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(
+            reverse('school_admin:payment_delete', kwargs={'pk': payment.pk}),
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(Payment.objects.filter(pk=payment.pk).exists())
+        self.assertEqual(self.invoice.balance, Decimal('60000.00'))
+
+    def test_edit_and_delete_require_admin(self):
+        """Non-admins cannot edit or delete payments."""
+        teacher = User.objects.create_user(
+            username='teacher1', email='t@test.com', password='testpass123',
+            school=self.school, role=Roles.TEACHER,
+        )
+        payment = Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=Decimal('10000.00'), method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED, paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+        self.client.force_login(teacher)
+        resp = self.client.post(
+            reverse('school_admin:payment_edit', kwargs={'pk': payment.pk}),
+            {'amount': '99999.00', 'method': 'CASH'},
+        )
+        self.assertEqual(resp.status_code, 403)
+        payment.refresh_from_db()
+        self.assertEqual(payment.amount, Decimal('10000.00'))

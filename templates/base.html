@@ -18,14 +18,61 @@
       theme: {
         extend: {
           colors: {
-            primary: '#7C3AED',
-            'primary-hover': '#6D28D9',
-            'page-bg': '#FAFAFA',
-            'sidebar-bg': '#EEEEEE',
-            'card-purple': '#F0EAF5',
-            'card-blue': '#D2F0FE',
-            'card-orange': '#FEEFE7',
-            'card-green': '#E8F5E9',
+            /* ===== Semantic aliases (mirror tokens.css — source of truth) ===== */
+            primary: '#8A6420',
+            'primary-hover': '#7A5A1E',
+            'primary-lighter': '#C89A4F',
+            'primary-tint': '#F6EFE1',
+            gold: '#B8863A',
+            'gold-lighter': '#C89A4F',
+            ink: '#1B2430',
+            'ink-muted': '#5B6472',
+            'ink-faint': '#8A93A2',
+            paper: '#F6F6F4',
+            surface: '#FFFFFF',
+            'surface-muted': '#EFEEEA',
+            line: '#E4E2DB',
+            'line-strong': '#C9C6BC',
+            success: '#2F6E4F',
+            'success-tint': '#E9F1EC',
+            danger: '#A63A2E',
+            'danger-tint': '#F7E9E7',
+            warning: '#8A6420',
+            'warning-tint': '#F7F0E3',
+            info: '#2E5A8A',
+            'info-tint': '#E8EFF6',
+            'page-bg': '#F6F6F4',
+            'sidebar-bg': '#EFEEEA',
+
+            /* ===== Stock palette remapped to the gold world =====
+               Decorative families (violet/purple/indigo/fuchsia/pink/
+               sky/orange/teal/cyan/lime/yellow) become gold tints so no
+               UI element ever clashes with the brand. Semantic families
+               keep their meaning but in-tone: red=status-danger,
+               green=status-success, blue=status-info, amber=warning.
+               gray is a warm ink-tinted scale (gray-400 = 4.76:1 on white). */
+            violet:   {50:'#F6EFE1',100:'#F0E5D0',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#7A5A1E',700:'#6B4E19',800:'#5A4215',900:'#4A3612'},
+            purple:   {50:'#F6EFE1',100:'#F0E5D0',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#7A5A1E',700:'#6B4E19',800:'#5A4215',900:'#4A3612'},
+            indigo:   {50:'#F6EFE1',100:'#F0E5D0',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#7A5A1E',700:'#6B4E19',800:'#5A4215',900:'#4A3612'},
+            fuchsia:  {50:'#F6EFE1',100:'#F0E5D0',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#7A5A1E',700:'#6B4E19',800:'#5A4215',900:'#4A3612'},
+            pink:     {50:'#F6EFE1',100:'#F0E5D0',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#7A5A1E',700:'#6B4E19',800:'#5A4215',900:'#4A3612'},
+            sky:      {50:'#F6EFE1',100:'#F0E5D0',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#7A5A1E',700:'#6B4E19',800:'#5A4215',900:'#4A3612'},
+            orange:   {50:'#F6EFE1',100:'#F0E5D0',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#7A5A1E',700:'#6B4E19',800:'#5A4215',900:'#4A3612'},
+            teal:     {50:'#F6EFE1',100:'#F0E5D0',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#7A5A1E',700:'#6B4E19',800:'#5A4215',900:'#4A3612'},
+            cyan:     {50:'#F6EFE1',100:'#F0E5D0',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#7A5A1E',700:'#6B4E19',800:'#5A4215',900:'#4A3612'},
+            lime:     {50:'#F6EFE1',100:'#F0E5D0',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#7A5A1E',700:'#6B4E19',800:'#5A4215',900:'#4A3612'},
+            yellow:   {50:'#F7F0E3',100:'#EFE3C8',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#8A6420',700:'#7A5A1E',800:'#6B4E19',900:'#4A3612'},
+            amber:    {50:'#F7F0E3',100:'#EFE3C8',200:'#E5D3A8',300:'#D8BE82',400:'#C89A4F',500:'#B8863A',600:'#8A6420',700:'#7A5A1E',800:'#6B4E19',900:'#4A3612'},
+            rose:     {50:'#F7E9E7',100:'#F3DCD9',200:'#E8C4BF',300:'#D8A09A',400:'#C04536',500:'#B03C30',600:'#A63A2E',700:'#8F2F26',800:'#7A2921',900:'#66231C'},
+            red:      {50:'#F7E9E7',100:'#F3DCD9',200:'#E8C4BF',300:'#D8A09A',400:'#C04536',500:'#B03C30',600:'#A63A2E',700:'#8F2F26',800:'#7A2921',900:'#66231C'},
+            green:    {50:'#E9F1EC',100:'#D5E4DB',200:'#AECBB9',300:'#87B297',400:'#4C8A69',500:'#3C7A5A',600:'#2F6E4F',700:'#28593F',800:'#224A35',900:'#1C3E2C'},
+            emerald:  {50:'#E9F1EC',100:'#D5E4DB',200:'#AECBB9',300:'#87B297',400:'#4C8A69',500:'#3C7A5A',600:'#2F6E4F',700:'#28593F',800:'#224A35',900:'#1C3E2C'},
+            blue:     {50:'#E8EFF6',100:'#D3E0EC',200:'#AEC6DB',300:'#8AAAC8',400:'#4C7FAE',500:'#3A6FA8',600:'#2E5A8A',700:'#264B73',800:'#203F60',900:'#1B3450'},
+            gray:     {50:'#F6F6F4',100:'#EFEEEA',200:'#E4E2DB',300:'#C9C6BC',400:'#6B7480',500:'#4B5460',600:'#3A424E',700:'#2E3640',800:'#252C35',900:'#1B2430'},
+            slate:    {50:'#F6F6F4',100:'#EFEEEA',200:'#E4E2DB',300:'#C9C6BC',400:'#6B7480',500:'#4B5460',600:'#3A424E',700:'#2E3640',800:'#252C35',900:'#1B2430'},
+            zinc:     {50:'#F6F6F4',100:'#EFEEEA',200:'#E4E2DB',300:'#C9C6BC',400:'#6B7480',500:'#4B5460',600:'#3A424E',700:'#2E3640',800:'#252C35',900:'#1B2430'},
+            stone:    {50:'#F6F6F4',100:'#EFEEEA',200:'#E4E2DB',300:'#C9C6BC',400:'#6B7480',500:'#4B5460',600:'#3A424E',700:'#2E3640',800:'#252C35',900:'#1B2430'},
+            neutral:  {50:'#F6F6F4',100:'#EFEEEA',200:'#E4E2DB',300:'#C9C6BC',400:'#6B7480',500:'#4B5460',600:'#3A424E',700:'#2E3640',800:'#252C35',900:'#1B2430'},
           }
         }
       }
@@ -51,15 +98,15 @@
 
   <style>
     .sidebar-active {
-      background: #EDE9FE;
-      color: #7C3AED;
+      background: var(--color-primary-tint);
+      color: var(--color-primary);
     }
     .htmx-indicator { display: none; }
     .htmx-request .htmx-indicator { display: inline; }
     .htmx-request.htmx-indicator { display: inline; }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--color-line-strong); border-radius: 3px; }
 
     /* ===== Sidebar width (collapsible to icon rail on desktop) ===== */
     #sidebar { width: 16rem; }
@@ -106,7 +153,7 @@
   {% block extra_head %}{% endblock %}
   {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-page-bg text-gray-800 font-[var(--font-body)] antialiased">
+<body class="bg-page-bg text-ink font-[var(--font-body)] antialiased">
 
   {# Mobile sidebar overlay #}
   <div id="mobile-overlay" class="fixed inset-0 bg-black/40 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
@@ -119,23 +166,23 @@
     {# ===== SIDEBAR ===== #}
     <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 bg-sidebar-bg flex-shrink-0 flex flex-col z-50 transform -translate-x-full lg:translate-x-0 transition-all duration-200">
       {# Brand #}
-      <div class="brand-wrap relative px-5 pt-5 pb-4 border-b border-gray-200/50 flex-shrink-0">
+      <div class="brand-wrap relative px-5 pt-5 pb-4 border-b border-line/70 flex-shrink-0">
         <div class="relative">
           {% if request.school.logo %}
           <div class="brand-banner h-20 flex items-center justify-center overflow-hidden">
             <img src="{{ request.school.logo.url }}" alt="{{ request.school.name }}" class="max-h-full max-w-full object-contain">
           </div>
           {% else %}
-          <div class="brand-banner h-20 rounded-2xl bg-primary flex items-center justify-center text-white font-bold text-2xl">
+          <div class="brand-banner h-20 rounded-2xl bg-gold flex items-center justify-center text-ink font-bold text-2xl">
             {{ request.school.short_code|first|default:'G' }}
           </div>
           {% endif %}
-          <button onclick="toggleCollapseSidebar()" class="hidden lg:flex absolute top-1.5 right-1.5 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/80 transition-colors" title="Collapse sidebar">
+          <button onclick="toggleCollapseSidebar()" aria-label="Collapse sidebar" class="hidden lg:flex absolute top-1.5 right-1.5 p-2 rounded-lg text-ink-faint hover:text-ink hover:bg-white/80 transition-colors" title="Collapse sidebar">
             <i data-lucide="panel-left-close" class="collapse-close w-[18px] h-[18px]"></i>
             <i data-lucide="panel-left-open" class="collapse-open w-[18px] h-[18px]"></i>
           </button>
         </div>
-        <button onclick="toggleSidebar()" class="sidebar-close-btn lg:hidden absolute top-4 right-4 text-gray-500 p-1.5"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button onclick="toggleSidebar()" aria-label="Close menu" class="sidebar-close-btn lg:hidden absolute top-4 right-4 text-ink-muted p-2.5"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
       {# Nav #}
@@ -143,12 +190,12 @@
         {% for section in sidebar_sections %}
           {% if section.section %}
             <button type="button" data-section="{{ section.section }}"
-                    class="section-toggle w-full flex items-center justify-between pl-7 pr-5 pt-3 pb-2 text-sm font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors{% if forloop.counter0 %} border-t border-gray-200/50{% endif %}">
+                    class="section-toggle w-full flex items-center justify-between pl-7 pr-5 py-3 text-xs font-semibold text-ink-muted uppercase tracking-wider hover:text-ink transition-colors{% if forloop.counter0 %} border-t border-line/70{% endif %}">
               <span class="flex items-center gap-2 min-w-0">
                 {% if section.icon %}<i data-lucide="{{ section.icon }}" class="w-[18px] h-[18px] flex-shrink-0"></i>{% endif %}
                 <span class="section-toggle-text truncate">{{ section.section }}</span>
               </span>
-              <i data-lucide="chevron-down" class="section-chev w-3.5 h-3.5 flex-shrink-0 text-gray-400/70"></i>
+              <i data-lucide="chevron-down" class="section-chev w-3.5 h-3.5 flex-shrink-0 text-ink-faint"></i>
             </button>
             <div class="section-body">
               {% for item in section.items %}{% include 'components/nav_item.html' with indented=True %}{% endfor %}
@@ -160,27 +207,27 @@
       </nav>
 
       {# Profile + logout #}
-      <div class="p-3 border-t border-gray-200/50 flex-shrink-0">
+      <div class="p-3 border-t border-line/70 flex-shrink-0">
         {% if user.is_authenticated %}
-          <div class="profile-inner bg-white rounded-2xl border border-gray-100 shadow-sm p-3">
+          <div class="profile-inner bg-white rounded-2xl border border-line p-3">
             <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-full bg-violet-100 text-primary ring-1 ring-violet-200 flex items-center justify-center text-xs font-bold flex-shrink-0">
+              <div class="w-9 h-9 rounded-full bg-primary-tint text-primary ring-1 ring-line flex items-center justify-center text-xs font-bold flex-shrink-0">
                 {{ user.first_name|first|default:'U' }}{{ user.last_name|first|default:'' }}
               </div>
               <div class="profile-text min-w-0 flex-1">
-                <p class="text-xs font-semibold text-gray-900 truncate">{{ user.get_full_name|default:user.username }}</p>
-                <p class="text-[11px] text-gray-500">{{ user.get_role_display }}</p>
+                <p class="text-xs font-semibold text-ink truncate">{{ user.get_full_name|default:user.username }}</p>
+                <p class="text-xs text-ink-muted">{{ user.get_role_display }}</p>
               </div>
             </div>
-            <form method="post" action="{% url 'logout' %}" class="mt-2 pt-2 border-t border-gray-100">
+            <form method="post" action="{% url 'logout' %}" class="mt-2 pt-2 border-t border-line">
               {% csrf_token %}
-              <button type="submit" class="flex items-center w-full px-3 py-2 rounded-lg text-rose-500 hover:bg-rose-50 text-xs font-medium transition-all">
+              <button type="submit" class="flex items-center w-full px-3 py-2 rounded-lg text-danger hover:bg-danger-tint text-xs font-medium transition-all">
                 <i data-lucide="log-out" class="w-4 h-4 mr-3 flex-shrink-0"></i><span class="profile-logout-label">Logout</span>
               </button>
             </form>
           </div>
         {% else %}
-          <a href="{% url 'login' %}" class="flex items-center px-3 py-2 rounded-lg text-gray-600 hover:bg-white/60 text-xs font-medium transition-all">
+          <a href="{% url 'login' %}" class="flex items-center px-3 py-2 rounded-lg text-ink-muted hover:bg-white/70 text-xs font-medium transition-all">
             <i data-lucide="log-in" class="w-4 h-4 mr-3 flex-shrink-0"></i><span class="profile-logout-label">Login</span>
           </a>
         {% endif %}
@@ -190,23 +237,23 @@
     {# ===== MAIN CONTENT ===== #}
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
       {# Top bar #}
-      <header class="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 lg:px-8 flex-shrink-0">
+      <header class="h-16 bg-surface border-b border-line flex items-center justify-between px-4 lg:px-8 flex-shrink-0">
         <div class="flex items-center gap-3 min-w-0">
-          <button onclick="toggleSidebar()" class="lg:hidden p-2 -ml-2 text-gray-500 hover:text-gray-700">
+          <button onclick="toggleSidebar()" aria-label="Open menu" aria-expanded="false" class="lg:hidden h-11 w-11 -ml-2 flex items-center justify-center text-ink-muted hover:text-ink">
             <i data-lucide="menu" class="w-5 h-5"></i>
           </button>
-          <h1 class="text-lg font-semibold text-gray-800 truncate">
+          <h1 class="text-xl font-display font-semibold text-ink truncate">
             {% block page_title %}{% block page_header %}Dashboard{% endblock %}{% endblock %}
           </h1>
         </div>
         <div class="flex items-center gap-3 lg:gap-4">
           {% if user.is_authenticated %}
-            <span class="hidden sm:block text-sm text-gray-600">{{ user.get_full_name|default:user.username }}</span>
+            <span class="hidden sm:block text-sm text-ink-muted">{{ user.get_full_name|default:user.username }}</span>
             <span class="px-2 py-0.5 text-xs font-medium rounded-full
-              {% if user.role == 'ADMIN' %}bg-purple-100 text-purple-700
-              {% elif user.role == 'TEACHER' %}bg-blue-100 text-blue-700
-              {% elif user.role == 'STUDENT' %}bg-green-100 text-green-700
-              {% elif user.role == 'PARENT' %}bg-amber-100 text-amber-700
+              {% if user.role == 'ADMIN' %}bg-primary-tint text-primary
+              {% elif user.role == 'TEACHER' %}bg-info-tint text-info
+              {% elif user.role == 'STUDENT' %}bg-success-tint text-success
+              {% elif user.role == 'PARENT' %}bg-warning-tint text-warning
               {% endif %}">
               {{ user.get_role_display }}
             </span>
@@ -248,12 +295,13 @@
 
       show(message, type = 'info', duration = this.defaultDuration) {
         if (!this.container) return;
+        const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
         const config = {
-          success: { border: '#10B981', icon: 'check-circle', iconColor: '#10B981' },
-          error:   { border: '#EF4444', icon: 'x-circle', iconColor: '#EF4444' },
-          warning: { border: '#F59E0B', icon: 'alert-triangle', iconColor: '#F59E0B' },
-          info:    { border: '#3B82F6', icon: 'info', iconColor: '#3B82F6' },
-        }[type] || { border: '#3B82F6', icon: 'info', iconColor: '#3B82F6' };
+          success: { color: css('--color-status-success'), icon: 'check-circle' },
+          error:   { color: css('--color-status-danger'), icon: 'x-circle' },
+          warning: { color: css('--color-status-warning'), icon: 'alert-triangle' },
+          info:    { color: css('--color-status-info'), icon: 'info' },
+        }[type] || { color: css('--color-status-info'), icon: 'info' };
 
         while (this.container.children.length >= this.maxVisible) {
           const oldest = this.container.firstElementChild;
@@ -267,12 +315,11 @@
         const id = 't' + Date.now() + Math.random().toString(36).slice(2, 6);
         const el = document.createElement('div');
         el.dataset.toastId = id;
-        el.className = 'toast-item bg-white border-l-4 shadow-lg rounded-lg pl-4 pr-2 py-3 flex items-start gap-3 w-full';
-        el.style.borderLeftColor = config.border;
+        el.className = 'toast-item bg-white shadow-lg rounded-lg pl-4 pr-1.5 py-2.5 flex items-start gap-3 w-full';
         el.innerHTML =
-          '<i data-lucide="' + config.icon + '" class="w-5 h-5 mt-0.5 flex-shrink-0" style="color:' + config.iconColor + '"></i>' +
-          '<p class="text-sm text-gray-700 flex-1 min-w-0 break-words"></p>' +
-          '<button class="toast-close p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0" title="Dismiss">' +
+          '<i data-lucide="' + config.icon + '" class="w-5 h-5 mt-1 flex-shrink-0" style="color:' + config.color + '"></i>' +
+          '<p class="text-sm text-ink flex-1 min-w-0 break-words pt-0.5"></p>' +
+          '<button class="toast-close w-8 h-8 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors flex-shrink-0" aria-label="Dismiss notification">' +
             '<i data-lucide="x" class="w-4 h-4"></i>' +
           '</button>';
         el.querySelector('p').textContent = message;
@@ -333,8 +380,11 @@
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
       const overlay = document.getElementById('mobile-overlay');
-      sidebar.classList.toggle('-translate-x-full');
+      const open = !sidebar.classList.toggle('-translate-x-full');
       overlay.classList.toggle('hidden');
+      document.querySelectorAll('header [aria-expanded]').forEach(function(btn) {
+        btn.setAttribute('aria-expanded', String(open));
+      });
     }
     function toggleCollapseSidebar() {
       const sidebar = document.getElementById('sidebar');
@@ -348,13 +398,20 @@
       document.querySelectorAll('.section-toggle').forEach(function(btn) {
         const body = btn.nextElementSibling;
         const key = 'sbSection:' + btn.dataset.section;
+        const syncAria = function(collapsed) {
+          btn.setAttribute('aria-expanded', String(!collapsed));
+        };
         if (localStorage.getItem(key) === '0') {
           body.classList.add('hidden');
           btn.classList.add('section-collapsed');
+          syncAria(true);
+        } else {
+          syncAria(false);
         }
         btn.addEventListener('click', function() {
           const collapsed = body.classList.toggle('hidden');
           btn.classList.toggle('section-collapsed', collapsed);
+          syncAria(collapsed);
           localStorage.setItem(key, collapsed ? '0' : '1');
         });
       });

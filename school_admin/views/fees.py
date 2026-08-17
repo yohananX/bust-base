@@ -441,15 +441,20 @@ class InvoiceDetailView(RoleRequiredMixin, View):
             return redirect('school_admin:invoice_detail', pk=pk)
 
         reference = request.POST.get('reference', '')
+        method = request.POST.get('method', '')
+        if method not in Payment.Method.values:
+            method = Payment.Method.CASH
         Payment.objects.create(
             school=school,
             invoice=invoice,
             amount=amount,
-            method=Payment.Method.CASH,
+            method=method,
             reference=reference,
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
             recorded_by=request.user,
+            paid_by_name=request.POST.get('paid_by_name', '').strip(),
+            paid_by_relation=request.POST.get('paid_by_relation', '').strip(),
         )
         messages.success(request, f'Payment of NGN{amount} recorded.')
         return redirect('school_admin:invoice_detail', pk=pk)
@@ -747,3 +752,115 @@ class PendingTransferRejectView(RoleRequiredMixin, View):
 
         messages.info(request, 'Payment marked failed.')
         return redirect('school_admin:pending_transfers')
+
+
+class PaymentEditView(RoleRequiredMixin, View):
+    """Edit a recorded payment (amount, method, payer, reference)."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request, pk):
+        school = request.school
+        payment = get_object_or_404(Payment, school=school, pk=pk)
+        return render(request, 'school_admin/payment_edit.html', {
+            'payment': payment,
+        })
+
+    def post(self, request, pk):
+        school = request.school
+        payment = get_object_or_404(Payment, school=school, pk=pk)
+        back = redirect('school_admin:invoice_detail', pk=payment.invoice_id) \
+            if payment.invoice_id else redirect('school_admin:student_detail', pk=payment.student_id)
+
+        try:
+            amount = Decimal(request.POST.get('amount', '0'))
+        except (ValueError, ArithmeticError):
+            messages.error(request, 'Invalid amount.')
+            return back
+        if amount <= 0:
+            messages.error(request, 'Amount must be positive.')
+            return back
+
+        method = request.POST.get('method', '')
+        if method not in Payment.Method.values:
+            messages.error(request, 'Invalid payment method.')
+            return back
+
+        payment.amount = amount
+        payment.method = method
+        payment.paid_by_name = request.POST.get('paid_by_name', '').strip()
+        payment.paid_by_relation = request.POST.get('paid_by_relation', '').strip()
+        payment.reference = request.POST.get('reference', '').strip() or None
+        payment.save(update_fields=[
+            'amount', 'method', 'paid_by_name', 'paid_by_relation', 'reference',
+        ])
+        messages.success(request, 'Payment updated.')
+        return back
+
+
+class PaymentDeleteView(RoleRequiredMixin, View):
+    """Delete a wrongly recorded payment."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk):
+        school = request.school
+        payment = get_object_or_404(Payment, school=school, pk=pk)
+        back = redirect('school_admin:invoice_detail', pk=payment.invoice_id) \
+            if payment.invoice_id else redirect('school_admin:student_detail', pk=payment.student_id)
+
+        amount = payment.amount
+        payment.delete()
+        messages.success(request, f'Payment of ₦{amount:,.2f} deleted.')
+        return back
+
+
+class StudentRecordPaymentView(RoleRequiredMixin, View):
+    """Record a payment against a student, optionally linked to an invoice."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk):
+        school = request.school
+        student = get_object_or_404(Student, school=school, pk=pk)
+
+        try:
+            amount = Decimal(request.POST.get('amount', '0'))
+        except (ValueError, ArithmeticError):
+            messages.error(request, 'Invalid amount.')
+            return redirect('school_admin:student_detail', pk=student.pk)
+        if amount <= 0:
+            messages.error(request, 'Amount must be positive.')
+            return redirect('school_admin:student_detail', pk=student.pk)
+
+        method = request.POST.get('method', '')
+        if method not in Payment.Method.values:
+            messages.error(request, 'Invalid payment method.')
+            return redirect('school_admin:student_detail', pk=student.pk)
+
+        invoice_id = request.POST.get('invoice_id', '')
+        invoice = None
+        if invoice_id:
+            invoice = get_object_or_404(Invoice, school=school, pk=invoice_id)
+            if invoice.student_id != student.pk:
+                messages.error(request, 'That invoice belongs to a different student.')
+                return redirect('school_admin:student_detail', pk=student.pk)
+
+        payment = Payment.objects.create(
+            school=school,
+            invoice=invoice,
+            student=student,
+            amount=amount,
+            method=method,
+            reference=request.POST.get('reference', '').strip() or None,
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+            recorded_by=request.user,
+            description=request.POST.get('description', '').strip(),
+            paid_by_name=request.POST.get('paid_by_name', '').strip(),
+            paid_by_relation=request.POST.get('paid_by_relation', '').strip(),
+        )
+        from fees.paystack import issue_receipt
+        issue_receipt(payment)
+        messages.success(request, f'Payment of ₦{amount:,.2f} recorded.')
+        return redirect('school_admin:student_detail', pk=student.pk)

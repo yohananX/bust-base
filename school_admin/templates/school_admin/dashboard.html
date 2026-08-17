@@ -16,7 +16,7 @@
           <i data-lucide="clock" class="w-5 h-5 text-rose-600"></i>
         </div>
         <div class="min-w-0">
-          <p class="text-sm font-semibold text-gray-800">{{ pending_transfers }} pending bank transfers awaiting confirmation</p>
+          <p class="text-sm font-semibold text-gray-800">{{ pending_transfers }} bank transfers awaiting confirmation</p>
           <p class="text-xs text-gray-500">Verify and confirm incoming transfers to keep fee records accurate.</p>
         </div>
       </div>
@@ -31,8 +31,8 @@
           <i data-lucide="banknote" class="w-5 h-5 text-amber-600"></i>
         </div>
         <div class="min-w-0">
-          <p class="text-sm font-semibold text-gray-800">&#8358;{{ outstanding_fees|floatformat:0 }} outstanding fees across {{ owing_students }} students</p>
-          <p class="text-xs text-gray-500">Follow up on outstanding balances to improve collection.</p>
+          <p class="text-sm font-semibold text-gray-800">&#8358;{{ outstanding_fees|floatformat:0 }} fees due across {{ owing_students }} students</p>
+          <p class="text-xs text-gray-500">Follow up on amounts due to improve collection.</p>
         </div>
       </div>
       <a href="{% url 'school_admin:outstanding_fees' %}" class="text-sm font-medium text-amber-600 hover:text-amber-800 hover:underline shrink-0">View report</a>
@@ -118,8 +118,8 @@
           <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">&mdash;</span>
         {% endif %}
       </div>
-      <p class="text-2xl font-bold text-gray-900 mt-4">&#8358;{{ outstanding_fees|floatformat:0 }}</p>
-      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Outstanding Fees</p>
+<p class="text-2xl font-bold text-gray-900 mt-4">&#8358;{{ outstanding_fees|floatformat:0 }}</p>
+<p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Fees Due</p>
       <div class="mt-3 h-10">
         <canvas id="sparkFees"></canvas>
       </div>
@@ -247,7 +247,7 @@
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-gray-800">Students owing</p>
-            <p class="text-[11px] text-gray-400">Outstanding balances to follow up on</p>
+            <p class="text-[11px] text-gray-400">Amounts due to follow up on</p>
           </div>
           <span class="text-sm font-bold text-gray-900">{{ owing_students }}</span>
           <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0"></i>
@@ -309,7 +309,7 @@
                   </span>
                 {% elif payment.status == 'PENDING' %}
                   <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-100">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1"></span> Pending
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1"></span> Awaiting confirmation
                   </span>
                 {% else %}
                   <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-100">
@@ -331,7 +331,7 @@
     {# Top Owing Students #}
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h3 class="text-sm font-semibold text-gray-800">Top Owing Students</h3>
+        <h3 class="text-sm font-semibold text-gray-800">Students Owing</h3>
         <a href="{% url 'school_admin:outstanding_fees' %}" class="text-xs text-violet-600 hover:text-violet-700 font-medium">View All</a>
       </div>
       <div class="overflow-x-auto">

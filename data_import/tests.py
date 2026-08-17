@@ -1,6 +1,7 @@
 import csv
 import os
 import tempfile
+from decimal import Decimal
 
 from django.test import TestCase
 from django.core.management import call_command
@@ -227,6 +228,74 @@ class StudentImporterCreatesStudentTest(BaseImportTestCase):
             user = User.objects.get(username='johndoe')
             self.assertEqual(user.role, Roles.STUDENT)
             self.assertTrue(Student.objects.filter(school=self.school, user=user).exists())
+        finally:
+            os.unlink(csv_path)
+
+
+class StudentImporterAutoInvoiceTest(BaseImportTestCase):
+    """Imported students with a class get a current-term invoice automatically."""
+
+    def setUp(self):
+        super().setUp()
+        from core.models import Term
+        from fees.models import FeeCategory, FeeStructure
+
+        self.term = Term.objects.create(
+            school=self.school, session=self.session, name='First Term',
+            start_date='2025-09-01', end_date='2025-12-15', is_current=True,
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS 1', level='Junior',
+        )
+        category = FeeCategory.objects.create(school=self.school, name='Tuition')
+        FeeStructure.objects.create(
+            school=self.school, school_class=self.school_class, term=self.term,
+            category=category, amount=Decimal('54000.00'),
+        )
+
+    def test_import_enrolls_and_generates_invoice(self):
+        from fees.models import Invoice
+
+        csv_path = _write_csv(
+            ['first_name', 'last_name', 'username', 'date_of_birth', 'gender', 'parent_name', 'parent_email', 'parent_phone', 'class_name'],
+            [{'first_name': 'John', 'last_name': 'Doe', 'username': 'johndoe',
+              'date_of_birth': '2010-01-15', 'gender': 'M',
+              'parent_name': '', 'parent_email': '', 'parent_phone': '',
+              'class_name': 'JSS 1'}],
+        )
+        try:
+            importer = StudentImporter(school=self.school)
+            result = importer.import_csv(csv_path)
+            self.assertEqual(result['created'], 1)
+
+            student = Student.objects.get(user__username='johndoe')
+            invoice = Invoice.objects.filter(
+                school=self.school, student=student, term=self.term,
+            ).first()
+            self.assertIsNotNone(invoice, 'expected an auto-generated invoice on import')
+            self.assertEqual(invoice.total_amount, Decimal('54000.00'))
+        finally:
+            os.unlink(csv_path)
+
+    def test_import_without_class_has_no_invoice(self):
+        from fees.models import Invoice
+
+        csv_path = _write_csv(
+            ['first_name', 'last_name', 'username', 'date_of_birth', 'gender', 'parent_name', 'parent_email', 'parent_phone', 'class_name'],
+            [{'first_name': 'Jane', 'last_name': 'Roe', 'username': 'janeroe',
+              'date_of_birth': '2010-01-15', 'gender': 'F',
+              'parent_name': '', 'parent_email': '', 'parent_phone': '',
+              'class_name': ''}],
+        )
+        try:
+            importer = StudentImporter(school=self.school)
+            result = importer.import_csv(csv_path)
+            self.assertEqual(result['created'], 1)
+
+            student = Student.objects.get(user__username='janeroe')
+            self.assertFalse(
+                Invoice.objects.filter(school=self.school, student=student).exists()
+            )
         finally:
             os.unlink(csv_path)
 

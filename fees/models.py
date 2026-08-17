@@ -137,6 +137,8 @@ class Payment(TenantScopedModel):
     class Method(models.TextChoices):
         CASH = 'CASH', _('Cash')
         BANK_TRANSFER = 'BANK_TRANSFER', _('Bank Transfer')
+        POS = 'POS', _('POS / Card at school')
+        CHEQUE = 'CHEQUE', _('Cheque')
         CARD = 'CARD', _('Card')
         USSD = 'USSD', _('USSD')
         PAYSTACK = 'PAYSTACK', _('Paystack')
@@ -220,8 +222,18 @@ class Payment(TenantScopedModel):
     paid_by_name = models.CharField(
         max_length=200, blank=True, default='', verbose_name=_('paid by name')
     )
+    paid_by_relation = models.CharField(
+        max_length=100, blank=True, default='', verbose_name=_('paid by relation')
+    )
     paid_by_phone = models.CharField(
         max_length=20, blank=True, default='', verbose_name=_('paid by phone')
+    )
+    proof_image = models.FileField(
+        upload_to='fees/proofs/%Y/%m/',
+        blank=True,
+        null=True,
+        verbose_name=_('transfer proof'),
+        help_text=_('Screenshot or receipt image proving a bank transfer.'),
     )
     card_last4 = models.CharField(
         max_length=4, blank=True, default='', verbose_name=_('card last 4')

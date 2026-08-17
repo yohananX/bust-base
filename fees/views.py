@@ -354,6 +354,17 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
 
         method = request.POST.get('method', 'paystack')
         if method == 'bank_transfer':
+            proof = request.FILES.get('proof_image')
+            if proof is None:
+                messages.error(
+                    request,
+                    'Upload a screenshot of your transfer before submitting.',
+                )
+                return redirect(back_url)
+
+            paid_by_name = request.POST.get('paid_by_name', '').strip()
+            paid_by_relation = request.POST.get('paid_by_relation', '').strip()
+
             with transaction.atomic():
                 for alloc in result.allocations:
                     Payment.objects.create(
@@ -367,6 +378,9 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
                         paid_on=timezone.now(),
                         recorded_by=None,
                         description='Fee checkout',
+                        proof_image=proof,
+                        paid_by_name=paid_by_name,
+                        paid_by_relation=paid_by_relation,
                     )
             if result.is_split:
                 messages.success(
@@ -799,7 +813,7 @@ class PaymentReceiptPdfView(RoleRequiredMixin, View):
 
         # Import deferred to call time — fees/pdf.py is built by a parallel agent.
         from fees.pdf import render_receipt_pdf
-        response = render_receipt_pdf(payment)
+        response = render_receipt_pdf(payment, request=request)
         if response is None:
             return redirect('fees:payment-receipt', payment_id=payment.pk)
         return response

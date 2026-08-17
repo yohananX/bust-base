@@ -8,21 +8,22 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     {# Fee status #}
-    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-line">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+        <div class="w-12 h-12 rounded-xl bg-success-tint flex items-center justify-center text-success">
           <i data-lucide="banknote" class="w-6 h-6"></i>
         </div>
-        <h3 class="text-sm font-semibold text-gray-800">Fees</h3>
+        <h3 class="text-sm font-semibold text-ink">Fees</h3>
       </div>
-      <p class="text-4xl font-bold text-gray-900 tabular-nums mb-1">&#8358;{{ outstanding|floatformat:2 }}</p>
-      <p class="text-sm text-gray-500 mb-5">{{ unpaid_count }} unpaid invoice{{ unpaid_count|pluralize }}</p>
+      <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mb-1">Amount due</p>
+      <p class="text-4xl font-bold text-ink tabular-nums mb-1">&#8358;{{ outstanding|floatformat:2 }}</p>
+      <p class="text-sm text-ink-muted mb-5">{{ unpaid_count }} unpaid invoice{{ unpaid_count|pluralize }}</p>
       {% if unpaid_count != 0 %}
-      <p class="inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+      <p class="inline-flex items-center gap-1.5 text-sm font-medium text-warning bg-warning-tint px-3 py-2 rounded-lg">
         <i data-lucide="alert-triangle" class="w-4 h-4"></i>You have {{ unpaid_count }} unpaid invoice{{ unpaid_count|pluralize }}
       </p>
       {% endif %}
-      <div class="mt-6 pt-5 border-t border-gray-100">
+      <div class="mt-6 pt-5 border-t border-line">
         <a href="{% url 'student-pay' %}" class="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
           <i data-lucide="wallet" class="w-4 h-4 mr-2"></i>Pay Fees
         </a>
@@ -31,42 +32,42 @@
 
     {# Conditional results card #}
     {% if term_result and current_term.results_published %}
-    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex flex-col">
+    <div class="bg-success-tint border border-line rounded-2xl p-6 flex flex-col">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-          <i data-lucide="check-circle" class="w-5 h-5 text-emerald-600"></i>
+        <div class="w-10 h-10 rounded-full bg-success-tint flex items-center justify-center flex-shrink-0">
+          <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
         </div>
-        <h3 class="text-sm font-semibold text-emerald-800">Results published</h3>
+        <h3 class="text-sm font-semibold text-ink">Results published</h3>
       </div>
       <div class="flex items-end justify-between mb-1">
         <div>
-          <p class="text-xs font-medium text-emerald-600 uppercase tracking-wider mb-1">My Average</p>
-          <p class="text-3xl font-bold text-emerald-900 tabular-nums">{{ term_result.average|floatformat:1 }}</p>
+          <p class="text-xs font-medium text-success uppercase tracking-wider mb-1">My Average</p>
+          <p class="text-3xl font-bold text-ink tabular-nums">{{ term_result.average|floatformat:1 }}</p>
         </div>
         <div class="text-right">
-          <p class="text-xs font-medium text-emerald-600 uppercase tracking-wider mb-1">Position</p>
-          <p class="text-3xl font-bold text-emerald-900">{{ term_result.overall_position }}</p>
+          <p class="text-xs font-medium text-success uppercase tracking-wider mb-1">Position</p>
+          <p class="text-3xl font-bold text-ink">{{ term_result.overall_position }}</p>
         </div>
       </div>
-      <a href="{% url 'student-results-history' %}" class="mt-5 inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+      <a href="{% url 'student-results-history' %}" class="mt-5 inline-flex items-center justify-center px-4 py-2 bg-success hover:bg-[#28593F] text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
         View Results
       </a>
     </div>
     {% else %}
-    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-6">
-      <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center mb-3">
-        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
+    <div class="bg-warning-tint border border-line rounded-2xl p-6">
+      <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center mb-3">
+        <i data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>
       </div>
-      <h3 class="text-sm font-semibold text-amber-800">Results for the current term are not yet published</h3>
-      <p class="text-xs text-amber-600 mt-1.5">They will appear here once released by the school.</p>
+      <h3 class="text-sm font-semibold text-ink">Results for the current term are not yet published</h3>
+      <p class="text-xs text-ink-muted mt-1.5">They will appear here once released by the school.</p>
     </div>
     {% endif %}
   </div>
 
   {# ── INVOICES TABLE ── #}
-  <div id="invoices" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-gray-800">My Invoices</h3>
+  <div id="invoices" class="bg-white rounded-2xl border border-line overflow-hidden">
+    <div class="px-6 py-4 border-b border-line flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-ink">My Invoices</h3>
       <a href="{% url 'student-pay' %}" class="inline-flex items-center px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-lg transition-colors shadow-sm">
         <i data-lucide="wallet" class="w-3.5 h-3.5 mr-1.5"></i>Pay Fees
       </a>
@@ -74,19 +75,19 @@
     <div class="overflow-x-auto">
       <table class="w-full">
         <thead>
-          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+          <tr class="text-left text-xs text-ink-muted border-b border-line bg-surface-muted/50">
             <th class="px-6 py-3 font-medium">Term</th>
             <th class="px-6 py-3 font-medium text-right">Amount</th>
             <th class="px-6 py-3 font-medium text-right">Balance</th>
             <th class="px-6 py-3 font-medium">Status</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-50">
+        <tbody class="divide-y divide-line/70">
           {% for invoice in invoices %}
-          <tr class="hover:bg-gray-50/50 transition-colors">
-            <td class="px-6 py-3.5 text-sm text-gray-600">{{ invoice.term.name }} — {{ invoice.term.session.name }}</td>
-            <td class="px-6 py-3.5 text-sm text-gray-600 text-right tabular-nums">&#8358;{{ invoice.total_amount|floatformat:2 }}</td>
-            <td class="px-6 py-3.5 text-sm font-semibold text-gray-900 text-right tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</td>
+          <tr class="hover:bg-surface-muted/50 transition-colors">
+            <td class="px-6 py-3.5 text-sm text-ink-muted">{{ invoice.term.name }} — {{ invoice.term.session.name }}</td>
+            <td class="px-6 py-3.5 text-sm text-ink-muted text-right tabular-nums">&#8358;{{ invoice.total_amount|floatformat:2 }}</td>
+            <td class="px-6 py-3.5 text-sm font-semibold text-ink text-right tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</td>
             <td class="px-6 py-3.5">
               {% if invoice.status == 'PAID' %}{% include 'components/badge.html' with status='success' text=invoice.status %}
               {% elif invoice.status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text=invoice.status %}
@@ -95,7 +96,9 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="4" class="py-10 text-center text-sm text-gray-400">No invoices yet</td>
+            <td colspan="4" class="py-10 text-center text-sm text-ink-muted">
+              No invoices yet — <a href="{% url 'student-pay' %}" class="text-primary hover:text-primary-hover underline">pay fees now</a>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -105,21 +108,21 @@
 
   {# ── RESULT BOOKLETS ── #}
   {% if published_terms %}
-  <div id="booklets" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-100">
-      <h3 class="text-sm font-semibold text-gray-800">Result Booklets</h3>
+  <div id="booklets" class="bg-white rounded-2xl border border-line overflow-hidden">
+    <div class="px-6 py-4 border-b border-line">
+      <h3 class="text-sm font-semibold text-ink">Result Booklets</h3>
     </div>
-    <div class="divide-y divide-gray-50">
+    <div class="divide-y divide-line/70">
       {% for term in published_terms %}
       <a href="{% url 'student-result-booklet' term_id=term.pk %}"
-         class="flex items-center justify-between px-6 py-4 hover:bg-gray-50/70 transition-colors group">
+         class="flex items-center justify-between px-6 py-4 hover:bg-surface-muted/60 transition-colors group">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-100 flex items-center justify-center transition-colors">
+          <div class="w-9 h-9 rounded-xl bg-primary-tint text-primary group-hover:bg-primary/10 flex items-center justify-center transition-colors">
             <i data-lucide="file-text" class="w-4 h-4"></i>
           </div>
-          <span class="font-medium text-sm text-gray-900">{{ term.session.name }} — {{ term.name }}</span>
+          <span class="font-medium text-sm text-ink">{{ term.session.name }} — {{ term.name }}</span>
         </div>
-        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400 group-hover:text-primary transition-colors"></i>
+        <i data-lucide="chevron-right" class="w-4 h-4 text-ink-faint group-hover:text-primary transition-colors"></i>
       </a>
       {% endfor %}
     </div>

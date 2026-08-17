@@ -220,5 +220,65 @@
     <p class="text-gray-400 text-sm">No invoices found.</p>
     {% endif %}
   </div>
+
+  {# ── Record Payment (invoice-less or attached) ── #}
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <h3 class="text-sm font-semibold text-gray-800 mb-1">Record Payment</h3>
+    <p class="text-xs text-gray-400 mb-4">For payments made outside the portal (POS, cheque, cash, sponsor). Attach to an invoice or record against the student directly.</p>
+    <form method="POST" action="{% url 'school_admin:student_record_payment' student.pk %}" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% csrf_token %}
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Amount (NGN)</label>
+        <input type="number" name="amount" step="0.01" required
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Method</label>
+        <select name="method" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="CASH">Cash</option>
+          <option value="POS">POS / Card at school</option>
+          <option value="CHEQUE">Cheque</option>
+          <option value="BANK_TRANSFER">Bank Transfer</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Invoice (optional)</label>
+        <select name="invoice_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">— None (record against student) —</option>
+          {% for inv in invoices %}
+          {% if inv.status != 'PAID' %}
+          <option value="{{ inv.pk }}">{{ inv.term.name }} &mdash; balance NGN {{ inv.balance|floatformat:2 }}</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Paid by (optional)</label>
+        <input type="text" name="paid_by_name" placeholder="Who paid?"
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Relation to student (optional)</label>
+        <input type="text" name="paid_by_relation" placeholder="e.g. father, sponsor"
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Reference (optional)</label>
+        <input type="text" name="reference" placeholder="Receipt / reference #"
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Description (optional)</label>
+        <input type="text" name="description" placeholder="e.g. Books, uniform, 2025/2026 fees"
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div class="md:col-span-2">
+        <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+          <i data-lucide="check" class="w-4 h-4 mr-2"></i>Record Payment
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}

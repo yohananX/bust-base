@@ -2,6 +2,35 @@
 from accounts.models import Roles
 
 
+def login_school(request):
+    """Resolve the school for anonymous entry pages (login / logged out).
+
+    Subdomain short_code matches first (Host header), then falls back to
+    the first active school so shared/dev hosts still get correct branding.
+    Authenticated requests use ``request.school`` instead.
+    """
+    if getattr(request, 'user', None) and request.user.is_authenticated:
+        return {}
+
+    from django.core.exceptions import DisallowedHost
+
+    from core.models import School
+
+    try:
+        host = request.get_host().split(':')[0].lower()
+    except DisallowedHost:
+        host = ''
+    code = host.split('.')[0] if '.' in host else ''
+    school = None
+    if code:
+        school = School.objects.filter(short_code=code, is_active=True).first()
+    if school is None:
+        school = (
+            School.objects.filter(is_active=True).order_by('id').first()
+        )
+    return {'login_school': school}
+
+
 def _nav_item(path, label, url, icon, section=None, exact=False, badge=None):
     if exact:
         is_active = path == url
@@ -87,8 +116,8 @@ def sidebar_nav(request):
         _nav_item(path, 'Publish', '/school-admin/results/publish/', 'send', section='Academics'),
         _nav_item(path, 'Fees & Pricing', '/school-admin/fees/', 'tags', section='Fees'),
         _nav_item(path, 'Invoices', '/school-admin/invoices/', 'file-text', section='Fees', badge=badges.get('/school-admin/invoices/')),
-        _nav_item(path, 'Outstanding Fees', '/school-admin/fees/outstanding/', 'alert-circle', section='Fees'),
-        _nav_item(path, 'Pending Payments', '/school-admin/fees/pending/', 'clock', section='Fees', badge=badges.get('/school-admin/fees/pending/')),
+_nav_item(path, 'Fees Due', '/school-admin/fees/outstanding/', 'alert-circle', section='Fees'),
+_nav_item(path, 'Awaiting Confirmation', '/school-admin/fees/pending/', 'clock', section='Fees', badge=badges.get('/school-admin/fees/pending/')),
         _nav_item(path, 'Pay Grades', '/school-admin/payroll/grades/', 'banknote', section='Payroll'),
         _nav_item(path, 'Runs', '/school-admin/payroll/runs/', 'wallet', section='Payroll'),
         _nav_item(path, 'Projects', '/school-admin/finance/projects/', 'folder-kanban', section='Finance'),
@@ -107,6 +136,7 @@ def sidebar_nav(request):
     student_nav = [
         _nav_item(path, 'Dashboard', '/student/', 'layout-dashboard', exact=True),
         _nav_item(path, 'Pay Fees', '/student/pay/', 'banknote'),
+        _nav_item(path, 'My Subjects', '/student/subjects/', 'book-open'),
         _nav_item(path, 'My Results', '/student/results/', 'file-text'),
         _nav_item(path, 'Change Password', '/student/password/', 'key-round'),
     ]

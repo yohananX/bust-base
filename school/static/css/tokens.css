@@ -1,13 +1,90 @@
+/* ==========================================================================
+   DESIGN TOKENS — SOURCE OF TRUTH
+   --------------------------------------------------------------------------
+   The gold / ink / paper identity. `base.html`'s tailwind.config mirrors
+   these values (the Tailwind CDN cannot read CSS variables directly).
+   If a value changes here, update base.html to match.
+
+   Contrast notes (WCAG AA, checked on white #FFFFFF and paper #F6F6F4):
+     ink #1B2430          15.6:1  body text
+     ink-muted #5B6472     6.0:1  secondary text
+     ink-placeholder      4.8:1   input placeholders
+     gold-deep #8A6420    5.4:1   links, buttons, status text (AA-safe gold)
+     gold #B8863A         3.2:1   DECORATIVE only (borders, bars, fills)
+     status-success        6.1:1  (5.3:1 on its tint)
+     status-danger         6.5:1  (5.5:1 on its tint)
+     status-warning        5.4:1  (4.7:1 on its tint)
+     status-info           7.1:1
+   ========================================================================== */
+
 :root {
+  /* ---- Core ---- */
   --color-ink: #1B2430;
+  --color-ink-muted: #5B6472;
+  --color-ink-faint: #8A93A2;      /* icons / decor only, never small text */
+  --color-ink-placeholder: #6B7480;
   --color-paper: #F6F6F4;
   --color-surface: #FFFFFF;
-  --color-signal-gold: #B8863A;
-  --color-status-green: #2F6E4F;
-  --color-status-red: #A63A2E;
-  --color-status-amber: #B8863A;
+  --color-surface-muted: #EFEEEA;  /* sidebar, table stripes */
+  --color-line: #E4E2DB;           /* hairline borders */
+  --color-line-strong: #C9C6BC;    /* scrollbars */
+
+  /* ---- Gold family ---- */
+  --color-gold: #B8863A;           /* decorative brand gold */
+  --color-gold-lighter: #C89A4F;
+  --color-gold-deep: #8A6420;      /* AA-safe gold: text, links, fills */
+  --color-gold-hover: #7A5A1E;
+  --color-gold-tint: #F6EFE1;
+
+  /* ---- Semantic aliases ---- */
+  --color-primary: #8A6420;        /* links / icons / fills with white text */
+  --color-primary-hover: #7A5A1E;
+  --color-primary-lighter: #C89A4F;
+  --color-primary-tint: #F6EFE1;
+  --color-signal-gold: #B8863A;    /* legacy name — decorative only */
+
+  /* ---- Status ---- */
+  --color-status-success: #2F6E4F;
+  --color-status-success-tint: #E9F1EC;
+  --color-status-danger: #A63A2E;
+  --color-status-danger-tint: #F7E9E7;
+  --color-status-warning: #8A6420;
+  --color-status-warning-tint: #F7F0E3;
+  --color-status-amber: #B8863A;   /* decorative amber accent */
+  --color-status-info: #2E5A8A;
+  --color-status-info-tint: #E8EFF6;
+
+  /* ---- Type ---- */
   --font-display: 'Source Serif 4', Georgia, serif;
   --font-body: 'Public Sans', -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
+
+  /* ---- Motion ---- */
   --transition-fast: 150ms ease;
+}
+
+/* ===== Type helpers ===== */
+.font-display { font-family: var(--font-display); }
+
+/* ===== Focus: visible on every interactive element ===== */
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+/* ===== Selection & caret ===== */
+::selection { background: var(--color-gold); color: var(--color-ink); }
+input, textarea, select { caret-color: var(--color-primary); }
+
+/* ===== Placeholders meet AA on white/surface ===== */
+::placeholder { color: var(--color-ink-placeholder); opacity: 1; }
+
+/* ===== Motion safety ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

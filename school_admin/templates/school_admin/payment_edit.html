@@ -1,0 +1,65 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Edit Payment — School Admin{% endblock %}
+{% block page_header %}Edit Payment{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <p class="text-sm text-gray-600">
+          {{ payment.student.user.get_full_name|default:payment.invoice.student.user.get_full_name|default:'—' }}
+          {% if payment.invoice %}&middot; {{ payment.invoice.term.name }}{% endif %}
+        </p>
+        <p class="text-xs text-gray-400 mt-0.5">Recorded {{ payment.paid_on|date:'M d, Y H:i' }} {% if payment.recorded_by %}by {{ payment.recorded_by.username }}{% endif %}</p>
+      </div>
+      {% if payment.status == 'CONFIRMED' %}{% include "components/badge.html" with status="success" text="Paid" %}
+      {% elif payment.status == 'PENDING' %}{% include "components/badge.html" with status="warning" text="Awaiting confirmation" %}
+      {% else %}{% include "components/badge.html" with status="danger" text=payment.get_status_display %}{% endif %}
+    </div>
+
+    <form method="POST" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Amount (NGN)</label>
+        <input type="number" name="amount" step="0.01" value="{{ payment.amount }}" required
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Method</label>
+        <select name="method" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          {% for value, label in payment.Method.choices %}
+          <option value="{{ value }}" {% if payment.method == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Paid by</label>
+        <input type="text" name="paid_by_name" value="{{ payment.paid_by_name }}" maxlength="200"
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Relation to student</label>
+        <input type="text" name="paid_by_relation" value="{{ payment.paid_by_relation }}" maxlength="100"
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Reference</label>
+        <input type="text" name="reference" value="{{ payment.reference|default:'' }}" maxlength="255"
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div class="flex items-center gap-3 pt-2">
+        <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+          <i data-lucide="check" class="w-4 h-4 mr-2"></i>Save Changes
+        </button>
+        <a href="{% if payment.invoice %}{% url 'school_admin:invoice_detail' payment.invoice.pk %}{% else %}{% url 'school_admin:student_detail' payment.student.pk %}{% endif %}"
+           class="inline-flex items-center px-5 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-colors hover:bg-gray-50">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -405,11 +405,17 @@ class FeeCheckoutTest(TestCase):
             self.skipTest('fees.views.CheckoutSubmitView not yet present')
         self.client.force_login(self.parent_user)
 
+        from django.core.files.uploadedfile import SimpleUploadedFile
         response = self.client.post(reverse('fees:checkout-submit'), {
             'student_id': str(self.student.pk),
             'item': ['outstanding', f'next:{self.books_category.pk}'],
             'amount': '30000.00',
             'method': 'bank_transfer',
+            'proof_image': SimpleUploadedFile(
+                'proof.png', b'fake-image-bytes', content_type='image/png'
+            ),
+            'paid_by_name': 'Parent One',
+            'paid_by_relation': 'Father',
         })
 
         self.assertEqual(response.status_code, 302)

@@ -663,7 +663,7 @@ class TeacherDashboardSmokeTests(BaseTest):
         self.assertNotContains(resp, "All assignments fully graded")
 
     def test_dashboard_shows_term_aware_kpis(self):
-        """KPI row reports term-aware status instead of lifetime counts."""
+        """Dashboard is task-first: term status + one earned number, no nav trivia."""
         self.client.force_login(self.teacher_user)
         resp = self.client.get("/teacher/")
 
@@ -673,8 +673,8 @@ class TeacherDashboardSmokeTests(BaseTest):
         self.assertContains(resp, "Current Term")
         self.assertContains(resp, "First Term")
         self.assertContains(resp, "Results not published")
-        self.assertContains(resp, "My Subjects")
-        self.assertContains(resp, "My Classes")
+        self.assertNotContains(resp, "My Subjects")
+        self.assertNotContains(resp, "My Classes")
         self.assertNotContains(resp, "Scores Entered")
 
     def test_dashboard_shows_all_complete_state(self):

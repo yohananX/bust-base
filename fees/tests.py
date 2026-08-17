@@ -1194,7 +1194,8 @@ class VerifyTransactionFallbackTest(BaseFeesTest):
 from unittest import skipUnless  # noqa: E402
 
 try:
-    from fees.pdf import render_receipt_pdf  # noqa: F401 - import probe
+    from weasyprint import HTML
+    HTML(string='<p>probe</p>').write_pdf()
     PDF_RENDERING_AVAILABLE = True
 except (ImportError, OSError):
     PDF_RENDERING_AVAILABLE = False
@@ -1272,6 +1273,26 @@ class ReceiptViewTest(BaseFeesTest):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('application/pdf', response['Content-Type'])
+
+    @skipUnless(not PDF_RENDERING_AVAILABLE, 'WeasyPrint available — PDF path tested instead')
+    def test_receipt_pdf_falls_back_to_printable_html(self):
+        """Without the WeasyPrint runtime, the download serves the receipt preview page."""
+        from fees.models import Payment
+
+        payment = self._create_payment(Payment.Status.CONFIRMED)
+        self.client.force_login(self.parent_user)
+
+        response = self.client.get(reverse('fees:payment-receipt-pdf', args=[payment.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('text/html', response['Content-Type'])
+        # Same look as the preview page — receipt card, amount, actions
+        self.assertContains(response, 'Official Receipt')
+        self.assertContains(response, 'Download PDF')
+        self.assertContains(response, 'Amount Paid')
+        # Sidebar renders like the app (context processors ran)
+        self.assertContains(response, 'Pay Fees')
+        self.assertContains(response, 'My Children')
 
     def test_pending_payment_has_no_receipt_page(self):
         """PENDING payments have no receipt — the view redirects and creates nothing."""
@@ -1503,7 +1524,7 @@ class ReferenceOnlyStatusTest(BaseFeesTest):
             {'reference': payment.reference},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Payment Confirmed')
+        self.assertContains(response, 'Payment Successful!')
 
     def test_status_partial_other_payment(self):
         """Reference-only polling works for an invoice-less (student) payment."""
@@ -1533,7 +1554,7 @@ class ReferenceOnlyStatusTest(BaseFeesTest):
             {'reference': payment.reference},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Payment Confirmed')
+        self.assertContains(response, 'Payment Successful!')
 
 
 class OtherPaymentWebhookTest(BaseFeesTest):
@@ -1738,7 +1759,7 @@ class MakePaymentPageTest(BaseFeesTest):
         # Still owing the full amount — pending transfer doesn't count yet
         self.assertContains(response, '&#8358;60000.00')
         # The pending transaction is visible for the parent
-        self.assertContains(response, 'Pending')
+        self.assertContains(response, 'Awaiting confirmation')
         self.assertNotContains(response, 'Receipt')
 
         if response.context is not None:
@@ -1773,3 +1794,96 @@ class MakePaymentPageTest(BaseFeesTest):
                 Decimal(str(response.context['total_owed'])),
                 Decimal('75000.00'),
             )
+
+
+class BankTransferProofTest(BaseFeesTest):
+    """Bank-transfer checkout requires an uploaded proof screenshot."""
+
+    def setUp(self):
+        super().setUp()
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def _post(self, extra=None):
+        data = {
+            'student_id': str(self.student.pk),
+            'item': ['outstanding'],
+            'amount': '60000.00',
+            'method': 'bank_transfer',
+        }
+        if extra:
+            data.update(extra)
+        self.client.force_login(self.parent_user)
+        return self.client.post(reverse('fees:checkout-submit'), data, follow=True)
+
+    def test_transfer_without_proof_rejected(self):
+        """No screenshot — the transfer is refused and nothing is recorded."""
+        response = self._post()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Upload a screenshot of your transfer')
+        self.assertEqual(
+            Payment.objects.filter(method=Payment.Method.BANK_TRANSFER).count(),
+            0,
+        )
+
+    def test_transfer_with_proof_creates_pending_payment(self):
+        """A screenshot + payer details produce a PENDING payment with proof."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        proof = SimpleUploadedFile(
+            'proof.png', b'fake-image-bytes', content_type='image/png'
+        )
+        response = self._post({
+            'proof_image': proof,
+            'paid_by_name': 'Aunty Ada',
+            'paid_by_relation': 'Aunt',
+        })
+        self.assertNotContains(response, 'before submitting')
+
+        payment = Payment.objects.get(method=Payment.Method.BANK_TRANSFER)
+        self.assertEqual(payment.status, Payment.Status.PENDING)
+        self.assertEqual(payment.paid_by_name, 'Aunty Ada')
+        self.assertEqual(payment.paid_by_relation, 'Aunt')
+        self.assertTrue(payment.proof_image)
+        # Pending transfer still doesn't reduce the balance
+        self.assertEqual(payment.invoice.balance, Decimal('60000.00'))
+
+
+class PaystackGatingTest(BaseFeesTest):
+    """The Paystack card option only appears when keys are configured."""
+
+    def setUp(self):
+        super().setUp()
+        Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def _get_pay_page(self):
+        self.client.force_login(self.parent_user)
+        return self.client.get(reverse('parent-pay'))
+
+    def test_paystack_hidden_without_keys(self):
+        """No PAYSTACK keys — only the bank-transfer method is offered."""
+        with self.settings(PAYSTACK_SECRET_KEY='', PAYSTACK_PUBLIC_KEY=''):
+            response = self._get_pay_page()
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Paystack Card')
+        self.assertContains(response, 'Bank Transfer')
+        self.assertContains(response, 'Amount due')
+
+    def test_paystack_shown_with_keys(self):
+        """With keys configured the card option and checkout button appear."""
+        with self.settings(
+            PAYSTACK_SECRET_KEY='sk_test_abc',
+            PAYSTACK_PUBLIC_KEY='pk_test_abc',
+        ):
+            response = self._get_pay_page()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Paystack Card')
+        self.assertContains(response, 'Proceed to Paystack Checkout')

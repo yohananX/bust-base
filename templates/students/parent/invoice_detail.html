@@ -104,9 +104,9 @@
             <td class="px-5 py-3.5 text-right tabular-nums font-semibold text-gray-900">₦{{ payment.amount|floatformat:2 }}</td>
             <td class="px-5 py-3.5 text-gray-600">{{ payment.get_method_display }}</td>
             <td class="px-5 py-3.5">
-              {% if payment.status == 'CONFIRMED' %}{% include 'components/badge.html' with status='success' text=payment.get_status_display %}
+              {% if payment.status == 'CONFIRMED' %}{% include 'components/badge.html' with status='success' text='Paid' %}
               {% elif payment.status == 'FAILED' %}{% include 'components/badge.html' with status='danger' text=payment.get_status_display %}
-              {% else %}{% include 'components/badge.html' with status='warning' text=payment.get_status_display %}{% endif %}
+              {% else %}{% include 'components/badge.html' with status='warning' text='Awaiting confirmation' %}{% endif %}
             </td>
             <td class="px-5 py-3.5">
               <span class="text-gray-500 text-xs block">{{ payment.reference|default:"—" }}</span>

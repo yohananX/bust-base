@@ -293,6 +293,8 @@ class StudentImporter(BaseImporter):
                             school_class=school_class,
                             session=current_session,
                         )
+                        from fees.generation import generate_invoice_for_current_term
+                        generate_invoice_for_current_term(student)
 
                     # Create parent/guardian if parent_name is provided
                     if parent_name:

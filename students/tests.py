@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
+from academics.models import Subject, TeacherAssignment
 from fees.models import Invoice, Payment
 from .models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 
@@ -612,3 +613,133 @@ class StudentDashboardFeeToastTests(TestCase):
         resp = self._get_dashboard()
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, "All fees paid. Nice work!")
+
+
+class StudentSubjectsViewTest(TestCase):
+    """Current-term subject list for the student."""
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Grace House School",
+            short_code="grace-house",
+        )
+        User = get_user_model()
+        self.student_user = User.objects.create_user(
+            username="subj_student",
+            email="subj@grace.edu",
+            password="testpass123",
+            school=self.school,
+            role=Roles.STUDENT,
+            first_name="Sub",
+            last_name="Student",
+        )
+        self.student = Student.objects.create(
+            school=self.school,
+            user=self.student_user,
+            admission_number="GH-901",
+            date_of_birth="2010-05-15",
+            gender=Student.MALE,
+            admission_date="2025-09-01",
+        )
+        self.teacher = User.objects.create_user(
+            username="mr_ada",
+            email="ada@grace.edu",
+            password="testpass123",
+            school=self.school,
+            role=Roles.TEACHER,
+            first_name="Ada",
+            last_name="Okon",
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name="JSS1A", level="JSS1",
+        )
+
+        self.session1 = AcademicSession.objects.create(
+            school=self.school, name="2024/2025",
+            start_date="2024-09-01", end_date="2025-07-31", is_current=False,
+        )
+        self.session2 = AcademicSession.objects.create(
+            school=self.school, name="2025/2026",
+            start_date="2025-09-01", end_date="2026-07-31", is_current=True,
+        )
+        self.term2 = Term.objects.create(
+            school=self.school, session=self.session2, name="First Term",
+            start_date="2025-09-01", end_date="2025-12-19", is_current=True,
+        )
+
+        # Same class for both sessions — only current-term assignments show.
+        ClassEnrollment.objects.create(
+            school=self.school, student=self.student,
+            school_class=self.school_class, session=self.session1, is_current=False,
+        )
+        ClassEnrollment.objects.create(
+            school=self.school, student=self.student,
+            school_class=self.school_class, session=self.session2, is_current=True,
+        )
+
+        self.maths = Subject.objects.create(school=self.school, name="Mathematics", code="MAT")
+        self.english = Subject.objects.create(school=self.school, name="English", code="ENG")
+
+    def _assign(self, session, subject):
+        TeacherAssignment.objects.create(
+            school=self.school,
+            teacher=self.teacher,
+            subject=subject,
+            school_class=self.school_class,
+            session=session,
+        )
+
+    def _get(self):
+        self.client.force_login(self.student_user)
+        return self.client.get(reverse("student-subjects"))
+
+    def test_lists_current_term_subjects(self):
+        self._assign(self.session2, self.maths)
+        self._assign(self.session2, self.english)
+
+        response = self._get()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "2025/2026")
+        self.assertContains(response, "Current term")
+        self.assertContains(response, "Mathematics")
+        self.assertContains(response, "English")
+
+    def test_ignores_previous_term_subjects(self):
+        """Assignments from older sessions must not appear."""
+        self._assign(self.session1, self.maths)
+        self._assign(self.session2, self.english)
+
+        response = self._get()
+        self.assertContains(response, "English")
+        self.assertNotContains(response, "Mathematics")
+        self.assertNotContains(response, "2024/2025")
+
+    def test_subjects_show_teacher_name(self):
+        self._assign(self.session2, self.maths)
+
+        response = self._get()
+        self.assertContains(response, "Ada Okon")
+
+    def test_empty_state_without_assignments(self):
+        response = self._get()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No subjects have been assigned for this term yet.")
+
+    def test_global_empty_state_without_enrollment(self):
+        ClassEnrollment.objects.filter(student=self.student).delete()
+
+        response = self._get()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No subjects yet")
+
+    def test_requires_student_role(self):
+        other = get_user_model().objects.create_user(
+            username="parent_x",
+            email="px@grace.edu",
+            password="testpass123",
+            school=self.school,
+            role=Roles.PARENT,
+        )
+        self.client.force_login(other)
+        response = self.client.get(reverse("student-subjects"))
+        self.assertEqual(response.status_code, 403)

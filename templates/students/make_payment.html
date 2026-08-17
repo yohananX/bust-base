@@ -40,7 +40,7 @@
     </div>
     <div class="min-w-0">
       <p class="text-sm font-semibold text-green-700 mb-0.5">All fees paid — nothing to pay</p>
-      <p class="text-xs text-gray-500">There are no outstanding balances or unpaid categories for this term.</p>
+      <p class="text-xs text-gray-500">There is nothing due — no balances and no unpaid categories for this term.</p>
     </div>
   </div>
   {% elif fully_paid %}
@@ -52,15 +52,15 @@
     </div>
     <div class="min-w-0">
       <p class="text-sm font-semibold text-green-700 mb-0.5">All fees paid</p>
-      <p class="text-xs text-gray-500">You have no outstanding balance for the term. You can still select a category below to pay for something else.</p>
+      <p class="text-xs text-gray-500">You have nothing due for the term. You can still select a category below to pay for something else.</p>
     </div>
   </div>
   {% else %}
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between">
     <div class="min-w-0">
-      <p class="text-sm text-gray-600 mb-1">Total Outstanding</p>
+      <p class="text-sm text-gray-600 mb-1">Amount due</p>
       <p class="text-2xl font-bold text-gray-900 tabular-nums truncate">&#8358;{{ total_owed|floatformat:2 }}</p>
-      <p class="text-xs text-gray-400 mt-1">{{ unpaid_invoices_count|default:"0" }} invoice{{ unpaid_invoices_count|default:"0"|pluralize }} unpaid</p>
+      <p class="text-xs text-gray-400 mt-1">{{ unpaid_invoices_count|default:"0" }} invoice{{ unpaid_invoices_count|default:"0"|pluralize }} not yet paid</p>
     </div>
     <div class="w-10 h-10 rounded-xl bg-violet-200/50 text-violet-600 flex items-center justify-center flex-shrink-0">
       <i data-lucide="wallet" class="w-5 h-5"></i>
@@ -286,6 +286,7 @@
       <p class="text-sm font-semibold text-gray-800">How would you like to pay?</p>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {% if paystack_enabled %}
         <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
           <input type="radio" name="method" value="paystack" class="mt-1 accent-primary" checked>
           <span class="flex-1 min-w-0">
@@ -296,8 +297,9 @@
             <span class="block text-xs text-gray-500 mt-0.5">Debit or credit card</span>
           </span>
         </label>
+        {% endif %}
         <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
-          <input type="radio" name="method" value="bank_transfer" class="mt-1 accent-primary">
+          <input type="radio" name="method" value="bank_transfer" class="mt-1 accent-primary" {% if not paystack_enabled %}checked{% endif %}>
           <span class="flex-1 min-w-0">
             <span class="flex items-center gap-2">
               <i data-lucide="landmark" class="w-4 h-4 text-gray-500"></i>
@@ -308,6 +310,7 @@
         </label>
       </div>
 
+      {% if paystack_enabled %}
       {# Paystack panel — default #}
       <div id="paystack-panel">
         <button type="submit"
@@ -315,9 +318,10 @@
           <i data-lucide="credit-card" class="w-4 h-4 mr-2"></i>Proceed to Paystack Checkout
         </button>
       </div>
+      {% endif %}
 
       {# Bank transfer panel #}
-      <div id="bank-transfer-panel" class="hidden space-y-4">
+      <div id="bank-transfer-panel" class="{% if paystack_enabled %}hidden{% endif %} space-y-4">
         {% if bank_details %}
         <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
           <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Transfer to</p>
@@ -326,11 +330,27 @@
           <p class="text-lg font-bold text-gray-900 tabular-nums tracking-[0.15em]">{{ bank_details.account_number }}</p>
         </div>
         {% endif %}
+        <div>
+          <label for="paid-by-name" class="text-xs font-medium text-gray-600">Who made the transfer? <span class="text-gray-400">(optional)</span></label>
+          <input type="text" id="paid-by-name" name="paid_by_name" maxlength="200"
+                 class="mt-1 w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label for="paid-by-relation" class="text-xs font-medium text-gray-600">Their relation to the student <span class="text-gray-400">(optional)</span></label>
+          <input type="text" id="paid-by-relation" name="paid_by_relation" maxlength="100"
+                 class="mt-1 w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label for="proof-image" class="text-xs font-medium text-gray-600">Transfer receipt / screenshot <span class="text-amber-600">(required)</span></label>
+          <input type="file" id="proof-image" name="proof_image" accept="image/*,application/pdf" required
+                 class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-primary file:text-white file:text-sm file:font-semibold hover:file:bg-primary-hover cursor-pointer">
+          <p class="text-xs text-gray-400 mt-1">Upload a screenshot of your transfer — the school confirms it against this proof.</p>
+        </div>
         <button type="submit"
                 class="inline-flex items-center justify-center w-full px-4 py-3 bg-white border-2 border-gray-300 text-gray-800 text-sm font-semibold rounded-xl transition-colors hover:border-primary hover:text-primary">
-          <i data-lucide="check-circle" class="w-4 h-4 mr-2"></i>I've Transferred &mdash; Pending Confirmation
+          <i data-lucide="check-circle" class="w-4 h-4 mr-2"></i>I've Transferred &mdash; Awaiting Confirmation
         </button>
-        <p class="text-xs text-gray-500">Your payment will show as <span class="font-medium text-amber-600">Pending</span> until the school confirms the transfer.</p>
+        <p class="text-xs text-gray-500">Your payment will show as <span class="font-medium text-amber-600">Awaiting confirmation</span> until the school confirms the transfer.</p>
       </div>
     </div>
   </form>
@@ -355,9 +375,9 @@
         <div class="flex items-center gap-3 flex-shrink-0">
           <span class="text-sm font-semibold text-gray-900 tabular-nums">&#8358;{{ payment.amount|floatformat:2 }}</span>
           {% if payment.status == 'PENDING' %}
-            {% include 'components/badge.html' with status='warning' text='Pending' %}
+            {% include 'components/badge.html' with status='warning' text='Awaiting confirmation' %}
           {% else %}
-            {% include 'components/badge.html' with status='success' text=payment.get_status_display %}
+            {% include 'components/badge.html' with status='success' text='Paid' %}
           {% endif %}
           {% if payment.status == 'CONFIRMED' %}
           <a href="{% url 'fees:payment-receipt' payment.pk %}" class="text-xs font-medium text-primary hover:underline">Receipt</a>

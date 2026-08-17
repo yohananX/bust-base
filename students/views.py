@@ -1,4 +1,5 @@
 from decimal import Decimal
+from django.conf import settings
 from django.db.models import Q, Prefetch
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse                                       
@@ -12,7 +13,7 @@ from students.models import Student, StudentGuardianLink, ClassEnrollment
 from fees.checkout import get_checkout_options, current_term
 from fees.models import Invoice, Payment
 
-from academics.models import Score, TermResult
+from academics.models import Score, TermResult, TeacherAssignment
 
 
 class ParentChildrenListView(RoleRequiredMixin, View):
@@ -386,6 +387,10 @@ class MakePaymentView(RoleRequiredMixin, View):
             'can_pay_by_child': can_pay_by_child,
             'any_payable': any_payable,
             'bank_details': bank_details,
+            'paystack_enabled': bool(
+                getattr(settings, 'PAYSTACK_SECRET_KEY', '')
+                and getattr(settings, 'PAYSTACK_PUBLIC_KEY', '')
+            ),
         })
         return render(request, 'students/make_payment.html', context)
 
@@ -547,6 +552,56 @@ class StudentResultsHistoryView(RoleRequiredMixin, View):
 
         return render(request, 'students/student/results_history.html', {
             'results': results,
+        })
+
+
+class StudentSubjectsView(RoleRequiredMixin, View):
+    """Current-term subject list for the student.
+
+    Subjects come from the TeacherAssignments for the class the student is
+    enrolled in, filtered to the session of the current term.
+    """
+
+    allowed_roles = [Roles.STUDENT]
+
+    def get(self, request):
+        student = request.user.student_profile
+
+        enrollment = ClassEnrollment.objects.filter(
+            student=student, is_current=True,
+        ).select_related('school_class', 'session').first()
+
+        current_term = Term.objects.filter(
+            school=request.school, is_current=True,
+        ).first()
+
+        subjects = []
+        if (
+            enrollment and current_term
+            and enrollment.session_id == current_term.session_id
+        ):
+            assignments = TeacherAssignment.objects.filter(
+                school=request.school,
+                school_class=enrollment.school_class,
+                session=current_term.session,
+            ).select_related('subject', 'teacher').order_by('subject__name')
+
+            by_subject = {}
+            for assignment in assignments:
+                group = by_subject.setdefault(
+                    assignment.subject_id,
+                    {'subject': assignment.subject, 'teachers': []},
+                )
+                group['teachers'].append(
+                    assignment.teacher.get_full_name() or assignment.teacher.username
+                )
+
+            subjects = sorted(by_subject.values(), key=lambda g: g['subject'].name)
+
+        return render(request, 'students/student/subjects.html', {
+            'subjects': subjects,
+            'enrollment': enrollment,
+            'term': current_term,
         })
 
 
