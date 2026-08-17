@@ -273,7 +273,12 @@ class ResultReviewView(RoleRequiredMixin, View):
                         'teachers': sorted(set(teachers_by_class.get(cls.pk, []))),
                     })
 
-        return render(request, 'school_admin/review_results.html', {
+        template = (
+            'school_admin/_review_results.html'
+            if request.headers.get('HX-Request')
+            else 'school_admin/review_results.html'
+        )
+        return render(request, template, {
             'terms': terms,
             'classes': classes,
             'selected_term': selected_term,
