@@ -204,12 +204,12 @@
           <tr class="hover:bg-gray-50/50">
             <td class="px-4 py-3 text-gray-900">{{ inv.term.name }}</td>
             <td class="px-4 py-3 text-gray-600">NGN {{ inv.total_amount|floatformat:2 }}</td>
-            <td class="px-4 py-3 text-gray-600">NGN {{ inv.amount_paid|floatformat:2 }}</td>
-            <td class="px-4 py-3 text-gray-900 font-medium">NGN {{ inv.balance|floatformat:2 }}</td>
+            <td class="px-4 py-3 text-gray-600">NGN {{ inv.amount_paid_annotated|floatformat:2 }}</td>
+            <td class="px-4 py-3 text-gray-900 font-medium">NGN {{ inv.balance_annotated|floatformat:2 }}</td>
             <td class="px-4 py-3">
-              {% if inv.status == 'PAID' %}{% include "components/badge.html" with status="success" text=inv.status %}
-              {% elif inv.status == 'PARTIAL' %}{% include "components/badge.html" with status="warning" text=inv.status %}
-              {% else %}{% include "components/badge.html" with status="danger" text=inv.status %}{% endif %}
+              {% if inv.balance_annotated <= 0 %}{% include "components/badge.html" with status="success" text="PAID" %}
+              {% elif inv.amount_paid_annotated > 0 %}{% include "components/badge.html" with status="warning" text="PARTIAL" %}
+              {% else %}{% include "components/badge.html" with status="danger" text="UNPAID" %}{% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -247,8 +247,8 @@
         <select name="invoice_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">— None (record against student) —</option>
           {% for inv in invoices %}
-          {% if inv.status != 'PAID' %}
-          <option value="{{ inv.pk }}">{{ inv.term.name }} &mdash; balance NGN {{ inv.balance|floatformat:2 }}</option>
+          {% if inv.balance_annotated > 0 %}
+          <option value="{{ inv.pk }}">{{ inv.term.name }} &mdash; balance NGN {{ inv.balance_annotated|floatformat:2 }}</option>
           {% endif %}
           {% endfor %}
         </select>

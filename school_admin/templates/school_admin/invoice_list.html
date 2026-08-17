@@ -65,12 +65,12 @@
             </td>
             <td class="px-6 py-3.5 text-sm text-gray-600">{{ inv.term.name }}</td>
             <td class="px-6 py-3.5 text-sm text-gray-600 text-right">NGN {{ inv.total_amount|floatformat:2 }}</td>
-            <td class="px-6 py-3.5 text-sm text-gray-600 text-right">NGN {{ inv.amount_paid|floatformat:2 }}</td>
-            <td class="px-6 py-3.5 text-sm font-semibold text-gray-900 text-right">NGN {{ inv.balance|floatformat:2 }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600 text-right">NGN {{ inv.amount_paid_annotated|floatformat:2 }}</td>
+            <td class="px-6 py-3.5 text-sm font-semibold text-gray-900 text-right">NGN {{ inv.balance_annotated|floatformat:2 }}</td>
             <td class="px-6 py-3.5">
-              {% if inv.status == 'PAID' %}{% include "components/badge.html" with status="success" text=inv.status %}
-              {% elif inv.status == 'PARTIAL' %}{% include "components/badge.html" with status="warning" text=inv.status %}
-              {% else %}{% include "components/badge.html" with status="danger" text=inv.status %}{% endif %}
+              {% if inv.balance_annotated <= 0 %}{% include "components/badge.html" with status="success" text="PAID" %}
+              {% elif inv.amount_paid_annotated > 0 %}{% include "components/badge.html" with status="warning" text="PARTIAL" %}
+              {% else %}{% include "components/badge.html" with status="danger" text="UNPAID" %}{% endif %}
             </td>
             <td class="px-6 py-3.5 text-right">
               <a href="{% url 'school_admin:invoice_detail' inv.pk %}" class="p-1.5 text-gray-400 hover:text-primary transition-colors inline-block" title="View"><i data-lucide="eye" class="w-4 h-4"></i></a>

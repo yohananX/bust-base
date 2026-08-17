@@ -55,7 +55,9 @@ class StudentListView(RoleRequiredMixin, View):
 
         # Annotate current class
         for s in students:
-            current_enrollment = s.enrollments.filter(is_current=True).first()
+            current_enrollment = next(
+                (e for e in s.enrollments.all() if e.is_current), None
+            )
             s.current_class = current_enrollment.school_class if current_enrollment else None
 
         classes = SchoolClass.objects.filter(school=school, is_active=True)
@@ -91,6 +93,9 @@ class StudentDetailView(RoleRequiredMixin, View):
         invoices = Invoice.objects.filter(
             student=student
         ).select_related('term').prefetch_related('payments')
+
+        from fees.selectors import invoices_with_balance
+        invoices = invoices_with_balance(invoices)
 
         context = {
             'student': student,
