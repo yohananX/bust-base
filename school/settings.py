@@ -92,6 +92,18 @@ DATABASES = {
 
 AUTH_USER_MODEL = 'accounts.User'
 
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.ScryptPasswordHasher',
+    # Listed last so it is never used for new logins; only for bulk
+    # credential generation (see school_admin/views/credentials.py), where
+    # PBKDF2's deliberate slowness would make batch resets take minutes.
+    'django.contrib.auth.hashers.MD5PasswordHasher',
+]
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},

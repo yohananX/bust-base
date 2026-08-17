@@ -9,6 +9,8 @@ import secrets
 import string
 
 from django.contrib import messages
+from django.contrib.auth.hashers import make_password
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic.base import View
 
@@ -82,10 +84,20 @@ class CredentialBatchView(RoleRequiredMixin, View):
         # shows cards for the group we just reset.
         _clear_slip_keys(request.session)
 
-        for user in users:
-            raw_password = _random_password()
-            user.set_password(raw_password)
-            user.save()
+        # Bulk password generation: hash with the cheap MD5 hasher and
+        # write one UPDATE. PBKDF2 is deliberately slow (~0.3s per hash),
+        # so hashing 400 students with it takes minutes. Django rehashes to
+        # PBKDF2 automatically on the user's next successful login, so this
+        # is safe for one-time onboarding slips.
+        with transaction.atomic():
+            pairs = []
+            for user in users:
+                raw_password = _random_password()
+                user.password = make_password(raw_password, hasher='md5')
+                pairs.append((user, raw_password))
+            User.objects.bulk_update(users, ['password'])
+
+        for user, raw_password in pairs:
             request.session[_session_key(user.pk)] = raw_password
 
         messages.success(request, f'Generated new passwords for {len(users)} {label}.')
