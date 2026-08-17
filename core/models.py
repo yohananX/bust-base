@@ -100,6 +100,20 @@ class Term(TenantScopedModel):
     def __str__(self):
         return f"{self.name} ({self.session.name} - {self.school.name})"
 
+    @classmethod
+    def for_current_session(cls, school):
+        """Terms of the school's current academic session (First/Second/Third).
+
+        Term dropdowns across the site use this so only the active session's
+        three terms are ever offered, regardless of how many sessions exist.
+        """
+        session = AcademicSession.objects.filter(
+            school=school, is_current=True
+        ).first()
+        if not session:
+            return cls.objects.none()
+        return cls.objects.filter(school=school, session=session)
+
     def save(self, *args, **kwargs):
         if self.is_current:
             # Only one term can be current across all sessions for a school

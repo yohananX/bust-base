@@ -340,7 +340,7 @@ class ScoreAdminView(RoleRequiredMixin, View):
             'student', 'student__user', 'subject', 'term'
         ).order_by('student__admission_number')
 
-        terms = Term.objects.filter(school=school).order_by('-start_date')
+        terms = Term.for_current_session(school)
         classes = SchoolClass.objects.filter(school=school, is_active=True)
         subjects = Subject.objects.filter(school=school).order_by('name')
 

@@ -1,6 +1,16 @@
 {% extends 'base.html' %}
 {% block title %}{{ assignment.subject.name }} — Scores{% endblock %}
 {% block page_header %}{{ assignment.subject.name }} — Scores{% endblock %}
+{% block extra_css %}
+<style>
+  tr.row-rejected td { background: #FEF2F2; }
+  tr.row-rejected:hover td { background: #FCEBEB; }
+  tr.row-rejected input {
+    border-color: #FECACA !important;
+    background: #FFF8F8 !important;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -9,6 +19,16 @@
       <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to Assignments
     </a>
   </div>
+
+  {% if rejected_count %}
+  <div class="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50/70 px-4 py-3">
+    <i data-lucide="shield-alert" class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0"></i>
+    <p class="text-sm text-red-700">
+      <span class="font-semibold">{{ rejected_count }} score{{ rejected_count|pluralize }} rejected by the admin.</span>
+      Red rows below were not accepted — edit the score and save to resubmit for review.
+    </p>
+  </div>
+  {% endif %}
 
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
     <div class="overflow-x-auto">
@@ -27,7 +47,7 @@
         </thead>
         <tbody>
           {% for score in scores %}
-          <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+          <tr id="score-row-{{ score.pk }}" class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors {% if score.moderation_status == 'REJECTED' %}row-rejected{% endif %}">
             <td class="px-5 py-3.5 text-gray-500">{{ forloop.counter }}</td>
             <td class="px-5 py-3.5">
               <div class="flex items-center gap-3">
@@ -79,7 +99,15 @@
 
             {# Status #}
             <td id="status-{{ score.pk }}" class="px-5 py-3.5 text-center">
-              {% if score.passed is None %}
+              {% if score.moderation_status == 'REJECTED' %}
+                <span {% if score.moderated_by %}title="Rejected by {{ score.moderated_by.get_full_name|default:score.moderated_by.username }}{% if score.moderated_at %} on {{ score.moderated_at|date:'d M Y, H:i' }}{% endif %}"{% endif %}>
+                  {% include 'components/badge.html' with status='danger' text='Rejected by Admin' %}
+                </span>
+              {% elif score.moderation_status == 'APPROVED' %}
+                {% include 'components/badge.html' with status='success' text='Approved' %}
+              {% elif score.is_complete %}
+                {% include 'components/badge.html' with status='warning' text='Awaiting Review' %}
+              {% elif score.passed is None %}
                 {% include 'components/badge.html' with status='info' text='Pending' %}
               {% elif score.passed %}
                 {% include 'components/badge.html' with status='success' text='Pass' %}

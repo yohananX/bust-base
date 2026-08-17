@@ -157,7 +157,7 @@ class FeePricingListView(RoleRequiredMixin, View):
             pricing = pricing.filter(term_id=term_id)
 
         classes = SchoolClass.objects.filter(school=school, is_active=True)
-        terms = Term.objects.filter(school=school).order_by('-start_date')
+        terms = Term.for_current_session(school)
 
         return render(request, 'school_admin/fee_pricing_list.html', {
             'pricing': pricing,
@@ -180,7 +180,7 @@ class FeePricingCreateView(RoleRequiredMixin, View):
             'is_edit': False,
             'categories': FeeCategory.objects.filter(school=school),
             'classes': SchoolClass.objects.filter(school=school, is_active=True),
-            'terms': Term.objects.filter(school=school).order_by('-start_date'),
+            'terms': Term.for_current_session(school),
         })
 
     def post(self, request):
@@ -193,7 +193,7 @@ class FeePricingCreateView(RoleRequiredMixin, View):
 
         categories = FeeCategory.objects.filter(school=school)
         classes = SchoolClass.objects.filter(school=school, is_active=True)
-        terms = Term.objects.filter(school=school).order_by('-start_date')
+        terms = Term.for_current_session(school)
 
         def re_render():
             return render(request, 'school_admin/fee_pricing_form.html', {
@@ -285,7 +285,7 @@ class FeePricingEditView(RoleRequiredMixin, View):
 
         categories = FeeCategory.objects.filter(school=school)
         classes = SchoolClass.objects.filter(school=school, is_active=True)
-        terms = Term.objects.filter(school=school).order_by('-start_date')
+        terms = Term.for_current_session(school)
 
         def re_render():
             return render(request, 'school_admin/fee_pricing_form.html', {
@@ -407,7 +407,7 @@ class InvoiceListView(RoleRequiredMixin, View):
             )
 
         from core.models import Term
-        terms = Term.objects.filter(school=school).order_by('-start_date')
+        terms = Term.for_current_session(school)
 
         return render(request, 'school_admin/invoice_list.html', {
             'invoices': invoices,
@@ -478,7 +478,7 @@ class GenerateInvoicesView(RoleRequiredMixin, View):
     def get(self, request):
         from core.models import Term
         school = request.school
-        terms = Term.objects.filter(school=school, is_current=True)
+        terms = Term.for_current_session(school)
         return render(request, 'school_admin/generate_invoices.html', {
             'terms': terms,
         })
@@ -544,7 +544,7 @@ class OutstandingFeesReportView(RoleRequiredMixin, View):
         status_filter = request.GET.get('status', '')
         q = request.GET.get('q', '').strip()
 
-        terms = Term.objects.filter(school=school).order_by('-start_date')
+        terms = Term.for_current_session(school)
         classes = SchoolClass.objects.filter(
             school=school, is_active=True
         ).order_by('level', 'name')

@@ -20,7 +20,7 @@ class PublishResultsView(RoleRequiredMixin, View):
 
     def get(self, request):
         school = request.school
-        terms = Term.objects.filter(school=school).order_by('-start_date')
+        terms = Term.for_current_session(school)
 
         # Annotate terms with moderation stats
         terms_with_stats = []
@@ -108,7 +108,7 @@ class ResultReviewView(RoleRequiredMixin, View):
         status_filter = request.GET.get('status', 'all')
         q = request.GET.get('q', '').strip()
 
-        terms = Term.objects.filter(school=school).order_by('-start_date')
+        terms = Term.for_current_session(school)
 
         # Default to the current active term when none is explicitly selected,
         # so the review page always shows content on load.

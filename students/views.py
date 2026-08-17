@@ -136,9 +136,9 @@ class ParentChildDetailView(RoleRequiredMixin, View):
             student=student,
         ).select_related('subject', 'term').order_by('subject__name')
 
-        published_terms = Term.objects.filter(
-            school=request.school, results_published=True, scores__student=student,
-        ).distinct().order_by('-start_date')
+        published_terms = Term.for_current_session(request.school).filter(
+            results_published=True, scores__student=student,
+        ).distinct()
 
         # Academic trend — TermResults across all published terms
         academic_trend = TermResult.objects.filter(
@@ -415,11 +415,10 @@ class StudentOverviewView(RoleRequiredMixin, View):
         ).select_related('subject', 'term').order_by('subject__name')
 
         # Published terms with scores for this student
-        published_terms = Term.objects.filter(
-            school=request.school,
+        published_terms = Term.for_current_session(request.school).filter(
             results_published=True,
             scores__student__user=request.user,
-        ).distinct().order_by('-start_date')
+        ).distinct()
 
         current_term = Term.objects.filter(
             school=request.school, is_current=True,

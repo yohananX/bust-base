@@ -218,6 +218,10 @@ class TeacherScoreGridView(RoleRequiredMixin, View):
             'assignment': assignment,
             'scores': scores,
             'term': current_term,
+            'rejected_count': sum(
+                1 for s in scores
+                if s.moderation_status == Score.MODERATION_REJECTED
+            ),
         })
 
 
@@ -307,25 +311,40 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
         total = score.total_score
         total_content = f'<span>{total}</span>'
 
-        # Build OOB swap for Status cell (includes moderation status)
-        if score.moderation_status == Score.MODERATION_PENDING and score.is_complete:
-            status_html = '<span class="status-tag status-tag--pending">Re-review</span>'
+        # Build OOB swap for Status cell (matches score_grid.html badges)
+        def _status_badge(color, text):
+            dot = f'<span class="w-1.5 h-1.5 rounded-full bg-{color} mr-1.5"></span>'
+            return (
+                f'<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs '
+                f'font-medium bg-{color}-tint text-{color} border border-line">'
+                f'{dot}{text}</span>'
+            )
+
+        if score.moderation_status == Score.MODERATION_REJECTED:
+            status_html = _status_badge('danger', 'Rejected by Admin')
         elif score.moderation_status == Score.MODERATION_APPROVED:
-            status_html = '<span class="status-stamp status-stamp--pass">Approved</span>'
-        elif score.moderation_status == Score.MODERATION_REJECTED:
-            status_html = '<span class="status-tag status-tag--fail">Rejected</span>'
-        elif not score.is_complete:
-            status_html = '<span class="status-tag status-tag--pending">Pending</span>'
+            status_html = _status_badge('success', 'Approved')
+        elif score.is_complete:
+            status_html = _status_badge('warning', 'Awaiting Review')
+        elif score.passed is None:
+            status_html = _status_badge('info', 'Pending')
         elif score.passed:
-            status_html = '<span class="status-stamp status-stamp--pass">Pass</span>'
+            status_html = _status_badge('success', 'Pass')
         else:
-            status_html = '<span class="status-tag status-tag--fail">Fail</span>'
+            status_html = _status_badge('danger', 'Fail')
 
         # Combine: primary response + OOB swaps
+        row_class = 'border-t border-gray-100 hover:bg-gray-50/70 transition-colors'
+        if score.moderation_status == Score.MODERATION_REJECTED:
+            row_class += ' row-rejected'
         response_html = (
             f'{primary}'
             f'<div id="total-{score.pk}" hx-swap-oob="innerHTML">{total_content}</div>'
             f'<div id="status-{score.pk}" hx-swap-oob="innerHTML">{status_html}</div>'
+            f'<script id="row-script-{score.pk}" hx-swap-oob="outerHTML">'
+            f'var el=document.getElementById("score-row-{score.pk}");'
+            f'if(el)el.className="{row_class}";'
+            f'</script>'
         )
         response = HttpResponse(response_html)
         return attach_toast(response, 'Score saved.', 'success')
