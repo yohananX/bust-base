@@ -72,5 +72,5 @@ def _printable_html_response(payment, school, request=None):
     )
     response = HttpResponse(html, content_type='text/html')
     filename = f"receipt-{payment.reference}"
-    response['Content-Disposition'] = f'inline; filename="{filename}.html"'
+    response['Content-Disposition'] = f'attachment; filename="{filename}.html"'
     return response

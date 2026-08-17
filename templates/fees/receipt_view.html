@@ -5,6 +5,13 @@
 {% block page_header %}Payment Receipt{% endblock %}
 
 {% block content %}
+<style>
+  @media print {
+    #sidebar, #mobile-overlay, #toast-container, header { display: none !important; }
+    main { overflow: visible !important; padding: 0 !important; }
+    body { background: #fff !important; }
+  }
+</style>
 {% with student_obj=student|default:payment.student|default:payment.invoice.student %}
 {% with school_obj=school|default:payment.invoice.school %}
 {% with receipt_obj=receipt|default:payment.receipt %}

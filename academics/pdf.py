@@ -58,10 +58,20 @@ def render_result_booklet_pdf(student, term):
 
 
 def _printable_html_response(student, term, context, logo):
-    """Serve the booklet as a standalone printable page (browser Print → PDF)."""
-    browser_context = dict(context, logo_url=logo.url if logo else '')
-    html = render_to_string('academics/result_booklet.html', browser_context)
+    """Serve the booklet as a downloadable page identical to the preview.
+
+    Uses the same portal template the user was just viewing (sidebar and
+    all), so the downloaded file looks exactly like what they saw — never
+    a bare print layout that appears out of nowhere.
+    """
+    browser_context = dict(
+        context,
+        logo_url=logo.url if logo else '',
+        booklet_back_url='',
+        booklet_download_url='',
+    )
+    html = render_to_string('students/result_booklet.html', browser_context)
     response = HttpResponse(html, content_type='text/html')
     filename = f"result_{student.admission_number}_{term.name}"
-    response['Content-Disposition'] = f'inline; filename="{filename}.html"'
+    response['Content-Disposition'] = f'attachment; filename="{filename}.html"'
     return response
