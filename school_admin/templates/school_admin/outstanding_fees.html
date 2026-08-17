@@ -8,7 +8,7 @@
 <div class="max-w-7xl mx-auto">
 
   {# ── KPI Cards ── #}
-  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-6">
     <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
       <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Amount Due</span>
       <div class="text-3xl font-bold text-[var(--color-status-red)] mt-1">NGN {{ total_outstanding|floatformat:2 }}</div>
@@ -20,9 +20,14 @@
       <p class="text-xs text-slate-400 mt-1">With an amount due</p>
     </div>
     <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-      <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Unpaid · Partial</span>
-      <div class="text-3xl font-bold text-slate-800 mt-1">{{ unpaid_count }} <span class="text-lg text-slate-400 font-medium">·</span> {{ partial_count }}</div>
-      <p class="text-xs text-slate-400 mt-1">Fully unpaid · partially paid invoices</p>
+      <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Fully Unpaid</span>
+      <div class="text-3xl font-bold text-slate-800 mt-1">{{ unpaid_count }}</div>
+      <p class="text-xs text-slate-400 mt-1">Invoices with no payment yet</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+      <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Partially Paid</span>
+      <div class="text-3xl font-bold text-slate-800 mt-1">{{ partial_count }}</div>
+      <p class="text-xs text-slate-400 mt-1">Invoices with some payment</p>
     </div>
     <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
       <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Collected</span>

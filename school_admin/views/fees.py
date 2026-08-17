@@ -243,9 +243,12 @@ class FeePricingCreateView(RoleRequiredMixin, View):
             category=category,
             amount=amount,
         )
+        from fees.generation import generate_invoices_for_class
+        generated = generate_invoices_for_class(school_class, term)
         messages.success(
             request,
-            f'Pricing added: {category.name} — {school_class.name} ({term.name}).',
+            f'Pricing added: {category.name} — {school_class.name} ({term.name}). '
+            f'{generated} invoice(s) generated for students without one.',
         )
         return redirect('school_admin:fee_pricing_list')
 
@@ -331,9 +334,16 @@ class FeePricingEditView(RoleRequiredMixin, View):
         structure.category = category
         structure.amount = amount
         structure.save()
+        from fees.generation import (
+            generate_invoices_for_class,
+            sync_class_invoices,
+        )
+        generated = generate_invoices_for_class(school_class, term)
+        re_priced = sync_class_invoices(school_class, term)
         messages.success(
             request,
-            f'Pricing updated: {category.name} — {school_class.name} ({term.name}).',
+            f'Pricing updated: {category.name} — {school_class.name} ({term.name}). '
+            f'{generated} invoice(s) generated, {re_priced} unpaid invoice(s) re-priced.',
         )
         return redirect('school_admin:fee_pricing_list')
 

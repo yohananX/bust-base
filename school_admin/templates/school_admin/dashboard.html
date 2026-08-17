@@ -72,129 +72,68 @@
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
     {# Students #}
-    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <a href="{% url 'school_admin:student_list' %}" class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm block hover:shadow-md transition-shadow">
       <div class="flex items-start justify-between">
         <div class="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600">
           <i data-lucide="users" class="w-5 h-5"></i>
         </div>
         {% if student_growth > 0 %}
           <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
-            <i data-lucide="trending-up" class="w-3 h-3"></i>+{{ student_growth }}%
+            <i data-lucide="trending-up" class="w-3 h-3"></i>+{{ student_growth }}% vs last session
           </span>
         {% elif student_growth < 0 %}
           <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700">
-            <i data-lucide="trending-down" class="w-3 h-3"></i>{{ student_growth }}%
+            <i data-lucide="trending-down" class="w-3 h-3"></i>{{ student_growth }}% vs last session
           </span>
         {% else %}
-          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">0%</span>
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">0% vs last session</span>
         {% endif %}
       </div>
       <p class="text-2xl font-bold text-gray-900 mt-4">{{ total_students|default:"0" }}</p>
       <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Total Active Students</p>
-      <div class="mt-3 h-10">
-        <canvas id="sparkStudents"></canvas>
+    </a>
+
+    {# Teachers on staff #}
+    <a href="{% url 'school_admin:staff_list' %}" class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm block hover:shadow-md transition-shadow">
+      <div class="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600">
+        <i data-lucide="graduation-cap" class="w-5 h-5"></i>
       </div>
-    </div>
+      <p class="text-2xl font-bold text-gray-900 mt-4">{{ teacher_count|default:"0" }}</p>
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Teachers on Staff</p>
+    </a>
 
     {# Outstanding Fees #}
     <a href="{% url 'school_admin:outstanding_fees' %}" class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm block hover:shadow-md transition-shadow">
-      <div class="flex items-start justify-between">
-        <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-          <i data-lucide="banknote" class="w-5 h-5"></i>
-        </div>
-        {% if outstanding_fees_change is not None %}
-          {% if outstanding_fees_change > 0 %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
-              <i data-lucide="trending-up" class="w-3 h-3"></i>+{{ outstanding_fees_change }}%
-            </span>
-          {% elif outstanding_fees_change < 0 %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700">
-              <i data-lucide="trending-down" class="w-3 h-3"></i>{{ outstanding_fees_change }}%
-            </span>
-          {% else %}
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">0%</span>
-          {% endif %}
-        {% else %}
-          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">&mdash;</span>
-        {% endif %}
+      <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+        <i data-lucide="banknote" class="w-5 h-5"></i>
       </div>
-<p class="text-2xl font-bold text-gray-900 mt-4">&#8358;{{ outstanding_fees|floatformat:0 }}</p>
-<p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Fees Due</p>
-      <div class="mt-3 h-10">
-        <canvas id="sparkFees"></canvas>
-      </div>
+      <p class="text-2xl font-bold text-gray-900 mt-4">&#8358;{{ outstanding_fees|floatformat:0 }}</p>
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Fees Due</p>
+      {% if owing_students %}
+      <p class="text-xs text-gray-400 mt-1.5">across {{ owing_students }} students</p>
+      {% endif %}
     </a>
 
-    {# Payroll #}
+    {# Collected this term #}
     <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-      <div class="flex items-start justify-between">
-        <div class="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600">
-          <i data-lucide="wallet" class="w-5 h-5"></i>
-        </div>
-        {% if payroll_change is not None %}
-          {% if payroll_change > 0 %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
-              <i data-lucide="trending-up" class="w-3 h-3"></i>+{{ payroll_change }}%
-            </span>
-          {% elif payroll_change < 0 %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700">
-              <i data-lucide="trending-down" class="w-3 h-3"></i>{{ payroll_change }}%
-            </span>
-          {% else %}
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">0%</span>
-          {% endif %}
-        {% else %}
-          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">&mdash;</span>
-        {% endif %}
+      <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+        <i data-lucide="wallet" class="w-5 h-5"></i>
       </div>
-      <p class="text-2xl font-bold text-gray-900 mt-4">{{ payroll_runs|default:"0" }}</p>
-      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Payroll Runs</p>
-      <div class="mt-3 h-10">
-        <canvas id="sparkPayroll"></canvas>
-      </div>
-    </div>
-
-    {# Projects #}
-    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-      <div class="flex items-start justify-between">
-        <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
-          <i data-lucide="folder-kanban" class="w-5 h-5"></i>
-        </div>
-        {% if projects_change is not None %}
-          {% if projects_change > 0 %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
-              <i data-lucide="trending-up" class="w-3 h-3"></i>+{{ projects_change }}%
-            </span>
-          {% elif projects_change < 0 %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700">
-              <i data-lucide="trending-down" class="w-3 h-3"></i>{{ projects_change }}%
-            </span>
-          {% else %}
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">0%</span>
-          {% endif %}
-        {% else %}
-          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">&mdash;</span>
-        {% endif %}
-      </div>
-      <p class="text-2xl font-bold text-gray-900 mt-4">{{ active_projects|default:"0" }}</p>
-      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Active Projects</p>
-      <div class="mt-3 h-10">
-        <canvas id="sparkProjects"></canvas>
-      </div>
+      <p class="text-2xl font-bold text-gray-900 mt-4">&#8358;{{ collected_this_term|floatformat:0 }}</p>
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Collected This Term</p>
+      {% if current_term_name %}
+      <p class="text-xs text-gray-400 mt-1.5">{{ current_term_name }}</p>
+      {% endif %}
     </div>
   </div>
 
   {# ── CHARTS + PENDING ACTIONS ── #}
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    {# Fee Collection Trend #}
+    {# Fee Collection by Term #}
     <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-semibold text-gray-800">Fee Collection Trend</h3>
-        <div class="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
-          <button type="button" data-fee-range="6M" class="px-3 py-1 text-xs font-medium rounded-md text-gray-600 hover:text-gray-800 transition-colors">6M</button>
-          <button type="button" data-fee-range="12M" class="px-3 py-1 text-xs font-medium rounded-md bg-primary text-white">12M</button>
-        </div>
+      <div class="mb-4">
+        <h3 class="text-sm font-semibold text-gray-800">Fee Collection by Term</h3>
       </div>
       {% if fee_trend_has_data %}
       <div class="h-64 relative">
@@ -379,32 +318,33 @@
 (function () {
   if (typeof Chart === 'undefined') return;
 
-  const feeRanges = {
-    '6M': { labels: {{ monthly_labels_6m|safe }}, values: {{ monthly_fees_6m|safe }} },
-    '12M': { labels: {{ monthly_labels_12m|safe }}, values: {{ monthly_fees_12m|safe }} }
-  };
-
   const feeEl = document.getElementById('feeChart');
-  let feeChart = null;
-  function renderFee(range) {
-    const data = feeRanges[range];
-    if (feeChart) feeChart.destroy();
-    feeChart = new Chart(feeEl.getContext('2d'), {
+  if (feeEl) {
+    new Chart(feeEl.getContext('2d'), {
       type: 'bar',
       data: {
-        labels: data.labels,
+        labels: {{ term_labels|safe }},
         datasets: [{
           label: 'Collected (₦)',
-          data: data.values,
-          backgroundColor: '#7C3AED',
+          data: {{ term_fees|safe }},
+          backgroundColor: '#8A6420',
           borderRadius: 6,
-          barThickness: 28,
+          barThickness: 42,
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                return ' ₦' + Number(ctx.parsed.y).toLocaleString();
+              }
+            }
+          }
+        },
         scales: {
           y: { beginAtZero: true, grid: { color: '#F3F4F6', drawBorder: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } },
           x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } }
@@ -412,51 +352,6 @@
       }
     });
   }
-
-  if (feeEl) {
-    renderFee('12M');
-    document.querySelectorAll('[data-fee-range]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        document.querySelectorAll('[data-fee-range]').forEach(function (b) {
-          b.classList.remove('bg-primary', 'text-white');
-          b.classList.add('bg-gray-100', 'text-gray-600');
-        });
-        btn.classList.remove('bg-gray-100', 'text-gray-600');
-        btn.classList.add('bg-primary', 'text-white');
-        renderFee(btn.dataset.feeRange);
-      });
-    });
-  }
-
-  function makeSpark(id, data, color) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    new Chart(el.getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: data.map(function (_, i) { return i; }),
-        datasets: [{
-          data: data,
-          borderColor: color,
-          borderWidth: 2,
-          fill: false,
-          tension: 0.4,
-          pointRadius: 0,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { display: false }, y: { display: false } }
-      }
-    });
-  }
-
-  makeSpark('sparkStudents', {{ students_spark|safe }}, '#7C3AED');
-  makeSpark('sparkFees', {{ fees_spark|safe }}, '#10B981');
-  makeSpark('sparkPayroll', {{ payroll_spark|safe }}, '#0EA5E9');
-  makeSpark('sparkProjects', {{ projects_spark|safe }}, '#F59E0B');
 })();
 </script>
 {% endblock %}

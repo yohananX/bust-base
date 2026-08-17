@@ -372,13 +372,21 @@ class StudentEditView(RoleRequiredMixin, View):
                     )
 
                     if should_enroll:
-                        ClassEnrollment.objects.create(
-                            school=school,
-                            student=student,
-                            school_class=new_class,
-                            session=new_session,
-                            is_current=True,
-                        )
+                        enrollment = ClassEnrollment.objects.filter(
+                            student=student, session=new_session
+                        ).first()
+                        if enrollment:
+                            enrollment.school_class = new_class
+                            enrollment.is_current = True
+                            enrollment.save()
+                        else:
+                            ClassEnrollment.objects.create(
+                                school=school,
+                                student=student,
+                                school_class=new_class,
+                                session=new_session,
+                                is_current=True,
+                            )
                         from fees.generation import generate_invoice_for_current_term
                         generate_invoice_for_current_term(student)
 
@@ -453,13 +461,21 @@ class StudentChangeClassView(RoleRequiredMixin, View):
                 school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
                 session = get_object_or_404(AcademicSession, school=school, pk=session_id)
 
-                ClassEnrollment.objects.create(
-                    school=school,
-                    student=student,
-                    school_class=school_class,
-                    session=session,
-                    is_current=True,
-                )
+                enrollment = ClassEnrollment.objects.filter(
+                    student=student, session=session
+                ).first()
+                if enrollment:
+                    enrollment.school_class = school_class
+                    enrollment.is_current = True
+                    enrollment.save()
+                else:
+                    ClassEnrollment.objects.create(
+                        school=school,
+                        student=student,
+                        school_class=school_class,
+                        session=session,
+                        is_current=True,
+                    )
 
                 from fees.generation import generate_invoice_for_current_term
                 generated = generate_invoice_for_current_term(student)

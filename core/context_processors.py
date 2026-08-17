@@ -32,18 +32,34 @@ def login_school(request):
 
 
 def _nav_item(path, label, url, icon, section=None, exact=False, badge=None):
-    if exact:
-        is_active = path == url
-    else:
-        is_active = path == url or path.startswith(url)
     return {
         'label': label,
         'url': url,
         'icon': icon,
         'section': section,
-        'active': is_active,
+        'exact': exact,
         'badge': badge or 0,
     }
+
+
+def _mark_active(items, path):
+    """Highlight the single best-matching item.
+
+    Exact items match only on equality; others match on URL prefix.
+    When several match (e.g. /school-admin/fees/ and
+    /school-admin/fees/outstanding/), the longest URL wins so sibling
+    subpages never light up their parent.
+    """
+    matches = []
+    for item in items:
+        if item['exact']:
+            if path == item['url']:
+                matches.append(item)
+        elif path == item['url'] or path.startswith(item['url']):
+            matches.append(item)
+    winner = max(matches, key=lambda i: len(i['url'])) if matches else None
+    for item in items:
+        item['active'] = item is winner
 
 
 def _badge_counts(request, role):
@@ -155,6 +171,7 @@ _nav_item(path, 'Awaiting Confirmation', '/school-admin/fees/pending/', 'clock',
         Roles.PARENT: parent_nav,
     }
     items = nav_map.get(role, admin_nav)
+    _mark_active(items, path)
 
     sections = []
     for item in items:

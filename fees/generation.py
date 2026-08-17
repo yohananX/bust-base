@@ -65,6 +65,77 @@ def generate_invoice_for_current_term(student):
     return generate_invoice_for_student(student, term)
 
 
+def generate_invoices_for_class(school_class, term):
+    """Backfill term invoices for students currently enrolled in a class
+    who have no invoice for the term yet. Returns how many were created.
+
+    Called when pricing is added/changed so students enrolled before the
+    price existed still get their invoice.
+    """
+    from students.models import ClassEnrollment
+
+    generated = 0
+    enrollments = ClassEnrollment.objects.filter(
+        session=term.session,
+        school_class=school_class,
+        is_current=True,
+    ).select_related('student')
+    for enrollment in enrollments:
+        student = enrollment.student
+        if student.school_id != school_class.school_id:
+            continue
+        if generate_invoice_for_student(student, term) is not None:
+            generated += 1
+    return generated
+
+
+def sync_class_invoices(school_class, term):
+    """Re-price invoices that have no payment history yet.
+
+    Line items and totals are rebuilt from the current compulsory pricing
+    for the class/term. Invoices with any payment are left untouched so
+    recorded money is never mutated.
+    """
+    from django.db.models import Count
+
+    from .models import InvoiceLineItem
+
+    structures = list(
+        FeeStructure.objects.filter(
+            school=school_class.school,
+            school_class=school_class,
+            term=term,
+            category__is_compulsory=True,
+        )
+    )
+    if not structures:
+        return 0
+
+    invoices = Invoice.objects.filter(
+        school=school_class.school,
+        term=term,
+        student__enrollments__session=term.session,
+        student__enrollments__school_class=school_class,
+        student__enrollments__is_current=True,
+    ).annotate(num_payments=Count('payments')).filter(num_payments=0)
+
+    updated = 0
+    for invoice in invoices.distinct():
+        invoice.line_items.all().delete()
+        total = Decimal('0.00')
+        for fs in structures:
+            InvoiceLineItem.objects.create(
+                invoice=invoice,
+                category=fs.category,
+                amount=fs.amount,
+            )
+            total += fs.amount
+        invoice.total_amount = total
+        invoice.save(update_fields=['total_amount'])
+        updated += 1
+    return updated
+
+
 def _notify_primary_guardian(student, term, invoice):
     guardian_link = student.guardian_links.filter(
         is_primary_contact=True
