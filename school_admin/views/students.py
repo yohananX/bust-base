@@ -3,6 +3,7 @@ import re
 import secrets
 
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.views.generic.base import View
 from django.contrib import messages
 from django.db import transaction, IntegrityError
@@ -233,6 +234,18 @@ class StudentCreateView(RoleRequiredMixin, View):
                     )
                     from fees.generation import generate_invoice_for_current_term
                     generate_invoice_for_current_term(student)
+
+                from notifications.utils import notify_admins
+                notify_admins(
+                    school=school,
+                    subject=f'New student registered: {student}',
+                    message=(
+                        f'{student} ({admission_number}) has been registered'
+                        f'{" in " + school_class.name if class_id and session_id else ""}.'
+                    ),
+                    reference=f'student-new:{student.pk}',
+                    url=reverse('school_admin:student_detail', kwargs={'pk': student.pk}),
+                )
 
                 # --- Optional parent/guardian creation ---
                 parent_name = request.POST.get('parent_name', '').strip()

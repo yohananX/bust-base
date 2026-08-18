@@ -34,6 +34,12 @@ class NotificationLog(TenantScopedModel):
         verbose_name=_('subject'),
     )
     message = models.TextField(verbose_name=_('message'))
+    url = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_('url'),
+        help_text=_('Optional in-app target (e.g. "/school-admin/pending-transfers/")'),
+    )
     reference = models.CharField(
         max_length=100,
         blank=True,

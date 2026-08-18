@@ -43,7 +43,7 @@ def send_sms(user, message):
     logger.info('SMS to %s (%s): %s', user.get_username(), phone, message)
 
 
-def notify(*, recipient, channel, subject='', message, reference=''):
+def notify(*, recipient, channel, subject='', message, reference='', url=''):
     """Create a NotificationLog row and enqueue the send as a Django-Q2 task.
 
     Returns the NotificationLog instance.
@@ -58,6 +58,7 @@ def notify(*, recipient, channel, subject='', message, reference=''):
         subject=subject,
         message=message,
         reference=reference,
+        url=url,
         status=NotificationLog.Status.QUEUED,
     )
     # In-app notifications need no delivery task — they stay QUEUED (unread)
@@ -68,3 +69,29 @@ def notify(*, recipient, channel, subject='', message, reference=''):
     # Enqueue the send task — pass the log ID so the task can update it
     async_task('notifications.tasks.process_notification', log.id)
     return log
+
+
+def notify_admins(*, school, subject, message, reference='', url=''):
+    """Notify every active admin of the school in-app (one row per admin).
+
+    Returns the list of created NotificationLog instances.
+    """
+    from accounts.models import Roles, User
+    from .models import NotificationLog
+
+    admins = User.objects.filter(
+        school=school, role=Roles.ADMIN, is_active=True,
+    )
+    logs = []
+    for admin in admins:
+        logs.append(
+            notify(
+                recipient=admin,
+                channel=NotificationLog.Channel.IN_APP,
+                subject=subject,
+                message=message,
+                reference=reference,
+                url=url,
+            )
+        )
+    return logs

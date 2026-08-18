@@ -21,6 +21,7 @@ import requests as http_requests
 from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -210,7 +211,7 @@ def confirm_payment_from_verify(payment, data):
         'paid_by_phone',
     ])
     issue_receipt(payment)
-    from notifications.utils import notify
+    from notifications.utils import notify, notify_admins
     if payment.student:
         guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
         if guardian_link:
@@ -221,6 +222,17 @@ def confirm_payment_from_verify(payment, data):
                 message=f'Payment of ₦{payment.amount:,.2f} for {payment.student} has been confirmed.',
                 reference=f'payment-confirm:{payment.id}',
             )
+    notify_admins(
+        school=payment.school,
+        subject=f'Payment confirmed: ₦{payment.amount:,.2f}',
+        message=(
+            f'{payment.student or "A student"} paid ₦{payment.amount:,.2f} '
+            f'({payment.get_method_display()}).'
+        ),
+        reference=f'payment-confirm:{payment.id}',
+        url=reverse('school_admin:student_detail', kwargs={'pk': payment.student_id})
+        if payment.student_id else '',
+    )
     logger.info(f'Payment {payment.reference} confirmed via verify fallback')
     return payment
 
@@ -291,7 +303,7 @@ def _handle_charge_success(event, data, webhook_log):
             'paid_by_name', 'paid_by_phone', 'student', 'description',
         ])
         issue_receipt(payment)
-        from notifications.utils import notify
+        from notifications.utils import notify, notify_admins
         if payment.student:
             guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
             if guardian_link:
@@ -302,6 +314,17 @@ def _handle_charge_success(event, data, webhook_log):
                     message=f'Payment of ₦{payment.amount:,.2f} for {payment.student} has been confirmed.',
                     reference=f'payment-confirm:{payment.id}',
                 )
+        notify_admins(
+            school=payment.school,
+            subject=f'Payment confirmed: ₦{payment.amount:,.2f}',
+            message=(
+                f'{payment.student or "A student"} paid ₦{payment.amount:,.2f} '
+                f'({payment.get_method_display()}).'
+            ),
+            reference=f'payment-confirm:{payment.id}',
+            url=reverse('school_admin:student_detail', kwargs={'pk': payment.student_id})
+            if payment.student_id else '',
+        )
         _mark_webhook_log_processed(webhook_log)
         logger.info(f'Payment {reference} confirmed (updated)')
         return JsonResponse({'status': 'confirmed'})
@@ -402,7 +425,7 @@ def _handle_charge_failure(event_name, event, data, webhook_log):
         payment.webhook_processed = True
         payment.webhook_payload = event
         payment.save(update_fields=['status', 'webhook_processed', 'webhook_payload'])
-        from notifications.utils import notify
+        from notifications.utils import notify, notify_admins
         if payment and payment.student:
             guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
             if guardian_link:
@@ -413,6 +436,15 @@ def _handle_charge_failure(event_name, event, data, webhook_log):
                     message=f'Payment of ₦{payment.amount:,.2f} could not be processed. Please try again.',
                     reference=f'payment-fail:{payment.id}',
                 )
+        if payment:
+            notify_admins(
+                school=payment.school,
+                subject=f'Payment failed: ₦{payment.amount:,.2f}',
+                message=f'{payment.student or "A student"}\'s payment of ₦{payment.amount:,.2f} failed.',
+                reference=f'payment-fail:{payment.id}',
+                url=reverse('school_admin:student_detail', kwargs={'pk': payment.student_id})
+                if payment.student_id else '',
+            )
         _mark_webhook_log_processed(webhook_log)
         logger.info(f'Payment {reference} recorded as failed via {event_name}')
         return JsonResponse({'status': 'recorded'})

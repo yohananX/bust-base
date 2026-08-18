@@ -605,3 +605,44 @@ class ImportLogCreatedTest(BaseImportTestCase):
             self.assertFalse(log.dry_run)
         finally:
             os.unlink(csv_path)
+
+
+class ImportConfirmNotifiesAdminsTest(TestCase):
+    """Confirming an import notifies all admins with a summary alert."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Test School', short_code='test-school')
+        self.admin = User.objects.create_user(
+            username='import-admin', email='ia@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        SchoolClass.objects.create(school=self.school, name='JSS 1', level='Junior')
+
+    def test_confirm_notifies_admins(self):
+        from notifications.models import NotificationLog
+        from django.urls import reverse
+
+        self.client.force_login(self.admin)
+        session = self.client.session
+        session['import_data'] = {
+            'type': 'students',
+            'filename': 'students.csv',
+            'rows': [{
+                'first_name': 'Ada', 'last_name': 'Obi', 'username': 'adaobi',
+                'date_of_birth': '2012-01-01', 'gender': 'F',
+                'parent_name': '', 'parent_email': '', 'parent_phone': '',
+                'class_name': 'JSS 1',
+            }],
+        }
+        session.save()
+
+        response = self.client.post(reverse('school_admin:import_confirm'), HTTP_HOST='localhost')
+        self.assertEqual(response.status_code, 200)
+
+        row = NotificationLog.objects.filter(
+            recipient=self.admin, reference__startswith='import:',
+        ).first()
+        self.assertIsNotNone(row)
+        self.assertEqual(row.channel, NotificationLog.Channel.IN_APP)
+        self.assertTrue(row.subject.startswith('Import complete: 1'))
+        self.assertEqual(row.url, reverse('school_admin:import'))

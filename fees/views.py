@@ -382,6 +382,17 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
                         paid_by_name=paid_by_name,
                         paid_by_relation=paid_by_relation,
                     )
+            from notifications.utils import notify_admins
+            notify_admins(
+                school=student.school,
+                subject=f'Bank transfer of ₦{amount:,.2f} awaiting approval',
+                message=(
+                    f'{student} submitted a bank transfer of ₦{amount:,.2f} '
+                    f'({"split across " + str(len(result.allocations)) + " invoices" if result.is_split else "pending your confirmation"}).'
+                ),
+                reference=f'transfer-pending:{student.pk}:{timezone.now():%Y%m%d%H%M%S}',
+                url=reverse('school_admin:pending_transfers'),
+            )
             if result.is_split:
                 messages.success(
                     request,

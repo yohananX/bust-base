@@ -1852,6 +1852,33 @@ class BankTransferProofTest(BaseFeesTest):
         # Pending transfer still doesn't reduce the balance
         self.assertEqual(payment.invoice.balance, Decimal('60000.00'))
 
+    def test_transfer_submission_notifies_admins(self):
+        """Submitting a bank transfer creates an in-app alert for every admin."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from notifications.models import NotificationLog
+
+        admin = User.objects.create_user(
+            username='adminx', email='adminx@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        proof = SimpleUploadedFile(
+            'proof.png', b'fake-image-bytes', content_type='image/png'
+        )
+        response = self._post({
+            'proof_image': proof,
+            'paid_by_name': 'Aunty Ada',
+            'paid_by_relation': 'Aunt',
+        })
+        self.assertEqual(response.status_code, 200)
+
+        row = NotificationLog.objects.filter(
+            recipient=admin,
+            reference__startswith='transfer-pending:',
+        ).first()
+        self.assertIsNotNone(row)
+        self.assertEqual(row.channel, NotificationLog.Channel.IN_APP)
+        self.assertEqual(row.url, reverse('school_admin:pending_transfers'))
+
 
 class PaystackGatingTest(BaseFeesTest):
     """The Paystack card option only appears when keys are configured."""
@@ -1929,11 +1956,17 @@ class InAppNotificationTriggerTest(BaseFeesTest):
 
         confirm_payment_from_verify(payment, data)
 
-        log = NotificationLog.objects.get(reference='payment-confirm:%s' % payment.id)
-        self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
-        self.assertEqual(log.recipient, self.parent_user)
-        self.assertIn('Payment confirmed', log.subject)
-        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+        logs = NotificationLog.objects.filter(reference='payment-confirm:%s' % payment.id)
+        # One row for the guardian, one for each admin
+        self.assertEqual(logs.count(), 2)
+        guardian_log = logs.get(recipient=self.parent_user)
+        self.assertEqual(guardian_log.channel, NotificationLog.Channel.IN_APP)
+        self.assertEqual(guardian_log.recipient, self.parent_user)
+        self.assertIn('Payment confirmed', guardian_log.subject)
+        self.assertEqual(guardian_log.status, NotificationLog.Status.QUEUED)
+        admin_log = logs.get(recipient=self.admin_user)
+        self.assertEqual(admin_log.channel, NotificationLog.Channel.IN_APP)
+        self.assertIn('Payment confirmed', admin_log.subject)
 
     def test_payment_failure_creates_notification_log(self):
         """charge.failed webhook creates NotificationLog with reference 'payment-fail:{id}'."""
@@ -1953,11 +1986,17 @@ class InAppNotificationTriggerTest(BaseFeesTest):
         event = {'event': 'charge.failed', 'data': {'reference': 'PAY_FAIL_REF'}}
         _handle_charge_failure('charge.failed', event, event['data'], webhook_log=None)
 
-        log = NotificationLog.objects.get(reference='payment-fail:%s' % payment.id)
-        self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
-        self.assertEqual(log.recipient, self.parent_user)
-        self.assertIn('Payment failed', log.subject)
-        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+        logs = NotificationLog.objects.filter(reference='payment-fail:%s' % payment.id)
+        # One row for the guardian, one for each admin
+        self.assertEqual(logs.count(), 2)
+        guardian_log = logs.get(recipient=self.parent_user)
+        self.assertEqual(guardian_log.channel, NotificationLog.Channel.IN_APP)
+        self.assertEqual(guardian_log.recipient, self.parent_user)
+        self.assertIn('Payment failed', guardian_log.subject)
+        self.assertEqual(guardian_log.status, NotificationLog.Status.QUEUED)
+        admin_log = logs.get(recipient=self.admin_user)
+        self.assertEqual(admin_log.channel, NotificationLog.Channel.IN_APP)
+        self.assertIn('Payment failed', admin_log.subject)
 
     def test_bank_transfer_confirm_creates_notification_log(self):
         """PendingTransferConfirmView creates NotificationLog with reference 'transfer-confirm:{id}'."""

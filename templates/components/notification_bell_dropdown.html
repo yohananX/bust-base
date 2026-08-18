@@ -1,8 +1,12 @@
 ﻿{% load humanize %}
 <div class="max-h-96 overflow-y-auto">
-  {% if notifications %}
+{% if notifications %}
     {% for n in notifications %}
+      {% if n.url %}
+      <a href="{{ n.url }}" class="block px-4 py-3 border-b border-line last:border-b-0 hover:bg-surface-muted/50 transition-colors">
+      {% else %}
       <div class="px-4 py-3 border-b border-line last:border-b-0 hover:bg-surface-muted/50 transition-colors">
+      {% endif %}
         <div class="flex items-start justify-between gap-2">
           <div class="min-w-0 flex-1">
             <p class="text-sm text-ink truncate">{{ n.subject|default:n.message|truncatechars:60 }}</p>
@@ -19,7 +23,11 @@
         {% if n.channel == 'IN_APP' %}
           <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-info-tint text-info">In-App</span>
         {% endif %}
+      {% if n.url %}
+      </a>
+      {% else %}
       </div>
+      {% endif %}
     {% endfor %}
   {% else %}
     <div class="px-4 py-6 text-center text-sm text-ink-muted">No notifications yet.</div>

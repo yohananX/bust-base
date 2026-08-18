@@ -11,7 +11,7 @@ from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardi
 
 from .models import NotificationLog
 from .tasks import process_notification
-from .utils import notify
+from .utils import notify, notify_admins
 
 User = get_user_model()
 
@@ -544,3 +544,57 @@ class NotificationBellViewTest(BaseNotificationTest):
         self.assertEqual(
             NotificationLog.objects.filter(recipient=self.parent_user).count(), 12
         )
+
+    def test_bell_dropdown_renders_clickable_row_when_url_set(self):
+        """A notification with a url renders as a clickable link."""
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Transfer pending',
+            message='A transfer awaits your approval.',
+            url='/school-admin/fees/pending/',
+        )
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('notifications:bell_dropdown'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/school-admin/fees/pending/"')
+
+
+# --- notify_admins Helper Tests ---
+
+class NotifyAdminsTest(BaseNotificationTest):
+    """Tests for the notify_admins() helper."""
+
+    def test_notify_admins_creates_one_row_per_active_admin(self):
+        """Every active admin of the school gets their own QUEUED in-app row."""
+        User.objects.create_user(
+            username='admin2', email='admin2@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        logs = notify_admins(
+            school=self.school,
+            subject='Test admin alert',
+            message='Check the pending transfers.',
+            reference='alert:1',
+            url='/school-admin/fees/pending/',
+        )
+
+        self.assertEqual(len(logs), 2)
+        for log in logs:
+            self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+            self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
+            self.assertEqual(log.reference, 'alert:1')
+            self.assertEqual(log.url, '/school-admin/fees/pending/')
+
+    def test_notify_admins_skips_inactive_admins(self):
+        """Inactive admin accounts are not notified."""
+        User.objects.create_user(
+            username='inactive-admin', email='ia@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN, is_active=False,
+        )
+        logs = notify_admins(school=self.school, subject='s', message='m')
+
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(logs[0].recipient.username, 'admin1')

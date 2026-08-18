@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — Grace House{% endblock %}
+{% block page_header %}Dashboard{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+  {# ── GREETING ── #}
+  <div>
+    <h2 class="text-2xl font-display font-semibold text-ink">Welcome back, {{ user.first_name|default:user.username }}</h2>
+    {% if children_data|length == 1 %}
+    <p class="text-sm text-ink-muted mt-1">Here's what's happening with your child today.</p>
+    {% elif children_data|length > 1 %}
+    <p class="text-sm text-ink-muted mt-1">Here's what's happening with your children today.</p>
+    {% else %}
+    <p class="text-sm text-ink-muted mt-1">You don't have any children linked to your account yet.</p>
+    {% endif %}
+  </div>
+
+  {# ── RESULTS BANNER ── #}
+  {% if results_published %}
+    <div class="bg-success-tint border border-line rounded-2xl p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-success-tint flex items-center justify-center flex-shrink-0">
+          <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-ink">
+            {{ current_term.name }} results are published
+            {% if current_term.session %} for {{ current_term.session.name }}{% endif %}
+          </p>
+          <p class="text-xs text-ink-muted">Report cards are available for your children.</p>
+        </div>
+      </div>
+      <a href="{% url 'parent-children' %}" class="text-sm font-medium text-primary hover:text-primary-hover hover:underline shrink-0">View Results</a>
+    </div>
+  {% else %}
+    <div class="bg-warning-tint border border-line rounded-2xl p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center flex-shrink-0">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-ink">Results for the current term are not yet published</p>
+          <p class="text-xs text-ink-muted">They will appear here once released by the school.</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {# ── STAT CARDS ── #}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-2xl border border-line p-5">
+      <div class="w-10 h-10 rounded-xl bg-primary-tint flex items-center justify-center mb-3">
+        <i data-lucide="users" class="w-5 h-5 text-primary"></i>
+      </div>
+      <p class="text-2xl font-bold text-ink tabular-nums">{{ total_children }}</p>
+      <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mt-0.5">Children</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-line p-5">
+      <div class="w-10 h-10 rounded-xl bg-warning-tint flex items-center justify-center mb-3">
+        <i data-lucide="wallet" class="w-5 h-5 text-warning"></i>
+      </div>
+      <p class="text-2xl font-bold text-ink tabular-nums">&#8358;{{ total_owed_all|floatformat:0 }}</p>
+      <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mt-0.5">Total owed</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-line p-5">
+      <div class="w-10 h-10 rounded-xl bg-danger-tint flex items-center justify-center mb-3">
+        <i data-lucide="file-text" class="w-5 h-5 text-danger"></i>
+      </div>
+      <p class="text-2xl font-bold text-ink tabular-nums">{{ unpaid_invoices|default:"0" }}</p>
+      <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mt-0.5">Unpaid invoice{{ unpaid_invoices|default:0|pluralize }}</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-line p-5">
+      <div class="w-10 h-10 rounded-xl bg-success-tint flex items-center justify-center mb-3">
+        <i data-lucide="graduation-cap" class="w-5 h-5 text-success"></i>
+      </div>
+      {% if children_average %}
+      <p class="text-2xl font-bold text-ink tabular-nums">{{ children_average|floatformat:1 }}</p>
+      {% else %}
+      <p class="text-2xl font-bold text-ink-faint">—</p>
+      {% endif %}
+      <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mt-0.5">Children's average</p>
+    </div>
+  </div>
+
+  {# ── QUICK ACTIONS ── #}
+  <div class="flex flex-wrap gap-3">
+    <a href="{% url 'parent-children' %}" class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+      <i data-lucide="users" class="w-4 h-4 mr-2"></i>My Children
+    </a>
+    <a href="{% url 'parent-invoices' %}" class="inline-flex items-center px-4 py-2.5 bg-white border border-line text-ink text-sm font-medium rounded-xl hover:bg-surface-muted transition-colors">
+      <i data-lucide="file-text" class="w-4 h-4 mr-2 text-primary"></i>View Invoices
+    </a>
+    <a href="{% url 'parent-pay' %}" class="inline-flex items-center px-4 py-2.5 bg-white border border-line text-ink text-sm font-medium rounded-xl hover:bg-surface-muted transition-colors">
+      <i data-lucide="banknote" class="w-4 h-4 mr-2 text-primary"></i>Pay Fees
+    </a>
+  </div>
+
+  {# ── FEES CHART ── #}
+  {% if children_data %}
+  <div class="bg-white rounded-2xl p-6 border border-line">
+    <h3 class="text-sm font-semibold text-ink mb-4">Fees Owed per Child</h3>
+    <div class="h-64 relative">
+      <canvas id="feesChart"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── CHILDREN SNAPSHOT ── #}
+  <div>
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-semibold text-ink">Your Children</h3>
+      <a href="{% url 'parent-children' %}" class="text-sm font-medium text-primary hover:text-primary-hover transition-colors">View all</a>
+    </div>
+    <div class="grid gap-4">
+      {% for child in children_data %}
+      <a href="{% url 'parent-child-detail' child.student.pk %}" class="bg-white rounded-2xl border border-line p-4 flex items-center justify-between gap-4 hover:border-primary/40 hover:shadow-sm transition-all">
+        <div class="flex items-center min-w-0">
+          {% include "components/avatar.html" with name=child.student.user.get_full_name size="md" %}
+          <div class="ml-3 min-w-0">
+            <h4 class="font-semibold text-ink truncate">{{ child.student.user.get_full_name }}</h4>
+            {% if child.enrollment %}
+            <p class="text-sm text-ink-muted truncate">{{ child.enrollment.school_class.name }} &middot; {{ child.enrollment.session.name }}</p>
+            {% else %}
+            <p class="text-sm text-ink-muted">Not currently enrolled</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="flex items-center gap-6 text-sm flex-shrink-0">
+          <div class="text-center">
+            <p class="text-xs font-bold text-ink-muted uppercase tracking-wider">Average</p>
+            {% if child.term_result and child.term_result.average %}
+            <p class="text-base font-bold text-ink tabular-nums">{{ child.term_result.average|floatformat:1 }}</p>
+            {% else %}
+            <p class="text-base font-bold text-ink-faint">—</p>
+            {% endif %}
+          </div>
+          <div class="text-center">
+            <p class="text-xs font-bold text-ink-muted uppercase tracking-wider">Owed</p>
+            <p class="text-base font-bold text-ink tabular-nums">&#8358;{{ child.total_owed|floatformat:0 }}</p>
+          </div>
+          <i data-lucide="chevron-right" class="w-5 h-5 text-ink-faint"></i>
+        </div>
+      </a>
+      {% empty %}
+      <div class="bg-white rounded-2xl border border-line py-12 text-center">
+        <div class="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center mx-auto mb-3"><i data-lucide="users" class="w-5 h-5 text-ink-faint"></i></div>
+        <p class="text-sm text-ink-muted">No children linked to your account.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const labels = [{% for l in child_chart_labels %}'{{ l|escapejs }}',{% endfor %}];
+  const values = [{% for v in child_chart_values %}{{ v }},{% endfor %}];
+  const el = document.getElementById('feesChart');
+  if (!el || !labels.length) return;
+  new Chart(el.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Owed (₦)',
+        data: values,
+        backgroundColor: css('--color-gold'),
+        borderRadius: 6,
+        barThickness: 28,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: css('--color-line'), drawBorder: false }, ticks: { font: { size: 11 }, color: css('--color-ink-muted') } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: css('--color-ink-muted') } }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

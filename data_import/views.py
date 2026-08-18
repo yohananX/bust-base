@@ -5,6 +5,7 @@ import tempfile
 
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.views.generic.base import View
 from django.contrib import messages
 
@@ -151,6 +152,19 @@ class DataImportConfirmView(RoleRequiredMixin, View):
                 errors=result['errors'],
                 dry_run=False,
                 imported_by=request.user,
+            )
+
+            # One summary notification for all admins
+            from notifications.utils import notify_admins
+            notify_admins(
+                school=request.school,
+                subject=f'Import complete: {result["created"]} {import_type} records',
+                message=(
+                    f'Import of {filename}: {result["created"]} created, '
+                    f'{result["skipped"]} skipped, {len(result["errors"])} errors.'
+                ),
+                reference=f'import:{log.id}',
+                url=reverse('school_admin:import'),
             )
 
             # Clear session data

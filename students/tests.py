@@ -743,3 +743,103 @@ class StudentSubjectsViewTest(TestCase):
         self.client.force_login(other)
         response = self.client.get(reverse("student-subjects"))
         self.assertEqual(response.status_code, 403)
+
+class ParentPortalViewsTests(TestCase):
+    """Parent dashboard and children list are distinct pages with
+    role-scoped access."""
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Grace House School",
+            short_code="grace-house",
+        )
+        User = get_user_model()
+        self.parent_user = User.objects.create_user(
+            username="portal_parent",
+            email="portal@grace.edu",
+            password="testpass123",
+            school=self.school,
+            role=Roles.PARENT,
+            first_name="Portal",
+            last_name="Parent",
+        )
+        self.child_user = User.objects.create_user(
+            username="portal_child",
+            email="child@grace.edu",
+            password="testpass123",
+            school=self.school,
+            role=Roles.STUDENT,
+            first_name="Portal",
+            last_name="Child",
+        )
+        self.student = Student.objects.create(
+            school=self.school,
+            user=self.child_user,
+            admission_number="GH-901",
+            date_of_birth="2011-03-10",
+            gender=Student.MALE,
+            admission_date="2025-09-01",
+)
+        StudentGuardianLink.objects.create(
+            school=self.school,
+            guardian=self.parent_user,
+            student=self.student,
+        )
+        session = AcademicSession.objects.create(
+            school=self.school,
+            name="2025/2026",
+            start_date="2025-09-01",
+            end_date="2026-07-31",
+            is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school,
+            session=session,
+            name="First Term",
+            start_date="2025-09-01",
+            end_date="2025-12-19",
+            is_current=True,
+        )
+        Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal("50000.00"),
+        )
+
+    def test_dashboard_renders_summary(self):
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse("parent-dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Welcome back")
+        self.assertContains(response, "Total owed")
+        self.assertContains(response, "feesChart")
+
+    def test_children_list_renders(self):
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse("parent-children"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "My Children")
+        self.assertContains(response, "View Details")
+
+    def test_dashboard_and_children_are_distinct_pages(self):
+        self.client.force_login(self.parent_user)
+        dash = self.client.get(reverse("parent-dashboard"))
+        kids = self.client.get(reverse("parent-children"))
+        self.assertNotEqual(dash.content, kids.content)
+
+    def test_requires_parent_role(self):
+        other = get_user_model().objects.create_user(
+            username="intruder_student",
+            email="intruder@grace.edu",
+            password="testpass123",
+            school=self.school,
+            role=Roles.STUDENT,
+        )
+        self.client.force_login(other)
+        self.assertEqual(
+            self.client.get(reverse("parent-dashboard")).status_code, 403
+        )
+        self.assertEqual(
+            self.client.get(reverse("parent-children")).status_code, 403
+        )

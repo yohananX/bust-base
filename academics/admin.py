@@ -177,6 +177,18 @@ class ScoreAdmin(admin.ModelAdmin):
                         reference='term-results:{}'.format(term.id),
                     )
 
+                # In-app heads-up for all admins
+                from notifications.utils import notify_admins
+                notify_admins(
+                    school=term.school,
+                    subject=_('Results published: {term}').format(term=term.name),
+                    message=_(
+                        'Results for {session} — {term} are now available to parents.'
+                    ).format(session=term.session.name, term=term.name),
+                    reference='term-results-admin:{}'.format(term.id),
+                    url='/school-admin/results/review/',
+                )
+
                 self.message_user(
                     request,
                     _('Results published for term "%(term)s".') % {'term': term},

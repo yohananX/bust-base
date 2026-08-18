@@ -1,36 +1,8 @@
 {% extends 'base.html' %}
-{% block title %}My Dashboard — Grace House{% endblock %}
-{% block page_header %}My Dashboard{% endblock %}
+{% block title %}My Children — Grace House{% endblock %}
+{% block page_header %}My Children{% endblock %}
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
-
-  {# ── RESULTS BANNER (task first) ── #}
-  {% if results_published %}
-    <div class="bg-success-tint border border-line rounded-2xl p-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-success-tint flex items-center justify-center flex-shrink-0">
-          <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
-        </div>
-        <div>
-          <p class="text-sm font-semibold text-ink">Current term results are published</p>
-          <p class="text-xs text-ink-muted">Your children's report cards are available below.</p>
-        </div>
-      </div>
-      <a href="#children" class="text-sm font-medium text-primary hover:text-primary-hover hover:underline shrink-0">View Children</a>
-    </div>
-  {% else %}
-    <div class="bg-warning-tint border border-line rounded-2xl p-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center flex-shrink-0">
-          <i data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>
-        </div>
-        <div>
-          <p class="text-sm font-semibold text-ink">Results for the current term are not yet published</p>
-          <p class="text-xs text-ink-muted">They will appear here once released by the school.</p>
-        </div>
-      </div>
-    </div>
-  {% endif %}
 
   {# ── HEADLINE: one earned number ── #}
   <div class="bg-white rounded-2xl border border-line p-6">
@@ -38,7 +10,7 @@
       <div class="min-w-0">
         <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mb-1">Amount due</p>
         <p class="text-3xl font-bold text-ink tabular-nums">&#8358;{{ total_owed_all|floatformat:0 }}</p>
-        <p class="text-sm text-ink-muted mt-1">{{ unpaid_invoices|default:"0" }} invoice{{ unpaid_invoices|default:0|pluralize }} not yet paid across your children</p>
+        <p class="text-sm text-ink-muted mt-1">{{ unpaid_invoices|default:"0" }} fee payment{{ unpaid_invoices|default:0|pluralize }} due</p>
       </div>
       <div class="flex flex-wrap gap-3">
         <a href="{% url 'parent-invoices' %}" class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
@@ -49,21 +21,6 @@
         </a>
       </div>
     </div>
-  </div>
-
-  {# ── FEES CHART ── #}
-  <div class="bg-white rounded-2xl p-6 border border-line">
-    <h3 class="text-sm font-semibold text-ink mb-4">Fees Owed per Child</h3>
-    {% if child_chart_labels %}
-    <div class="h-64 relative">
-      <canvas id="feesChart"></canvas>
-    </div>
-    {% else %}
-    <div class="py-16 text-center">
-      <div class="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center mx-auto mb-3"><i data-lucide="bar-chart-3" class="w-5 h-5 text-ink-faint"></i></div>
-      <p class="text-sm text-ink-muted">No children linked to your account.</p>
-    </div>
-    {% endif %}
   </div>
 
   {# ── CHILDREN CARDS ── #}
@@ -137,39 +94,4 @@
     </div>
   </div>
 </div>
-{% endblock %}
-
-{% block extra_scripts %}
-<script>
-(function () {
-  if (typeof Chart === 'undefined') return;
-  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const labels = [{% for l in child_chart_labels %}'{{ l|escapejs }}',{% endfor %}];
-  const values = [{% for v in child_chart_values %}{{ v }},{% endfor %}];
-  const el = document.getElementById('feesChart');
-  if (!el || !labels.length) return;
-  new Chart(el.getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Owed (₦)',
-        data: values,
-        backgroundColor: css('--color-gold'),
-        borderRadius: 6,
-        barThickness: 28,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, grid: { color: css('--color-line'), drawBorder: false }, ticks: { font: { size: 11 }, color: css('--color-ink-muted') } },
-        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: css('--color-ink-muted') } }
-      }
-    }
-  });
-})();
-</script>
 {% endblock %}
