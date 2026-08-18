@@ -1,96 +1,117 @@
 {% extends 'base.html' %}
+{% load humanize %}
 {% block title %}My Dashboard — Grace House{% endblock %}
 {% block page_header %}My Dashboard{% endblock %}
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
 
-  {# ── FEE STATUS + RESULTS ── #}
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  {# ── METRIC TILES ── #}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
-    {# Fee status #}
-    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-line">
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-12 h-12 rounded-xl bg-success-tint flex items-center justify-center text-success">
-          <i data-lucide="banknote" class="w-6 h-6"></i>
+    {# Amount due — owns the single primary Pay Fees CTA #}
+    <div class="bg-white rounded-2xl p-5 border border-line flex flex-col">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-lg bg-success-tint flex items-center justify-center text-success">
+          <i data-lucide="banknote" class="w-4 h-4"></i>
         </div>
-        <h3 class="text-sm font-semibold text-ink">Fees</h3>
+        <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">Amount due</p>
       </div>
-      <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mb-1">Amount due</p>
-      <p class="text-4xl font-bold text-ink tabular-nums mb-1">&#8358;{{ outstanding|floatformat:2 }}</p>
-      <p class="text-sm text-ink-muted mb-5">{{ unpaid_count }} unpaid invoice{{ unpaid_count|pluralize }}</p>
+      <p class="text-2xl font-bold text-ink tabular-nums mb-1">&#8358;{{ outstanding|floatformat:2|intcomma }}</p>
       {% if unpaid_count != 0 %}
-      <p class="inline-flex items-center gap-1.5 text-sm font-medium text-warning bg-warning-tint px-3 py-2 rounded-lg">
-        <i data-lucide="alert-triangle" class="w-4 h-4"></i>You have {{ unpaid_count }} unpaid invoice{{ unpaid_count|pluralize }}
-      </p>
-      {% endif %}
-      <div class="mt-6 pt-5 border-t border-line">
-        <a href="{% url 'student-pay' %}" class="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
-          <i data-lucide="wallet" class="w-4 h-4 mr-2"></i>Pay Fees
-        </a>
-      </div>
-    </div>
-
-    {# Conditional results card #}
-    {% if results_locked %}
-    <div class="bg-warning-tint border border-line rounded-2xl p-6 relative">
-      <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center mb-3">
-        <i data-lucide="lock" class="w-5 h-5 text-warning"></i>
-      </div>
-      <h3 class="text-sm font-semibold text-ink">Results locked</h3>
-      <p class="text-xs text-ink-muted mt-1.5">
-        Your results for {{ current_term.name }} are locked until your outstanding
-        fees for that term are cleared.
-      </p>
-      <a href="{% url 'student-pay' %}" class="mt-5 inline-flex items-center justify-center px-4 py-2 bg-warning hover:bg-[#7A5A1E] text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+      <a href="{% url 'student-pay' %}" class="mt-3 inline-flex items-center justify-center px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
         <i data-lucide="wallet" class="w-4 h-4 mr-2"></i>Pay Fees
       </a>
+      {% endif %}
     </div>
-    {% elif term_result and current_term.results_published %}
-    <div data-dismiss="attention-results-student-{{ current_term.id }}" class="bg-success-tint border border-line rounded-2xl p-6 flex flex-col relative">
-      <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="absolute top-3 right-3 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-full bg-success-tint flex items-center justify-center flex-shrink-0">
-          <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
+
+    {# Unpaid invoices #}
+    <div class="bg-white rounded-2xl p-5 border border-line">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-lg bg-warning-tint flex items-center justify-center text-warning">
+          <i data-lucide="file-text" class="w-4 h-4"></i>
         </div>
-        <h3 class="text-sm font-semibold text-ink">Results published</h3>
+        <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">Unpaid invoices</p>
       </div>
-      <div class="flex items-end justify-between mb-1">
-        <div>
-          <p class="text-xs font-medium text-success uppercase tracking-wider mb-1">My Average</p>
-          <p class="text-3xl font-bold text-ink tabular-nums">{{ term_result.average|floatformat:1 }}</p>
-        </div>
-        <div class="text-right">
-          <p class="text-xs font-medium text-success uppercase tracking-wider mb-1">Position</p>
-          <p class="text-3xl font-bold text-ink">{{ term_result.overall_position }}</p>
-        </div>
-      </div>
-      <a href="{% url 'student-results-history' %}" class="mt-5 inline-flex items-center justify-center px-4 py-2 bg-success hover:bg-[#28593F] text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
-        View Results
-      </a>
+      <p class="text-2xl font-bold text-ink tabular-nums">{{ unpaid_count }}</p>
+      {% if unpaid_count == 0 %}
+      <p class="mt-3 text-sm font-medium text-success">All settled</p>
+      {% endif %}
     </div>
-    {% else %}
-    <div data-dismiss="attention-results-student-{{ current_term.id }}" class="bg-warning-tint border border-line rounded-2xl p-6 relative">
-      <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="absolute top-3 right-3 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
-      <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center mb-3">
-        <i data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>
+
+    {# Average + position — only when the current term result is visible #}
+    {% if term_result %}
+    <div class="bg-white rounded-2xl p-5 border border-line">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-lg bg-success-tint flex items-center justify-center text-success">
+          <i data-lucide="trending-up" class="w-4 h-4"></i>
+        </div>
+        <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">My Average</p>
       </div>
-      <h3 class="text-sm font-semibold text-ink">Results for the current term are not yet published</h3>
-      <p class="text-xs text-ink-muted mt-1.5">They will appear here once released by the school.</p>
+      <p class="text-2xl font-bold text-ink tabular-nums">{{ term_result.average|floatformat:1 }}</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 border border-line">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-lg bg-success-tint flex items-center justify-center text-success">
+          <i data-lucide="trophy" class="w-4 h-4"></i>
+        </div>
+        <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">Position</p>
+      </div>
+      <p class="text-2xl font-bold text-ink">{{ term_result.overall_position }}</p>
     </div>
     {% endif %}
   </div>
 
+  {# ── RESULTS STATUS BANNER ── #}
+  {% if results_locked %}
+  <div class="bg-warning-tint border border-line rounded-2xl px-5 py-4 flex flex-wrap items-center gap-4">
+    <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center flex-shrink-0">
+      <i data-lucide="lock" class="w-5 h-5 text-warning"></i>
+    </div>
+    <div class="min-w-0 flex-1">
+      <h3 class="text-sm font-semibold text-ink">Results locked</h3>
+      <p class="text-xs text-ink-muted mt-1">
+        Your results for {{ current_term.name }} are locked until your outstanding
+        fees for that term are cleared.
+      </p>
+    </div>
+    <a href="{% url 'student-pay' %}" class="inline-flex items-center text-sm font-semibold text-warning hover:text-[#7A5A1E] transition-colors">
+      Pay Fees <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+    </a>
+  </div>
+  {% elif term_result and current_term.results_published %}
+  <div data-dismiss="attention-results-student-{{ current_term.id }}" class="bg-success-tint border border-line rounded-2xl px-5 py-4 flex flex-wrap items-center gap-4 relative">
+    <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="absolute top-3 right-3 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
+    <div class="w-10 h-10 rounded-full bg-success-tint flex items-center justify-center flex-shrink-0">
+      <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
+    </div>
+    <div class="min-w-0 flex-1">
+      <h3 class="text-sm font-semibold text-ink">Results published</h3>
+    </div>
+    <a href="{% url 'student-results-history' %}" class="inline-flex items-center px-4 py-2 bg-success hover:bg-[#28593F] text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+      View Results
+    </a>
+  </div>
+  {% else %}
+  <div data-dismiss="attention-results-student-{{ current_term.id }}" class="bg-warning-tint border border-line rounded-2xl px-5 py-4 flex flex-wrap items-center gap-4 relative">
+    <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="absolute top-3 right-3 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
+    <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center flex-shrink-0">
+      <i data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>
+    </div>
+    <div class="min-w-0 flex-1">
+      <h3 class="text-sm font-semibold text-ink">Results for the current term are not yet published</h3>
+      <p class="text-xs text-ink-muted mt-1">They will appear here once released by the school.</p>
+    </div>
+  </div>
+  {% endif %}
+
   {# ── INVOICES TABLE ── #}
   <div id="invoices" class="bg-white rounded-2xl border border-line overflow-hidden">
-    <div class="px-6 py-4 border-b border-line flex items-center justify-between">
+    <div class="px-6 py-4 border-b border-line">
       <h3 class="text-sm font-semibold text-ink">My Invoices</h3>
-      <a href="{% url 'student-pay' %}" class="inline-flex items-center px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-lg transition-colors shadow-sm">
-        <i data-lucide="wallet" class="w-3.5 h-3.5 mr-1.5"></i>Pay Fees
-      </a>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full">
@@ -106,8 +127,8 @@
           {% for invoice in invoices %}
           <tr class="hover:bg-surface-muted/50 transition-colors">
             <td class="px-6 py-3.5 text-sm text-ink-muted">{{ invoice.term.name }} — {{ invoice.term.session.name }}</td>
-            <td class="px-6 py-3.5 text-sm text-ink-muted text-right tabular-nums">&#8358;{{ invoice.total_amount|floatformat:2 }}</td>
-            <td class="px-6 py-3.5 text-sm font-semibold text-ink text-right tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</td>
+            <td class="px-6 py-3.5 text-sm text-ink-muted text-right tabular-nums">&#8358;{{ invoice.total_amount|floatformat:2|intcomma }}</td>
+            <td class="px-6 py-3.5 text-sm font-semibold text-ink text-right tabular-nums">&#8358;{{ invoice.balance|floatformat:2|intcomma }}</td>
             <td class="px-6 py-3.5">
               {% if invoice.status == 'PAID' %}{% include 'components/badge.html' with status='success' text=invoice.status %}
               {% elif invoice.status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text=invoice.status %}
@@ -127,23 +148,35 @@
   </div>
 
   {# ── RESULT BOOKLETS ── #}
-  {% if published_terms %}
+  {% if booklet_terms %}
   <div id="booklets" class="bg-white rounded-2xl border border-line overflow-hidden">
     <div class="px-6 py-4 border-b border-line">
       <h3 class="text-sm font-semibold text-ink">Result Booklets</h3>
     </div>
     <div class="divide-y divide-line/70">
-      {% for term in published_terms %}
-      <a href="{% url 'student-result-booklet' term_id=term.pk %}"
+      {% for item in booklet_terms %}
+      {% if item.locked %}
+      <div class="flex items-center justify-between px-6 py-4 opacity-60 cursor-not-allowed" title="Complete fees to unlock">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-surface-muted text-ink-faint flex items-center justify-center">
+            <i data-lucide="lock" class="w-4 h-4"></i>
+          </div>
+          <span class="font-medium text-sm text-ink-muted">{{ item.term.session.name }} — {{ item.term.name }}</span>
+        </div>
+        <span class="text-xs font-medium text-ink-muted">Complete fees to unlock</span>
+      </div>
+      {% else %}
+      <a href="{% url 'student-result-booklet' term_id=item.term.pk %}"
          class="flex items-center justify-between px-6 py-4 hover:bg-surface-muted/60 transition-colors group">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-xl bg-primary-tint text-primary group-hover:bg-primary/10 flex items-center justify-center transition-colors">
             <i data-lucide="file-text" class="w-4 h-4"></i>
           </div>
-          <span class="font-medium text-sm text-ink">{{ term.session.name }} — {{ term.name }}</span>
+          <span class="font-medium text-sm text-ink">{{ item.term.session.name }} — {{ item.term.name }}</span>
         </div>
         <i data-lucide="chevron-right" class="w-4 h-4 text-ink-faint group-hover:text-primary transition-colors"></i>
       </a>
+      {% endif %}
       {% endfor %}
     </div>
   </div>
