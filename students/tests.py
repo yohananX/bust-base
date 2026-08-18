@@ -961,6 +961,8 @@ class ResultFeeLockTests(TestCase):
             "student-result-booklet", kwargs={"term_id": self.term.pk}
         ))
         self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Print Booklet")
+        self.assertNotContains(resp, "Download PDF")
 
     def test_student_booklet_allowed_when_no_invoice(self):
         self._login_student("free")
@@ -969,15 +971,7 @@ class ResultFeeLockTests(TestCase):
         ))
         self.assertEqual(resp.status_code, 200)
 
-    def test_student_download_blocked_when_owing(self):
-        self._login_student("owing")
-        resp = self.client.get(reverse(
-            "student-result-download", kwargs={"term_id": self.term.pk}
-        ))
-        self.assertEqual(resp.status_code, 302)
-        self.assertRedirects(resp, reverse("student-overview"))
-
-    # ---------- Parent booklet + download ----------
+    # ---------- Parent booklet ----------
 
     def test_parent_booklet_blocked_for_child_with_owed_fees(self):
         self._login_parent()
@@ -997,15 +991,8 @@ class ResultFeeLockTests(TestCase):
             kwargs={"child_pk": child.pk, "term_id": self.term.pk},
         ))
         self.assertEqual(resp.status_code, 200)
-
-    def test_parent_download_blocked_for_child_with_owed_fees(self):
-        self._login_parent()
-        child = self.students["owing"]
-        resp = self.client.get(reverse(
-            "parent-child-result-download",
-            kwargs={"child_pk": child.pk, "term_id": self.term.pk},
-        ))
-        self.assertEqual(resp.status_code, 302)
+        self.assertContains(resp, "Print Booklet")
+        self.assertNotContains(resp, "Download PDF")
 
     # ---------- History + dashboards ----------
 

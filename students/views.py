@@ -490,6 +490,19 @@ class StudentOverviewView(RoleRequiredMixin, View):
             scores__student__user=request.user,
         ).distinct()
 
+        # A term's booklet stays locked while the student owes fees for it.
+        # balance is a computed property (total − confirmed payments), so
+        # it must be evaluated per invoice, not in the database.
+        owed_term_ids = {
+            inv.term_id
+            for inv in invoices
+            if inv.balance > 0
+        }
+        booklet_terms = [
+            {'term': term, 'locked': term.pk in owed_term_ids}
+            for term in published_terms
+        ]
+
         current_term = Term.objects.filter(
             school=request.school, is_current=True,
         ).first()
@@ -525,7 +538,7 @@ class StudentOverviewView(RoleRequiredMixin, View):
             'enrollment': enrollment,
             'invoices': invoices,
             'scores': scores,
-            'published_terms': published_terms,
+            'booklet_terms': booklet_terms,
             'current_term': current_term,
             'term_result': term_result,
             'results_locked': results_locked,
@@ -559,34 +572,7 @@ class StudentResultBookletView(RoleRequiredMixin, View):
             return redirect('student-overview')
 
         context['booklet_back_url'] = reverse('student-overview')
-        context['booklet_download_url'] = reverse('student-result-download', kwargs={'term_id': term.pk})
         return render(request, 'students/result_booklet.html', context)
-
-
-class StudentResultDownloadView(RoleRequiredMixin, View):
-    """Download result booklet PDF for a student."""
-
-    allowed_roles = [Roles.STUDENT]
-
-    def get(self, request, term_id):
-        from academics.pdf import render_result_booklet_pdf
-
-        student = request.user.student_profile
-        term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
-
-        if Invoice.owes_for_term(student, term):
-            messages.error(
-                request,
-                f'Results for {term.name} are locked until outstanding fees '
-                'for that term are cleared.',
-            )
-            return redirect('student-overview')
-
-        response = render_result_booklet_pdf(student, term)
-        if response is None:
-            messages.error(request, 'No enrollment found for this term.')
-            return redirect('student-overview')
-        return response
 
 
 class ParentChildResultBookletView(RoleRequiredMixin, View):
@@ -618,9 +604,6 @@ class ParentChildResultBookletView(RoleRequiredMixin, View):
             return redirect('parent-child-detail', pk=child_pk)
 
         context['booklet_back_url'] = reverse('parent-child-detail', kwargs={'pk': child_pk})
-        context['booklet_download_url'] = reverse(
-            'parent-child-result-download', kwargs={'child_pk': child_pk, 'term_id': term.pk}
-        )
         return render(request, 'students/result_booklet.html', context)
 
 
@@ -748,34 +731,3 @@ class StudentSelfPasswordChangeView(RoleRequiredMixin, View):
         request.user.save()
         messages.success(request, 'Password changed successfully.')
         return redirect('student-overview')
-
-
-class ParentChildResultDownloadView(RoleRequiredMixin, View):
-    """Download result booklet PDF for a child (parent portal)."""
-
-    allowed_roles = [Roles.PARENT]
-
-    def get(self, request, child_pk, term_id):
-        from academics.pdf import render_result_booklet_pdf
-
-        # Verify parent is linked to this child
-        child = get_object_or_404(Student, school=request.school, pk=child_pk)
-        if not StudentGuardianLink.objects.filter(student=child, guardian=request.user).exists():
-            messages.error(request, 'You are not linked to this student.')
-            return redirect('parent-children')
-
-        term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
-
-        if Invoice.owes_for_term(child, term):
-            messages.error(
-                request,
-                f'Results for {term.name} for {child.user.get_full_name() or child.user.username} '
-                'are locked until outstanding fees for that term are cleared.',
-            )
-            return redirect('parent-child-detail', pk=child_pk)
-
-        response = render_result_booklet_pdf(child, term)
-        if response is None:
-            messages.error(request, 'No enrollment found for this term.')
-            return redirect('parent-child-detail', pk=child_pk)
-        return response

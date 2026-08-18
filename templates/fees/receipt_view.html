@@ -6,10 +6,18 @@
 
 {% block content %}
 <style>
+  @page { size: A4; margin: 8mm; }
   @media print {
-    #sidebar, #mobile-overlay, #toast-container, header { display: none !important; }
+    #sidebar, #mobile-overlay, #toast-container, header,
+    .no-print { display: none !important; }
     main { overflow: visible !important; padding: 0 !important; }
     body { background: #fff !important; }
+    .receipt-sheet { zoom: 0.95; }
+    .receipt-sheet .px-6 { padding-left: 12px !important; padding-right: 12px !important; }
+    .receipt-sheet .py-5 { padding-top: 8px !important; padding-bottom: 8px !important; }
+    .receipt-sheet .pt-6 { padding-top: 8px !important; }
+    .receipt-sheet .p-6 { padding: 10px !important; }
+    .receipt-sheet .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 8px !important; }
   }
 </style>
 {% with student_obj=student|default:payment.student|default:payment.invoice.student %}
@@ -19,7 +27,7 @@
 <div class="max-w-3xl mx-auto space-y-6">
 
   {# ===== Back Link ===== #}
-  <div>
+  <div class="no-print">
     {% if user.role == 'PARENT' %}
     <a href="{% url 'parent-pay' %}" class="inline-flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
       <i data-lucide="arrow-left" class="w-4 h-4 mr-1.5"></i>Back to Payments
@@ -36,7 +44,7 @@
   </div>
 
   {# ===== Receipt Card ===== #}
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div class="receipt-sheet bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 
     {# Violet header strip — student name always, term or description when available #}
     <div class="bg-violet-600 px-6 py-5 flex items-center justify-between gap-4">
@@ -121,14 +129,10 @@
     </div>
 
     {# Actions #}
-    <div class="px-6 pb-6 flex flex-wrap items-center gap-3">
-      <a href="{% url 'fees:payment-receipt-pdf' payment.pk %}"
-         class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm hover:shadow">
-        <i data-lucide="download" class="w-4 h-4 mr-2"></i>Download PDF
-      </a>
+    <div class="no-print px-6 pb-6 flex flex-wrap items-center gap-3">
       <button type="button" onclick="window.print()"
-              class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl transition-colors shadow-sm">
-        <i data-lucide="printer" class="w-4 h-4 mr-2"></i>Print
+              class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm hover:shadow">
+        <i data-lucide="printer" class="w-4 h-4 mr-2"></i>Print Receipt
       </button>
     </div>
   </div>

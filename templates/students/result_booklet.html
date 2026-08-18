@@ -4,11 +4,30 @@
 {% block content %}
 
 <style>
+  @page { size: A4; margin: 8mm; }
   @media print {
     #sidebar, #mobile-overlay, #toast-container, header,
     .booklet-actions { display: none !important; }
     main { overflow: visible !important; padding: 0 !important; }
     body { background: #fff !important; }
+    .booklet-sheet { zoom: 0.82; }
+    .booklet-sheet .px-6 { padding-left: 10px !important; padding-right: 10px !important; }
+    .booklet-sheet .py-5 { padding-top: 5px !important; padding-bottom: 5px !important; }
+    .booklet-sheet .pt-8 { padding-top: 4px !important; }
+    .booklet-sheet .pb-5 { padding-bottom: 3px !important; }
+    .booklet-sheet .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 4px !important; }
+    .booklet-sheet .mt-10 { margin-top: 0 !important; }
+    .booklet-sheet .pt-6 { padding-top: 2px !important; }
+    .booklet-sheet .pt-4 { padding-top: 2px !important; }
+    .booklet-sheet .h-20 { height: 2.75rem !important; width: 2.75rem !important; font-size: 1rem !important; }
+    .booklet-sheet .text-sm { font-size: 11px !important; }
+    .booklet-sheet .text-xs { font-size: 10px !important; }
+    .booklet-sheet table th, .booklet-sheet table td { padding-top: 2px !important; padding-bottom: 2px !important; }
+    .booklet-sheet .p-4 { padding: 5px !important; }
+    .booklet-sheet .grid { gap: 0.35rem !important; }
+    .booklet-sheet .mt-2 { margin-top: 2px !important; }
+    .booklet-sheet .mt-3 { margin-top: 2px !important; }
+    .booklet-sheet .mb-2, .booklet-sheet .mb-3 { margin-bottom: 2px !important; }
   }
 </style>
 
@@ -20,14 +39,14 @@
       <i data-lucide="arrow-left" class="w-4 h-4"></i>
       Back to {{ student.user.get_full_name }}
     </a>
-    <a href="{{ booklet_download_url }}"
-       class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary-hover transition-colors shadow-sm">
-      <i data-lucide="download" class="w-4 h-4"></i>
-      Download PDF
-    </a>
+    <button type="button" onclick="window.print()"
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary-hover transition-colors shadow-sm">
+      <i data-lucide="printer" class="w-4 h-4"></i>
+      Print Booklet
+    </button>
   </div>
 
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div class="booklet-sheet bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 
     {# ═══ HEADER ═══ #}
     <div class="text-center border-b-[3px] border-primary px-6 pt-8 pb-5">

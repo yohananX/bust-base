@@ -814,23 +814,6 @@ class PaymentReceiptView(RoleRequiredMixin, View):
         })
 
 
-class PaymentReceiptPdfView(RoleRequiredMixin, View):
-    """Downloads the receipt PDF for a confirmed payment."""
-    allowed_roles = [Roles.PARENT, Roles.STUDENT, Roles.ADMIN]
-
-    def get(self, request, payment_id):
-        payment, redirect_name = _resolve_receipt_payment(request, payment_id)
-        if payment is None:
-            return redirect(redirect_name)
-
-        # Import deferred to call time — fees/pdf.py is built by a parallel agent.
-        from fees.pdf import render_receipt_pdf
-        response = render_receipt_pdf(payment, request=request)
-        if response is None:
-            return redirect('fees:payment-receipt', payment_id=payment.pk)
-        return response
-
-
 class PaymentTimeoutHelpView(RoleRequiredMixin, View):
     """Shows a help message after payment processing takes too long."""
     allowed_roles = [Roles.PARENT, Roles.STUDENT]

@@ -19,5 +19,4 @@ urlpatterns = [
     path('api/checkout/', views.CheckoutSubmitView.as_view(), name='checkout-submit'),
     path('api/checkout/continue/', views.CheckoutContinueView.as_view(), name='checkout-continue'),
     path('receipt/<int:payment_id>/', views.PaymentReceiptView.as_view(), name='payment-receipt'),
-    path('receipt/<int:payment_id>/pdf/', views.PaymentReceiptPdfView.as_view(), name='payment-receipt-pdf'),
 ]

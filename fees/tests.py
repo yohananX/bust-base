@@ -1190,20 +1190,9 @@ class VerifyTransactionFallbackTest(BaseFeesTest):
 
 # ─── Paystack Upgrade: Receipt View Tests ─────────────────────────────────
 
-# PDF rendering depends on WeasyPrint, whose native GTK/Pango libraries are
-# not available on every machine — probe once and skip PDF tests when missing.
-from unittest import skipUnless  # noqa: E402
-
-try:
-    from weasyprint import HTML
-    HTML(string='<p>probe</p>').write_pdf()
-    PDF_RENDERING_AVAILABLE = True
-except (ImportError, OSError):
-    PDF_RENDERING_AVAILABLE = False
-
 
 class ReceiptViewTest(BaseFeesTest):
-    """Fee receipt pages: access control, lazy issuance, PDF download."""
+    """Fee receipt pages: access control, lazy issuance, print-only."""
 
     def setUp(self):
         super().setUp()
@@ -1249,6 +1238,8 @@ class ReceiptViewTest(BaseFeesTest):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Receipt')
+        self.assertContains(response, 'Print Receipt')
+        self.assertNotContains(response, 'Download PDF')
         self.assertTrue(FeeReceipt.objects.filter(payment=payment).exists())
 
     def test_receipt_page_unauthorized_parent(self):
@@ -1261,39 +1252,6 @@ class ReceiptViewTest(BaseFeesTest):
         response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
 
         self.assertEqual(response.status_code, 302)
-
-    @skipUnless(PDF_RENDERING_AVAILABLE, 'WeasyPrint native libraries unavailable')
-    def test_receipt_pdf_download(self):
-        """The receipt PDF endpoint returns a PDF download."""
-        from fees.models import Payment
-
-        payment = self._create_payment(Payment.Status.CONFIRMED)
-        self.client.force_login(self.parent_user)
-
-        response = self.client.get(reverse('fees:payment-receipt-pdf', args=[payment.pk]))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('application/pdf', response['Content-Type'])
-
-    @skipUnless(not PDF_RENDERING_AVAILABLE, 'WeasyPrint available — PDF path tested instead')
-    def test_receipt_pdf_falls_back_to_printable_html(self):
-        """Without the WeasyPrint runtime, the download serves the receipt preview page."""
-        from fees.models import Payment
-
-        payment = self._create_payment(Payment.Status.CONFIRMED)
-        self.client.force_login(self.parent_user)
-
-        response = self.client.get(reverse('fees:payment-receipt-pdf', args=[payment.pk]))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('text/html', response['Content-Type'])
-        # Same look as the preview page — receipt card, amount, actions
-        self.assertContains(response, 'Official Receipt')
-        self.assertContains(response, 'Download PDF')
-        self.assertContains(response, 'Amount Paid')
-        # Sidebar renders like the app (context processors ran)
-        self.assertContains(response, 'Pay Fees')
-        self.assertContains(response, 'My Children')
 
     def test_pending_payment_has_no_receipt_page(self):
         """PENDING payments have no receipt — the view redirects and creates nothing."""
