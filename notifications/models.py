@@ -53,6 +53,11 @@ class NotificationLog(TenantScopedModel):
         default=Status.QUEUED,
         verbose_name=_('status'),
     )
+    dismissed = models.BooleanField(
+        default=False,
+        verbose_name=_('dismissed'),
+        help_text=_('Hidden from the bell dropdown for the recipient; the record is kept unchanged.'),
+    )
     error_message = models.TextField(
         blank=True,
         verbose_name=_('error message'),

@@ -190,8 +190,8 @@ class NotifyHelperTest(BaseNotificationTest):
     """Tests for the notify() helper function."""
 
     @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
-    def test_notify_creates_log_with_queued_status(self):
-        """Calling notify() creates a NotificationLog row with QUEUED status."""
+    def test_notify_email_delivers_and_marks_sent(self):
+        """EMail notifications are delivered synchronously and marked SENT."""
         log = notify(
             recipient=self.parent_user,
             channel='EMAIL',
@@ -200,13 +200,33 @@ class NotifyHelperTest(BaseNotificationTest):
             reference='test:1',
         )
         self.assertIsNotNone(log.pk)
-        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+        self.assertEqual(log.status, NotificationLog.Status.SENT)
+        self.assertIsNotNone(log.sent_at)
         self.assertEqual(log.reference, 'test:1')
         self.assertEqual(log.subject, 'Test notification')
         self.assertEqual(log.message, 'This is a test.')
         self.assertEqual(log.recipient, self.parent_user)
         self.assertEqual(log.channel, NotificationLog.Channel.EMAIL)
         self.assertEqual(log.school, self.school)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_notify_email_failure_marks_failed(self):
+        """Failed outbound delivery records FAILED with an error message."""
+        no_email_user = User.objects.create_user(
+            username='no_email_parent',
+            email='',
+            password='testpass123',
+            school=self.school,
+            role=Roles.PARENT,
+        )
+        log = notify(
+            recipient=no_email_user,
+            channel='EMAIL',
+            subject='Doomed',
+            message='This cannot be sent.',
+        )
+        self.assertEqual(log.status, NotificationLog.Status.FAILED)
+        self.assertNotEqual(log.error_message, '')
 
     @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
     def test_notify_creates_row_in_database(self):
@@ -229,6 +249,23 @@ class NotifyHelperTest(BaseNotificationTest):
         )
         self.assertEqual(log.subject, '')
         self.assertEqual(log.channel, NotificationLog.Channel.SMS)
+        self.assertEqual(log.status, NotificationLog.Status.SENT)
+
+    def test_notify_recipient_without_school_returns_none(self):
+        """A recipient with no school cannot be notified — returns None."""
+        no_school_user = User.objects.create_user(
+            username='noschool',
+            email='noschool@test.com',
+            password='testpass123',
+            role=Roles.PARENT,
+        )
+        log = notify(
+            recipient=no_school_user,
+            channel=NotificationLog.Channel.IN_APP,
+            message='Should not create a row.',
+        )
+        self.assertIsNone(log)
+        self.assertEqual(NotificationLog.objects.count(), 0)
 
 
 # ─── Process Notification Tests ─────────────────────────────────────────
@@ -363,7 +400,7 @@ class NotificationDedupTest(BaseNotificationTest):
         # Simulate first publish_results call
         notify(
             recipient=self.parent_user,
-            channel='EMAIL',
+            channel='IN_APP',
             subject='Results available for {}'.format(self.term.name),
             message='Results for {} are now available.'.format(self.term.name),
             reference='term-results:{}'.format(self.term.id),
@@ -393,7 +430,7 @@ class NotificationDedupTest(BaseNotificationTest):
         # Simulate first invoice generation
         notify(
             recipient=self.parent_user,
-            channel='EMAIL',
+            channel='IN_APP',
             subject='New invoice',
             message='Invoice generated.',
             reference='invoice:1',
@@ -401,7 +438,7 @@ class NotificationDedupTest(BaseNotificationTest):
         # Simulate second invoice generation (different invoice ID)
         notify(
             recipient=self.parent_user,
-            channel='EMAIL',
+            channel='IN_APP',
             subject='New invoice',
             message='Invoice generated.',
             reference='invoice:2',
@@ -511,6 +548,55 @@ class NotificationBellViewTest(BaseNotificationTest):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, {'unread_count': 0})
 
+    def test_bell_count_ignores_outbound_channels(self):
+        """EMAIL/SMS rows never count toward the unread badge."""
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.EMAIL,
+            subject='Outbound',
+            message='Email record',
+            status=NotificationLog.Status.QUEUED,
+        )
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.SMS,
+            subject='',
+            message='SMS record',
+            status=NotificationLog.Status.QUEUED,
+        )
+
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('notifications:bell_count'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {'unread_count': 0})
+
+    def test_bell_dropdown_excludes_outbound_channels(self):
+        """EMAIL/SMS records do not appear in the bell dropdown."""
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.EMAIL,
+            subject='Email only',
+            message='Should not be in the bell.',
+            status=NotificationLog.Status.SENT,
+        )
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='In app only',
+            message='Should be in the bell.',
+        )
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('notifications:bell_dropdown'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'In app only')
+        self.assertNotContains(response, 'Email only')
+
     def test_bell_dropdown_returns_last_10(self):
         """notification_bell_dropdown returns the last 10 notifications for the user."""
         from unittest.mock import patch
@@ -560,6 +646,117 @@ class NotificationBellViewTest(BaseNotificationTest):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'href="/school-admin/fees/pending/"')
+
+    def test_bell_dropdown_hides_dismissed_notifications(self):
+        """Dismissed notifications disappear from the dropdown."""
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Hidden one',
+            message='Should not show',
+            dismissed=True,
+        )
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Visible one',
+            message='Should show',
+        )
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('notifications:bell_dropdown'))
+
+        self.assertContains(response, 'Visible one')
+        self.assertNotContains(response, 'Hidden one')
+
+    def test_bell_count_excludes_dismissed_unread(self):
+        """A dismissed QUEUED notification no longer counts toward the badge."""
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Dismissed unread',
+            message='m',
+            status=NotificationLog.Status.QUEUED,
+            dismissed=True,
+        )
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Still unread',
+            message='m',
+            status=NotificationLog.Status.QUEUED,
+        )
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('notifications:bell_count'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {'unread_count': 1})
+
+
+# --- Dismiss Tests ---
+
+class NotificationDismissTest(BaseNotificationTest):
+    """Dismissing hides a notification from the bell while keeping the row unchanged."""
+
+    def _make(self, **kwargs):
+        defaults = dict(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Dismiss me',
+            message='Original message',
+            status=NotificationLog.Status.SENT,
+        )
+        defaults.update(kwargs)
+        return NotificationLog.objects.create(**defaults)
+
+    def test_dismiss_hides_from_dropdown(self):
+        log = self._make()
+        self.client.force_login(self.parent_user)
+        response = self.client.post(
+            reverse('notifications:bell_dismiss', args=[log.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+
+        dropdown = self.client.get(reverse('notifications:bell_dropdown'))
+        self.assertNotContains(dropdown, 'Dismiss me')
+
+    def test_dismiss_keeps_row_and_status_unchanged(self):
+        log = self._make()
+        self.client.force_login(self.parent_user)
+        self.client.post(reverse('notifications:bell_dismiss', args=[log.pk]))
+
+        log.refresh_from_db()
+        self.assertTrue(log.dismissed)
+        self.assertEqual(log.status, NotificationLog.Status.SENT)
+        self.assertEqual(log.message, 'Original message')
+
+    def test_dismiss_requires_post(self):
+        log = self._make()
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('notifications:bell_dismiss', args=[log.pk]))
+        self.assertEqual(response.status_code, 405)
+
+    def test_dismiss_scoped_to_recipient(self):
+        log = self._make()
+        other = User.objects.create_user(
+            username='other_parent',
+            email='other@test.com',
+            password='testpass123',
+            school=self.school,
+            role=Roles.PARENT,
+        )
+        self.client.force_login(other)
+        response = self.client.post(
+            reverse('notifications:bell_dismiss', args=[log.pk])
+        )
+        self.assertEqual(response.status_code, 404)
+
+        log.refresh_from_db()
+        self.assertFalse(log.dismissed)
 
 
 # --- notify_admins Helper Tests ---

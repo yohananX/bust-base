@@ -59,33 +59,40 @@ class PublishResultsView(RoleRequiredMixin, View):
             term.save(update_fields=['results_published'])
             messages.success(request, f'Results published for term "{term.name}".')
 
-            # Notify primary-contact guardians
+            # Notify primary-contact guardians in-app
             from notifications.utils import notify
             from notifications.models import NotificationLog
+            from students.models import StudentGuardianLink
+            from django.contrib.auth import get_user_model
 
-            if not NotificationLog.objects.filter(
-                reference='term-results:{}'.format(term.id)
-            ).exists():
-                from students.models import StudentGuardianLink
-                from django.contrib.auth import get_user_model
+            student_ids = Score.objects.filter(
+                school=school, term=term
+            ).values_list('student', flat=True).distinct()
 
-                student_ids = Score.objects.filter(
-                    school=school, term=term
-                ).values_list('student', flat=True).distinct()
+            guardian_ids = StudentGuardianLink.objects.filter(
+                student__in=list(student_ids),
+                is_primary_contact=True,
+            ).values_list('guardian', flat=True)
 
-                guardian_ids = StudentGuardianLink.objects.filter(
-                    student__in=list(student_ids),
-                    is_primary_contact=True,
-                ).values_list('guardian', flat=True)
+            # Dedup guard: only notify guardians who have not been notified
+            # for this term already.
+            already_notified = set(
+                NotificationLog.objects.filter(
+                    reference='term-results:{}'.format(term.id),
+                    recipient_id__in=list(guardian_ids),
+                ).values_list('recipient_id', flat=True)
+            )
 
-                for guardian in get_user_model().objects.filter(pk__in=guardian_ids):
-                    notify(
-                        recipient=guardian,
-                        channel='EMAIL',
-                        subject=f'Results available for {term.name}',
-                        message=f'Results for {term.name} are now available.',
-                        reference='term-results:{}'.format(term.id),
-                    )
+            for guardian in get_user_model().objects.filter(pk__in=guardian_ids):
+                if guardian.pk in already_notified:
+                    continue
+                notify(
+                    recipient=guardian,
+                    channel='IN_APP',
+                    subject=f'Results available for {term.name}',
+                    message=f'Results for {term.name} are now available.',
+                    reference='term-results:{}'.format(term.id),
+                )
 
         elif action == 'unpublish':
             term.results_published = False

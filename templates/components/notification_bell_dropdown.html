@@ -2,32 +2,40 @@
 <div class="max-h-96 overflow-y-auto">
 {% if notifications %}
     {% for n in notifications %}
-      {% if n.url %}
-      <a href="{{ n.url }}" class="block px-4 py-3 border-b border-line last:border-b-0 hover:bg-surface-muted/50 transition-colors">
-      {% else %}
-      <div class="px-4 py-3 border-b border-line last:border-b-0 hover:bg-surface-muted/50 transition-colors">
-      {% endif %}
+      <div class="bell-notification group relative px-4 py-3 border-b border-line last:border-b-0 hover:bg-surface-muted/50 transition-colors" data-notification-id="{{ n.pk }}">
         <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0 flex-1">
-            <p class="text-sm text-ink truncate">{{ n.subject|default:n.message|truncatechars:60 }}</p>
-            <p class="text-xs text-ink-muted mt-0.5">{{ n.created_at|naturaltime }}</p>
-          </div>
-          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-            {% if n.status == 'QUEUED' %}bg-warning-tint text-warning
-            {% elif n.status == 'SENT' %}bg-success-tint text-success
-            {% elif n.status == 'FAILED' %}bg-danger-tint text-danger
-            {% else %}bg-surface-muted text-ink-muted{% endif %}">
-            {{ n.get_status_display }}
-          </span>
+          {% if n.url %}
+          <a href="{{ n.url }}" class="min-w-0 flex-1 block">
+          {% endif %}
+            <div class="min-w-0">
+              <p class="text-sm text-ink truncate">{{ n.subject|default:n.message|truncatechars:60 }}</p>
+              <p class="text-xs text-ink-muted mt-0.5">{{ n.created_at|naturaltime }}</p>
+              <div class="mt-1.5 flex items-center gap-1.5">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
+                  {% if n.status == 'QUEUED' %}bg-warning-tint text-warning
+                  {% elif n.status == 'SENT' %}bg-success-tint text-success
+                  {% elif n.status == 'FAILED' %}bg-danger-tint text-danger
+                  {% else %}bg-surface-muted text-ink-muted{% endif %}">
+                  {% if n.channel == 'IN_APP' %}{% if n.status == 'QUEUED' %}Unread{% else %}Read{% endif %}{% else %}{{ n.get_status_display }}{% endif %}
+                </span>
+                {% if n.channel == 'IN_APP' %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-info-tint text-info">In-App</span>
+                {% endif %}
+              </div>
+            </div>
+          {% if n.url %}
+          </a>
+          {% endif %}
+          <button type="button"
+                  data-dismiss-notification="{{ n.pk }}"
+                  data-dismiss-url="{% url 'notifications:bell_dismiss' n.pk %}"
+                  aria-label="Dismiss notification"
+                  title="Clear this notification"
+                  class="flex-shrink-0 w-7 h-7 rounded-lg text-ink-faint opacity-60 group-hover:opacity-100 hover:text-danger hover:bg-danger-tint transition-all flex items-center justify-center">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
         </div>
-        {% if n.channel == 'IN_APP' %}
-          <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-info-tint text-info">In-App</span>
-        {% endif %}
-      {% if n.url %}
-      </a>
-      {% else %}
       </div>
-      {% endif %}
     {% endfor %}
   {% else %}
     <div class="px-4 py-6 text-center text-sm text-ink-muted">No notifications yet.</div>

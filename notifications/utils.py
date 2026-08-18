@@ -2,6 +2,7 @@ import logging
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -44,15 +45,31 @@ def send_sms(user, message):
 
 
 def notify(*, recipient, channel, subject='', message, reference='', url=''):
-    """Create a NotificationLog row and enqueue the send as a Django-Q2 task.
+    """Create a NotificationLog row and deliver it.
 
-    Returns the NotificationLog instance.
+    IN_APP rows stay QUEUED — that is the unread state the bell badge counts
+    and the dropdown shows as "Unread". Opening the bell marks them SENT
+    (read); the recipient can dismiss them (hidden, row kept).
+
+    EMAIL/SMS rows are delivered synchronously in-process — no background
+    worker required. The row flips to SENT on success, or FAILED with the
+    error message when delivery cannot happen (e.g. no SMTP, no address).
+
+    Returns the NotificationLog instance, or None when the recipient has no
+    school (notification cannot be recorded for them).
     """
     from .models import NotificationLog
-    from django_q.tasks import async_task
+
+    school = getattr(recipient, 'school', None)
+    if school is None:
+        logger.warning(
+            'Cannot notify user %s (id=%s): no school on record.',
+            recipient.get_username(), recipient.pk,
+        )
+        return None
 
     log = NotificationLog.objects.create(
-        school=recipient.school,
+        school=school,
         recipient=recipient,
         channel=channel,
         subject=subject,
@@ -61,13 +78,34 @@ def notify(*, recipient, channel, subject='', message, reference='', url=''):
         url=url,
         status=NotificationLog.Status.QUEUED,
     )
-    # In-app notifications need no delivery task — they stay QUEUED (unread)
-    # until the user opens the bell dropdown.
+
     if channel == NotificationLog.Channel.IN_APP:
         return log
 
-    # Enqueue the send task — pass the log ID so the task can update it
-    async_task('notifications.tasks.process_notification', log.id)
+    # Outbound channels are delivered inline — synchronous and failure-safe,
+    # so nothing ever lingers QUEUED waiting for a worker that may not run.
+    try:
+        if channel == NotificationLog.Channel.EMAIL:
+            send_email(recipient, subject, message)
+        elif channel == NotificationLog.Channel.SMS:
+            send_sms(recipient, message)
+        else:
+            logger.warning(
+                'Unknown notification channel %r — log kept QUEUED.', channel
+            )
+            return log
+    except Exception as exc:
+        log.status = NotificationLog.Status.FAILED
+        log.error_message = str(exc)
+        log.save(update_fields=['status', 'error_message'])
+        logger.error(
+            'Failed to deliver %s notification %s: %s', channel, log.pk, exc
+        )
+        return log
+
+    log.status = NotificationLog.Status.SENT
+    log.sent_at = timezone.now()
+    log.save(update_fields=['status', 'sent_at'])
     return log
 
 

@@ -21,10 +21,10 @@
         </div>
       </div>
       <div class="flex items-center gap-2 shrink-0">
+        <a href="{% url 'school_admin:pending_transfers' %}" class="text-sm font-medium text-rose-600 hover:text-rose-800 hover:underline shrink-0">Review</a>
         <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
-        <a href="{% url 'school_admin:pending_transfers' %}" class="text-sm font-medium text-rose-600 hover:text-rose-800 hover:underline shrink-0">Review</a>
       </div>
     </div>
     {% endif %}
@@ -61,10 +61,10 @@
         </div>
       </div>
       <div class="flex items-center gap-2 shrink-0">
+        <a href="{% url 'school_admin:review_results' %}" class="text-sm font-medium text-emerald-700 hover:text-emerald-900 hover:underline shrink-0">Manage</a>
         <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="p-1.5 rounded-lg text-emerald-400 hover:text-emerald-700 hover:bg-emerald-100/60 transition-colors">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
-        <a href="{% url 'school_admin:review_results' %}" class="text-sm font-medium text-emerald-700 hover:text-emerald-900 hover:underline shrink-0">Manage</a>
       </div>
     </div>
     {% else %}
@@ -79,10 +79,10 @@
         </div>
       </div>
       <div class="flex items-center gap-2 shrink-0">
+        <a href="{% url 'school_admin:publish_results' %}" class="text-sm font-medium text-amber-700 hover:text-amber-900 hover:underline shrink-0">Publish now</a>
         <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="p-1.5 rounded-lg text-amber-400 hover:text-amber-700 hover:bg-amber-100/60 transition-colors">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
-        <a href="{% url 'school_admin:publish_results' %}" class="text-sm font-medium text-amber-700 hover:text-amber-900 hover:underline shrink-0">Publish now</a>
       </div>
     </div>
     {% endif %}

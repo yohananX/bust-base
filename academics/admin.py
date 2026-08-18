@@ -142,58 +142,59 @@ class ScoreAdmin(admin.ModelAdmin):
             from notifications.utils import notify
             from notifications.models import NotificationLog
 
-            # Dedup guard: skip notifications if already sent for this term
-            if NotificationLog.objects.filter(
-                reference='term-results:{}'.format(term.id)
-            ).exists():
-                self.message_user(
-                    request,
-                    _('Notifications already sent for term "%(term)s". Skipping notification loop.') % {'term': term},
-                    level=messages.WARNING,
-                )
-            else:
-                student_ids = (
-                    queryset.filter(term=term)
-                    .values_list('student', flat=True)
-                    .distinct()
-                )
-                from students.models import StudentGuardianLink
+            # Dedup guard: only notify guardians who have not been notified
+            # for this term already.
+            student_ids = (
+                queryset.filter(term=term)
+                .values_list('student', flat=True)
+                .distinct()
+            )
+            from students.models import StudentGuardianLink
 
-                guardian_ids = set(
-                    StudentGuardianLink.objects.filter(
-                        student__in=list(student_ids),
-                        is_primary_contact=True,
-                    ).values_list('guardian', flat=True)
-                )
+            guardian_ids = set(
+                StudentGuardianLink.objects.filter(
+                    student__in=list(student_ids),
+                    is_primary_contact=True,
+                ).values_list('guardian', flat=True)
+            )
 
-                for guardian in get_user_model().objects.filter(pk__in=guardian_ids):
-                    notify(
-                        recipient=guardian,
-                        channel='EMAIL',
-                        subject=_('Results available for {term}').format(term=term.name),
-                        message=_(
-                            'Results for {term} are now available.'
-                        ).format(term=term.name),
-                        reference='term-results:{}'.format(term.id),
-                    )
+            already_notified = set(
+                NotificationLog.objects.filter(
+                    reference='term-results:{}'.format(term.id),
+                    recipient_id__in=guardian_ids,
+                ).values_list('recipient_id', flat=True)
+            )
 
-                # In-app heads-up for all admins
-                from notifications.utils import notify_admins
-                notify_admins(
-                    school=term.school,
-                    subject=_('Results published: {term}').format(term=term.name),
+            for guardian in get_user_model().objects.filter(pk__in=guardian_ids):
+                if guardian.pk in already_notified:
+                    continue
+                notify(
+                    recipient=guardian,
+                    channel='IN_APP',
+                    subject=_('Results available for {term}').format(term=term.name),
                     message=_(
-                        'Results for {session} — {term} are now available to parents.'
-                    ).format(session=term.session.name, term=term.name),
-                    reference='term-results-admin:{}'.format(term.id),
-                    url='/school-admin/results/review/',
+                        'Results for {term} are now available.'
+                    ).format(term=term.name),
+                    reference='term-results:{}'.format(term.id),
                 )
 
-                self.message_user(
-                    request,
-                    _('Results published for term "%(term)s".') % {'term': term},
-                    level=messages.SUCCESS,
-                )
+            # In-app heads-up for all admins
+            from notifications.utils import notify_admins
+            notify_admins(
+                school=term.school,
+                subject=_('Results published: {term}').format(term=term.name),
+                message=_(
+                    'Results for {session} — {term} are now available to parents.'
+                ).format(session=term.session.name, term=term.name),
+                reference='term-results-admin:{}'.format(term.id),
+                url='/school-admin/results/review/',
+            )
+
+            self.message_user(
+                request,
+                _('Results published for term "%(term)s".') % {'term': term},
+                level=messages.SUCCESS,
+            )
             return HttpResponseRedirect(request.get_full_path())
 
         # Intermediate page: show terms that the selected scores belong to
