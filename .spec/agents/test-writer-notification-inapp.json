@@ -1,0 +1,26 @@
+﻿{
+  "agent": "test-writer-notification-inapp",
+  "status": "complete",
+  "files_modified": [
+    "notifications/tests.py",
+    "fees/tests.py"
+  ],
+  "tests_added": {
+    "notifications/tests.py": [
+      "InAppChannelTest.test_process_in_app_flips_to_sent",
+      "InAppChannelTest.test_in_app_notification_no_external_delivery",
+      "NotificationBellViewTest.test_bell_count_returns_unread_count",
+      "NotificationBellViewTest.test_bell_count_zero_when_no_unread",
+      "NotificationBellViewTest.test_bell_dropdown_returns_last_10"
+    ],
+    "fees/tests.py": [
+      "InAppNotificationTriggerTest.test_payment_confirmation_creates_notification_log",
+      "InAppNotificationTriggerTest.test_payment_failure_creates_notification_log",
+      "InAppNotificationTriggerTest.test_bank_transfer_confirm_creates_notification_log",
+      "InAppNotificationTriggerTest.test_bank_transfer_reject_creates_notification_log",
+      "InAppNotificationTriggerTest.test_receipt_issuance_creates_notification_log"
+    ]
+  },
+  "coverage_notes": "All 10 new tests pass. 6 pre-existing test failures in fees/tests.py (payment.student is None in issue_receipt) are unrelated to this change.",
+  "commit": "7bf54b3"
+}
