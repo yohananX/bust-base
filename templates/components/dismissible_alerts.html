@@ -1,0 +1,32 @@
+{% comment %}
+Dismissible alert banners — any element with [data-dismiss="key"] and a
+[data-dismiss-btn] child gets a working cancel button. Dismissal is stored
+in localStorage per key, so an alert returns automatically when its context
+changes (e.g. a new term, or more pending transfers).
+{% endcomment %}
+<script>
+  (function () {
+    var KEY = 'dismissed-alerts';
+    var dismissed = [];
+    try {
+      dismissed = JSON.parse(localStorage.getItem(KEY) || '[]');
+    } catch (e) { /* ignore */ }
+
+    document.querySelectorAll('[data-dismiss]').forEach(function (el) {
+      var k = el.getAttribute('data-dismiss');
+      if (dismissed.indexOf(k) !== -1) {
+        el.style.display = 'none';
+        return;
+      }
+      var btn = el.querySelector('[data-dismiss-btn]');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        if (dismissed.indexOf(k) === -1) {
+          dismissed.push(k);
+          try { localStorage.setItem(KEY, JSON.stringify(dismissed)); } catch (e) { /* ignore */ }
+        }
+        el.style.display = 'none';
+      });
+    });
+  })();
+</script>

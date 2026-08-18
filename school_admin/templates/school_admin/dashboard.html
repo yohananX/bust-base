@@ -10,7 +10,7 @@
   {# ── ATTENTION ZONE ── #}
   <div class="space-y-3">
     {% if pending_transfers %}
-    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center justify-between gap-4">
+    <div data-dismiss="attention-transfers-{{ pending_transfers }}" class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center justify-between gap-4">
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center flex-shrink-0">
           <i data-lucide="clock" class="w-5 h-5 text-rose-600"></i>
@@ -20,12 +20,17 @@
           <p class="text-xs text-gray-500">Verify and confirm incoming transfers to keep fee records accurate.</p>
         </div>
       </div>
-      <a href="{% url 'school_admin:pending_transfers' %}" class="text-sm font-medium text-rose-600 hover:text-rose-800 hover:underline shrink-0">Review</a>
+      <div class="flex items-center gap-2 shrink-0">
+        <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+        <a href="{% url 'school_admin:pending_transfers' %}" class="text-sm font-medium text-rose-600 hover:text-rose-800 hover:underline shrink-0">Review</a>
+      </div>
     </div>
     {% endif %}
 
     {% if owing_students %}
-    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center justify-between gap-4">
+    <div data-dismiss="attention-fees-{{ owing_students }}" class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center justify-between gap-4">
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
           <i data-lucide="banknote" class="w-5 h-5 text-amber-600"></i>
@@ -35,12 +40,17 @@
           <p class="text-xs text-gray-500">Follow up on amounts due to improve collection.</p>
         </div>
       </div>
-      <a href="{% url 'school_admin:outstanding_fees' %}" class="text-sm font-medium text-amber-600 hover:text-amber-800 hover:underline shrink-0">View report</a>
+      <div class="flex items-center gap-2 shrink-0">
+        <a href="{% url 'school_admin:outstanding_fees' %}" class="text-sm font-medium text-amber-600 hover:text-amber-800 hover:underline shrink-0">View report</a>
+        <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
     </div>
     {% endif %}
 
     {% if results_published %}
-    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between gap-4">
+    <div data-dismiss="attention-results-{{ current_term_name|default:'none' }}" class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
           <i data-lucide="check-circle" class="w-5 h-5 text-emerald-600"></i>
@@ -50,10 +60,15 @@
           <p class="text-xs text-emerald-600">Students and parents can now view report cards.</p>
         </div>
       </div>
-      <a href="{% url 'school_admin:review_results' %}" class="text-sm font-medium text-emerald-700 hover:text-emerald-900 hover:underline shrink-0">Manage</a>
+      <div class="flex items-center gap-2 shrink-0">
+        <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="p-1.5 rounded-lg text-emerald-400 hover:text-emerald-700 hover:bg-emerald-100/60 transition-colors">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+        <a href="{% url 'school_admin:review_results' %}" class="text-sm font-medium text-emerald-700 hover:text-emerald-900 hover:underline shrink-0">Manage</a>
+      </div>
     </div>
     {% else %}
-    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center justify-between gap-4">
+    <div data-dismiss="attention-results-{{ current_term_name|default:'none' }}" class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
           <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
@@ -63,7 +78,12 @@
           <p class="text-xs text-amber-600">Review and publish results to make report cards visible.</p>
         </div>
       </div>
-      <a href="{% url 'school_admin:publish_results' %}" class="text-sm font-medium text-amber-700 hover:text-amber-900 hover:underline shrink-0">Publish now</a>
+      <div class="flex items-center gap-2 shrink-0">
+        <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="p-1.5 rounded-lg text-amber-400 hover:text-amber-700 hover:bg-amber-100/60 transition-colors">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+        <a href="{% url 'school_admin:publish_results' %}" class="text-sm font-medium text-amber-700 hover:text-amber-900 hover:underline shrink-0">Publish now</a>
+      </div>
     </div>
     {% endif %}
   </div>

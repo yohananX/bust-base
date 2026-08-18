@@ -32,7 +32,10 @@
 
     {# Conditional results card #}
     {% if term_result and current_term.results_published %}
-    <div class="bg-success-tint border border-line rounded-2xl p-6 flex flex-col">
+    <div data-dismiss="attention-results-student-{{ current_term.id }}" class="bg-success-tint border border-line rounded-2xl p-6 flex flex-col relative">
+      <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="absolute top-3 right-3 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
       <div class="flex items-center gap-3 mb-4">
         <div class="w-10 h-10 rounded-full bg-success-tint flex items-center justify-center flex-shrink-0">
           <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
@@ -54,7 +57,10 @@
       </a>
     </div>
     {% else %}
-    <div class="bg-warning-tint border border-line rounded-2xl p-6">
+    <div data-dismiss="attention-results-student-{{ current_term.id }}" class="bg-warning-tint border border-line rounded-2xl p-6 relative">
+      <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="absolute top-3 right-3 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
       <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center mb-3">
         <i data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>
       </div>
