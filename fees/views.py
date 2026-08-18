@@ -392,6 +392,7 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
                 ),
                 reference=f'transfer-pending:{student.pk}:{timezone.now():%Y%m%d%H%M%S}',
                 url=reverse('school_admin:pending_transfers'),
+                action_label='Review',
             )
             if result.is_split:
                 messages.success(

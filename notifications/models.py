@@ -40,6 +40,12 @@ class NotificationLog(TenantScopedModel):
         verbose_name=_('url'),
         help_text=_('Optional in-app target (e.g. "/school-admin/pending-transfers/")'),
     )
+    action_label = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name=_('action label'),
+        help_text=_('Short CTA (e.g. "Review") shown on the toast for action items.'),
+    )
     reference = models.CharField(
         max_length=100,
         blank=True,

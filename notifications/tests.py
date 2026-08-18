@@ -390,38 +390,47 @@ class CrossSchoolIsolationTest(BaseNotificationTest):
 # --- Notification Dedup Tests ---
 
 class NotificationDedupTest(BaseNotificationTest):
-    """Tests that admin actions do not create duplicate notification rows."""
+    """Tests that repeated events do not create duplicate notification rows."""
 
-    def test_publish_results_notifications_are_deduplicated(self):
-        """Calling publish_results action twice does not double NotificationLog rows."""
-        from notifications.utils import notify
-        from notifications.models import NotificationLog
+    def test_notify_many_deduplicates_by_reference_and_recipient(self):
+        """notify_many skips recipients who already have a row with the same reference."""
+        from notifications.utils import notify_many
 
-        # Simulate first publish_results call
-        notify(
-            recipient=self.parent_user,
+        ref = 'term-results:{}:g:{}'.format(self.term.id, self.student.pk)
+        first = notify_many(
+            recipients=[self.parent_user, self.student_user],
             channel='IN_APP',
-            subject='Results available for {}'.format(self.term.name),
-            message='Results for {} are now available.'.format(self.term.name),
-            reference='term-results:{}'.format(self.term.id),
+            subject='Results available',
+            message='Results are now available.',
+            reference=ref,
         )
-        first_count = NotificationLog.objects.filter(
-            reference='term-results:{}'.format(self.term.id)
-        ).count()
-        self.assertEqual(first_count, 1)
+        self.assertEqual(len(first), 2)
 
-        # Simulate second publish_results call
-        # The guard in academics/admin.py checks for existing rows before calling notify()
-        already_sent = NotificationLog.objects.filter(
-            reference='term-results:{}'.format(self.term.id)
-        ).exists()
-        self.assertTrue(already_sent)
+        second = notify_many(
+            recipients=[self.parent_user, self.student_user],
+            channel='IN_APP',
+            subject='Results available',
+            message='Results are now available.',
+            reference=ref,
+        )
+        self.assertEqual(len(second), 0)
+        self.assertEqual(
+            NotificationLog.objects.filter(reference=ref).count(), 2
+        )
 
-        # If guard works, notify() is NOT called the second time
-        second_count = NotificationLog.objects.filter(
-            reference='term-results:{}'.format(self.term.id)
-        ).count()
-        self.assertEqual(second_count, 1)
+    def test_notify_many_ignores_none_recipients(self):
+        """None recipients are skipped without error."""
+        from notifications.utils import notify_many
+
+        logs = notify_many(
+            recipients=[None, self.parent_user],
+            channel='IN_APP',
+            subject='s',
+            message='m',
+            reference='none-test:1',
+        )
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(logs[0].recipient, self.parent_user)
 
     def test_invoice_generation_notifications_use_unique_references(self):
         """Each invoice notification has a unique reference so re-running is safe."""
@@ -453,6 +462,41 @@ class NotificationDedupTest(BaseNotificationTest):
         self.assertEqual(
             NotificationLog.objects.filter(reference__startswith='invoice:').count(), 2
         )
+
+
+# --- notify_many Helper Tests ---
+
+class NotifyManyTest(BaseNotificationTest):
+    """Tests for the notify_many() batch helper."""
+
+    def test_notify_many_creates_one_row_per_recipient(self):
+        from notifications.utils import notify_many
+
+        logs = notify_many(
+            recipients=[self.parent_user, self.student_user],
+            channel='IN_APP',
+            subject='Batch',
+            message='One per recipient.',
+            reference='batch:1',
+        )
+        self.assertEqual(len(logs), 2)
+        recipients = {log.recipient for log in logs}
+        self.assertEqual(recipients, {self.parent_user, self.student_user})
+
+    def test_notify_many_passes_url_and_action_label(self):
+        from notifications.utils import notify_many
+
+        logs = notify_many(
+            recipients=[self.parent_user],
+            channel='IN_APP',
+            subject='Action needed',
+            message='A transfer awaits approval.',
+            reference='action:1',
+            url='/school-admin/fees/pending/',
+            action_label='Review',
+        )
+        self.assertEqual(logs[0].url, '/school-admin/fees/pending/')
+        self.assertEqual(logs[0].action_label, 'Review')
 
 
 # --- IN_APP Channel Tests ---
@@ -529,7 +573,9 @@ class NotificationBellViewTest(BaseNotificationTest):
         response = self.client.get(reverse('notifications:bell_count'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, {'unread_count': 2})
+        data = response.json()
+        self.assertEqual(data['unread_count'], 2)
+        self.assertEqual(data['max_pk'], NotificationLog.objects.latest('pk').pk)
 
     def test_bell_count_zero_when_no_unread(self):
         """notification_bell_count returns 0 when there are no QUEUED notifications."""
@@ -546,7 +592,9 @@ class NotificationBellViewTest(BaseNotificationTest):
         response = self.client.get(reverse('notifications:bell_count'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, {'unread_count': 0})
+        data = response.json()
+        self.assertEqual(data['unread_count'], 0)
+        self.assertEqual(data['max_pk'], 0)
 
     def test_bell_count_ignores_outbound_channels(self):
         """EMAIL/SMS rows never count toward the unread badge."""
@@ -571,7 +619,7 @@ class NotificationBellViewTest(BaseNotificationTest):
         response = self.client.get(reverse('notifications:bell_count'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, {'unread_count': 0})
+        self.assertEqual(response.json()['unread_count'], 0)
 
     def test_bell_dropdown_excludes_outbound_channels(self):
         """EMAIL/SMS records do not appear in the bell dropdown."""
@@ -693,7 +741,7 @@ class NotificationBellViewTest(BaseNotificationTest):
         response = self.client.get(reverse('notifications:bell_count'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, {'unread_count': 1})
+        self.assertEqual(response.json()['unread_count'], 1)
 
 
 # --- Dismiss Tests ---
@@ -795,3 +843,158 @@ class NotifyAdminsTest(BaseNotificationTest):
 
         self.assertEqual(len(logs), 1)
         self.assertEqual(logs[0].recipient.username, 'admin1')
+
+
+# --- Bell Poll Tests ---
+
+class NotificationBellPollTest(BaseNotificationTest):
+    """Tests for the bell poll endpoint (delta toasts, no backlog storm)."""
+
+    def test_poll_returns_only_rows_after_since(self):
+        old = NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Old',
+            message='Before the cursor.',
+        )
+        new = NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='New',
+            message='After the cursor.',
+            url='/parent/children/',
+            action_label='View',
+        )
+
+        self.client.force_login(self.parent_user)
+        response = self.client.get(
+            reverse('notifications:bell_poll'), {'since': old.pk}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['unread_count'], 2)
+        self.assertEqual(len(data['new_notifications']), 1)
+        item = data['new_notifications'][0]
+        self.assertEqual(item['pk'], new.pk)
+        self.assertEqual(item['subject'], 'New')
+        self.assertEqual(item['url'], '/parent/children/')
+        self.assertEqual(item['action_label'], 'View')
+
+    def test_poll_ignores_outbound_and_dismissed_rows(self):
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.EMAIL,
+            subject='Outbound',
+            message='Not for the bell.',
+        )
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Dismissed',
+            message='Hidden.',
+            dismissed=True,
+        )
+
+        self.client.force_login(self.parent_user)
+        response = self.client.get(
+            reverse('notifications:bell_poll'), {'since': 0}
+        )
+
+        data = response.json()
+        self.assertEqual(data['unread_count'], 0)
+        self.assertEqual(len(data['new_notifications']), 0)
+
+    def test_poll_bad_since_falls_back_to_zero(self):
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Anything',
+            message='m',
+        )
+        self.client.force_login(self.parent_user)
+        response = self.client.get(
+            reverse('notifications:bell_poll'), {'since': 'not-a-number'}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()['new_notifications']), 1)
+
+
+# --- Clear All Tests ---
+
+class NotificationClearAllTest(BaseNotificationTest):
+    """Clearing all dismisses every in-app row while keeping the audit trail."""
+
+    def test_clear_all_dismisses_every_in_app_row(self):
+        for i in range(3):
+            NotificationLog.objects.create(
+                school=self.school,
+                recipient=self.parent_user,
+                channel=NotificationLog.Channel.IN_APP,
+                subject='Row %d' % i,
+                message='m',
+            )
+
+        self.client.force_login(self.parent_user)
+        response = self.client.post(reverse('notifications:bell_clear_all'))
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['cleared'], 3)
+        self.assertEqual(
+            NotificationLog.objects.filter(
+                recipient=self.parent_user, dismissed=True
+            ).count(), 3
+        )
+        # Rows are hidden, never deleted
+        self.assertEqual(
+            NotificationLog.objects.filter(recipient=self.parent_user).count(), 3
+        )
+
+    def test_clear_all_scoped_to_recipient(self):
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=self.parent_user,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Mine',
+            message='m',
+        )
+        other = User.objects.create_user(
+            username='other_parent',
+            email='other@test.com',
+            password='testpass123',
+            school=self.school,
+            role=Roles.PARENT,
+        )
+        NotificationLog.objects.create(
+            school=self.school,
+            recipient=other,
+            channel=NotificationLog.Channel.IN_APP,
+            subject='Theirs',
+            message='m',
+        )
+
+        self.client.force_login(self.parent_user)
+        self.client.post(reverse('notifications:bell_clear_all'))
+
+        self.assertTrue(
+            NotificationLog.objects.get(
+                recipient=self.parent_user, subject='Mine'
+            ).dismissed
+        )
+        self.assertFalse(
+            NotificationLog.objects.get(
+                recipient=other, subject='Theirs'
+            ).dismissed
+        )
+
+    def test_clear_all_requires_post(self):
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('notifications:bell_clear_all'))
+        self.assertEqual(response.status_code, 405)

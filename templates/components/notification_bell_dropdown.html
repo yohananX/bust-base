@@ -41,3 +41,13 @@
     <div class="px-4 py-6 text-center text-sm text-ink-muted">No notifications yet.</div>
   {% endif %}
 </div>
+{% if notifications %}
+<div class="border-t border-line px-4 py-2">
+  <button type="button"
+          data-clear-all-bell
+          class="w-full text-xs font-medium text-ink-muted hover:text-danger transition-colors flex items-center justify-center gap-1.5 py-1 rounded-lg hover:bg-danger-tint/40">
+    <i data-lucide="bell-off" class="w-3.5 h-3.5"></i>
+    Clear all notifications
+  </button>
+</div>
+{% endif %}

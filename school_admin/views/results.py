@@ -59,39 +59,74 @@ class PublishResultsView(RoleRequiredMixin, View):
             term.save(update_fields=['results_published'])
             messages.success(request, f'Results published for term "{term.name}".')
 
-            # Notify primary-contact guardians in-app
+            # Notify each student and their guardians (per child, child-
+            # specific deep link). Rows dedup by reference + recipient.
             from notifications.utils import notify
             from notifications.models import NotificationLog
-            from students.models import StudentGuardianLink
+            from students.models import Student, StudentGuardianLink
             from django.contrib.auth import get_user_model
+            from django.urls import reverse as url_reverse
 
             student_ids = Score.objects.filter(
                 school=school, term=term
             ).values_list('student', flat=True).distinct()
+            student_users = {
+                pk: user_id for pk, user_id in Student.objects.filter(
+                    pk__in=list(student_ids), user__isnull=False,
+                ).values_list('pk', 'user_id')
+            }
+            users_by_id = {
+                u.pk: u for u in get_user_model().objects.filter(
+                    pk__in=list(student_users.values())
+                )
+            }
 
-            guardian_ids = StudentGuardianLink.objects.filter(
+            links = StudentGuardianLink.objects.filter(
                 student__in=list(student_ids),
                 is_primary_contact=True,
-            ).values_list('guardian', flat=True)
+            ).select_related('student__user', 'guardian')
 
-            # Dedup guard: only notify guardians who have not been notified
-            # for this term already.
-            already_notified = set(
+            notified = set(
                 NotificationLog.objects.filter(
-                    reference='term-results:{}'.format(term.id),
-                    recipient_id__in=list(guardian_ids),
-                ).values_list('recipient_id', flat=True)
+                    reference__startswith='term-results:{}'.format(term.id),
+                    recipient_id__in=(
+                        list(student_users.values())
+                        + list(links.values_list('guardian', flat=True))
+                    ),
+                ).values_list('recipient_id', 'reference')
             )
 
-            for guardian in get_user_model().objects.filter(pk__in=guardian_ids):
-                if guardian.pk in already_notified:
+            for link in links:
+                ref = 'term-results:{}:g:{}'.format(term.id, link.student_id)
+                if (link.guardian_id, ref) in notified:
                     continue
                 notify(
-                    recipient=guardian,
+                    recipient=link.guardian,
                     channel='IN_APP',
-                    subject=f'Results available for {term.name}',
-                    message=f'Results for {term.name} are now available.',
-                    reference='term-results:{}'.format(term.id),
+                    subject='Results available for {}'.format(term.name),
+                    message=(
+                        "{child}'s results for {term} are now available."
+                    ).format(child=link.student.user.get_full_name(), term=term.name),
+                    reference=ref,
+                    url=url_reverse('parent-child-result-booklet', kwargs={
+                        'child_pk': link.student_id,
+                        'term_id': term.id,
+                    }),
+                )
+
+            for student_id, user_id in student_users.items():
+                ref = 'term-results:{}:s:{}'.format(term.id, student_id)
+                if (user_id, ref) in notified:
+                    continue
+                notify(
+                    recipient=users_by_id[user_id],
+                    channel='IN_APP',
+                    subject='Results available for {}'.format(term.name),
+                    message='Your results for {} are now available.'.format(term.name),
+                    reference=ref,
+                    url=url_reverse('student-result-booklet', kwargs={
+                        'term_id': term.id,
+                    }),
                 )
 
         elif action == 'unpublish':

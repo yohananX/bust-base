@@ -44,7 +44,8 @@ def send_sms(user, message):
     logger.info('SMS to %s (%s): %s', user.get_username(), phone, message)
 
 
-def notify(*, recipient, channel, subject='', message, reference='', url=''):
+def notify(*, recipient, channel, subject='', message, reference='', url='',
+           action_label=''):
     """Create a NotificationLog row and deliver it.
 
     IN_APP rows stay QUEUED — that is the unread state the bell badge counts
@@ -54,6 +55,10 @@ def notify(*, recipient, channel, subject='', message, reference='', url=''):
     EMAIL/SMS rows are delivered synchronously in-process — no background
     worker required. The row flips to SENT on success, or FAILED with the
     error message when delivery cannot happen (e.g. no SMTP, no address).
+
+    ``url`` is the deep link the bell row and the toast navigate to;
+    ``action_label`` is an optional short CTA (e.g. "Review") rendered on
+    the toast for action items.
 
     Returns the NotificationLog instance, or None when the recipient has no
     school (notification cannot be recorded for them).
@@ -76,6 +81,7 @@ def notify(*, recipient, channel, subject='', message, reference='', url=''):
         message=message,
         reference=reference,
         url=url,
+        action_label=action_label,
         status=NotificationLog.Status.QUEUED,
     )
 
@@ -109,8 +115,51 @@ def notify(*, recipient, channel, subject='', message, reference='', url=''):
     return log
 
 
-def notify_admins(*, school, subject, message, reference='', url=''):
+def notify_many(*, recipients, channel, subject='', message, reference='',
+                url='', action_label=''):
+    """Notify several recipients of the same event (one row each).
+
+    Handles per-recipient dedup: any recipient who already has a row with
+    this reference is skipped.
+
+    Returns the list of created NotificationLog instances.
+    """
+    from .models import NotificationLog
+
+    recipients = [r for r in recipients if r is not None]
+    if not recipients:
+        return []
+
+    existing = set(
+        NotificationLog.objects.filter(
+            reference=reference,
+            recipient_id__in=[r.pk for r in recipients],
+        ).values_list('recipient_id', flat=True)
+    )
+    logs = []
+    for recipient in recipients:
+        if recipient.pk in existing:
+            continue
+        log = notify(
+            recipient=recipient,
+            channel=channel,
+            subject=subject,
+            message=message,
+            reference=reference,
+            url=url,
+            action_label=action_label,
+        )
+        if log is not None:
+            logs.append(log)
+    return logs
+
+
+def notify_admins(*, school, subject, message, reference='', url='',
+                  action_label=''):
     """Notify every active admin of the school in-app (one row per admin).
+
+    Only used for action items and exceptions — never for routine
+    confirmations (those are the actor's toast feedback).
 
     Returns the list of created NotificationLog instances.
     """
@@ -120,16 +169,12 @@ def notify_admins(*, school, subject, message, reference='', url=''):
     admins = User.objects.filter(
         school=school, role=Roles.ADMIN, is_active=True,
     )
-    logs = []
-    for admin in admins:
-        logs.append(
-            notify(
-                recipient=admin,
-                channel=NotificationLog.Channel.IN_APP,
-                subject=subject,
-                message=message,
-                reference=reference,
-                url=url,
-            )
-        )
-    return logs
+    return notify_many(
+        recipients=list(admins),
+        channel=NotificationLog.Channel.IN_APP,
+        subject=subject,
+        message=message,
+        reference=reference,
+        url=url,
+        action_label=action_label,
+    )

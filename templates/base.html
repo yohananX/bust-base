@@ -294,7 +294,7 @@
       warning(message, duration) { this.show(message, 'warning', duration); }
       info(message, duration) { this.show(message, 'info', duration); }
 
-      show(message, type = 'info', duration = this.defaultDuration) {
+      show(message, type = 'info', duration = this.defaultDuration, options = {}) {
         if (!this.container) return;
         const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
         const config = {
@@ -303,6 +303,8 @@
           warning: { color: css('--color-status-warning'), icon: 'alert-triangle' },
           info:    { color: css('--color-status-info'), icon: 'info' },
         }[type] || { color: css('--color-status-info'), icon: 'info' };
+        const url = options.url || '';
+        const actionLabel = options.action_label || '';
 
         while (this.container.children.length >= this.maxVisible) {
           const oldest = this.container.firstElementChild;
@@ -316,15 +318,24 @@
         const id = 't' + Date.now() + Math.random().toString(36).slice(2, 6);
         const el = document.createElement('div');
         el.dataset.toastId = id;
-        el.className = 'toast-item bg-white shadow-lg rounded-lg pl-4 pr-1.5 py-2.5 flex items-start gap-3 w-full';
+        el.className = 'toast-item bg-white shadow-lg rounded-lg pl-4 pr-1.5 py-2.5 flex items-start gap-3 w-full' + (url ? ' cursor-pointer' : '');
         el.innerHTML =
           '<i data-lucide="' + config.icon + '" class="w-5 h-5 mt-1 flex-shrink-0" style="color:' + config.color + '"></i>' +
-          '<p class="text-sm text-ink flex-1 min-w-0 break-words pt-0.5"></p>' +
+          '<div class="flex-1 min-w-0 pt-0.5">' +
+            '<p class="text-sm text-ink break-words"></p>' +
+            (actionLabel ? '<a class="toast-action inline-block mt-1.5 text-xs font-semibold text-info hover:underline" href="' + url + '">' + actionLabel + '</a>' : '') +
+          '</div>' +
           '<button class="toast-close w-8 h-8 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors flex-shrink-0" aria-label="Dismiss notification">' +
             '<i data-lucide="x" class="w-4 h-4"></i>' +
           '</button>';
         el.querySelector('p').textContent = message;
-        el.querySelector('.toast-close').addEventListener('click', () => this.remove(id));
+        el.querySelector('.toast-close').addEventListener('click', (e) => { e.stopPropagation(); this.remove(id); });
+        if (url) {
+          el.addEventListener('click', function(e) {
+            if (e.target.closest('.toast-close') || e.target.closest('.toast-action')) return;
+            window.location.href = url;
+          });
+        }
         if (window.lucide) lucide.createIcons({}, el);
 
         const timers = {};
@@ -368,10 +379,14 @@
       });
     })();
 
-    /* HTMX-triggered toasts (views set HX-Trigger: {"app-toast": {...}}) */
+    /* HTMX-triggered toasts (views set HX-Trigger: {"app-toast": {...}}).
+       Optional url/action_label make the toast clickable / add a CTA. */
     document.addEventListener('app-toast', function(e) {
       const d = e.detail || {};
-      if (d.message) window.toast.show(d.message, d.type || 'success');
+      if (d.message) window.toast.show(d.message, d.type || 'success', undefined, {
+        url: d.url || '',
+        action_label: d.action_label || '',
+      });
     });
   </script>
 
@@ -433,21 +448,51 @@
 
 const bellCountUrl = '{% url 'notifications:bell_count' %}';
       const bellDropdownUrl = '{% url 'notifications:bell_dropdown' %}';
+      const bellPollUrl = '{% url 'notifications:bell_poll' %}';
+      const bellClearAllUrl = '{% url 'notifications:bell_clear_all' %}';
       const csrfToken = '{{ csrf_token }}';
+      let lastSeenId = 0;
+
+      function applyBadge(count) {
+        count = count || 0;
+        if (count > 0) {
+          bellBadge.textContent = count > 99 ? '99+' : count;
+          bellBadge.classList.remove('hidden');
+          bellBadge.classList.add('flex');
+        } else {
+          bellBadge.classList.add('hidden');
+          bellBadge.classList.remove('flex');
+        }
+      }
 
       function updateBadge() {
-        fetch(bellCountUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        return fetch(bellCountUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
           .then(function(r) { return r.json(); })
           .then(function(data) {
-            var count = data.unread_count || 0;
-            if (count > 0) {
-              bellBadge.textContent = count > 99 ? '99+' : count;
-              bellBadge.classList.remove('hidden');
-              bellBadge.classList.add('flex');
-            } else {
-              bellBadge.classList.add('hidden');
-              bellBadge.classList.remove('flex');
-            }
+            applyBadge(data.unread_count);
+            return data;
+          })
+          .catch(function() { return {}; });
+      }
+
+      /* Seed the poll cursor with the current max row pk so the backlog
+         never toasts — only rows arriving after page load. */
+      updateBadge().then(function(data) {
+        lastSeenId = data.max_pk || 0;
+      });
+
+      function pollBell() {
+        fetch(bellPollUrl + '?since=' + lastSeenId, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            applyBadge(data.unread_count);
+            (data.new_notifications || []).forEach(function(n) {
+              if (n.pk > lastSeenId) lastSeenId = n.pk;
+              window.toast.show(n.subject || n.message, 'info', 6000, {
+                url: n.url || '',
+                action_label: n.action_label || '',
+              });
+            });
           })
           .catch(function() {});
       }
@@ -510,8 +555,35 @@ document.addEventListener('click', function(e) {
             const list = bellDropdown.querySelector('.max-h-96');
             if (list && !list.querySelector('.bell-notification')) {
               list.innerHTML = '<div class="px-4 py-6 text-center text-sm text-ink-muted">No notifications yet.</div>';
+              const footer = bellDropdown.querySelector('[data-clear-all-bell]');
+              if (footer) footer.closest('.border-t').remove();
             }
             if (window.toast) window.toast.info('Notification cleared');
+          })
+          .catch(function() {});
+      });
+
+      /* Clear all — dismiss every in-app row for this user at once. */
+      document.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-clear-all-bell]');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        fetch(bellClearAllUrl, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        })
+          .then(function(r) {
+            if (!r.ok) throw new Error('clear all failed');
+            const list = bellDropdown.querySelector('.max-h-96');
+            if (list) list.innerHTML = '<div class="px-4 py-6 text-center text-sm text-ink-muted">No notifications yet.</div>';
+            const footer = bellDropdown.querySelector('[data-clear-all-bell]');
+            if (footer) footer.closest('.border-t').remove();
+            updateBadge();
+            if (window.toast) window.toast.success('All notifications cleared');
           })
           .catch(function() {});
       });
@@ -523,7 +595,7 @@ document.addEventListener('click', function(e) {
       });
 
       updateBadge();
-      setInterval(updateBadge, 30000);
+      setInterval(pollBell, 15000);
     })();
   </script>
   {% endif %}

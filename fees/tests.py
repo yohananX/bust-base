@@ -1957,16 +1957,17 @@ class InAppNotificationTriggerTest(BaseFeesTest):
         confirm_payment_from_verify(payment, data)
 
         logs = NotificationLog.objects.filter(reference='payment-confirm:%s' % payment.id)
-        # One row for the guardian, one for each admin
+        # One row for the paying student, one for the guardian — never the admin
         self.assertEqual(logs.count(), 2)
         guardian_log = logs.get(recipient=self.parent_user)
         self.assertEqual(guardian_log.channel, NotificationLog.Channel.IN_APP)
         self.assertEqual(guardian_log.recipient, self.parent_user)
         self.assertIn('Payment confirmed', guardian_log.subject)
         self.assertEqual(guardian_log.status, NotificationLog.Status.QUEUED)
-        admin_log = logs.get(recipient=self.admin_user)
-        self.assertEqual(admin_log.channel, NotificationLog.Channel.IN_APP)
-        self.assertIn('Payment confirmed', admin_log.subject)
+        student_log = logs.get(recipient=self.student_user)
+        self.assertEqual(student_log.channel, NotificationLog.Channel.IN_APP)
+        self.assertIn('Payment confirmed', student_log.subject)
+        self.assertFalse(logs.filter(recipient=self.admin_user).exists())
 
     def test_payment_failure_creates_notification_log(self):
         """charge.failed webhook creates NotificationLog with reference 'payment-fail:{id}'."""
@@ -1987,16 +1988,19 @@ class InAppNotificationTriggerTest(BaseFeesTest):
         _handle_charge_failure('charge.failed', event, event['data'], webhook_log=None)
 
         logs = NotificationLog.objects.filter(reference='payment-fail:%s' % payment.id)
-        # One row for the guardian, one for each admin
-        self.assertEqual(logs.count(), 2)
+        # Student + guardian + admin (failure is an exception worth flagging)
+        self.assertEqual(logs.count(), 3)
         guardian_log = logs.get(recipient=self.parent_user)
         self.assertEqual(guardian_log.channel, NotificationLog.Channel.IN_APP)
         self.assertEqual(guardian_log.recipient, self.parent_user)
         self.assertIn('Payment failed', guardian_log.subject)
         self.assertEqual(guardian_log.status, NotificationLog.Status.QUEUED)
+        student_log = logs.get(recipient=self.student_user)
+        self.assertIn('Payment failed', student_log.subject)
         admin_log = logs.get(recipient=self.admin_user)
         self.assertEqual(admin_log.channel, NotificationLog.Channel.IN_APP)
         self.assertIn('Payment failed', admin_log.subject)
+        self.assertEqual(admin_log.action_label, 'View student')
 
     def test_bank_transfer_confirm_creates_notification_log(self):
         """PendingTransferConfirmView creates NotificationLog with reference 'transfer-confirm:{id}'."""
@@ -2017,11 +2021,13 @@ class InAppNotificationTriggerTest(BaseFeesTest):
         )
 
         self.assertEqual(response.status_code, 302)
-        log = NotificationLog.objects.get(reference='transfer-confirm:%s' % payment.id)
+        logs = NotificationLog.objects.filter(reference='transfer-confirm:%s' % payment.id)
+        self.assertEqual(logs.count(), 2)  # student + guardian
+        log = logs.get(recipient=self.parent_user)
         self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
-        self.assertEqual(log.recipient, self.parent_user)
         self.assertIn('Bank transfer confirmed', log.subject)
         self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+        self.assertTrue(logs.filter(recipient=self.student_user).exists())
 
     def test_bank_transfer_reject_creates_notification_log(self):
         """PendingTransferRejectView creates NotificationLog with reference 'transfer-reject:{id}'."""
@@ -2042,11 +2048,13 @@ class InAppNotificationTriggerTest(BaseFeesTest):
         )
 
         self.assertEqual(response.status_code, 302)
-        log = NotificationLog.objects.get(reference='transfer-reject:%s' % payment.id)
+        logs = NotificationLog.objects.filter(reference='transfer-reject:%s' % payment.id)
+        self.assertEqual(logs.count(), 2)  # student + guardian
+        log = logs.get(recipient=self.parent_user)
         self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
-        self.assertEqual(log.recipient, self.parent_user)
         self.assertIn('Bank transfer rejected', log.subject)
         self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+        self.assertTrue(logs.filter(recipient=self.student_user).exists())
 
     def test_receipt_issuance_creates_notification_log(self):
         """issue_receipt creates NotificationLog with reference 'receipt:{id}'."""
@@ -2065,9 +2073,10 @@ class InAppNotificationTriggerTest(BaseFeesTest):
 
         receipt = issue_receipt(payment)
 
-        log = NotificationLog.objects.get(reference='receipt:%s' % payment.id)
+        logs = NotificationLog.objects.filter(reference='receipt:%s' % payment.id)
+        self.assertEqual(logs.count(), 2)  # student + guardian
+        log = logs.get(recipient=self.parent_user)
         self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
-        self.assertEqual(log.recipient, self.parent_user)
         self.assertIn('Receipt issued', log.subject)
         self.assertEqual(log.status, NotificationLog.Status.QUEUED)
         self.assertIsNotNone(receipt)

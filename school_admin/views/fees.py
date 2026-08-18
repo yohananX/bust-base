@@ -3,6 +3,7 @@ import csv
 from decimal import Decimal
 
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.views.generic.base import View
 from django.contrib import messages
 from django.db import transaction
@@ -739,16 +740,29 @@ class PendingTransferConfirmView(RoleRequiredMixin, View):
             ])
             from fees.paystack import issue_receipt
             issue_receipt(payment)
-            from notifications.utils import notify
-            guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
-            if guardian_link:
-                notify(
-                    recipient=guardian_link.guardian,
-                    channel='IN_APP',
-                    subject=f'Bank transfer confirmed: ₦{payment.amount:,.2f}',
-                    message=f'Your bank transfer of ₦{payment.amount:,.2f} has been confirmed.',
-                    reference=f'transfer-confirm:{payment.id}',
-                )
+            from notifications.utils import notify_many
+            from accounts.models import Roles, User
+
+            recipients = []
+            if payment.student_id:
+                student_user = User.objects.filter(pk=payment.student.user_id).first()
+                if student_user:
+                    recipients.append(student_user)
+                recipients += [
+                    link.guardian
+                    for link in payment.student.guardian_links.select_related('guardian').all()
+                    if link.guardian_id
+                ]
+            notify_many(
+                recipients=recipients,
+                channel='IN_APP',
+                subject=f'Bank transfer confirmed: ₦{payment.amount:,.2f}',
+                message=(
+                    f'Your bank transfer of ₦{payment.amount:,.2f} has been confirmed.'
+                ),
+                reference=f'transfer-confirm:{payment.id}',
+                url=reverse('fees:payment-receipt', kwargs={'payment_id': payment.pk}),
+            )
 
         messages.success(request, f'Payment of ₦{payment.amount:,.2f} confirmed.')
         return redirect('school_admin:pending_transfers')
@@ -769,17 +783,30 @@ class PendingTransferRejectView(RoleRequiredMixin, View):
 
         payment.status = Payment.Status.FAILED
         payment.save(update_fields=['status'])
-        from notifications.utils import notify
-        if payment.student:
-            guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
-            if guardian_link:
-                notify(
-                    recipient=guardian_link.guardian,
-                    channel='IN_APP',
-                    subject=f'Bank transfer rejected: ₦{payment.amount:,.2f}',
-                    message=f'Your bank transfer of ₦{payment.amount:,.2f} was rejected. Please contact the school.',
-                    reference=f'transfer-reject:{payment.id}',
-                )
+        from notifications.utils import notify_many
+        from accounts.models import User
+
+        recipients = []
+        if payment.student_id:
+            student_user = User.objects.filter(pk=payment.student.user_id).first()
+            if student_user:
+                recipients.append(student_user)
+            recipients += [
+                link.guardian
+                for link in payment.student.guardian_links.select_related('guardian').all()
+                if link.guardian_id
+            ]
+        notify_many(
+            recipients=recipients,
+            channel='IN_APP',
+            subject=f'Bank transfer rejected: ₦{payment.amount:,.2f}',
+            message=(
+                f'Your bank transfer of ₦{payment.amount:,.2f} was rejected. '
+                f'Please contact the school.'
+            ),
+            reference=f'transfer-reject:{payment.id}',
+            url=reverse('fees:payment-receipt', kwargs={'payment_id': payment.pk}),
+        )
 
         messages.info(request, 'Payment marked failed.')
         return redirect('school_admin:pending_transfers')
@@ -893,15 +920,25 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
         )
         from fees.paystack import issue_receipt
         issue_receipt(payment)
-        from notifications.utils import notify
-        guardian_link = student.guardian_links.filter(is_primary_contact=True).first()
-        if guardian_link:
-            notify(
-                recipient=guardian_link.guardian,
-                channel='IN_APP',
-                subject=f'Payment recorded: ₦{amount:,.2f}',
-                message=f'Payment of ₦{amount:,.2f} has been recorded for {student}.',
-                reference=f'payment-record:{payment.id}',
-            )
+        from notifications.utils import notify_many
+        from accounts.models import User
+
+        recipients = []
+        student_user = User.objects.filter(pk=student.user_id).first()
+        if student_user:
+            recipients.append(student_user)
+        recipients += [
+            link.guardian
+            for link in student.guardian_links.select_related('guardian').all()
+            if link.guardian_id
+        ]
+        notify_many(
+            recipients=recipients,
+            channel='IN_APP',
+            subject=f'Payment recorded: ₦{amount:,.2f}',
+            message=f'Payment of ₦{amount:,.2f} has been recorded for {student}.',
+            reference=f'payment-record:{payment.id}',
+            url=reverse('fees:payment-receipt', kwargs={'payment_id': payment.pk}),
+        )
         messages.success(request, f'Payment of ₦{amount:,.2f} recorded.')
         return redirect('school_admin:student_detail', pk=student.pk)

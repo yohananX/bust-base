@@ -134,6 +134,71 @@ def _mark_webhook_log_processed(webhook_log):
         webhook_log.save(update_fields=['processed'])
 
 
+def _payment_recipients(payment):
+    """The paying student's user account plus every linked guardian.
+
+    Parents only ever hear about payments that concern their own children —
+    other families' payments never create rows for them.
+    """
+    from accounts.models import Roles, User
+
+    recipients = []
+    student = payment.student
+    if student is not None:
+        student_user = User.objects.filter(pk=student.user_id).first()
+        if student_user is not None:
+            recipients.append(student_user)
+        for link in student.guardian_links.select_related('guardian').all():
+            if link.guardian_id:
+                recipients.append(link.guardian)
+    return recipients
+
+
+def _payment_url(payment, recipient):
+    """Deep link for a payment event, appropriate to the recipient's role."""
+    from accounts.models import Roles
+
+    if getattr(recipient, 'role', None) == Roles.STUDENT:
+        return reverse('student-overview')
+    if payment.invoice_id:
+        return reverse('parent-invoice-detail', kwargs={'pk': payment.invoice_id})
+    return reverse('parent-children')
+
+
+def _notify_payment(payment, *, subject, message, reference, url='',
+                    action_label=''):
+    """Notify everyone a payment concerns (student + all its guardians).
+
+    One row per recipient, deduplicated by reference + recipient so retried
+    webhooks or double-fired paths never create duplicates.
+    """
+    from notifications.models import NotificationLog
+    from notifications.utils import notify
+
+    existing = set(
+        NotificationLog.objects.filter(
+            reference=reference,
+            recipient_id__in=[r.pk for r in _payment_recipients(payment)],
+        ).values_list('recipient_id', flat=True)
+    )
+    sent = 0
+    for recipient in _payment_recipients(payment):
+        if recipient.pk in existing:
+            continue
+        log = notify(
+            recipient=recipient,
+            channel=NotificationLog.Channel.IN_APP,
+            subject=subject,
+            message=message,
+            reference=reference,
+            url=url or _payment_url(payment, recipient),
+            action_label=action_label,
+        )
+        if log is not None:
+            sent += 1
+    return sent
+
+
 def issue_receipt(payment):
     """
     Issue a fee receipt for a confirmed payment. Idempotent.
@@ -148,17 +213,15 @@ def issue_receipt(payment):
             'receipt_number': f'RCP-{timezone.now().year}-{payment.pk:06d}',
         },
     )
-    from notifications.utils import notify
-    if payment.student:
-        guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
-        if guardian_link:
-            notify(
-                recipient=guardian_link.guardian,
-                channel='IN_APP',
-                subject=f'Receipt issued: ₦{payment.amount:,.2f}',
-            message=f'Receipt {receipt.receipt_number} has been issued for your payment.',
-            reference=f'receipt:{payment.id}',
-        )
+    _notify_payment(
+        payment,
+        subject=f'Receipt issued: ₦{payment.amount:,.2f}',
+        message=(
+            f'Receipt {receipt.receipt_number} has been issued for your payment.'
+        ),
+        reference=f'receipt:{payment.id}',
+        url=reverse('fees:payment-receipt', kwargs={'payment_id': payment.pk}),
+    )
     return receipt
 
 
@@ -211,27 +274,14 @@ def confirm_payment_from_verify(payment, data):
         'paid_by_phone',
     ])
     issue_receipt(payment)
-    from notifications.utils import notify, notify_admins
-    if payment.student:
-        guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
-        if guardian_link:
-            notify(
-                recipient=guardian_link.guardian,
-                channel='IN_APP',
-                subject=f'Payment confirmed: ₦{payment.amount:,.2f}',
-                message=f'Payment of ₦{payment.amount:,.2f} for {payment.student} has been confirmed.',
-                reference=f'payment-confirm:{payment.id}',
-            )
-    notify_admins(
-        school=payment.school,
+    _notify_payment(
+        payment,
         subject=f'Payment confirmed: ₦{payment.amount:,.2f}',
         message=(
-            f'{payment.student or "A student"} paid ₦{payment.amount:,.2f} '
-            f'({payment.get_method_display()}).'
+            f'Payment of ₦{payment.amount:,.2f} for {payment.student} '
+            f'has been confirmed.'
         ),
         reference=f'payment-confirm:{payment.id}',
-        url=reverse('school_admin:student_detail', kwargs={'pk': payment.student_id})
-        if payment.student_id else '',
     )
     logger.info(f'Payment {payment.reference} confirmed via verify fallback')
     return payment
@@ -303,27 +353,14 @@ def _handle_charge_success(event, data, webhook_log):
             'paid_by_name', 'paid_by_phone', 'student', 'description',
         ])
         issue_receipt(payment)
-        from notifications.utils import notify, notify_admins
-        if payment.student:
-            guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
-            if guardian_link:
-                notify(
-                    recipient=guardian_link.guardian,
-                    channel='IN_APP',
-                    subject=f'Payment confirmed: ₦{payment.amount:,.2f}',
-                    message=f'Payment of ₦{payment.amount:,.2f} for {payment.student} has been confirmed.',
-                    reference=f'payment-confirm:{payment.id}',
-                )
-        notify_admins(
-            school=payment.school,
+        _notify_payment(
+            payment,
             subject=f'Payment confirmed: ₦{payment.amount:,.2f}',
             message=(
-                f'{payment.student or "A student"} paid ₦{payment.amount:,.2f} '
-                f'({payment.get_method_display()}).'
+                f'Payment of ₦{payment.amount:,.2f} for {payment.student} '
+                f'has been confirmed.'
             ),
             reference=f'payment-confirm:{payment.id}',
-            url=reverse('school_admin:student_detail', kwargs={'pk': payment.student_id})
-            if payment.student_id else '',
         )
         _mark_webhook_log_processed(webhook_log)
         logger.info(f'Payment {reference} confirmed (updated)')
@@ -425,18 +462,18 @@ def _handle_charge_failure(event_name, event, data, webhook_log):
         payment.webhook_processed = True
         payment.webhook_payload = event
         payment.save(update_fields=['status', 'webhook_processed', 'webhook_payload'])
-        from notifications.utils import notify, notify_admins
-        if payment and payment.student:
-            guardian_link = payment.student.guardian_links.filter(is_primary_contact=True).first()
-            if guardian_link:
-                notify(
-                    recipient=guardian_link.guardian,
-                    channel='IN_APP',
-                    subject=f'Payment failed: ₦{payment.amount:,.2f}',
-                    message=f'Payment of ₦{payment.amount:,.2f} could not be processed. Please try again.',
-                    reference=f'payment-fail:{payment.id}',
-                )
+        _notify_payment(
+            payment,
+            subject=f'Payment failed: ₦{payment.amount:,.2f}',
+            message=(
+                f'Payment of ₦{payment.amount:,.2f} could not be processed. '
+                f'Please try again.'
+            ),
+            reference=f'payment-fail:{payment.id}',
+        )
         if payment:
+            # Failure is an exception worth the admin's attention.
+            from notifications.utils import notify_admins
             notify_admins(
                 school=payment.school,
                 subject=f'Payment failed: ₦{payment.amount:,.2f}',
@@ -444,6 +481,7 @@ def _handle_charge_failure(event_name, event, data, webhook_log):
                 reference=f'payment-fail:{payment.id}',
                 url=reverse('school_admin:student_detail', kwargs={'pk': payment.student_id})
                 if payment.student_id else '',
+                action_label='View student',
             )
         _mark_webhook_log_processed(webhook_log)
         logger.info(f'Payment {reference} recorded as failed via {event_name}')
