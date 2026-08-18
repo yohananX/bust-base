@@ -52,7 +52,9 @@
             {# Average #}
             <div class="text-center">
               <p class="text-xs font-bold text-ink-muted uppercase tracking-wider">Average</p>
-              {% if child.term_result and child.term_result.average %}
+              {% if child.results_locked %}
+              <p class="text-lg font-bold text-warning inline-flex items-center gap-1"><i data-lucide="lock" class="w-3.5 h-3.5"></i>Locked</p>
+              {% elif child.term_result and child.term_result.average %}
               <p class="text-lg font-bold text-ink tabular-nums">{{ child.term_result.average|floatformat:1 }}</p>
               {% else %}
               <p class="text-lg font-bold text-ink-faint">—</p>
@@ -61,7 +63,9 @@
             {# Position #}
             <div class="text-center">
               <p class="text-xs font-bold text-ink-muted uppercase tracking-wider">Position</p>
-              {% if child.term_result and child.term_result.overall_position %}
+              {% if child.results_locked %}
+              <p class="text-lg font-bold text-warning inline-flex items-center gap-1"><i data-lucide="lock" class="w-3.5 h-3.5"></i>Locked</p>
+              {% elif child.term_result and child.term_result.overall_position %}
               <p class="text-lg font-bold text-ink tabular-nums">{{ child.term_result.overall_position }}</p>
               {% else %}
               <p class="text-lg font-bold text-ink-faint">—</p>

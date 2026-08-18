@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
-from academics.models import Subject, TeacherAssignment
+from academics.models import Subject, TeacherAssignment, TermResult, Score
 from fees.models import Invoice, Payment
 from .models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 
@@ -843,3 +843,225 @@ class ParentPortalViewsTests(TestCase):
         self.assertEqual(
             self.client.get(reverse("parent-children")).status_code, 403
         )
+
+
+class ResultFeeLockTests(TestCase):
+    """Results for a term are locked while the student has outstanding fees
+    for that term. Booklet views and downloads are blocked, history lists
+    hide locked terms, and dashboards show a lock badge instead of data."""
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Lockdown Academy", short_code="lockdown",
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name="JSS1A", level="JSS1",
+        )
+        self.session = AcademicSession.objects.create(
+            school=self.school,
+            name="2025/2026",
+            start_date="2025-09-01",
+            end_date="2026-07-31",
+            is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school,
+            session=self.session,
+            name="First Term",
+            start_date="2025-09-01",
+            end_date="2025-12-19",
+            is_current=True,
+            results_published=True,
+        )
+        User = get_user_model()
+        self.parent_user = User.objects.create_user(
+            username="guard_ian", email="guard@lock.edu",
+            password="testpass123", school=self.school, role=Roles.PARENT,
+            first_name="Guard", last_name="Ian",
+        )
+        self.students = {}
+        self.subject = Subject.objects.create(
+            school=self.school, name="Mathematics", code="MATH",
+        )
+        for tag, first in [("owing", "Owing"), ("paid", "Paid"), ("free", "Free")]:
+            user = User.objects.create_user(
+                username=f"{tag}_student", email=f"{tag}@lock.edu",
+                password="testpass123", school=self.school,
+                role=Roles.STUDENT, first_name=first, last_name="Student",
+            )
+            student = Student.objects.create(
+                school=self.school, user=user,
+                admission_number=f"LK-{tag.upper()}",
+                date_of_birth="2010-05-15", gender=Student.MALE,
+                admission_date="2025-09-01",
+            )
+            ClassEnrollment.objects.create(
+                school=self.school, student=student,
+                school_class=self.school_class, session=self.session,
+            )
+            TermResult.objects.create(
+                school=self.school, student=student, term=self.term,
+                grand_total=300, average=Decimal("70.00"),
+                overall_position=1, total_subjects=5,
+            )
+            Score.objects.create(
+                school=self.school, student=student, term=self.term,
+                subject=self.subject, test_1=8, test_2=9, test_3=7,
+                exam_score=50,
+            )
+            StudentGuardianLink.objects.create(
+                school=self.school, student=student,
+                guardian=self.parent_user,
+                relationship=StudentGuardianLink.MOTHER,
+                is_primary_contact=True,
+            )
+            self.students[tag] = student
+
+        # Owing: unpaid invoice. Paid: settled invoice. Free: no invoice.
+        self.owing_invoice = Invoice.objects.create(
+            school=self.school, student=self.students["owing"],
+            term=self.term, total_amount=Decimal("50000.00"),
+        )
+        paid_invoice = Invoice.objects.create(
+            school=self.school, student=self.students["paid"],
+            term=self.term, total_amount=Decimal("50000.00"),
+        )
+        Payment.objects.create(
+            school=self.school, invoice=paid_invoice,
+            student=self.students["paid"],
+            amount=Decimal("50000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+            reference="REF-LK-PAID",
+        )
+
+    def _login_student(self, tag):
+        self.client.force_login(self.students[tag].user)
+
+    def _login_parent(self):
+        self.client.force_login(self.parent_user)
+
+    # ---------- Student booklet + download ----------
+
+    def test_student_booklet_blocked_when_owing(self):
+        self._login_student("owing")
+        resp = self.client.get(reverse(
+            "student-result-booklet", kwargs={"term_id": self.term.pk}
+        ))
+        self.assertEqual(resp.status_code, 302)
+        self.assertRedirects(resp, reverse("student-overview"))
+        resp = self.client.get(resp.url)
+        self.assertContains(resp, "Results locked")
+        self.assertContains(resp, "outstanding")
+
+    def test_student_booklet_allowed_when_settled(self):
+        self._login_student("paid")
+        resp = self.client.get(reverse(
+            "student-result-booklet", kwargs={"term_id": self.term.pk}
+        ))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_student_booklet_allowed_when_no_invoice(self):
+        self._login_student("free")
+        resp = self.client.get(reverse(
+            "student-result-booklet", kwargs={"term_id": self.term.pk}
+        ))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_student_download_blocked_when_owing(self):
+        self._login_student("owing")
+        resp = self.client.get(reverse(
+            "student-result-download", kwargs={"term_id": self.term.pk}
+        ))
+        self.assertEqual(resp.status_code, 302)
+        self.assertRedirects(resp, reverse("student-overview"))
+
+    # ---------- Parent booklet + download ----------
+
+    def test_parent_booklet_blocked_for_child_with_owed_fees(self):
+        self._login_parent()
+        child = self.students["owing"]
+        resp = self.client.get(reverse(
+            "parent-child-result-booklet",
+            kwargs={"child_pk": child.pk, "term_id": self.term.pk},
+        ))
+        self.assertEqual(resp.status_code, 302)
+        self.assertRedirects(resp, reverse("parent-child-detail", kwargs={"pk": child.pk}))
+
+    def test_parent_booklet_allowed_for_child_when_settled(self):
+        self._login_parent()
+        child = self.students["paid"]
+        resp = self.client.get(reverse(
+            "parent-child-result-booklet",
+            kwargs={"child_pk": child.pk, "term_id": self.term.pk},
+        ))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_parent_download_blocked_for_child_with_owed_fees(self):
+        self._login_parent()
+        child = self.students["owing"]
+        resp = self.client.get(reverse(
+            "parent-child-result-download",
+            kwargs={"child_pk": child.pk, "term_id": self.term.pk},
+        ))
+        self.assertEqual(resp.status_code, 302)
+
+    # ---------- History + dashboards ----------
+
+    def test_student_history_hides_locked_term(self):
+        self._login_student("owing")
+        resp = self.client.get(reverse("student-results-history"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "First Term")
+
+    def test_student_history_shows_paid_term(self):
+        self._login_student("paid")
+        resp = self.client.get(reverse("student-results-history"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "First Term")
+
+    def test_student_overview_shows_locked_card(self):
+        self._login_student("owing")
+        resp = self.client.get(reverse("student-overview"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Results locked")
+        self.assertNotContains(resp, "70.0")
+
+    def test_student_overview_shows_average_when_settled(self):
+        self._login_student("paid")
+        resp = self.client.get(reverse("student-overview"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Results published")
+        self.assertContains(resp, "70.0")
+
+    def test_parent_dashboard_shows_lock_badge_for_owing_child(self):
+        self._login_parent()
+        resp = self.client.get(reverse("parent-dashboard"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Locked", count=1)
+
+    def test_parent_child_detail_hides_locked_booklet_and_trend(self):
+        self._login_parent()
+        child = self.students["owing"]
+        resp = self.client.get(reverse("parent-child-detail", kwargs={"pk": child.pk}))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Locked")
+        self.assertNotContains(resp, "Result Booklets")
+        self.assertNotContains(resp, "70.0")
+
+    def test_paying_the_balance_unlocks_results(self):
+        Payment.objects.create(
+            school=self.school, invoice=self.owing_invoice,
+            student=self.students["owing"],
+            amount=Decimal("50000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+            reference="REF-LK-CLEARED",
+        )
+        self._login_student("owing")
+        resp = self.client.get(reverse(
+            "student-result-booklet", kwargs={"term_id": self.term.pk}
+        ))
+        self.assertEqual(resp.status_code, 200)

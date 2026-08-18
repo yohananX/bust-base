@@ -29,7 +29,9 @@
     {# Average #}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
       <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Average</p>
-      {% if current_term_result and current_term_result.average %}
+      {% if current_term_locked %}
+      <p class="text-xl font-bold text-amber-600 inline-flex items-center gap-1.5"><i data-lucide="lock" class="w-4 h-4"></i>Locked</p>
+      {% elif current_term_result and current_term_result.average %}
       <p class="text-xl font-bold text-gray-900 tabular-nums">{{ current_term_result.average|floatformat:1 }}</p>
       {% else %}
       <p class="text-xl font-bold text-gray-300">—</p>
@@ -38,7 +40,9 @@
     {# Position #}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
       <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Position</p>
-      {% if current_term_result and current_term_result.overall_position %}
+      {% if current_term_locked %}
+      <p class="text-xl font-bold text-amber-600 inline-flex items-center gap-1.5"><i data-lucide="lock" class="w-4 h-4"></i>Locked</p>
+      {% elif current_term_result and current_term_result.overall_position %}
       <p class="text-xl font-bold text-gray-900 tabular-nums">{{ current_term_result.overall_position }}<span class="text-sm font-normal text-gray-400"> / {{ current_term_result.total_subjects }}</span></p>
       {% else %}
       <p class="text-xl font-bold text-gray-300">—</p>

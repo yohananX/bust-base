@@ -39,6 +39,14 @@ def _parent_portal_context(request):
     for inv in invoices_qs:
         invoices_by_student.setdefault(inv.student_id, []).append(inv)
 
+    # Term ids with an unpaid balance — those results stay locked for the child.
+    owed_by_student = {
+        student_id: {
+            inv.term_id for inv in invoices if inv.balance > 0
+        }
+        for student_id, invoices in invoices_by_student.items()
+    }
+
     if current_term and current_term.results_published:
         term_results = {
             tr.student_id: tr
@@ -59,6 +67,12 @@ def _parent_portal_context(request):
 
         # Academic performance for current term
         term_result = term_results.get(student.pk)
+        results_locked = bool(
+            current_term and student.pk in owed_by_student
+            and current_term.pk in owed_by_student[student.pk]
+        )
+        if results_locked:
+            term_result = None
 
         # Total amount owed
         invoices = invoices_by_student.get(student.pk, [])
@@ -70,6 +84,7 @@ def _parent_portal_context(request):
             'student': student,
             'enrollment': enrollment,
             'term_result': term_result,
+            'results_locked': results_locked,
             'total_owed': total_owed,
             'unpaid_count': unpaid_count,
         })
@@ -179,17 +194,30 @@ class ParentChildDetailView(RoleRequiredMixin, View):
             results_published=True, scores__student=student,
         ).distinct()
 
+        # Terms with outstanding fees — results for those stay locked.
+        owed_term_ids = {
+            inv.term_id
+            for inv in Invoice.objects.filter(student=student).prefetch_related('payments')
+            if inv.balance > 0
+        }
+        published_terms = [
+            term for term in published_terms if term.pk not in owed_term_ids
+        ]
+
         # Academic trend — TermResults across all published terms
         academic_trend = TermResult.objects.filter(
             student=student, term__results_published=True,
-        ).select_related('term', 'term__session').order_by('term__start_date')
+        ).exclude(term_id__in=owed_term_ids).select_related('term', 'term__session').order_by('term__start_date')
 
         # Current term summary
         current_term_result = None
         if current_term:
-            current_term_result = TermResult.objects.filter(
-                student=student, term=current_term,
-            ).first()
+            if current_term.pk in owed_term_ids:
+                current_term_result = None
+            else:
+                current_term_result = TermResult.objects.filter(
+                    student=student, term=current_term,
+                ).first()
 
         # Fee summary
         unpaid_invoices = [inv for inv in invoices if inv.balance > 0]
@@ -205,6 +233,9 @@ class ParentChildDetailView(RoleRequiredMixin, View):
             'published_terms': published_terms,
             'academic_trend': academic_trend,
             'current_term_result': current_term_result,
+            'current_term_locked': bool(
+                current_term and current_term.pk in owed_term_ids
+            ),
             'total_owed': total_owed,
             'unpaid_count': unpaid_count,
         })
@@ -465,10 +496,14 @@ class StudentOverviewView(RoleRequiredMixin, View):
 
         # Current term result (only shown once published)
         term_result = None
+        results_locked = False
         if current_term and current_term.results_published:
-            term_result = TermResult.objects.filter(
-                student__user=request.user, term=current_term,
-            ).first()
+            if Invoice.owes_for_term(request.user.student_profile, current_term):
+                results_locked = True
+            else:
+                term_result = TermResult.objects.filter(
+                    student__user=request.user, term=current_term,
+                ).first()
 
         # Fee summary
         unpaid_invoices = [inv for inv in invoices if inv.balance > 0]
@@ -493,6 +528,7 @@ class StudentOverviewView(RoleRequiredMixin, View):
             'published_terms': published_terms,
             'current_term': current_term,
             'term_result': term_result,
+            'results_locked': results_locked,
             'outstanding': outstanding,
             'unpaid_count': unpaid_count,
         })
@@ -506,6 +542,14 @@ class StudentResultBookletView(RoleRequiredMixin, View):
     def get(self, request, term_id):
         student = request.user.student_profile
         term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
+
+        if Invoice.owes_for_term(student, term):
+            messages.error(
+                request,
+                f'Results for {term.name} are locked until outstanding fees '
+                'for that term are cleared.',
+            )
+            return redirect('student-overview')
 
         from academics.booklet import build_booklet_context
 
@@ -530,6 +574,14 @@ class StudentResultDownloadView(RoleRequiredMixin, View):
         student = request.user.student_profile
         term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
 
+        if Invoice.owes_for_term(student, term):
+            messages.error(
+                request,
+                f'Results for {term.name} are locked until outstanding fees '
+                'for that term are cleared.',
+            )
+            return redirect('student-overview')
+
         response = render_result_booklet_pdf(student, term)
         if response is None:
             messages.error(request, 'No enrollment found for this term.')
@@ -549,6 +601,14 @@ class ParentChildResultBookletView(RoleRequiredMixin, View):
             return redirect('parent-children')
 
         term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
+
+        if Invoice.owes_for_term(child, term):
+            messages.error(
+                request,
+                f'Results for {term.name} for {child.user.get_full_name() or child.user.username} '
+                'are locked until outstanding fees for that term are cleared.',
+            )
+            return redirect('parent-child-detail', pk=child_pk)
 
         from academics.booklet import build_booklet_context
 
@@ -578,8 +638,16 @@ class StudentResultsHistoryView(RoleRequiredMixin, View):
             scores__student=student,
         ).distinct().order_by('-start_date').select_related('session')
 
+        owed_term_ids = {
+            inv.term_id
+            for inv in Invoice.objects.filter(student=student).prefetch_related('payments')
+            if inv.balance > 0
+        }
+
         results = []
         for term in published_terms:
+            if term.pk in owed_term_ids:
+                continue
             enrollment = ClassEnrollment.objects.filter(
                 student=student, session=term.session
             ).select_related('school_class').first()
@@ -697,6 +765,14 @@ class ParentChildResultDownloadView(RoleRequiredMixin, View):
             return redirect('parent-children')
 
         term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
+
+        if Invoice.owes_for_term(child, term):
+            messages.error(
+                request,
+                f'Results for {term.name} for {child.user.get_full_name() or child.user.username} '
+                'are locked until outstanding fees for that term are cleared.',
+            )
+            return redirect('parent-child-detail', pk=child_pk)
 
         response = render_result_booklet_pdf(child, term)
         if response is None:

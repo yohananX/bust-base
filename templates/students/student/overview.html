@@ -31,7 +31,21 @@
     </div>
 
     {# Conditional results card #}
-    {% if term_result and current_term.results_published %}
+    {% if results_locked %}
+    <div class="bg-warning-tint border border-line rounded-2xl p-6 relative">
+      <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center mb-3">
+        <i data-lucide="lock" class="w-5 h-5 text-warning"></i>
+      </div>
+      <h3 class="text-sm font-semibold text-ink">Results locked</h3>
+      <p class="text-xs text-ink-muted mt-1.5">
+        Your results for {{ current_term.name }} are locked until your outstanding
+        fees for that term are cleared.
+      </p>
+      <a href="{% url 'student-pay' %}" class="mt-5 inline-flex items-center justify-center px-4 py-2 bg-warning hover:bg-[#7A5A1E] text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+        <i data-lucide="wallet" class="w-4 h-4 mr-2"></i>Pay Fees
+      </a>
+    </div>
+    {% elif term_result and current_term.results_published %}
     <div data-dismiss="attention-results-student-{{ current_term.id }}" class="bg-success-tint border border-line rounded-2xl p-6 flex flex-col relative">
       <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="absolute top-3 right-3 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors">
         <i data-lucide="x" class="w-4 h-4"></i>

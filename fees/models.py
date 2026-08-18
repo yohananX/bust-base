@@ -106,6 +106,18 @@ class Invoice(TenantScopedModel):
             return 'PARTIAL'
         return 'UNPAID'
 
+    @classmethod
+    def owes_for_term(cls, student, term):
+        """True when the student has any invoice for the term with a balance left.
+
+        Students with no invoice at all for the term owe nothing, so they are
+        not locked out. Used to gate result booklet access per term.
+        """
+        return any(
+            invoice.balance > 0
+            for invoice in cls.objects.filter(student=student, term=term)
+        )
+
 
 class InvoiceLineItem(models.Model):
     invoice = models.ForeignKey(
