@@ -712,3 +712,92 @@ class ResultModerationViewTests(TestCase):
         self.assertEqual(
             TermResult.objects.filter(term=self.term).count(), 2,
         )
+
+
+class FirstLoginPasswordFlagTests(TestCase):
+    """Every generated/reset password must set must_change_password (item 49)."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Flag School', short_code='flags')
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2026/2027',
+            start_date=date(2026, 9, 1), end_date=date(2027, 8, 31), is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school, session=self.session, name='First Term',
+            start_date=date(2026, 9, 1), end_date=date(2026, 12, 15), is_current=True,
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1', level='JSS1',
+        )
+        self.admin = User.objects.create_user(
+            username='flagadmin', email='flagadmin@test.com', password='pass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        self.student_user = User.objects.create_user(
+            username='flagstud', email='flagstud@test.com', password='pass123',
+            school=self.school, role=Roles.STUDENT,
+        )
+        self.student = Student.objects.create(
+            school=self.school, user=self.student_user, admission_number='S001',
+            date_of_birth=date(2012, 1, 1), gender='MALE',
+            admission_date=date(2026, 9, 1), status='ACTIVE',
+        )
+        self.client.login(username='flagadmin', password='pass123')
+
+    def test_student_create_sets_flag(self):
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'New', 'last_name': 'Kid',
+            'admission_number': 'S002',
+            'date_of_birth': '2013-05-05', 'gender': 'FEMALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+        })
+        self.assertEqual(resp.status_code, 302)
+        student = Student.objects.get(admission_number='S002')
+        self.assertTrue(student.user.must_change_password)
+
+    def test_parent_create_sets_flag(self):
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'New', 'last_name': 'Kid',
+            'admission_number': 'S003',
+            'date_of_birth': '2013-05-05', 'gender': 'FEMALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+            'parent_name': 'Mama New',
+            'parent_email': 'mama.new@test.com', 'parent_phone': '08000000000',
+        })
+        self.assertEqual(resp.status_code, 302)
+        parent = User.objects.get(email='mama.new@test.com')
+        self.assertTrue(parent.must_change_password)
+
+    def test_batch_reset_sets_flag(self):
+        self.student_user.must_change_password = False
+        self.student_user.save(update_fields=['must_change_password'])
+        resp = self.client.post(reverse('school_admin:credential_batch'), {'group': 'students'})
+        self.assertEqual(resp.status_code, 302)
+        self.student_user.refresh_from_db()
+        self.assertTrue(self.student_user.must_change_password)
+
+    def test_single_reset_sets_flag(self):
+        self.student_user.must_change_password = False
+        self.student_user.save(update_fields=['must_change_password'])
+        resp = self.client.post(
+            reverse('school_admin:credential_single_reset', args=[self.student_user.pk]),
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.student_user.refresh_from_db()
+        self.assertTrue(self.student_user.must_change_password)
+
+    def test_admin_password_change_sets_flag(self):
+        self.student_user.must_change_password = False
+        self.student_user.save(update_fields=['must_change_password'])
+        resp = self.client.post(
+            reverse('school_admin:student_password_change', args=[self.student.pk]),
+            {'action': 'auto_generate'},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.student_user.refresh_from_db()
+        self.assertTrue(self.student_user.must_change_password)

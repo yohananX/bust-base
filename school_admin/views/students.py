@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.views.generic.base import View
 from django.contrib import messages
 from django.db import transaction, IntegrityError
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils.dateparse import parse_date
 
@@ -194,6 +195,7 @@ class StudentCreateView(RoleRequiredMixin, View):
                     role=Roles.STUDENT,
                     school=school,
                     phone_number=phone_number,
+                    must_change_password=True,
                 )
 
                 messages.success(
@@ -203,7 +205,7 @@ class StudentCreateView(RoleRequiredMixin, View):
                 )
 
                 # Create student record
-                student = Student.objects.create(
+                student = Student(
                     school=school,
                     user=user,
                     admission_number=admission_number,
@@ -212,6 +214,8 @@ class StudentCreateView(RoleRequiredMixin, View):
                     admission_date=parse_date(admission_date),
                     status=status,
                 )
+                student.full_clean()
+                student.save()
 
                 # Attach uploaded passport to student and user
                 uploaded = request.FILES.get('passport')
@@ -277,17 +281,20 @@ class StudentCreateView(RoleRequiredMixin, View):
                             role=Roles.PARENT,
                             school=school,
                             phone_number=parent_phone,
+                            must_change_password=True,
                         )
 
                         # Link parent as guardian
                         relationship = request.POST.get('parent_relationship', 'GUARDIAN')
-                        StudentGuardianLink.objects.create(
+                        link = StudentGuardianLink(
                             student=student,
                             guardian=parent_user,
                             relationship=relationship,
                             is_primary_contact=True,
                             school=school,
                         )
+                        link.full_clean()
+                        link.save()
 
                         messages.success(
                             request,
@@ -538,15 +545,17 @@ class StudentGuardianLinkCreateView(RoleRequiredMixin, View):
             with transaction.atomic():
                 if is_primary_contact:
                     StudentGuardianLink.objects.filter(student=student).update(is_primary_contact=False)
-                StudentGuardianLink.objects.create(
+                link = StudentGuardianLink(
                     student=student,
                     guardian=guardian,
                     relationship=relationship,
                     is_primary_contact=is_primary_contact,
                     school=request.school,
                 )
+                link.full_clean()
+                link.save()
             messages.success(request, 'Guardian linked successfully.')
-        except IntegrityError:
+        except (IntegrityError, ValidationError):
             messages.warning(request, 'This guardian is already linked to this student.')
 
         return redirect('school_admin:student_detail', pk=student_id)
@@ -580,7 +589,8 @@ class StudentPasswordChangeView(RoleRequiredMixin, View):
             return redirect('school_admin:student_password_change', pk=pk)
 
         user.set_password(password)
-        user.save()
+        user.must_change_password = True
+        user.save(update_fields=['password', 'must_change_password'])
 
         messages.success(
             request,

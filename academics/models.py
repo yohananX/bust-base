@@ -63,14 +63,14 @@ class TeacherAssignment(TenantScopedModel):
         return f"{self.teacher} - {self.subject} ({self.school_class}, {self.session})"
 
     def clean(self):
-        """Validate that the linked user has role=TEACHER."""
+        """Constraint: the linked user must have role=TEACHER."""
         if self.teacher_id and self.teacher.role != Roles.TEACHER:
             raise ValidationError({
                 'teacher': _('The selected user must have the role "Teacher".'),
             })
 
     def save(self, *args, **kwargs):
-        self.clean()
+        # Constraint validation happens via full_clean() at the form/view boundary.
         super().save(*args, **kwargs)
 
 

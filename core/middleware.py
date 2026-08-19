@@ -1,5 +1,7 @@
 from django.shortcuts import redirect
 
+from .audit import set_current_user
+
 
 class SchoolMiddleware:
     """Sets request.school and redirects school admins from superadmin area."""
@@ -21,3 +23,17 @@ class SchoolMiddleware:
 
         response = self.get_response(request)
         return response
+
+
+class CurrentUserMiddleware:
+    """Track the request user thread-locally so audit signals can record actors."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        set_current_user(request.user if request.user.is_authenticated else None)
+        try:
+            return self.get_response(request)
+        finally:
+            set_current_user(None)

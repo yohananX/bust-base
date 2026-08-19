@@ -187,13 +187,14 @@ class TeacherAssignmentModelTests(TestCase):
     def test_teacher_assignment_role_validation(self):
         """Creating a TeacherAssignment with a non-TEACHER user should raise ValidationError."""
         with self.assertRaises(ValidationError):
-            TeacherAssignment.objects.create(
+            assignment = TeacherAssignment(
                 school=self.school,
                 teacher=self.admin_user,
                 subject=self.subject,
                 school_class=self.school_class,
                 session=self.session,
             )
+            assignment.full_clean()
 
     def test_teacher_can_access_assigned(self):
         """teacher_can_access should return True for an assigned teacher."""

@@ -147,14 +147,14 @@ class AllowanceDefinition(TenantScopedModel):
         verbose_name_plural = _('allowance definitions')
 
     def clean(self):
-        """Validate XOR: exactly one of pay_grade or target_staff must be set."""
+        """Constraint: exactly one of pay_grade or target_staff must be set (XOR)."""
         if bool(self.pay_grade_id) == bool(self.target_staff_id):
             raise ValidationError(
                 _('Exactly one of "pay grade" or "target staff" must be set, not both or neither.')
             )
 
     def save(self, *args, **kwargs):
-        self.clean()
+        # Constraint validation happens via full_clean() at the form/view boundary.
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -197,14 +197,14 @@ class DeductionDefinition(TenantScopedModel):
         verbose_name_plural = _('deduction definitions')
 
     def clean(self):
-        """Validate XOR: exactly one of pay_grade or target_staff must be set."""
+        """Constraint: exactly one of pay_grade or target_staff must be set (XOR)."""
         if bool(self.pay_grade_id) == bool(self.target_staff_id):
             raise ValidationError(
                 _('Exactly one of "pay grade" or "target staff" must be set, not both or neither.')
             )
 
     def save(self, *args, **kwargs):
-        self.clean()
+        # Constraint validation happens via full_clean() at the form/view boundary.
         super().save(*args, **kwargs)
 
     def __str__(self):

@@ -1,3 +1,4 @@
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -5,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 class TenantScopedManager(models.Manager):
     """Manager that provides school-scoped filtering."""
 
-    def for_school(self, school):
+    def for_school(self, school) -> models.QuerySet:
         """Return queryset filtered to a specific school."""
         return self.filter(school=school)
 
@@ -60,7 +61,7 @@ class School(models.Model):
     def __str__(self):
         return self.name
 
-    def score_component_maxima(self):
+    def score_component_maxima(self) -> dict:
         """Per-component score caps for this school.
 
         Returns ``{'test_1': ..., 'test_2': ..., 'test_3': ..., 'exam_score': ...}``
@@ -74,7 +75,7 @@ class School(models.Model):
             'exam_score': self.exam_max_score,
         }
 
-    def total_score_max(self):
+    def total_score_max(self) -> int:
         """Highest possible total for a complete score (tests + exam)."""
         return 3 * self.test_max_score + self.exam_max_score
 
@@ -147,3 +148,45 @@ class Term(TenantScopedModel):
                 school=self.school, is_current=True
             ).exclude(pk=self.pk).update(is_current=False)
         super().save(*args, **kwargs)
+
+
+class AuditLog(TenantScopedModel):
+    """Append-only record of who changed critical financial/academic records.
+
+    Populated by signals in ``core.audit`` for payments, invoices, scores,
+    payslips and disbursements. ``changes`` holds either a field diff for
+    updates (``{field: [old, new]}``) or a full snapshot for deletes.
+    """
+
+    class Action(models.TextChoices):
+        CREATE = 'CREATE', _('created')
+        UPDATE = 'UPDATE', _('updated')
+        DELETE = 'DELETE', _('deleted')
+
+    actor = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+        verbose_name=_('actor'),
+    )
+    model_name = models.CharField(max_length=50, db_index=True, verbose_name=_('model'))
+    object_id = models.CharField(max_length=50, db_index=True, verbose_name=_('object id'))
+    action = models.CharField(max_length=10, choices=Action.choices, verbose_name=_('action'))
+    summary = models.CharField(max_length=200, blank=True, verbose_name=_('summary'))
+    changes = models.JSONField(
+        default=dict,
+        blank=True,
+        encoder=DjangoJSONEncoder,
+        verbose_name=_('changes'),
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name=_('created at'))
+
+    class Meta:
+        verbose_name = _('audit log')
+        verbose_name_plural = _('audit logs')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.action} {self.model_name} #{self.object_id} by {self.actor or "system"}'

@@ -12,11 +12,12 @@ from core.models import Term
 from students.models import Student, StudentGuardianLink, ClassEnrollment
 from fees.checkout import get_checkout_options, current_term
 from fees.models import Invoice, Payment
+from fees.selectors import owed_term_ids as owed_term_ids_for
 
 from academics.models import Score, TermResult, TeacherAssignment
 
 
-def _parent_portal_context(request):
+def _parent_portal_context(request) -> dict:
     """Shared context for the parent dashboard and children list pages."""
     guardian_links = StudentGuardianLink.objects.filter(
         guardian=request.user,
@@ -190,18 +191,23 @@ class ParentChildDetailView(RoleRequiredMixin, View):
             student=student,
         ).select_related('subject', 'term').order_by('subject__name')
 
-        published_terms = Term.for_current_session(request.school).filter(
+        published_term_qs = Term.for_current_session(request.school).filter(
             results_published=True, scores__student=student,
         ).distinct()
 
         # Terms with outstanding fees — results for those stay locked.
+        # balance is a computed property (total − confirmed payments), so it
+        # is evaluated per invoice, in memory, against the prefetched list.
         owed_term_ids = {
             inv.term_id
-            for inv in Invoice.objects.filter(student=student).prefetch_related('payments')
+            for inv in invoices
             if inv.balance > 0
         }
         published_terms = [
-            term for term in published_terms if term.pk not in owed_term_ids
+            term for term in published_term_qs if term.pk not in owed_term_ids
+        ]
+        locked_terms = [
+            term for term in published_term_qs if term.pk in owed_term_ids
         ]
 
         # Academic trend — TermResults across all published terms
@@ -492,7 +498,7 @@ class StudentOverviewView(RoleRequiredMixin, View):
 
         # A term's booklet stays locked while the student owes fees for it.
         # balance is a computed property (total − confirmed payments), so
-        # it must be evaluated per invoice, not in the database.
+        # it must be evaluated per invoice, against the prefetched list.
         owed_term_ids = {
             inv.term_id
             for inv in invoices
@@ -621,15 +627,13 @@ class StudentResultsHistoryView(RoleRequiredMixin, View):
             scores__student=student,
         ).distinct().order_by('-start_date').select_related('session')
 
-        owed_term_ids = {
-            inv.term_id
-            for inv in Invoice.objects.filter(student=student).prefetch_related('payments')
-            if inv.balance > 0
-        }
+        owed_term_ids = owed_term_ids_for(student)
 
         results = []
+        locked_terms = []
         for term in published_terms:
             if term.pk in owed_term_ids:
+                locked_terms.append({'term': term})
                 continue
             enrollment = ClassEnrollment.objects.filter(
                 student=student, session=term.session
@@ -641,6 +645,7 @@ class StudentResultsHistoryView(RoleRequiredMixin, View):
 
         return render(request, 'students/student/results_history.html', {
             'results': results,
+            'locked_terms': locked_terms,
         })
 
 

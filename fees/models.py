@@ -88,7 +88,8 @@ class Invoice(TenantScopedModel):
         return f'{self.student} - {self.term} ({self.total_amount})'
 
     @property
-    def amount_paid(self):
+    def amount_paid(self) -> Decimal:
+        """Sum of CONFIRMED payments only — PENDING/FAILED never count."""
         from django.db.models import Q, Sum
         result = self.payments.filter(
             Q(status=Payment.Status.CONFIRMED)
@@ -96,11 +97,13 @@ class Invoice(TenantScopedModel):
         return result or Decimal('0.00')
 
     @property
-    def balance(self):
+    def balance(self) -> Decimal:
+        """Outstanding amount (total minus confirmed payments)."""
         return self.total_amount - self.amount_paid
 
     @property
-    def status(self):
+    def status(self) -> str:
+        """One of PAID / PARTIAL / UNPAID based on the confirmed balance."""
         if self.balance <= 0:
             return 'PAID'
         elif self.amount_paid > 0:
@@ -108,16 +111,15 @@ class Invoice(TenantScopedModel):
         return 'UNPAID'
 
     @classmethod
-    def owes_for_term(cls, student, term):
+    def owes_for_term(cls, student, term) -> bool:
         """True when the student has any invoice for the term with a balance left.
 
         Students with no invoice at all for the term owe nothing, so they are
         not locked out. Used to gate result booklet access per term.
+        Delegates to the central service so the rule lives in one place.
         """
-        return any(
-            invoice.balance > 0
-            for invoice in cls.objects.filter(student=student, term=term)
-        )
+        from .selectors import owed_term_ids
+        return term.pk in owed_term_ids(student)
 
 
 class InvoiceLineItem(models.Model):
@@ -299,11 +301,13 @@ class Payment(TenantScopedModel):
     }
 
     def clean(self):
+        """Constraint: Paystack payments must carry their reference."""
         if self.method == self.Method.PAYSTACK and not self.reference:
             raise ValidationError({'reference': _('Reference is required for Paystack payments.')})
 
     def save(self, *args, **kwargs):
-        self.clean()
+        # Constraint: legal status transitions only (PENDING -> CONFIRMED/FAILED).
+        # Field validation is the job of forms/views via full_clean().
         if self.pk:
             previous = (
                 Payment.objects.filter(pk=self.pk)

@@ -86,43 +86,6 @@ def make_payment(request, invoice_id):
     return JsonResponse(result)
 
 
-@require_POST
-def record_cash_payment(request, invoice_id):
-    """Record a cash payment (admin only)."""
-    if request.user.role != Roles.ADMIN:
-        return JsonResponse({'error': 'Forbidden'}, status=403)
-
-    invoice = get_object_or_404(Invoice, pk=invoice_id, school=request.school)
-    data = json.loads(request.body)
-    amount = Decimal(str(data.get('amount', 0)))
-
-    if amount <= 0:
-        return JsonResponse({'error': 'Amount must be positive'}, status=400)
-    if amount > invoice.balance:
-        return JsonResponse({
-            'error': f'Amount must be at most the outstanding balance '
-                     f'({invoice.balance:,.2f})'
-        }, status=400)
-
-    payment = Payment.objects.create(
-        school=invoice.school,
-        invoice=invoice,
-        amount=amount,
-        method=Payment.Method.CASH,
-        reference=data.get('reference', ''),
-        status=Payment.Status.CONFIRMED,
-        paid_on=timezone.now(),
-        recorded_by=request.user,
-    )
-
-    return JsonResponse({
-        'id': payment.id,
-        'amount': str(payment.amount),
-        'status': payment.status,
-        'new_balance': str(invoice.balance),
-    })
-
-
 @login_required
 @require_GET
 def invoice_status_partial(request, invoice_id):

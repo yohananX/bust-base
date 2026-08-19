@@ -1,6 +1,7 @@
 """Fee and invoice management views for school admin portal."""
 import csv
 from decimal import Decimal
+from uuid import uuid4
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
@@ -8,6 +9,7 @@ from django.views.generic.base import View
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Count, OuterRef, Q, Subquery, Sum
+from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.utils import timezone
 
@@ -458,11 +460,17 @@ class InvoiceDetailView(RoleRequiredMixin, View):
             )
             return redirect('school_admin:invoice_detail', pk=pk)
 
-        reference = request.POST.get('reference', '')
+        reference = request.POST.get('reference', '').strip()
         method = request.POST.get('method', '')
         if method not in Payment.Method.values:
             method = Payment.Method.CASH
-        Payment.objects.create(
+        # Blank references collide with unique_together (school, reference):
+        # auto-generate one so repeated cash/POS entries never hit IntegrityError.
+        # Paystack references are never auto-generated — they must be real,
+        # and full_clean() rejects a Paystack payment without one.
+        if not reference and method != Payment.Method.PAYSTACK:
+            reference = f'ADM-{invoice.pk}-{uuid4().hex[:8].upper()}'
+        payment = Payment(
             school=school,
             invoice=invoice,
             amount=amount,
@@ -474,6 +482,12 @@ class InvoiceDetailView(RoleRequiredMixin, View):
             paid_by_name=request.POST.get('paid_by_name', '').strip(),
             paid_by_relation=request.POST.get('paid_by_relation', '').strip(),
         )
+        try:
+            payment.full_clean()
+            payment.save()
+        except ValidationError as exc:
+            messages.error(request, f'Payment rejected: {"; ".join(" ".join(v) for v in exc.message_dict.values())}')
+            return redirect('school_admin:invoice_detail', pk=pk)
         messages.success(request, f'Payment of NGN{amount} recorded.')
         return redirect('school_admin:invoice_detail', pk=pk)
 

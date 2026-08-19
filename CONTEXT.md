@@ -106,3 +106,6 @@ EMAIL/SMS are audit records, IN_APP rows power the bell.
 - Toast stacking limit (max 5 visible today).
 - Exact action labels per event (labels live on the row: `action_label`).
 - Staff event catalog (payroll/moderation) is future work.
+- **Notification preferences (per-recipient channel opt-out: e.g. email-only or
+  quiet hours for the bell) is explicitly deferred** — user said "later". All
+  channels remain all-on until then.

@@ -207,16 +207,17 @@ class PolicyModelTest(BasePayrollTest):
         """Test that AllowanceDefinition requires exactly one of pay_grade or target_staff."""
         # Neither set — should fail
         with self.assertRaises(ValidationError):
-            AllowanceDefinition.objects.create(
+            allowance = AllowanceDefinition(
                 school=self.school,
                 name='Invalid Allowance',
                 amount=Decimal('5000.00'),
                 is_active=True,
             )
+            allowance.full_clean()
 
         # Both set — should fail
         with self.assertRaises(ValidationError):
-            AllowanceDefinition.objects.create(
+            allowance = AllowanceDefinition(
                 school=self.school,
                 name='Invalid Allowance 2',
                 amount=Decimal('5000.00'),
@@ -224,16 +225,18 @@ class PolicyModelTest(BasePayrollTest):
                 pay_grade=self.pay_grade,
                 target_staff=self.staff1,
             )
+            allowance.full_clean()
 
     def test_deduction_xor_validation(self):
         """Test that DeductionDefinition requires exactly one of pay_grade or target_staff."""
         with self.assertRaises(ValidationError):
-            DeductionDefinition.objects.create(
+            deduction = DeductionDefinition(
                 school=self.school,
                 name='Invalid Deduction',
                 amount=Decimal('5000.00'),
                 is_active=True,
             )
+            deduction.full_clean()
 
     def test_individual_scope_allowance(self):
         """Test creating an allowance scoped to a specific staff member."""

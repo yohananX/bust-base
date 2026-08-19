@@ -2281,29 +2281,6 @@ class OverpaymentCapTest(BaseFeesTest):
             password='testpass123', school=self.school, role=Roles.ADMIN,
         )
 
-    def test_record_cash_payment_rejects_over_balance(self):
-        import json
-        self.client.force_login(self.admin)
-        resp = self.client.post(
-            reverse('fees:record-cash', kwargs={'invoice_id': self.invoice.pk}),
-            data=json.dumps({'amount': '70000.00'}),
-            content_type='application/json',
-        )
-        self.assertEqual(resp.status_code, 400)
-        self.assertIn('balance', resp.json()['error'].lower())
-
-    def test_record_cash_payment_accepts_partial(self):
-        import json
-        self.client.force_login(self.admin)
-        resp = self.client.post(
-            reverse('fees:record-cash', kwargs={'invoice_id': self.invoice.pk}),
-            data=json.dumps({'amount': '25000.00'}),
-            content_type='application/json',
-        )
-        self.assertEqual(resp.status_code, 200)
-        self.invoice.refresh_from_db()
-        self.assertEqual(self.invoice.balance, Decimal('35000.00'))
-
     def test_admin_invoice_detail_post_rejects_over_balance(self):
         self.client.force_login(self.admin)
         resp = self.client.post(
@@ -2327,6 +2304,33 @@ class OverpaymentCapTest(BaseFeesTest):
         self.invoice.refresh_from_db()
         self.assertEqual(self.invoice.balance, Decimal('0.00'))
         self.assertEqual(self.invoice.status, 'PAID')
+
+    def test_blank_reference_auto_generated_and_no_collision(self):
+        """Two cash payments with blank references must both succeed (unique_together)."""
+        self.client.force_login(self.admin)
+        for part in ['20000.00', '30000.00']:
+            resp = self.client.post(
+                reverse('school_admin:invoice_detail', kwargs={'pk': self.invoice.pk}),
+                {'amount': part, 'method': Payment.Method.CASH, 'reference': ''},
+            )
+            self.assertEqual(resp.status_code, 302)
+        payments = self.invoice.payments.filter(method=Payment.Method.CASH)
+        self.assertEqual(payments.count(), 2)
+        self.assertTrue(all(p.reference for p in payments))
+        self.assertEqual(
+            len({p.reference for p in payments}), 2,
+            'Auto-generated references must be distinct.',
+        )
+
+    def test_paystack_method_without_reference_rejected(self):
+        """The Paystack-reference constraint survives via full_clean at the boundary."""
+        self.client.force_login(self.admin)
+        resp = self.client.post(
+            reverse('school_admin:invoice_detail', kwargs={'pk': self.invoice.pk}),
+            {'amount': '10000.00', 'method': Payment.Method.PAYSTACK, 'reference': ''},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(self.invoice.payments.count(), 0)
 
 
 class ReceiptUniquenessTest(BaseFeesTest):

@@ -96,14 +96,14 @@ class Student(TenantScopedModel):
         return name
 
     def clean(self):
-        """Validate that the linked user has role=STUDENT."""
+        """Constraint: the linked user must have role=STUDENT."""
         if self.user_id and self.user.role != Roles.STUDENT:
             raise ValidationError({
                 'user': _('The selected user must have the role "Student".'),
             })
 
     def save(self, *args, **kwargs):
-        self.clean()
+        # Constraint validation happens via full_clean() at the form/view boundary.
         super().save(*args, **kwargs)
 
     def promote_to(self, session, school_class):
@@ -206,12 +206,12 @@ class StudentGuardianLink(TenantScopedModel):
         return f"{student_name}'s {rel_display.lower()}"
 
     def clean(self):
-        """Validate that the linked user has role=PARENT."""
+        """Constraint: the linked user must have role=PARENT."""
         if self.guardian_id and self.guardian.role != Roles.PARENT:
             raise ValidationError({
                 'guardian': _('The selected user must have the role "Parent".'),
             })
 
     def save(self, *args, **kwargs):
-        self.clean()
+        # Constraint validation happens via full_clean() at the form/view boundary.
         super().save(*args, **kwargs)

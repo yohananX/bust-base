@@ -60,6 +60,15 @@ class User(AbstractUser, TenantScopedModel):
         blank=True,
         verbose_name=_('passport'),
     )
+    must_change_password = models.BooleanField(
+        default=False,
+        verbose_name=_('must change password'),
+        help_text=_(
+            'Set for accounts whose password was generated for them (bulk '
+            'credential runs, resets, new student/parent creation). The user '
+            'is forced to pick their own password on first login.'
+        ),
+    )
 
     REQUIRED_FIELDS = ['email']
 

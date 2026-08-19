@@ -399,7 +399,7 @@ class StudentModelTests(TestCase):
         )
 
         with self.assertRaises(ValidationError):
-            Student.objects.create(
+            student = Student(
                 school=self.school,
                 user=teacher_user,
                 admission_number="GH-100",
@@ -407,6 +407,7 @@ class StudentModelTests(TestCase):
                 gender=Student.MALE,
                 admission_date="2025-09-01",
             )
+            student.full_clean()
 
     def test_guardian_user_role_validation(self):
         User = get_user_model()
@@ -427,12 +428,13 @@ class StudentModelTests(TestCase):
         )
 
         with self.assertRaises(ValidationError):
-            StudentGuardianLink.objects.create(
+            link = StudentGuardianLink(
                 school=self.school,
                 student=student,
                 guardian=teacher_user,
                 relationship=StudentGuardianLink.FATHER,
             )
+            link.full_clean()
 
     # ---------- Admission number uniqueness per school ----------
 

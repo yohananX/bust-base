@@ -248,3 +248,131 @@ class SchoolMiddlewareTests(TestCase):
         middleware = SchoolMiddleware(lambda req: None)
         middleware(request)
         self.assertIsNone(request.school)
+
+
+class AuditLogTests(TestCase):
+    """Item 31: critical records keep an audit trail of who changed what."""
+
+    def setUp(self):
+        from datetime import date
+        from decimal import Decimal
+
+        from accounts.models import Roles
+        from fees.models import Invoice, Payment
+        from students.models import Student
+
+        self.school = School.objects.create(name='Audit School', short_code='audit')
+        User = get_user_model()
+        self.admin = User.objects.create_user(
+            username='audit_admin', email='audit_admin@test.com',
+            password='testpass123', school=self.school, role=Roles.ADMIN,
+        )
+        student_user = User.objects.create_user(
+            username='audit_stu', email='audit_stu@test.com',
+            password='testpass123', school=self.school, role=Roles.STUDENT,
+        )
+        session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 7, 31),
+        )
+        term = Term.objects.create(
+            school=self.school, session=session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 20),
+        )
+        self.student = Student.objects.create(
+            school=self.school, user=student_user, admission_number='AUD-1',
+            date_of_birth=date(2010, 1, 1), gender='M',
+            admission_date=date(2025, 9, 1),
+        )
+        self.invoice = Invoice.objects.create(
+            school=self.school, student=self.student, term=term,
+            total_amount=Decimal('50000.00'),
+        )
+
+    def tearDown(self):
+        from core.audit import set_current_user
+        set_current_user(None)
+
+    def _payment(self, reference='AUD-REF-1'):
+        from decimal import Decimal
+        from fees.models import Payment
+        from django.utils import timezone
+        return Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=Decimal('50000.00'), method=Payment.Method.CASH,
+            reference=reference, status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+        )
+
+    def test_create_logs_row_with_actor(self):
+        from core.audit import set_current_user
+        from core.models import AuditLog
+        set_current_user(self.admin)
+        payment = self._payment()
+        log = AuditLog.objects.get(
+            school=self.school, model_name='Payment', object_id=str(payment.pk),
+        )
+        self.assertEqual(log.action, AuditLog.Action.CREATE)
+        self.assertEqual(log.actor, self.admin)
+
+    def test_update_logs_field_diff(self):
+        from core.audit import set_current_user
+        from core.models import AuditLog
+        set_current_user(self.admin)
+        payment = self._payment()
+        payment.description = 'Partial payment recorded'
+        payment.save()
+        log = AuditLog.objects.get(
+            school=self.school, model_name='Payment', object_id=str(payment.pk),
+            action=AuditLog.Action.UPDATE,
+        )
+        self.assertEqual(log.changes['description'][1], 'Partial payment recorded')
+
+    def test_unchanged_save_produces_no_log(self):
+        from core.audit import set_current_user
+        from core.models import AuditLog
+        set_current_user(self.admin)
+        payment = self._payment()
+        payment.save()
+        self.assertFalse(
+            AuditLog.objects.filter(
+                school=self.school, model_name='Payment',
+                object_id=str(payment.pk), action=AuditLog.Action.UPDATE,
+            ).exists(),
+        )
+
+    def test_delete_logs_full_snapshot(self):
+        from core.audit import set_current_user
+        from core.models import AuditLog
+        set_current_user(self.admin)
+        payment = self._payment()
+        pk = payment.pk
+        payment.delete()
+        log = AuditLog.objects.get(
+            school=self.school, model_name='Payment', object_id=str(pk),
+            action=AuditLog.Action.DELETE,
+        )
+        self.assertEqual(log.changes['reference'], 'AUD-REF-1')
+        self.assertEqual(log.changes['amount'], '50000.00')
+
+    def test_system_event_has_no_actor(self):
+        from core.models import AuditLog
+        payment = self._payment(reference='AUD-REF-2')
+        log = AuditLog.objects.get(
+            school=self.school, model_name='Payment', object_id=str(payment.pk),
+        )
+        self.assertIsNone(log.actor)
+
+    def test_invoice_changes_are_audited(self):
+        from decimal import Decimal
+        from core.audit import set_current_user
+        from core.models import AuditLog
+        set_current_user(self.admin)
+        self.invoice.total_amount = Decimal('55000.00')
+        self.invoice.save()
+        log = AuditLog.objects.get(
+            school=self.school, model_name='Invoice', object_id=str(self.invoice.pk),
+            action=AuditLog.Action.UPDATE,
+        )
+        self.assertEqual(log.changes['total_amount'][0], '50000.00')
+        self.assertEqual(log.changes['total_amount'][1], '55000.00')

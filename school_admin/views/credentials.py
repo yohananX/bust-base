@@ -94,8 +94,9 @@ class CredentialBatchView(RoleRequiredMixin, View):
             for user in users:
                 raw_password = _random_password()
                 user.password = make_password(raw_password, hasher='md5')
+                user.must_change_password = True
                 pairs.append((user, raw_password))
-            User.objects.bulk_update(users, ['password'])
+            User.objects.bulk_update(users, ['password', 'must_change_password'])
 
         for user, raw_password in pairs:
             request.session[_session_key(user.pk)] = raw_password
@@ -140,7 +141,8 @@ class CredentialSingleResetView(RoleRequiredMixin, View):
         )
         raw_password = _random_password()
         user.set_password(raw_password)
-        user.save()
+        user.must_change_password = True
+        user.save(update_fields=['password', 'must_change_password'])
         # Drop stale slips so the print page only shows this card.
         _clear_slip_keys(request.session)
         request.session[_session_key(user.pk)] = raw_password
