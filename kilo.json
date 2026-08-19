@@ -1,0 +1,32 @@
+{
+  "project": "Grace House School System",
+  "commands": [
+    {
+      "name": "new-app",
+      "description": "Create a new Django app following project conventions",
+      "file": ".kilo/commands/new-app.md"
+    },
+    {
+      "name": "new-feature",
+      "description": "Add a new feature (model, view, template, test)",
+      "file": ".kilo/commands/new-feature.md"
+    },
+    {
+      "name": "add-notification-trigger",
+      "description": "Add a notification trigger for an event",
+      "file": ".kilo/commands/add-notification-trigger.md"
+    },
+    {
+      "name": "run-tests",
+      "description": "Run project tests",
+      "file": ".kilo/commands/run-tests.md"
+    }
+  ],
+  "agents": [
+    {
+      "name": "project-architect",
+      "description": "Senior architect for planning and reviewing changes",
+      "file": ".kilo/agents/project-architect.md"
+    }
+  ]
+}

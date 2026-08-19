@@ -12,12 +12,6 @@ from students.models import ClassEnrollment
 
 
 VALID_SCORE_FIELDS = {'test_1', 'test_2', 'test_3', 'exam_score'}
-FIELD_MAX_VALUES = {
-    'test_1': 10,
-    'test_2': 10,
-    'test_3': 10,
-    'exam_score': 70,
-}
 
 
 class TeacherAssignmentListView(RoleRequiredMixin, View):
@@ -214,10 +208,14 @@ class TeacherScoreGridView(RoleRequiredMixin, View):
 
         scores.sort(key=lambda s: s.student.admission_number)
 
+        score_limits = request.school.score_component_maxima()
+
         return render(request, 'academics/teacher/score_grid.html', {
             'assignment': assignment,
             'scores': scores,
             'term': current_term,
+            'score_limits': score_limits,
+            'total_max': request.school.total_score_max(),
             'rejected_count': sum(
                 1 for s in scores
                 if s.moderation_status == Score.MODERATION_REJECTED
@@ -273,7 +271,7 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
                 resp = HttpResponse("Value must be a whole number", status=400)
                 return attach_toast(resp, "Value must be a whole number", "error")
 
-        max_value = FIELD_MAX_VALUES[field_name]
+        max_value = request.school.score_component_maxima()[field_name]
         if value is not None and (value < 0 or value > max_value):
             msg = f"{field_name.replace('_', ' ').title()} must be between 0 and {max_value}"
             resp = HttpResponse(msg, status=400)

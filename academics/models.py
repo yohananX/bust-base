@@ -115,22 +115,22 @@ class Score(TenantScopedModel):
     )
     test_1 = models.PositiveSmallIntegerField(
         null=True, blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(10)],
+        validators=[MinValueValidator(0)],
         verbose_name=_('test 1'),
     )
     test_2 = models.PositiveSmallIntegerField(
         null=True, blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(10)],
+        validators=[MinValueValidator(0)],
         verbose_name=_('test 2'),
     )
     test_3 = models.PositiveSmallIntegerField(
         null=True, blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(10)],
+        validators=[MinValueValidator(0)],
         verbose_name=_('test 3'),
     )
     exam_score = models.PositiveSmallIntegerField(
         null=True, blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(70)],
+        validators=[MinValueValidator(0)],
         verbose_name=_('exam score'),
     )
     position = models.PositiveIntegerField(
@@ -199,6 +199,23 @@ class Score(TenantScopedModel):
         if not self.is_complete:
             return None
         return self.total_score >= self.subject.pass_mark
+
+    def clean(self):
+        """Enforce the school's configured score maxima.
+
+        The per-component caps live on ``School.test_max_score`` /
+        ``School.exam_max_score`` (defaults 10 / 70), so each tenant can
+        configure its own marking scheme.
+        """
+        maxima = self.school.score_component_maxima()
+        for field, max_value in maxima.items():
+            value = getattr(self, field)
+            if value is not None and value > max_value:
+                raise ValidationError({
+                    field: _(
+                        '%(label)s must be at most %(max)d for this school.'
+                    ) % {'label': self._meta.get_field(field).verbose_name, 'max': max_value},
+                })
 
 
 class GradeScale(TenantScopedModel):

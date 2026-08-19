@@ -9,6 +9,9 @@ from students.models import ClassEnrollment
 def build_booklet_context(student, term, school):
     """Build the context dict for a student result booklet.
 
+    Only scores that have been APPROVED by moderation appear — pending and
+    rejected scores are never shown on the official record.
+
     Returns ``(context, enrollment)``, or ``(None, None)`` when the student
     has no enrollment in the term's session.
     """
@@ -22,7 +25,8 @@ def build_booklet_context(student, term, school):
         return None, None
 
     scores = Score.objects.filter(
-        student=student, term=term
+        student=student, term=term,
+        moderation_status=Score.MODERATION_APPROVED,
     ).select_related('subject').order_by('subject__name')
 
     term_result = TermResult.objects.filter(

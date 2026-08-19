@@ -128,6 +128,22 @@
       </div>
     </div>
 
+    {% if payment.proof_image %}
+    <div class="px-6 pb-5">
+      <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Transfer Proof</p>
+      <a href="{{ payment.proof_image.url }}" target="_blank" rel="noopener" class="inline-block group">
+        {% if payment.proof_image.name|lower|slice:"-4:" == ".pdf" %}
+        <span class="inline-flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm font-medium text-red-700 group-hover:bg-red-100 transition-colors">
+          <i data-lucide="file-text" class="w-5 h-5"></i>View uploaded proof (PDF)
+        </span>
+        {% else %}
+        <img src="{{ payment.proof_image.url }}" alt="Transfer proof"
+             class="h-24 rounded-xl border border-gray-200 object-cover group-hover:opacity-90 transition-opacity">
+        {% endif %}
+      </a>
+    </div>
+    {% endif %}
+
     {# Actions #}
     <div class="no-print px-6 pb-6 flex flex-wrap items-center gap-3">
       <button type="button" onclick="window.print()"

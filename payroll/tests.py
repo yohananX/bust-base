@@ -952,3 +952,52 @@ class CrossStaffPayslipIsolationTest(BasePayrollTest):
         # Should see BOTH staff's gross pay amounts
         self.assertContains(response, '180000.00')  # staff1's gross pay
         self.assertContains(response, '115000.00')  # staff2's gross pay
+
+
+class PayslipSnapshotImmutabilityTest(BasePayrollTest):
+    """Item 23: payslips are snapshots — later policy changes must never
+    retroactively rewrite past payslips."""
+
+    def setUp(self):
+        super().setUp()
+        self.run, counts = generate_payroll_run(
+            school=self.school,
+            label='Snapshot Test Run',
+            period_start=date(2026, 6, 1),
+            period_end=date(2026, 6, 30),
+            pay_date=date(2026, 6, 30),
+            generated_by=self.admin_user,
+        )
+        self.payslip = Payslip.objects.get(
+            staff=self.staff1, payroll_run=self.run,
+        )
+
+    def test_changing_pay_grade_does_not_alter_past_payslip(self):
+        self.pay_grade.base_salary = Decimal('500000.00')
+        self.pay_grade.save()
+        self.payslip.refresh_from_db()
+        self.assertEqual(self.payslip.base_salary, Decimal('150000.00'))
+        self.assertEqual(self.payslip.gross_pay, Decimal('180000.00'))
+        self.assertEqual(self.payslip.net_pay, Decimal('165000.00'))
+
+    def test_changing_allowance_does_not_alter_past_payslip_or_line_items(self):
+        self.housing_allowance.amount = Decimal('999999.00')
+        self.housing_allowance.save()
+        self.payslip.refresh_from_db()
+        self.assertEqual(self.payslip.total_allowances, Decimal('30000.00'))
+        self.assertEqual(self.payslip.net_pay, Decimal('165000.00'))
+        housing_line = self.payslip.line_items.get(label='Housing Allowance')
+        self.assertEqual(housing_line.amount, Decimal('30000.00'))
+
+    def test_changing_deduction_does_not_alter_past_payslip(self):
+        self.pension_deduction.amount = Decimal('999999.00')
+        self.pension_deduction.save()
+        self.payslip.refresh_from_db()
+        self.assertEqual(self.payslip.total_deductions, Decimal('15000.00'))
+        self.assertEqual(self.payslip.net_pay, Decimal('165000.00'))
+
+    def test_rerunning_generation_for_same_run_is_noop(self):
+        result = generate_payslip(self.staff1, self.run)
+        self.assertIsNone(result)
+        self.payslip.refresh_from_db()
+        self.assertEqual(self.payslip.base_salary, Decimal('150000.00'))

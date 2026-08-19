@@ -41,6 +41,14 @@ class School(models.Model):
     bank_name = models.CharField(max_length=100, blank=True, verbose_name=_('bank name'))
     account_name = models.CharField(max_length=200, blank=True, verbose_name=_('account name'))
     account_number = models.CharField(max_length=50, blank=True, verbose_name=_('account number'))
+    test_max_score = models.PositiveSmallIntegerField(
+        default=10, verbose_name=_('test max score'),
+        help_text=_('Maximum marks for each continuous assessment test (Test 1, 2, 3)'),
+    )
+    exam_max_score = models.PositiveSmallIntegerField(
+        default=70, verbose_name=_('exam max score'),
+        help_text=_('Maximum marks for the examination component'),
+    )
     is_active = models.BooleanField(default=True, verbose_name=_('active'))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('created at'))
 
@@ -51,6 +59,24 @@ class School(models.Model):
 
     def __str__(self):
         return self.name
+
+    def score_component_maxima(self):
+        """Per-component score caps for this school.
+
+        Returns ``{'test_1': ..., 'test_2': ..., 'test_3': ..., 'exam_score': ...}``
+        so views, entry grids, and validation can enforce the school's own
+        marking scheme instead of the historical 10/10/10/70 defaults.
+        """
+        return {
+            'test_1': self.test_max_score,
+            'test_2': self.test_max_score,
+            'test_3': self.test_max_score,
+            'exam_score': self.exam_max_score,
+        }
+
+    def total_score_max(self):
+        """Highest possible total for a complete score (tests + exam)."""
+        return 3 * self.test_max_score + self.exam_max_score
 
 
 class AcademicSession(TenantScopedModel):

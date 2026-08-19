@@ -13,6 +13,11 @@ Business rules:
 - Payments are fully negotiable: a parent selects what to pay for and enters
   any amount up to the total balance; selecting an optional category bills its
   full amount onto the invoice (remainder becomes owed).
+- Overpayment policy: NO payment may exceed the outstanding balance of the
+  invoices it covers. Every entry point enforces the cap (checkout reconcile,
+  the initiate-payment view, admin cash recording) so a balance can never go
+  negative; anyone who wants to pay beyond the bill must settle the remaining
+  line items instead.
 - All money is ``Decimal``.
 """
 

@@ -37,11 +37,11 @@
           <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
             <th class="px-5 py-3.5 font-semibold w-12">S/N</th>
             <th class="px-5 py-3.5 font-semibold">Student Name</th>
-            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 1<span class="block text-[10px] font-normal text-gray-400">/10</span></th>
-            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 2<span class="block text-[10px] font-normal text-gray-400">/10</span></th>
-            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 3<span class="block text-[10px] font-normal text-gray-400">/10</span></th>
-            <th class="px-5 py-3.5 font-semibold text-center w-20">Exam<span class="block text-[10px] font-normal text-gray-400">/70</span></th>
-            <th class="px-5 py-3.5 font-semibold text-center w-16">Total<span class="block text-[10px] font-normal text-gray-400">/100</span></th>
+            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 1<span class="block text-[10px] font-normal text-gray-400">/{{ score_limits.test_1 }}</span></th>
+            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 2<span class="block text-[10px] font-normal text-gray-400">/{{ score_limits.test_2 }}</span></th>
+            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 3<span class="block text-[10px] font-normal text-gray-400">/{{ score_limits.test_3 }}</span></th>
+            <th class="px-5 py-3.5 font-semibold text-center w-20">Exam<span class="block text-[10px] font-normal text-gray-400">/{{ score_limits.exam_score }}</span></th>
+            <th class="px-5 py-3.5 font-semibold text-center w-16">Total<span class="block text-[10px] font-normal text-gray-400">/{{ total_max }}</span></th>
             <th class="px-5 py-3.5 font-semibold text-center w-16">Status</th>
           </tr>
         </thead>
@@ -58,7 +58,7 @@
 
             {# Test 1 #}
             <td class="px-1 py-1 text-center">
-              <input type="number" min="0" max="10" value="{{ score.test_1|default:'' }}"
+              <input type="number" min="0" max="{{ score_limits.test_1 }}" value="{{ score.test_1|default:'' }}"
                      hx-post="{% url 'score_update' assignment.pk score.pk %}"
                      hx-trigger="blur" hx-target="closest td"
                      name="test_1"
@@ -67,7 +67,7 @@
 
             {# Test 2 #}
             <td class="px-1 py-1 text-center">
-              <input type="number" min="0" max="10" value="{{ score.test_2|default:'' }}"
+              <input type="number" min="0" max="{{ score_limits.test_2 }}" value="{{ score.test_2|default:'' }}"
                      hx-post="{% url 'score_update' assignment.pk score.pk %}"
                      hx-trigger="blur" hx-target="closest td"
                      name="test_2"
@@ -76,7 +76,7 @@
 
             {# Test 3 #}
             <td class="px-1 py-1 text-center">
-              <input type="number" min="0" max="10" value="{{ score.test_3|default:'' }}"
+              <input type="number" min="0" max="{{ score_limits.test_3 }}" value="{{ score.test_3|default:'' }}"
                      hx-post="{% url 'score_update' assignment.pk score.pk %}"
                      hx-trigger="blur" hx-target="closest td"
                      name="test_3"
@@ -85,7 +85,7 @@
 
             {# Exam #}
             <td class="px-1 py-1 text-center">
-              <input type="number" min="0" max="70" value="{{ score.exam_score|default:'' }}"
+              <input type="number" min="0" max="{{ score_limits.exam_score }}" value="{{ score.exam_score|default:'' }}"
                      hx-post="{% url 'score_update' assignment.pk score.pk %}"
                      hx-trigger="blur" hx-target="closest td"
                      name="exam_score"

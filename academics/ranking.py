@@ -13,23 +13,32 @@ def compute_positions(school_class, subject, term):
       - Example: scores [70]             -> positions [1]
 
     Incomplete scores (any component is None or missing) get position=None
-    and are excluded from ranking.
+    and are excluded from ranking. Scores that have not been approved by
+    moderation (PENDING/REJECTED) also get position=None — ranking only
+    reflects scores that made it onto the official record, so rejected
+    scores can never skew positions.
+
+    Enrollment is scoped to the term's own session (not "current"), so
+    historical terms rank against the class roster of that session.
 
     Returns the number of scores that received a position.
     """
-    scores = Score.objects.filter(
+    base = Score.objects.filter(
         subject=subject,
         term=term,
         student__enrollments__school_class=school_class,
-        student__enrollments__is_current=True,
+        student__enrollments__session=term.session,
     ).select_related('student')
 
     # Reset all positions to None first
-    scores.update(position=None)
+    base.update(position=None)
 
-    # Fetch only complete scores into Python for sorting by total_score
-    # (total_score is a Python property, not a database column)
-    complete = [s for s in scores if s.is_complete]
+    # Fetch only complete, APPROVED scores into Python for sorting by
+    # total_score (total_score is a Python property, not a database column)
+    complete = [
+        s for s in base if s.is_complete
+        and s.moderation_status == Score.MODERATION_APPROVED
+    ]
 
     # Sort by total_score descending, then student_id for deterministic tie-breaking
     complete.sort(key=lambda s: (-s.total_score, s.student_id))
@@ -56,17 +65,20 @@ def compute_term_summary(school_class, term):
     - overall_position: Olympic/dense ranking by grand_total (reuses same logic as compute_positions)
     - total_subjects: count of subjects with complete scores
 
+    Only scores that have been APPROVED by moderation count — pending or
+    rejected scores never leak into the official term record.
+
     Does NOT touch attendance, affective ratings, or remarks — those are manual.
     Returns the number of TermResult rows created/updated.
     """
     from students.models import Student
     from .models import Score, TermResult
 
-    # Get all students currently enrolled in this class
+    # Get all students enrolled in this class for the term's session
     enrolled_students = Student.objects.filter(
         school=school_class.school,
         enrollments__school_class=school_class,
-        enrollments__is_current=True,
+        enrollments__session=term.session,
     ).distinct()
 
     # Collect totals per student
@@ -75,8 +87,9 @@ def compute_term_summary(school_class, term):
         scores = Score.objects.filter(
             student=student,
             term=term,
+            moderation_status=Score.MODERATION_APPROVED,
             student__enrollments__school_class=school_class,
-            student__enrollments__is_current=True,
+            student__enrollments__session=term.session,
         )
         complete_scores = [s for s in scores if s.is_complete]
         if not complete_scores:
@@ -116,5 +129,17 @@ def compute_term_summary(school_class, term):
             },
         )
         count += 1
+
+    # Drop stale TermResult rows for enrolled students who no longer have
+    # any approved complete scores (e.g. all their scores were rejected).
+    # Without this, a rejected student's old aggregates would keep showing
+    # on booklets.
+    enrolled_ids = set(enrolled_students.values_list('pk', flat=True))
+    kept_ids = {entry['student'].pk for entry in student_totals}
+    TermResult.objects.filter(
+        school=school_class.school,
+        term=term,
+        student__in=enrolled_ids,
+    ).exclude(student_id__in=kept_ids).delete()
 
     return count

@@ -412,7 +412,7 @@ class FeeCheckoutTest(TestCase):
             'amount': '30000.00',
             'method': 'bank_transfer',
             'proof_image': SimpleUploadedFile(
-                'proof.png', b'fake-image-bytes', content_type='image/png'
+                'proof.png', b'\x89PNG\r\n\x1a\nfake-image-bytes', content_type='image/png'
             ),
             'paid_by_name': 'Parent One',
             'paid_by_relation': 'Father',

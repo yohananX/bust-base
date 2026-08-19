@@ -6,10 +6,24 @@ from .models import School, AcademicSession, Term
 
 @admin.register(School)
 class SchoolAdmin(admin.ModelAdmin):
-    list_display = ['name', 'short_code', 'is_active', 'created_at']
+    list_display = ['name', 'short_code', 'test_max_score', 'exam_max_score', 'is_active', 'created_at']
     list_filter = ['is_active']
     search_fields = ['name', 'short_code']
     prepopulated_fields = {'short_code': ('name',)}
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'short_code', 'address', 'phone', 'email', 'logo',
+                       'principal_name', 'is_active'),
+        }),
+        (_('Score scheme'), {
+            'fields': ('test_max_score', 'exam_max_score'),
+            'description': _('Per-component maximum marks used by teachers, '
+                             'validation, and moderation. Defaults: 10 per test, 70 exam.'),
+        }),
+        (_('Bank details'), {
+            'fields': ('bank_name', 'account_name', 'account_number'),
+        }),
+    )
 
 
 @admin.register(AcademicSession)

@@ -971,6 +971,113 @@ class ResultFeeLockTests(TestCase):
         ))
         self.assertEqual(resp.status_code, 200)
 
+    # ---------- Publication gating (item 28) ----------
+
+    def _unpublished_term(self):
+        """A second term in the same session whose results are NOT published."""
+        unpublished = Term.objects.create(
+            school=self.school,
+            session=self.session,
+            name="Second Term",
+            start_date="2026-01-05",
+            end_date="2026-04-10",
+            results_published=False,
+        )
+        Score.objects.create(
+            school=self.school, student=self.students["paid"],
+            subject=self.subject, term=unpublished,
+            test_1=8, test_2=9, test_3=7, exam_score=50,
+            moderation_status=Score.MODERATION_APPROVED,
+        )
+        return unpublished
+
+    def test_student_booklet_hidden_while_unpublished(self):
+        """Unpublished terms return 404 — students cannot peek ahead."""
+        unpublished = self._unpublished_term()
+        self._login_student("paid")
+        resp = self.client.get(reverse(
+            "student-result-booklet", kwargs={"term_id": unpublished.pk}
+        ))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_parent_booklet_hidden_while_unpublished(self):
+        """Parents cannot view booklets for unpublished terms."""
+        unpublished = self._unpublished_term()
+        self._login_parent()
+        child = self.students["paid"]
+        resp = self.client.get(reverse(
+            "parent-child-result-booklet",
+            kwargs={"child_pk": child.pk, "term_id": unpublished.pk},
+        ))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_student_history_hides_unpublished_term(self):
+        """History lists only published terms, never unpublished ones."""
+        self._unpublished_term()
+        self._login_student("paid")
+        resp = self.client.get(reverse("student-results-history"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "First Term")
+        self.assertNotContains(resp, "Second Term")
+
+    def test_parent_child_detail_hides_unpublished_term(self):
+        """Parent child detail lists only published booklets."""
+        self._unpublished_term()
+        self._login_parent()
+        child = self.students["paid"]
+        resp = self.client.get(reverse("parent-child-detail", kwargs={"pk": child.pk}))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "First Term")
+        self.assertNotContains(resp, "Second Term")
+
+    # ---------- Moderation visibility (item 29) ----------
+
+    def test_student_booklet_excludes_rejected_score(self):
+        """Rejected scores must never appear on the official booklet."""
+        english = Subject.objects.create(
+            school=self.school, name="English Language", code="ENG",
+        )
+        Score.objects.filter(student=self.students["paid"], term=self.term).update(
+            moderation_status=Score.MODERATION_APPROVED,
+        )
+        Score.objects.create(
+            school=self.school, student=self.students["paid"],
+            subject=english, term=self.term,
+            test_1=10, test_2=10, test_3=10, exam_score=60,
+            moderation_status=Score.MODERATION_REJECTED,
+        )
+        self._login_student("paid")
+        resp = self.client.get(reverse(
+            "student-result-booklet", kwargs={"term_id": self.term.pk}
+        ))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Mathematics")
+        self.assertNotContains(resp, "English Language")
+
+    def test_parent_booklet_excludes_rejected_score(self):
+        """Parents see the same moderation-safe booklet."""
+        english = Subject.objects.create(
+            school=self.school, name="English Language", code="ENG",
+        )
+        Score.objects.filter(student=self.students["paid"], term=self.term).update(
+            moderation_status=Score.MODERATION_APPROVED,
+        )
+        Score.objects.create(
+            school=self.school, student=self.students["paid"],
+            subject=english, term=self.term,
+            test_1=10, test_2=10, test_3=10, exam_score=60,
+            moderation_status=Score.MODERATION_REJECTED,
+        )
+        self._login_parent()
+        child = self.students["paid"]
+        resp = self.client.get(reverse(
+            "parent-child-result-booklet",
+            kwargs={"child_pk": child.pk, "term_id": self.term.pk},
+        ))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Mathematics")
+        self.assertNotContains(resp, "English Language")
+
     # ---------- Parent booklet ----------
 
     def test_parent_booklet_blocked_for_child_with_owed_fees(self):

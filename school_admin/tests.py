@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
+from academics.models import Score, Subject, TeacherAssignment, TermResult
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from fees.models import FeeCategory, FeeStructure, Invoice, Payment
 
@@ -550,3 +551,164 @@ class PaymentAdminActionsTest(TestCase):
         self.assertEqual(resp.status_code, 403)
         payment.refresh_from_db()
         self.assertEqual(payment.amount, Decimal('10000.00'))
+
+class ResultModerationViewTests(TestCase):
+    """Moderation workflow (item 29): role enforcement + automatic ranking
+    recomputation when scores are approved or rejected."""
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name='Moderation Academy', short_code='moderate',
+        )
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school, session=self.session,
+            name='First Term', start_date=date(2025, 9, 1),
+            end_date=date(2025, 12, 15), is_current=True,
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', level='JSS1',
+        )
+        self.subject = Subject.objects.create(
+            school=self.school, name='Mathematics', code='MTH', pass_mark=40,
+        )
+        self.admin_user = User.objects.create_user(
+            username='admin1', email='admin@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        self.teacher_user = User.objects.create_user(
+            username='teacher1', email='teacher@test.com', password='testpass123',
+            school=self.school, role=Roles.TEACHER,
+        )
+        TeacherAssignment.objects.create(
+            school=self.school, teacher=self.teacher_user,
+            subject=self.subject, school_class=self.school_class,
+            session=self.session,
+        )
+
+    def _make_student(self, username, admission_number):
+        user = User.objects.create_user(
+            username=username, email=f'{username}@test.com',
+            password='testpass123', school=self.school, role=Roles.STUDENT,
+        )
+        student = Student.objects.create(
+            school=self.school, user=user,
+            admission_number=admission_number, date_of_birth=date(2010, 1, 1),
+            gender=Student.MALE, admission_date=date(2025, 9, 1),
+        )
+        ClassEnrollment.objects.create(
+            school=self.school, student=student,
+            school_class=self.school_class, session=self.session,
+            is_current=True,
+        )
+        return student
+
+    def _score(self, student, total_test, status=Score.MODERATION_PENDING):
+        return Score.objects.create(
+            school=self.school, student=student, subject=self.subject,
+            term=self.term, test_1=total_test, test_2=5, test_3=5,
+            exam_score=50, entered_by=self.teacher_user,
+            moderation_status=status,
+        )
+
+    def test_only_admin_can_moderate(self):
+        """Teachers (or anyone else) cannot approve/reject scores."""
+        student = self._make_student('stu_a', 'A001')
+        score = self._score(student, 8)
+
+        self.client.force_login(self.teacher_user)
+        resp = self.client.post(reverse('school_admin:review_results'), {
+            'score_id': score.pk, 'action': 'approve',
+            'term_id': self.term.pk, 'class_id': self.school_class.pk,
+        })
+        self.assertEqual(resp.status_code, 403)
+        score.refresh_from_db()
+        self.assertEqual(score.moderation_status, Score.MODERATION_PENDING)
+
+    def test_approve_recomputes_positions_and_term_summaries(self):
+        """Approving scores immediately re-ranks the class and builds TermResult."""
+        stu_a = self._make_student('stu_a', 'B001')
+        stu_b = self._make_student('stu_b', 'B002')
+        score_a = self._score(stu_a, 8)   # total 68
+        score_b = self._score(stu_b, 10)  # total 70
+
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(reverse('school_admin:review_results'), {
+            'score_id': score_a.pk, 'action': 'approve',
+            'term_id': self.term.pk, 'class_id': self.school_class.pk,
+        })
+        self.assertEqual(resp.status_code, 302)
+        resp = self.client.post(reverse('school_admin:review_results'), {
+            'score_id': score_b.pk, 'action': 'approve',
+            'term_id': self.term.pk, 'class_id': self.school_class.pk,
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        score_a.refresh_from_db()
+        score_b.refresh_from_db()
+        self.assertEqual(score_a.moderation_status, Score.MODERATION_APPROVED)
+        self.assertEqual(score_b.moderation_status, Score.MODERATION_APPROVED)
+        # Rejected scores never rank: B (70) first, A (68) second
+        self.assertEqual(score_a.position, 2)
+        self.assertEqual(score_b.position, 1)
+        tr_a = TermResult.objects.get(student=stu_a, term=self.term)
+        self.assertEqual(tr_a.grand_total, 68)
+        self.assertEqual(tr_a.overall_position, 2)
+
+    def test_reject_clears_position_and_updates_summary(self):
+        """Rejecting a score drops it from rankings and the term summary."""
+        stu_a = self._make_student('stu_a', 'C001')
+        stu_b = self._make_student('stu_b', 'C002')
+        score_a = self._score(stu_a, 8)
+        score_b = self._score(stu_b, 10)
+
+        self.client.force_login(self.admin_user)
+        for score in (score_a, score_b):
+            self.client.post(reverse('school_admin:review_results'), {
+                'score_id': score.pk, 'action': 'approve',
+                'term_id': self.term.pk, 'class_id': self.school_class.pk,
+            })
+
+        # Reject the higher scorer
+        self.client.post(reverse('school_admin:review_results'), {
+            'score_id': score_b.pk, 'action': 'reject',
+            'term_id': self.term.pk, 'class_id': self.school_class.pk,
+        })
+
+        score_a.refresh_from_db()
+        score_b.refresh_from_db()
+        self.assertEqual(score_b.moderation_status, Score.MODERATION_REJECTED)
+        self.assertIsNone(score_b.position)
+        self.assertEqual(score_a.position, 1)
+        # B's stale TermResult must be gone; A keeps theirs
+        self.assertTrue(TermResult.objects.filter(student=stu_a, term=self.term).exists())
+        self.assertFalse(TermResult.objects.filter(student=stu_b, term=self.term).exists())
+
+    def test_approve_all_recomputes(self):
+        """Bulk approval re-ranks everything in one pass."""
+        stu_a = self._make_student('stu_a', 'D001')
+        stu_b = self._make_student('stu_b', 'D002')
+        self._score(stu_a, 8)
+        self._score(stu_b, 10)
+
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(reverse('school_admin:review_results'), {
+            'action': 'approve_all',
+            'term_id': self.term.pk, 'class_id': self.school_class.pk,
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        positions = dict(
+            Score.objects.filter(term=self.term).values_list(
+                'student__user__username', 'position',
+            )
+        )
+        self.assertEqual(positions['stu_a'], 2)
+        self.assertEqual(positions['stu_b'], 1)
+        self.assertEqual(
+            TermResult.objects.filter(term=self.term).count(), 2,
+        )

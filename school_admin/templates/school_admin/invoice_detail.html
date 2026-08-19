@@ -93,6 +93,11 @@
                 {% else %}{% include "components/badge.html" with status="danger" text=p.get_status_display %}{% endif %}
               </td>
               <td class="px-6 py-3 text-right whitespace-nowrap">
+                {% if p.proof_image %}
+                <a href="{{ p.proof_image.url }}" target="_blank" rel="noopener" class="inline-flex items-center px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium rounded-lg transition-colors border border-amber-100 mr-1">
+                  <i data-lucide="paperclip" class="w-3 h-3 mr-1"></i>Proof
+                </a>
+                {% endif %}
                 <a href="{% url 'school_admin:payment_edit' p.pk %}" class="inline-flex items-center px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-medium rounded-lg transition-colors border border-gray-200">
                   <i data-lucide="pencil" class="w-3 h-3 mr-1"></i>Edit
                 </a>

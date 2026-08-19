@@ -7,7 +7,7 @@ from django.test import TestCase
 from accounts.models import Roles, User
 from academics.models import Score, Subject, TeacherAssignment
 from academics.permissions import teacher_can_access
-from academics.ranking import compute_positions
+from academics.ranking import compute_positions, compute_term_summary
 from core.models import AcademicSession, School, Term
 from students.models import (
     ClassEnrollment,
@@ -281,6 +281,63 @@ class ScoreModelTests(BaseTest):
         with self.assertRaises(ValidationError):
             invalid_exam.full_clean()
 
+    def test_score_clean_uses_school_configured_maxima(self):
+        """School-level score scheme (item 26) governs validation.
+
+        Defaults are 10 per test / 70 exam. A school that configures
+        test_max_score=20 accepts 15 for a test but still rejects 25.
+        """
+        # Defaults: 15 for test_1 > 10 → rejected
+        over_default = Score(
+            school=self.school,
+            student=self.student_profile,
+            subject=self.subject,
+            term=self.term,
+            test_1=15,
+            entered_by=self.teacher_user,
+        )
+        with self.assertRaises(ValidationError):
+            over_default.full_clean()
+
+        # Custom scheme: 20 per test, 100 exam
+        self.school.test_max_score = 20
+        self.school.exam_max_score = 100
+        self.school.save()
+
+        ok = Score(
+            school=self.school,
+            student=self.student_profile,
+            subject=self.subject,
+            term=self.term,
+            test_1=15,
+            exam_score=95,
+            entered_by=self.teacher_user,
+        )
+        ok.full_clean()  # should not raise
+
+        over_custom = Score(
+            school=self.school,
+            student=self.student_profile,
+            subject=self.subject,
+            term=self.term,
+            test_1=21,
+            exam_score=101,
+            entered_by=self.teacher_user,
+        )
+        with self.assertRaises(ValidationError):
+            over_custom.full_clean()
+
+    def test_score_component_maxima_helper(self):
+        """score_component_maxima maps the school's scheme per component."""
+        self.school.test_max_score = 15
+        self.school.exam_max_score = 60
+        self.school.save()
+
+        self.assertEqual(self.school.score_component_maxima(), {
+            'test_1': 15, 'test_2': 15, 'test_3': 15, 'exam_score': 60,
+        })
+        self.assertEqual(self.school.total_score_max(), 105)
+
     def test_score_computed_properties_complete_and_passing(self):
         """A fully filled Score above pass_mark should have is_complete=True, passed=True."""
         score = Score.objects.create(
@@ -505,7 +562,7 @@ class RankingTests(TestCase):
         )
 
     def _score(self, student, test_1, test_2, test_3, exam_score):
-        """Create a Score record."""
+        """Create an approved Score record (ranked state)."""
         return Score.objects.create(
             school=self.school,
             student=student,
@@ -516,6 +573,7 @@ class RankingTests(TestCase):
             test_3=test_3,
             exam_score=exam_score,
             entered_by=self.teacher_user,
+            moderation_status=Score.MODERATION_APPROVED,
         )
 
     # -- tests -------------------------------------------------------------
@@ -642,6 +700,202 @@ class RankingTests(TestCase):
         self.assertEqual(result, 0)
         score = Score.objects.get(student=student)
         self.assertIsNone(score.position)
+
+    def test_rejected_score_excluded_from_ranking(self):
+        """Rejected scores get position=None and never skew the ranking.
+
+        Student A: approved, complete (total 90) → position 1
+        Student B: approved, complete (total 70) → position 2
+        Student C: rejected, complete (total 95) → position None, and does
+                  not take position 1 away from A
+        Student D: pending, complete (total 85) → position None
+        """
+        stu_a = self._create_student("stu_a", "F001")
+        self._enroll(stu_a)
+        self._score(stu_a, test_1=10, test_2=10, test_3=10, exam_score=60)
+
+        stu_b = self._create_student("stu_b", "F002")
+        self._enroll(stu_b)
+        self._score(stu_b, test_1=6, test_2=6, test_3=8, exam_score=50)
+
+        # Rejected but would otherwise rank first
+        stu_c = self._create_student("stu_c", "F003")
+        self._enroll(stu_c)
+        Score.objects.create(
+            school=self.school,
+            student=stu_c,
+            subject=self.subject,
+            term=self.term,
+            test_1=10, test_2=10, test_3=10, exam_score=65,
+            entered_by=self.teacher_user,
+            moderation_status=Score.MODERATION_REJECTED,
+        )
+
+        # Pending (awaiting moderation)
+        stu_d = self._create_student("stu_d", "F004")
+        self._enroll(stu_d)
+        Score.objects.create(
+            school=self.school,
+            student=stu_d,
+            subject=self.subject,
+            term=self.term,
+            test_1=8, test_2=8, test_3=9, exam_score=60,
+            entered_by=self.teacher_user,
+        )
+
+        compute_positions(self.school_class, self.subject, self.term)
+
+        positions = {
+            s.student.user.username: s.position
+            for s in Score.objects.filter(subject=self.subject, term=self.term)
+        }
+
+        self.assertEqual(positions["stu_a"], 1)
+        self.assertEqual(positions["stu_b"], 2)
+        self.assertIsNone(positions["stu_c"])
+        self.assertIsNone(positions["stu_d"])
+
+    def test_ranking_only_ranks_approved(self):
+        """Pending scores are not ranked; approving them re-ranks."""
+        stu_a = self._create_student("stu_a", "G001")
+        self._enroll(stu_a)
+        stu_b = self._create_student("stu_b", "G002")
+        self._enroll(stu_b)
+
+        Score.objects.create(
+            school=self.school, student=stu_a, subject=self.subject, term=self.term,
+            test_1=9, test_2=9, test_3=9, exam_score=60,
+            entered_by=self.teacher_user,
+        )
+        Score.objects.create(
+            school=self.school, student=stu_b, subject=self.subject, term=self.term,
+            test_1=10, test_2=10, test_3=10, exam_score=65,
+            entered_by=self.teacher_user,
+            moderation_status=Score.MODERATION_APPROVED,
+        )
+
+        compute_positions(self.school_class, self.subject, self.term)
+
+        self.assertIsNone(Score.objects.get(student=stu_a).position)
+        self.assertEqual(Score.objects.get(student=stu_b).position, 1)
+
+        # Admin approves A → recompute → both ranked, B drops to 2
+        Score.objects.filter(student=stu_a).update(
+            moderation_status=Score.MODERATION_APPROVED,
+        )
+        compute_positions(self.school_class, self.subject, self.term)
+
+        self.assertEqual(Score.objects.get(student=stu_a).position, 2)
+        self.assertEqual(Score.objects.get(student=stu_b).position, 1)
+
+
+class TermSummaryModerationTests(TestCase):
+    """TermResult aggregates must only reflect moderated (approved) scores."""
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Grace House School", short_code="grace-house",
+        )
+        self.teacher_user = User.objects.create_user(
+            username="mr_smith", email="smith@grace.edu",
+            password="testpass123", school=self.school, role=Roles.TEACHER,
+        )
+        self.subject = Subject.objects.create(
+            school=self.school, name="Mathematics", code="MTH", pass_mark=40,
+        )
+        self.session = AcademicSession.objects.create(
+            school=self.school, name="2025/2026",
+            start_date=date(2025, 9, 1), end_date=date(2026, 7, 31),
+        )
+        self.term = Term.objects.create(
+            school=self.school, session=self.session,
+            name="First Term", start_date=date(2025, 9, 1),
+            end_date=date(2025, 12, 20),
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name="JSS1A", level="JSS1",
+        )
+
+    def _make_student(self, username, admission_number):
+        user = User.objects.create_user(
+            username=username, email=f"{username}@grace.edu",
+            password="testpass123", school=self.school, role=Roles.STUDENT,
+        )
+        return StudentProfile.objects.create(
+            school=self.school, user=user,
+            admission_number=admission_number, date_of_birth=date(2010, 1, 1),
+            gender=StudentProfile.MALE, admission_date=date(2025, 9, 1),
+        )
+
+    def _enroll(self, student):
+        return ClassEnrollment.objects.create(
+            school=self.school, student=student,
+            school_class=self.school_class, session=self.session,
+            is_current=True,
+        )
+
+    def test_term_summary_excludes_rejected_and_pending(self):
+        """TermResult aggregates count only approved complete scores."""
+        from academics.models import TermResult
+
+        approved = self._make_student("approved", "A001")
+        self._enroll(approved)
+        rejected = self._make_student("rejected", "A002")
+        self._enroll(rejected)
+        pending = self._make_student("pending", "A003")
+        self._enroll(pending)
+
+        # Approved: total 84
+        Score.objects.create(
+            school=self.school, student=approved, subject=self.subject, term=self.term,
+            test_1=8, test_2=7, test_3=9, exam_score=60,
+            entered_by=self.teacher_user, moderation_status=Score.MODERATION_APPROVED,
+        )
+        # Rejected: higher total (95) — must not appear anywhere
+        Score.objects.create(
+            school=self.school, student=rejected, subject=self.subject, term=self.term,
+            test_1=10, test_2=10, test_3=10, exam_score=65,
+            entered_by=self.teacher_user, moderation_status=Score.MODERATION_REJECTED,
+        )
+        # Pending: awaiting review
+        Score.objects.create(
+            school=self.school, student=pending, subject=self.subject, term=self.term,
+            test_1=9, test_2=9, test_3=9, exam_score=60,
+            entered_by=self.teacher_user,
+        )
+
+        count = compute_term_summary(self.school_class, self.term)
+
+        self.assertEqual(count, 1)
+        tr = TermResult.objects.get(student=approved)
+        self.assertEqual(tr.grand_total, 84)
+        self.assertEqual(tr.total_subjects, 1)
+        self.assertEqual(tr.overall_position, 1)
+        self.assertFalse(TermResult.objects.filter(student=rejected).exists())
+        self.assertFalse(TermResult.objects.filter(student=pending).exists())
+
+    def test_term_summary_removes_stale_rows_when_score_rejected(self):
+        """A TermResult disappears once the student's approved score is rejected."""
+        from academics.models import TermResult
+
+        student = self._make_student("stu_a", "H001")
+        self._enroll(student)
+
+        score = Score.objects.create(
+            school=self.school, student=student, subject=self.subject, term=self.term,
+            test_1=8, test_2=7, test_3=9, exam_score=60,
+            entered_by=self.teacher_user, moderation_status=Score.MODERATION_APPROVED,
+        )
+
+        self.assertEqual(compute_term_summary(self.school_class, self.term), 1)
+        self.assertTrue(TermResult.objects.filter(student=student, term=self.term).exists())
+
+        # Admin rejects the score, then a recompute drops the stale row
+        score.moderation_status = Score.MODERATION_REJECTED
+        score.save(update_fields=['moderation_status'])
+        compute_term_summary(self.school_class, self.term)
+
+        self.assertFalse(TermResult.objects.filter(student=student, term=self.term).exists())
 
 
 # ---------------------------------------------------------------------------

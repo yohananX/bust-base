@@ -3,6 +3,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from core.models import TenantScopedModel
+from fees.validators import validate_proof_file
 
 
 class FeeCategory(TenantScopedModel):
@@ -246,6 +247,7 @@ class Payment(TenantScopedModel):
         null=True,
         verbose_name=_('transfer proof'),
         help_text=_('Screenshot or receipt image proving a bank transfer.'),
+        validators=[validate_proof_file],
     )
     card_last4 = models.CharField(
         max_length=4, blank=True, default='', verbose_name=_('card last 4')
@@ -268,6 +270,17 @@ class Payment(TenantScopedModel):
     webhook_payload = models.JSONField(
         default=dict, blank=True, verbose_name=_('webhook payload')
     )
+    confirmed_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+        verbose_name=_('confirmed by'),
+    )
+    confirmed_at = models.DateTimeField(
+        null=True, blank=True, verbose_name=_('confirmed at')
+    )
 
     class Meta:
         verbose_name = _('payment')
@@ -278,12 +291,34 @@ class Payment(TenantScopedModel):
     def __str__(self):
         return f'{self.invoice} - {self.amount} ({self.get_status_display()})'
 
+    # Legal status transitions. A payment is created in its initial state
+    # (PENDING, or CONFIRMED/FAILED for already-settled flows) and may only
+    # move forward along these edges — never backwards, never sideways.
+    ALLOWED_STATUS_TRANSITIONS = {
+        Status.PENDING: {Status.CONFIRMED, Status.FAILED},
+    }
+
     def clean(self):
         if self.method == self.Method.PAYSTACK and not self.reference:
             raise ValidationError({'reference': _('Reference is required for Paystack payments.')})
 
     def save(self, *args, **kwargs):
         self.clean()
+        if self.pk:
+            previous = (
+                Payment.objects.filter(pk=self.pk)
+                .values_list('status', flat=True)
+                .first()
+            )
+            if (
+                previous is not None
+                and previous != self.status
+                and self.status not in self.ALLOWED_STATUS_TRANSITIONS.get(previous, set())
+            ):
+                raise ValidationError(
+                    _('Invalid payment status transition: %(previous)s -> %(new)s')
+                    % {'previous': previous, 'new': self.status}
+                )
         super().save(*args, **kwargs)
 
 

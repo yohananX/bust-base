@@ -352,6 +352,24 @@ class ResultReviewView(RoleRequiredMixin, View):
         subject_id = request.POST.get('subject_id')
         student_id = request.POST.get('student_id')
 
+        def _recompute(school_class, term):
+            """Rebuild positions + term summaries for a class/term.
+
+            Called after any moderation mutation so rejected scores drop out
+            of rankings and approved ones take their place immediately.
+            """
+            from academics.ranking import compute_positions, compute_term_summary
+
+            subject_ids = Score.objects.filter(
+                school=school,
+                term=term,
+                student__enrollments__school_class=school_class,
+                student__enrollments__session=term.session,
+            ).values_list('subject', flat=True).distinct()
+            for subject_id in subject_ids:
+                compute_positions(school_class, subject_id, term)
+            compute_term_summary(school_class, term)
+
         def _redirect():
             redirect_url = reverse('school_admin:review_results')
             params = {}
@@ -381,8 +399,17 @@ class ResultReviewView(RoleRequiredMixin, View):
             score.moderated_at = timezone.now()
             score.save(update_fields=['moderation_status', 'moderated_by', 'moderated_at'])
 
+            from students.models import ClassEnrollment
+            enrollment = ClassEnrollment.objects.filter(
+                student=score.student, session=score.term.session
+            ).select_related('school_class').first()
+            if enrollment:
+                _recompute(enrollment.school_class, score.term)
+
         elif action == 'approve_all':
             if term_id and class_id:
+                school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
+                term = get_object_or_404(Term, school=school, pk=term_id)
                 updated = Score.objects.filter(
                     school=school,
                     term_id=term_id,
@@ -394,12 +421,16 @@ class ResultReviewView(RoleRequiredMixin, View):
                     moderated_by=request.user,
                     moderated_at=timezone.now(),
                 )
+                if updated:
+                    _recompute(school_class, term)
                 messages.success(request, f'{updated} pending scores approved.')
             else:
                 messages.error(request, 'Missing term or class information.')
 
         elif action in ('approve_subject', 'reject_subject'):
             if term_id and class_id and subject_id:
+                school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
+                term = get_object_or_404(Term, school=school, pk=term_id)
                 updated = Score.objects.filter(
                     school=school,
                     term_id=term_id,
@@ -415,6 +446,8 @@ class ResultReviewView(RoleRequiredMixin, View):
                     moderated_by=request.user,
                     moderated_at=timezone.now(),
                 )
+                if updated:
+                    _recompute(school_class, term)
                 verb = 'approved' if action == 'approve_subject' else 'rejected'
                 messages.success(request, f'{updated} pending scores {verb} for this subject.')
             else:
@@ -422,6 +455,8 @@ class ResultReviewView(RoleRequiredMixin, View):
 
         elif action in ('approve_student', 'reject_student'):
             if term_id and class_id and student_id:
+                school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
+                term = get_object_or_404(Term, school=school, pk=term_id)
                 updated = Score.objects.filter(
                     school=school,
                     term_id=term_id,
@@ -437,6 +472,8 @@ class ResultReviewView(RoleRequiredMixin, View):
                     moderated_by=request.user,
                     moderated_at=timezone.now(),
                 )
+                if updated:
+                    _recompute(school_class, term)
                 verb = 'approved' if action == 'approve_student' else 'rejected'
                 messages.success(request, f'{updated} pending scores {verb} for this student.')
             else:

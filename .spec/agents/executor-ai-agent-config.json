@@ -1,0 +1,19 @@
+{
+  "agent": "executor",
+  "status": "complete",
+  "timestamp": "2026-08-18T13:45:00+01:00",
+  "files_created": [
+    "AGENTS.md",
+    "kilo.json",
+    ".kilo/commands/new-app.md",
+    ".kilo/commands/new-feature.md",
+    ".kilo/commands/add-notification-trigger.md",
+    ".kilo/commands/run-tests.md",
+    ".kilo/agents/project-architect.md"
+  ],
+  "stubs_destroyed": [
+    ".spec/agents/executor-notification-bell-inapp.json",
+    ".spec/agents/test-writer-notification-inapp.json"
+  ],
+  "next_steps": []
+}

@@ -98,6 +98,11 @@ def record_cash_payment(request, invoice_id):
 
     if amount <= 0:
         return JsonResponse({'error': 'Amount must be positive'}, status=400)
+    if amount > invoice.balance:
+        return JsonResponse({
+            'error': f'Amount must be at most the outstanding balance '
+                     f'({invoice.balance:,.2f})'
+        }, status=400)
 
     payment = Payment.objects.create(
         school=invoice.school,
@@ -360,6 +365,13 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
                     request,
                     'Upload a screenshot of your transfer before submitting.',
                 )
+                return redirect(back_url)
+
+            from fees.validators import validate_proof_file
+            try:
+                validate_proof_file(proof)
+            except ValidationError as e:
+                messages.error(request, str(e))
                 return redirect(back_url)
 
             paid_by_name = request.POST.get('paid_by_name', '').strip()

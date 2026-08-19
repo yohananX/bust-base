@@ -1789,11 +1789,79 @@ class BankTransferProofTest(BaseFeesTest):
             0,
         )
 
+    def test_transfer_with_junk_file_rejected(self):
+        """A renamed non-image file is refused by the server-side validator."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        junk = SimpleUploadedFile(
+            'proof.png', b'#!/bin/sh\nrm -rf /', content_type='image/png'
+        )
+        response = self._post({'proof_image': junk})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'does not look like a proof')
+        self.assertEqual(
+            Payment.objects.filter(method=Payment.Method.BANK_TRANSFER).count(),
+            0,
+        )
+
+    def test_transfer_with_oversized_proof_rejected(self):
+        """Files over 5 MB are refused before anything is stored."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from fees.validators import MAX_PROOF_SIZE
+        oversized = SimpleUploadedFile(
+            'proof.png',
+            b'\x89PNG\r\n\x1a\n' + b'0' * (MAX_PROOF_SIZE + 1),
+            content_type='image/png',
+        )
+        response = self._post({'proof_image': oversized})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'too large')
+        self.assertEqual(
+            Payment.objects.filter(method=Payment.Method.BANK_TRANSFER).count(),
+            0,
+        )
+
+    def test_proof_kept_and_shown_after_confirmation(self):
+        """The uploaded proof survives confirmation and appears on the receipt."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        proof = SimpleUploadedFile(
+            'proof.png', b'\x89PNG\r\n\x1a\nfake-image-bytes', content_type='image/png'
+        )
+        response = self._post({
+            'proof_image': proof,
+            'paid_by_name': 'Aunty Ada',
+            'paid_by_relation': 'Aunt',
+        })
+        self.assertNotContains(response, 'before submitting')
+
+        payment = Payment.objects.get(method=Payment.Method.BANK_TRANSFER)
+        self.client.force_login(self.admin_user)
+        response = self.client.post(
+            reverse('school_admin:pending_transfer_confirm', args=[payment.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+        self.assertTrue(payment.proof_image)
+
+        self.client.force_login(self.parent_user)
+        response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Transfer Proof')
+        self.assertContains(response, payment.proof_image.url)
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(
+            reverse('school_admin:invoice_detail', args=[payment.invoice_id])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, payment.proof_image.url)
+
     def test_transfer_with_proof_creates_pending_payment(self):
         """A screenshot + payer details produce a PENDING payment with proof."""
         from django.core.files.uploadedfile import SimpleUploadedFile
         proof = SimpleUploadedFile(
-            'proof.png', b'fake-image-bytes', content_type='image/png'
+            'proof.png', b'\x89PNG\r\n\x1a\nfake-image-bytes', content_type='image/png'
         )
         response = self._post({
             'proof_image': proof,
@@ -1820,7 +1888,7 @@ class BankTransferProofTest(BaseFeesTest):
             school=self.school, role=Roles.ADMIN,
         )
         proof = SimpleUploadedFile(
-            'proof.png', b'fake-image-bytes', content_type='image/png'
+            'proof.png', b'\x89PNG\r\n\x1a\nfake-image-bytes', content_type='image/png'
         )
         response = self._post({
             'proof_image': proof,
@@ -2038,3 +2106,266 @@ class InAppNotificationTriggerTest(BaseFeesTest):
         self.assertIn('Receipt issued', log.subject)
         self.assertEqual(log.status, NotificationLog.Status.QUEUED)
         self.assertIsNotNone(receipt)
+
+
+class PaymentStateMachineTest(BaseFeesTest):
+    """Item 20: only legal status transitions survive save().
+
+    Legal edges: PENDING -> CONFIRMED, PENDING -> FAILED.
+    Everything else (backwards or sideways) raises ValidationError.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.invoice = Invoice.objects.create(
+            school=self.school, student=self.student, term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+        self.payment = Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=Decimal('20000.00'), method=Payment.Method.BANK_TRANSFER,
+            reference='STM-001', status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+
+    def test_pending_to_confirmed_allowed(self):
+        self.payment.status = Payment.Status.CONFIRMED
+        self.payment.save(update_fields=['status'])
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, Payment.Status.CONFIRMED)
+
+    def test_pending_to_failed_allowed(self):
+        self.payment.status = Payment.Status.FAILED
+        self.payment.save(update_fields=['status'])
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, Payment.Status.FAILED)
+
+    def test_confirmed_to_failed_rejected(self):
+        self.payment.status = Payment.Status.CONFIRMED
+        self.payment.save(update_fields=['status'])
+        self.payment.status = Payment.Status.FAILED
+        with self.assertRaises(ValidationError):
+            self.payment.save(update_fields=['status'])
+
+    def test_failed_to_confirmed_rejected(self):
+        self.payment.status = Payment.Status.FAILED
+        self.payment.save(update_fields=['status'])
+        self.payment.status = Payment.Status.CONFIRMED
+        with self.assertRaises(ValidationError):
+            self.payment.save(update_fields=['status'])
+
+    def test_confirmed_to_pending_rejected(self):
+        self.payment.status = Payment.Status.CONFIRMED
+        self.payment.save(update_fields=['status'])
+        self.payment.status = Payment.Status.PENDING
+        with self.assertRaises(ValidationError):
+            self.payment.save(update_fields=['status'])
+
+    def test_failed_to_pending_rejected(self):
+        self.payment.status = Payment.Status.FAILED
+        self.payment.save(update_fields=['status'])
+        self.payment.status = Payment.Status.PENDING
+        with self.assertRaises(ValidationError):
+            self.payment.save(update_fields=['status'])
+
+    def test_direct_creation_of_confirmed_or_failed_allowed(self):
+        confirmed = Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=Decimal('30000.00'), method=Payment.Method.CASH,
+            reference='STM-002', status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+        )
+        failed = Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=Decimal('10000.00'), method=Payment.Method.CASH,
+            reference='STM-003', status=Payment.Status.FAILED,
+            paid_on=timezone.now(),
+        )
+        self.assertEqual(confirmed.status, Payment.Status.CONFIRMED)
+        self.assertEqual(failed.status, Payment.Status.FAILED)
+
+    def test_save_without_status_change_still_allowed(self):
+        self.payment.amount = Decimal('15000.00')
+        self.payment.save(update_fields=['amount'])
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.amount, Decimal('15000.00'))
+
+
+class PaymentAuditTrailTest(BaseFeesTest):
+    """Item 22: confirmations are audited — who confirmed and when."""
+
+    def setUp(self):
+        super().setUp()
+        self.invoice = Invoice.objects.create(
+            school=self.school, student=self.student, term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+        self.pending = Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=Decimal('60000.00'), method=Payment.Method.BANK_TRANSFER,
+            reference='AUD-001', status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        self.admin = User.objects.create_user(
+            username='audit_admin', email='admin@test.com',
+            password='testpass123', school=self.school, role=Roles.ADMIN,
+        )
+
+    def test_admin_confirm_records_confirmed_by_and_at(self):
+        self.client.force_login(self.admin)
+        resp = self.client.post(reverse(
+            'school_admin:pending_transfer_confirm', kwargs={'pk': self.pending.pk}
+        ))
+        self.assertEqual(resp.status_code, 302)
+        self.pending.refresh_from_db()
+        self.assertEqual(self.pending.status, Payment.Status.CONFIRMED)
+        self.assertEqual(self.pending.confirmed_by_id, self.admin.pk)
+        self.assertIsNotNone(self.pending.confirmed_at)
+
+    def test_admin_reject_marks_failed_without_audit_fields(self):
+        self.client.force_login(self.admin)
+        resp = self.client.post(reverse(
+            'school_admin:pending_transfer_reject', kwargs={'pk': self.pending.pk}
+        ))
+        self.assertEqual(resp.status_code, 302)
+        self.pending.refresh_from_db()
+        self.assertEqual(self.pending.status, Payment.Status.FAILED)
+        self.assertIsNone(self.pending.confirmed_by_id)
+        self.assertIsNone(self.pending.confirmed_at)
+
+    def test_verify_confirmation_stamps_confirmed_at_only(self):
+        from fees.paystack import confirm_payment_from_verify
+
+        payment = Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=Decimal('40000.00'), method=Payment.Method.PAYSTACK,
+            reference='AUD-002', status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        data = {
+            'amount': int(payment.amount * 100),
+            'currency': 'NGN',
+            'fees': 0,
+            'authorization': {'channel': 'card'},
+            'customer': {'email': 'payer@test.com'},
+        }
+        confirm_payment_from_verify(payment, data)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+        self.assertIsNotNone(payment.confirmed_at)
+        self.assertIsNone(payment.confirmed_by_id)  # system-confirmed
+
+    def test_confirming_a_pending_transfer_issues_receipt(self):
+        self.client.force_login(self.admin)
+        self.client.post(reverse(
+            'school_admin:pending_transfer_confirm', kwargs={'pk': self.pending.pk}
+        ))
+        from fees.models import FeeReceipt
+        receipt = FeeReceipt.objects.filter(
+            school=self.school, payment_id=self.pending.pk,
+        ).first()
+        self.assertIsNotNone(receipt)
+
+
+class OverpaymentCapTest(BaseFeesTest):
+    """Item 21: no entry point accepts more than the outstanding balance."""
+
+    def setUp(self):
+        super().setUp()
+        self.invoice = Invoice.objects.create(
+            school=self.school, student=self.student, term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+        self.admin = User.objects.create_user(
+            username='cap_admin', email='cap@test.com',
+            password='testpass123', school=self.school, role=Roles.ADMIN,
+        )
+
+    def test_record_cash_payment_rejects_over_balance(self):
+        import json
+        self.client.force_login(self.admin)
+        resp = self.client.post(
+            reverse('fees:record-cash', kwargs={'invoice_id': self.invoice.pk}),
+            data=json.dumps({'amount': '70000.00'}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('balance', resp.json()['error'].lower())
+
+    def test_record_cash_payment_accepts_partial(self):
+        import json
+        self.client.force_login(self.admin)
+        resp = self.client.post(
+            reverse('fees:record-cash', kwargs={'invoice_id': self.invoice.pk}),
+            data=json.dumps({'amount': '25000.00'}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.balance, Decimal('35000.00'))
+
+    def test_admin_invoice_detail_post_rejects_over_balance(self):
+        self.client.force_login(self.admin)
+        resp = self.client.post(
+            reverse('school_admin:invoice_detail', kwargs={'pk': self.invoice.pk}),
+            {'amount': '65000.00', 'method': Payment.Method.CASH, 'reference': ''},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(
+            self.invoice.payments.count(), 0,
+            'Over-balance payment must not be recorded.',
+        )
+
+    def test_partial_payments_accumulate_to_balance(self):
+        self.client.force_login(self.admin)
+        for i, part in enumerate(['20000.00', '15000.00', '25000.00']):
+            resp = self.client.post(
+                reverse('school_admin:invoice_detail', kwargs={'pk': self.invoice.pk}),
+                {'amount': part, 'method': Payment.Method.CASH, 'reference': f'PART-{i}'},
+            )
+            self.assertEqual(resp.status_code, 302)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.balance, Decimal('0.00'))
+        self.assertEqual(self.invoice.status, 'PAID')
+
+
+class ReceiptUniquenessTest(BaseFeesTest):
+    """Item 25: receipt numbers never collide across payments."""
+
+    def setUp(self):
+        super().setUp()
+        self.invoice = Invoice.objects.create(
+            school=self.school, student=self.student, term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def _make_payment(self, reference, amount):
+        return Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=amount, method=Payment.Method.PAYSTACK,
+            reference=reference, status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+        )
+
+    def test_two_payments_get_distinct_receipt_numbers(self):
+        from fees.paystack import issue_receipt
+        from fees.models import FeeReceipt
+
+        p1 = self._make_payment('RCP-UNIQ-1', Decimal('30000.00'))
+        p2 = self._make_payment('RCP-UNIQ-2', Decimal('30000.00'))
+        r1 = issue_receipt(p1)
+        r2 = issue_receipt(p2)
+        self.assertIsNotNone(r1)
+        self.assertIsNotNone(r2)
+        self.assertNotEqual(r1.receipt_number, r2.receipt_number)
+        self.assertEqual(FeeReceipt.objects.count(), 2)
+
+    def test_issuing_twice_for_same_payment_is_idempotent(self):
+        from fees.paystack import issue_receipt
+        from fees.models import FeeReceipt
+
+        payment = self._make_payment('RCP-UNIQ-3', Decimal('30000.00'))
+        r1 = issue_receipt(payment)
+        r2 = issue_receipt(payment)
+        self.assertEqual(r1.pk, r2.pk)
+        self.assertEqual(FeeReceipt.objects.count(), 1)

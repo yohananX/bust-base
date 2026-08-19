@@ -450,6 +450,13 @@ class InvoiceDetailView(RoleRequiredMixin, View):
         if amount <= 0:
             messages.error(request, 'Amount must be positive.')
             return redirect('school_admin:invoice_detail', pk=pk)
+        if amount > invoice.balance:
+            messages.error(
+                request,
+                f'Amount must be at most the outstanding balance '
+                f'(₦{invoice.balance:,.2f}).',
+            )
+            return redirect('school_admin:invoice_detail', pk=pk)
 
         reference = request.POST.get('reference', '')
         method = request.POST.get('method', '')
@@ -734,9 +741,12 @@ class PendingTransferConfirmView(RoleRequiredMixin, View):
             payment.status = Payment.Status.CONFIRMED
             payment.paid_on = timezone.now()
             payment.recorded_by = request.user
+            payment.confirmed_by = request.user
+            payment.confirmed_at = timezone.now()
             payment.webhook_processed = True
             payment.save(update_fields=[
-                'status', 'paid_on', 'recorded_by', 'webhook_processed',
+                'status', 'paid_on', 'recorded_by', 'confirmed_by',
+                'confirmed_at', 'webhook_processed',
             ])
             from fees.paystack import issue_receipt
             issue_receipt(payment)

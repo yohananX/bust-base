@@ -247,6 +247,7 @@ def confirm_payment_from_verify(payment, data):
 
     payment.status = Payment.Status.CONFIRMED
     payment.verified_at = timezone.now()
+    payment.confirmed_at = timezone.now()
     payment.webhook_processed = True
     payment.webhook_payload = {'verified': data}
     payment.currency = data.get('currency') or _default_currency()
@@ -268,10 +269,10 @@ def confirm_payment_from_verify(payment, data):
     payment.paid_by_phone = str(customer.get('phone') or '') or payment.paid_by_phone
 
     payment.save(update_fields=[
-        'status', 'verified_at', 'webhook_processed', 'webhook_payload',
-        'currency', 'fees_charged', 'paid_on', 'channel', 'card_last4',
-        'card_brand', 'bank_name', 'paid_by_email', 'paid_by_name',
-        'paid_by_phone',
+        'status', 'verified_at', 'confirmed_at', 'webhook_processed',
+        'webhook_payload', 'currency', 'fees_charged', 'paid_on', 'channel',
+        'card_last4', 'card_brand', 'bank_name', 'paid_by_email',
+        'paid_by_name', 'paid_by_phone',
     ])
     issue_receipt(payment)
     _notify_payment(
@@ -333,6 +334,7 @@ def _handle_charge_success(event, data, webhook_log):
         payment.webhook_processed = True
         payment.webhook_payload = event
         payment.verified_at = timezone.now()
+        payment.confirmed_at = timezone.now()
         payment.currency = data.get('currency') or _default_currency()
         payment.fees_charged = Decimal(str(data.get('fees') or 0)) / Decimal('100')
         authorization = data.get('authorization') or {}
@@ -348,9 +350,10 @@ def _handle_charge_success(event, data, webhook_log):
         payment.paid_by_phone = str(customer.get('phone') or '')
         payment.save(update_fields=[
             'status', 'paid_on', 'webhook_processed', 'webhook_payload',
-            'verified_at', 'currency', 'fees_charged', 'channel',
-            'card_last4', 'card_brand', 'bank_name', 'paid_by_email',
-            'paid_by_name', 'paid_by_phone', 'student', 'description',
+            'verified_at', 'confirmed_at', 'currency', 'fees_charged',
+            'channel', 'card_last4', 'card_brand', 'bank_name',
+            'paid_by_email', 'paid_by_name', 'paid_by_phone', 'student',
+            'description',
         ])
         issue_receipt(payment)
         _notify_payment(
@@ -431,6 +434,7 @@ def _handle_charge_success(event, data, webhook_log):
         webhook_processed=True,
         webhook_payload=event,
         verified_at=timezone.now(),
+        confirmed_at=timezone.now(),
         currency=data.get('currency') or _default_currency(),
         fees_charged=Decimal(str(data.get('fees') or 0)) / Decimal('100'),
         channel=authorization.get('channel', ''),

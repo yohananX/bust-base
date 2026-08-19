@@ -79,8 +79,11 @@ class ScoreAdmin(admin.ModelAdmin):
         updated = 0
         processed = set()
         for score in queryset.select_related('student', 'subject', 'term'):
-            # Get the student's current school class
-            current_enrollment = score.student.enrollments.filter(is_current=True).first()
+            # Get the student's class enrollment for the score's own session,
+            # so historical terms rank against their original class roster.
+            current_enrollment = score.student.enrollments.filter(
+                session=score.term.session
+            ).first()
             if not current_enrollment:
                 continue
             key = (current_enrollment.school_class_id, score.subject_id, score.term_id)
@@ -276,7 +279,7 @@ class TermResultAdmin(admin.ModelAdmin):
         # Get unique (school_class, term) pairs
         pairs = set()
         for tr in queryset.select_related('term', 'student__enrollments__school_class'):
-            for enrollment in tr.student.enrollments.filter(is_current=True):
+            for enrollment in tr.student.enrollments.filter(session=tr.term.session):
                 pairs.add((enrollment.school_class, tr.term))
 
         total = 0

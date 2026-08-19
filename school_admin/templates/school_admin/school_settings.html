@@ -79,7 +79,26 @@
       </div>
     </div>
 
-    {# ── Card C: Bank Account Details ── #}
+    {# ── Card C: Score Scheme ── #}
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <h2 class="text-base font-display font-semibold text-gray-900 mb-1">Score Scheme</h2>
+      <p class="text-sm text-gray-500 mb-5">Maximum marks per component — used by teachers when entering scores, and enforced during moderation. Total = 3 × Test Max + Exam Max.</p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Test Max (Test 1, 2, 3)</label>
+          <input type="number" name="test_max_score" min="1" max="32767" value="{{ school.test_max_score }}"
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Exam Max</label>
+          <input type="number" name="exam_max_score" min="1" max="32767" value="{{ school.exam_max_score }}"
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+      </div>
+    </div>
+
+    {# ── Card D: Bank Account Details ── #}
     <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
       <h2 class="text-base font-display font-semibold text-gray-900 mb-4">Bank Account Details</h2>
       <p class="text-sm text-gray-500 mb-5">Shown on the parent/student pay page as transfer instructions.</p>
