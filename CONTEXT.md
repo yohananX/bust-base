@@ -82,6 +82,25 @@ EMAIL/SMS are audit records, IN_APP rows power the bell.
 - Teachers/staff will get bell notifications later (payroll, moderation, term events).
 - Paystack webhooks may fire while the recipient is browsing → poll delivers the toast.
 
+## Multi-tenancy
+
+- Every business model inherits `TenantScopedModel` (school FK). Views scope by
+  `school=request.school` (set by `SchoolMiddleware` from `user.school`).
+- **Superusers (school=None):** `request.school` is `None`; `RoleRequiredMixin`
+  rejects them from every tenant portal (role `''` never matches), so a superuser
+  can never view tenant data. Cross-school work happens in the Django admin
+  (`/secure-control-panel/`); school admins are redirected away from it.
+- **No-user lookups:** when a queryset has no `school=` kwarg it must derive the
+  tenant transitively (e.g. `filter(student=...)` where the student was already
+  school-scoped, or `guardian=request.user`). New views must follow this rule;
+  direct `pk` lookups without `school=` are a bug.
+- **Paystack webhook** (`fees/paystack.py`) is the one intentional cross-tenant
+  entry point — it resolves by reference and re-checks HMAC + idempotency.
+- Portal-level leakage tests live in `tests/test_tenancy.py` (two schools × every
+  portal + superuser behaviour). Keep them green when adding views.
+- **PostgreSQL RLS is future work** (noted, not implemented); app-level scoping +
+  the tenancy test suite is the accepted protection today.
+
 ## Remaining ambiguities
 
 - Toast stacking limit (max 5 visible today).

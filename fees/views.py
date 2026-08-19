@@ -92,7 +92,7 @@ def record_cash_payment(request, invoice_id):
     if request.user.role != Roles.ADMIN:
         return JsonResponse({'error': 'Forbidden'}, status=403)
 
-    invoice = get_object_or_404(Invoice, pk=invoice_id)
+    invoice = get_object_or_404(Invoice, pk=invoice_id, school=request.school)
     data = json.loads(request.body)
     amount = Decimal(str(data.get('amount', 0)))
 
@@ -129,7 +129,7 @@ def invoice_status_partial(request, invoice_id):
     from django.shortcuts import render, get_object_or_404
     from .models import Invoice
 
-    invoice = get_object_or_404(Invoice, pk=invoice_id)
+    invoice = get_object_or_404(Invoice, pk=invoice_id, school=request.school)
     user = request.user
 
     # Permission check — same pattern as invoice_detail
