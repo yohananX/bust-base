@@ -896,3 +896,87 @@ class StudentDetailReceiptTests(TestCase):
         resp = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'ADM-OPEN-001')
+
+
+class StudentMiddleNameTests(TestCase):
+    """Students with multiple names keep their middle name end-to-end."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='MNS School', short_code='mns')
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2026/2027',
+            start_date=date(2026, 9, 1), end_date=date(2027, 8, 31), is_current=True,
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1', level='JSS1',
+        )
+        self.admin_user = User.objects.create_user(
+            username='mnsadmin', email='mns@test.com', password='pass123',
+            school=self.school, role=Roles.ADMIN, first_name='Admin', last_name='MNS',
+        )
+        self.student_user = User.objects.create_user(
+            username='mnsstud', email='mnsstud@test.com', password='pass123',
+            school=self.school, role=Roles.STUDENT,
+            first_name='Kid', last_name='One',
+        )
+        self.student = Student.objects.create(
+            school=self.school, user=self.student_user, admission_number='M001',
+            date_of_birth=date(2012, 1, 1), gender='MALE',
+            admission_date=date(2026, 9, 1), status='ACTIVE',
+        )
+
+    def test_student_create_saves_middle_name(self):
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'New', 'middle_name': 'Paul', 'last_name': 'Kid',
+            'admission_number': 'M002',
+            'date_of_birth': '2013-05-05', 'gender': 'FEMALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+        })
+        self.assertEqual(resp.status_code, 302)
+        user = User.objects.get(username='new.kid')
+        self.assertEqual(user.middle_name, 'Paul')
+        self.assertEqual(user.get_full_name(), 'New Paul Kid')
+
+    def test_student_create_without_middle_name(self):
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'No', 'middle_name': '', 'last_name': 'Middle',
+            'admission_number': 'M003',
+            'date_of_birth': '2013-05-05', 'gender': 'MALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+        })
+        self.assertEqual(resp.status_code, 302)
+        user = User.objects.get(username='no.middle')
+        self.assertEqual(user.middle_name, '')
+        self.assertEqual(user.get_full_name(), 'No Middle')
+
+    def test_student_edit_updates_middle_name(self):
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(reverse('school_admin:student_edit', args=[self.student.pk]), {
+            'user_first_name': 'Kid', 'user_middle_name': 'Ade', 'user_last_name': 'One',
+            'user_email': 'mnsstud@test.com', 'user_phone_number': '',
+            'admission_number': 'M001',
+            'date_of_birth': '2012-01-01', 'gender': 'MALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.student_user.refresh_from_db()
+        self.assertEqual(self.student_user.middle_name, 'Ade')
+        self.assertEqual(self.student_user.get_full_name(), 'Kid Ade One')
+
+    def test_edit_form_renders_current_middle_name(self):
+        self.student_user.middle_name = 'Ade'
+        self.student_user.save(update_fields=['middle_name'])
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(reverse('school_admin:student_edit', args=[self.student.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(
+            resp,
+            'name="user_middle_name" value="Ade"',
+            html=False,
+        )

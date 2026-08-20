@@ -50,6 +50,11 @@ class User(AbstractUser, TenantScopedModel):
         blank=True,
         verbose_name=_('role'),
     )
+    middle_name = models.CharField(
+        max_length=150,
+        blank=True,
+        verbose_name=_('middle name'),
+    )
     phone_number = models.CharField(
         max_length=30,
         blank=True,
@@ -78,3 +83,8 @@ class User(AbstractUser, TenantScopedModel):
 
     def __str__(self):
         return self.get_full_name() or self.username
+
+    def get_full_name(self):
+        """Full name as First [Middle] Last, omitting middle when blank."""
+        parts = [p for p in (self.first_name, self.middle_name, self.last_name) if p]
+        return ' '.join(parts)

@@ -168,6 +168,7 @@ class StudentCreateView(RoleRequiredMixin, View):
             with transaction.atomic():
                 # --- Create new user ---
                 first_name = request.POST.get('first_name', '').strip()
+                middle_name = request.POST.get('middle_name', '').strip()
                 last_name = request.POST.get('last_name', '').strip()
                 email = request.POST.get('new_email', '').strip()
                 phone_number = request.POST.get('new_phone_number', '').strip()
@@ -196,6 +197,7 @@ class StudentCreateView(RoleRequiredMixin, View):
                     email=email,
                     password=password,
                     first_name=first_name,
+                    middle_name=middle_name,
                     last_name=last_name,
                     role=Roles.STUDENT,
                     school=school,
@@ -366,6 +368,7 @@ class StudentEditView(RoleRequiredMixin, View):
                 # Update linked user fields
                 user = student.user
                 user.first_name = request.POST.get('user_first_name', '').strip()
+                user.middle_name = request.POST.get('user_middle_name', '').strip()
                 user.last_name = request.POST.get('user_last_name', '').strip()
                 user.email = request.POST.get('user_email', '').strip()
                 user.phone_number = request.POST.get('user_phone_number', '').strip()
