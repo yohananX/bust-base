@@ -15,7 +15,7 @@ from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
 from students.models import Student, SchoolClass, ClassEnrollment, StudentGuardianLink
 from core.models import AcademicSession
-from fees.models import Invoice
+from fees.models import Invoice, Payment
 
 
 class StudentListView(RoleRequiredMixin, View):
@@ -99,11 +99,16 @@ class StudentDetailView(RoleRequiredMixin, View):
         from fees.selectors import invoices_with_balance
         invoices = invoices_with_balance(invoices)
 
+        invoice_less_payments = Payment.objects.filter(
+            student=student, invoice__isnull=True,
+        ).order_by('-paid_on')
+
         context = {
             'student': student,
             'enrollments': enrollments,
             'guardian_links': guardian_links,
             'invoices': invoices,
+            'invoice_less_payments': invoice_less_payments,
             'parents': User.objects.filter(school=school, role=Roles.PARENT, is_active=True),
             'classes': SchoolClass.objects.filter(school=school, is_active=True),
             'sessions': AcademicSession.objects.filter(school=school),
