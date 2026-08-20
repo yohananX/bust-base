@@ -6,13 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Grace House School System{% endblock %}</title>
 
-  {# Google Fonts #}
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:wght@400;600;700&display=swap" rel="stylesheet">
+{# Vendored assets (self-hosted; no CDN required) #}
+  <link rel="stylesheet" href="{% static 'vendor/fonts/fonts.css' %}">
 
-  {# Tailwind CSS via CDN #}
-  <script src="https://cdn.tailwindcss.com"></script>
+  {# Tailwind CSS (vendored Play CDN build, v3.4.17) #}
+  <script src="{% static 'vendor/tailwind.js' %}"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -82,19 +80,19 @@
   {# CSS Tokens #}
   <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
 
-  {# HTMX #}
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+{# HTMX #}
+  <script src="{% static 'vendor/htmx.min.js' %}"></script>
   <script>
     document.addEventListener('htmx:configRequest', function(evt) {
       evt.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
     });
   </script>
 
-  {# Chart.js #}
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{# Chart.js #}
+  <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
 
-  {# Lucide Icons #}
-  <script src="https://unpkg.com/lucide@latest"></script>
+{# Lucide Icons #}
+  <script src="{% static 'vendor/lucide.min.js' %}"></script>
 
   <style>
     .sidebar-active {
