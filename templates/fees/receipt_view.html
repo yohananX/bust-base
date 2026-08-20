@@ -20,8 +20,8 @@
     .receipt-sheet .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 8px !important; }
   }
 </style>
-{% with student_obj=student|default:payment.student|default:payment.invoice.student %}
-{% with school_obj=school|default:payment.invoice.school %}
+{% with student_obj=student|default:payment.student|default_if_none:'' %}
+{% with school_obj=school|default_if_none:'' %}
 {% with receipt_obj=receipt|default:payment.receipt %}
 {% with current_enrollment=student_obj.enrollments.all|first %}
 <div class="max-w-3xl mx-auto space-y-6">

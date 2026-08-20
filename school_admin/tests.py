@@ -801,3 +801,98 @@ class FirstLoginPasswordFlagTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.student_user.refresh_from_db()
         self.assertTrue(self.student_user.must_change_password)
+class StudentDetailReceiptTests(TestCase):
+    """Admins see receipt links for every confirmed payment on the
+    student detail page — including invoice-less payments."""
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name='Grace House School', short_code='grace-house',
+        )
+        self.admin_user = User.objects.create_user(
+            username='admin', email='admin@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school, session=self.session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+        student_user = User.objects.create_user(
+            username='student', email='student@test.com', password='testpass123',
+            school=self.school, role=Roles.STUDENT,
+            first_name='Ada', last_name='Lovelace',
+        )
+        self.student = Student.objects.create(
+            school=self.school, user=student_user,
+            admission_number='STU-RCPT-001',
+            date_of_birth=date(2010, 1, 1), gender=Student.MALE,
+            admission_date=date(2025, 9, 1), status=Student.ACTIVE,
+        )
+
+    def _confirmed_payment(self, **kwargs):
+        return Payment.objects.create(
+            school=self.school,
+            student=self.student,
+            amount=Decimal('25000.00'),
+            method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+            **kwargs,
+        )
+
+    def test_invoice_receipt_links_rendered(self):
+        invoice = Invoice.objects.create(
+            school=self.school, student=self.student, term=self.term,
+            total_amount=Decimal('50000.00'),
+        )
+        payment = self._confirmed_payment(
+            invoice=invoice, reference='INV-REF-001',
+        )
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(reverse('school_admin:student_detail', args=[self.student.pk]))
+        self.assertEqual(resp.status_code, 200)
+        receipt_url = reverse('fees:payment-receipt', args=[payment.pk])
+        self.assertContains(resp, receipt_url)
+        self.assertContains(resp, 'INV-REF-001')
+
+    def test_invoice_less_payment_panel_with_receipt(self):
+        payment = self._confirmed_payment(reference='STU-RCPT-A1')
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(reverse('school_admin:student_detail', args=[self.student.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Payments (no invoice)')
+        receipt_url = reverse('fees:payment-receipt', args=[payment.pk])
+        self.assertContains(resp, receipt_url)
+        self.assertContains(resp, 'STU-RCPT-A1')
+
+    def test_pending_payment_has_no_receipt_link(self):
+        pending = Payment.objects.create(
+            school=self.school,
+            student=self.student,
+            amount=Decimal('25000.00'),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(reverse('school_admin:student_detail', args=[self.student.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(
+            resp, reverse('fees:payment-receipt', args=[pending.pk])
+        )
+        self.assertContains(resp, 'Pending')
+
+    def test_receipt_page_accessible_to_admin(self):
+        """Admins can open the receipt page directly for a confirmed payment."""
+        payment = self._confirmed_payment(reference='ADM-OPEN-001')
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'ADM-OPEN-001')

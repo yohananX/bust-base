@@ -197,6 +197,7 @@
             <th class="px-4 py-2.5 font-medium">Paid</th>
             <th class="px-4 py-2.5 font-medium">Balance</th>
             <th class="px-4 py-2.5 font-medium">Status</th>
+            <th class="px-4 py-2.5 font-medium">Receipts</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
@@ -211,6 +212,19 @@
               {% elif inv.amount_paid_annotated > 0 %}{% include "components/badge.html" with status="warning" text="PARTIAL" %}
               {% else %}{% include "components/badge.html" with status="danger" text="UNPAID" %}{% endif %}
             </td>
+            <td class="px-4 py-3">
+              {% for payment in inv.payments.all %}
+                {% if payment.status == 'CONFIRMED' %}
+                <a href="{% url 'fees:payment-receipt' payment.pk %}" target="_blank"
+                   class="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-hover mb-1 mr-2 whitespace-nowrap">
+                  <i data-lucide="receipt" class="w-3.5 h-3.5"></i>
+                  {{ payment.reference|default:payment.pk }}
+                </a>
+                {% endif %}
+              {% empty %}
+                <span class="text-gray-300">—</span>
+              {% endfor %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -220,6 +234,46 @@
     <p class="text-gray-400 text-sm">No invoices found.</p>
     {% endif %}
   </div>
+
+  {# ── Payments (no invoice) ── #}
+  {% if invoice_less_payments %}
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <h3 class="text-sm font-semibold text-gray-800 mb-4">Payments (no invoice)</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-4 py-2.5 font-medium">Date</th>
+            <th class="px-4 py-2.5 font-medium">Method</th>
+            <th class="px-4 py-2.5 font-medium">Amount</th>
+            <th class="px-4 py-2.5 font-medium">Reference</th>
+            <th class="px-4 py-2.5 font-medium">Receipt</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for payment in invoice_less_payments %}
+          <tr class="hover:bg-gray-50/50">
+            <td class="px-4 py-3 text-gray-900">{{ payment.paid_on|date:"d M Y" }}</td>
+            <td class="px-4 py-3 text-gray-600">{{ payment.get_method_display }}</td>
+            <td class="px-4 py-3 text-gray-900 font-medium">NGN {{ payment.amount|floatformat:2 }}</td>
+            <td class="px-4 py-3 text-gray-500">{{ payment.reference|default:"—" }}</td>
+            <td class="px-4 py-3">
+              {% if payment.status == 'CONFIRMED' %}
+              <a href="{% url 'fees:payment-receipt' payment.pk %}" target="_blank"
+                 class="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-hover">
+                <i data-lucide="receipt" class="w-3.5 h-3.5"></i>View Receipt
+              </a>
+              {% else %}
+              <span class="text-xs text-gray-400">{{ payment.get_status_display }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
 
   {# ── Record Payment (invoice-less or attached) ── #}
   <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
