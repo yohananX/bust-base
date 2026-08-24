@@ -1,0 +1,20 @@
+# Local Area Network reverse proxy for the school portal.
+#
+# ONE Django instance (waitress on 127.0.0.1:8000) serves the whole app.
+# All roles live under one URL — the app routes to the right portal after
+# login, so there is a single entry point for everyone.
+#
+# http:// scheme on purpose: this is a private LAN with plain HTTP.
+# Caddy would otherwise try to fetch public TLS certs for portal.ghis.sch.
+#
+# Usage (as admin):  caddy start --config Caddyfile
+
+http://portal.ghis.sch, http://192.168.0.50 {
+	reverse_proxy 127.0.0.1:8000
+}
+
+# Catch-all: proxy ANY host/IP on port 80 to the app.
+# Lets you browse http://<any-current-ip> directly, no matter the network.
+:80 {
+	reverse_proxy 127.0.0.1:8000
+}

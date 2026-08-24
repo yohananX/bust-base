@@ -1,5 +1,4 @@
 """Staff management views for school admin portal."""
-import secrets
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
@@ -9,6 +8,7 @@ from django.db.models import Q
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
+from accounts.utils import generate_password, unique_username
 
 
 class StaffListView(RoleRequiredMixin, View):
@@ -54,32 +54,28 @@ class StaffCreateView(RoleRequiredMixin, View):
 
     def post(self, request):
         school = request.school
-        username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()
         first_name = request.POST.get('first_name', '').strip()
         last_name = request.POST.get('last_name', '').strip()
         role = request.POST.get('role', '')
         phone_number = request.POST.get('phone_number', '').strip()
 
-        # Phone is required, email is not
-        if not all([username, first_name, last_name, role, phone_number]):
-            messages.error(request, 'Username, name, role, and phone number are required.')
+        # Phone is required, email is not; username is auto-generated
+        if not all([first_name, last_name, role, phone_number]):
+            messages.error(request, 'Name, role, and phone number are required.')
             return render(request, 'school_admin/staff/staff_form.html', {'staff_roles': self.STAFF_ROLES})
 
         if role not in [Roles.TEACHER, Roles.ADMIN]:
             messages.error(request, 'Staff role must be Teacher or Admin.')
             return render(request, 'school_admin/staff/staff_form.html', {'staff_roles': self.STAFF_ROLES})
 
-        if User.objects.filter(username=username).exists():
-            messages.error(request, f'Username "{username}" is already taken.')
-            return render(request, 'school_admin/staff/staff_form.html', {'staff_roles': self.STAFF_ROLES})
-
         if email and User.objects.filter(email=email).exists():
             messages.error(request, f'Email "{email}" is already in use.')
             return render(request, 'school_admin/staff/staff_form.html', {'staff_roles': self.STAFF_ROLES})
 
-        # Auto-generate password
-        password = secrets.token_urlsafe(6)
+        # Auto-generate username and password
+        username = unique_username(first_name, last_name)
+        password = generate_password(8)
 
         user = User.objects.create_user(
             username=username,
@@ -92,7 +88,11 @@ class StaffCreateView(RoleRequiredMixin, View):
             phone_number=phone_number,
         )
 
-        messages.success(request, f'Staff "{user.get_full_name() or user.username}" created. Password: {password}')
+        messages.success(
+            request,
+            f'Staff "{user.get_full_name() or user.username}" created. '
+            f'Username: {user.username} Password: {password}'
+        )
 
         if role == Roles.TEACHER:
             return redirect(f"{reverse('school_admin:assignment_list')}?teacher_id={user.pk}")

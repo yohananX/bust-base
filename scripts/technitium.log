@@ -1,0 +1,23 @@
+Technitium DNS Server was started successfully.
+Using config folder: C:\Users\pasto\bust-base\tools\technitium\config
+
+Note: Open http://change_consults:5380/ in web browser to access web console.
+
+Press [CTRL + C] to stop...
+[23/08/2026 16:36:22.98] starting technitium as pasto from C:\Users\pasto\bust-base\tools\technitium 
+System.IO.IOException: The process cannot access the file 'C:\Users\pasto\bust-base\tools\technitium\config\logs\2026-08-23.log' because it is being used by another process.
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.CreateFile(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+   at System.IO.Strategies.FileStreamHelpers.ChooseStrategyCore(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+   at System.IO.FileStream..ctor(String path, FileMode mode, FileAccess access, FileShare share)
+   at DnsServerCore.LogManager.StartNewLogFile() in Z:\Technitium\Projects\DnsServer\DnsServerCore\LogManager.cs:line 590
+   at DnsServerCore.LogManager.StartLogging() in Z:\Technitium\Projects\DnsServer\DnsServerCore\LogManager.cs:line 419
+   at DnsServerCore.LogManager.ApplyLoggingType() in Z:\Technitium\Projects\DnsServer\DnsServerCore\LogManager.cs:line 537
+   at DnsServerCore.LogManager.LoadConfigFile() in Z:\Technitium\Projects\DnsServer\DnsServerCore\LogManager.cs:line 288
+   at DnsServerCore.LogManager..ctor(Boolean isPortableApp, String configFolder) in Z:\Technitium\Projects\DnsServer\DnsServerCore\LogManager.cs:line 151
+   at DnsServerCore.DnsWebService..ctor(Boolean isPortableApp, String configFolder, Uri updateCheckUri) in Z:\Technitium\Projects\DnsServer\DnsServerCore\DnsWebService.cs:line 176
+   at DnsServerApp.Program.Main(String[] args) in Z:\Technitium\Projects\DnsServer\DnsServerApp\Program.cs:line 81
+
+Technitium DNS Server is stopping...
+Technitium DNS Server was stopped successfully.

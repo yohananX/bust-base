@@ -372,7 +372,7 @@
             {% if children and payment.student %}{{ payment.student.user.get_full_name }} &middot; {% endif %}{{ payment.paid_on|date:"d M Y H:i" }}
           </p>
         </div>
-        <div class="flex items-center gap-3 flex-shrink-0">
+        <div class="flex flex-wrap items-center gap-3 flex-shrink-0">
           <span class="text-sm font-semibold text-gray-900 tabular-nums">&#8358;{{ payment.amount|floatformat:2 }}</span>
           {% if payment.status == 'PENDING' %}
             {% include 'components/badge.html' with status='warning' text='Awaiting confirmation' %}

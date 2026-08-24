@@ -131,6 +131,7 @@ def sidebar_nav(request):
         _nav_item(path, 'Scores', '/school-admin/scores/', 'table', section='Academics'),
         _nav_item(path, 'Review', '/school-admin/results/review/', 'eye', section='Academics', badge=badges.get('/school-admin/results/review/')),
         _nav_item(path, 'Publish', '/school-admin/results/publish/', 'send', section='Academics'),
+        _nav_item(path, 'Extra Lessons', '/school-admin/lessons/', 'sun', section='Academics'),
         _nav_item(path, 'Fees & Pricing', '/school-admin/fees/', 'tags', section='Fees'),
         _nav_item(path, 'Invoices', '/school-admin/invoices/', 'file-text', section='Fees', badge=badges.get('/school-admin/invoices/')),
 _nav_item(path, 'Fees Due', '/school-admin/fees/outstanding/', 'alert-circle', section='Fees'),
@@ -147,6 +148,7 @@ _nav_item(path, 'Awaiting Confirmation', '/school-admin/fees/pending/', 'clock',
     teacher_nav = [
         _nav_item(path, 'Dashboard', '/teacher/', 'layout-dashboard', exact=True),
         _nav_item(path, 'My Assignments', '/teacher/assignments/', 'clipboard-list'),
+        _nav_item(path, 'My Extra Classes', '/teacher/lessons/', 'sun'),
         _nav_item(path, 'My Payslips', '/payroll/payslips/', 'banknote'),
     ]
 

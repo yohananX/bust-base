@@ -1,0 +1,54 @@
+{
+  "agent": "general",
+  "task": "Mobile-responsiveness fixes for school_admin templates",
+  "date": "2026-08-20",
+  "scope": "21 school_admin templates",
+  "changes": [
+    {
+      "file": "school_admin/templates/school_admin/class_list.html",
+      "change": "wrapped 1 table in overflow-x-auto"
+    },
+    {
+      "file": "school_admin/templates/school_admin/subject_list.html",
+      "change": "wrapped 1 table in overflow-x-auto"
+    },
+    {
+      "file": "school_admin/templates/school_admin/outstanding_fees.html",
+      "change": "wrapped 3 tables in overflow-x-auto (By-Class, By-Term, Debtors)"
+    },
+    {
+      "file": "school_admin/templates/school_admin/_review_results.html",
+      "change": "wrapped 1 table in overflow-x-auto (Class Summary; matrix table left as-is — already scrolls via .matrix-wrap overflow:auto)"
+    },
+    {
+      "file": "school_admin/templates/school_admin/publish_results.html",
+      "change": "wrapped 1 table in overflow-x-auto"
+    },
+    {
+      "file": "school_admin/templates/school_admin/payroll_list.html",
+      "change": "made non-responsive grid-cols-3 form responsive: grid-cols-1 md:grid-cols-3"
+    }
+  ],
+  "unchanged": [
+    "assignment_list.html (no table, no non-responsive grids)",
+    "fee_category_list.html (table already wrapped)",
+    "fee_pricing_list.html (table already wrapped)",
+    "student_list.html (table already wrapped)",
+    "user_list.html (table already wrapped)",
+    "parent_list.html (table already wrapped)",
+    "invoice_list.html (table already wrapped)",
+    "notification_log.html (table already wrapped)",
+    "staff/staff_list.html (table already wrapped)",
+    "generate_invoices.html (no table)",
+    "financial_report.html (no table; grid already grid-cols-1-prefixed)",
+    "review_results.html (includes _review_results.html)",
+    "pending_transfers.html (table already wrapped; grid already responsive)",
+    "expenditure_list.html (table already wrapped)",
+    "project_list.html (no table; grid already responsive)"
+  ],
+  "notes": [
+    "No colors, brand tokens, text content, logic, or Django tags modified.",
+    "Fixed min-w-[200/220px] filter widths left untouched (well under phone viewport width, do not force page wider than screen).",
+    "Verified: python manage.py check -> 'System check identified no issues (0 silenced).'"
+  ]
+}

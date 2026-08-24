@@ -22,7 +22,7 @@
         <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
           <i data-lucide="filter" class="w-4 h-4 mr-2"></i>Filter
         </button>
-        <a href="{% url 'school_admin:project_list' %}" class="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Clear</a>
+        <a href="{% url 'finance:project_list' %}" class="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Clear</a>
       </div>
     </form>
   </div>
@@ -32,7 +32,7 @@
     <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <div class="flex items-start justify-between gap-3 mb-3">
         <h3 class="font-display font-semibold text-gray-900">
-          <a href="{% url 'school_admin:project_detail' p.pk %}" class="text-primary hover:underline">{{ p.name }}</a>
+          <a href="{% url 'finance:project_detail' p.pk %}" class="text-primary hover:underline">{{ p.name }}</a>
         </h3>
         {% if p.status == 'APPROVED' or p.status == 'IN_PROGRESS' or p.status == 'COMPLETED' %}
           {% include 'components/badge.html' with status='success' text=p.get_status_display %}

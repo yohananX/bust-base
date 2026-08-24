@@ -5,9 +5,6 @@ created or batch-reset users. Raw passwords live ONLY in the session,
 keyed by user pk (`credential_slip_<pk>`), and are never persisted
 to the database, files, or logs.
 """
-import secrets
-import string
-
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
@@ -16,12 +13,7 @@ from django.views.generic.base import View
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
-
-
-def _random_password(length=10):
-    """Cryptographically random alphanumeric password."""
-    alphabet = string.ascii_letters + string.digits
-    return ''.join(secrets.choice(alphabet) for _ in range(length))
+from accounts.utils import generate_password
 
 
 def _session_key(pk):
@@ -92,7 +84,7 @@ class CredentialBatchView(RoleRequiredMixin, View):
         with transaction.atomic():
             pairs = []
             for user in users:
-                raw_password = _random_password()
+                raw_password = generate_password()
                 user.password = make_password(raw_password, hasher='md5')
                 user.must_change_password = True
                 pairs.append((user, raw_password))
@@ -139,7 +131,7 @@ class CredentialSingleResetView(RoleRequiredMixin, View):
             pk=pk,
             role__in=[Roles.TEACHER, Roles.STUDENT, Roles.PARENT],
         )
-        raw_password = _random_password()
+        raw_password = generate_password()
         user.set_password(raw_password)
         user.must_change_password = True
         user.save(update_fields=['password', 'must_change_password'])

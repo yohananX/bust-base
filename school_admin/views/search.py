@@ -34,20 +34,26 @@ class EntitySearchAPIView(RoleRequiredMixin, View):
         return None
 
     def get(self, request):
-        payload = [self.serialize(o) for o in self.get_queryset(request)]
-        response = JsonResponse(payload, safe=False)
-
         last_modified = self.get_last_modified(request)
+
         if last_modified:
-            response['Last-Modified'] = http_date(last_modified.timestamp())
+            lm_ts = last_modified.timestamp()
+            lm_header = http_date(lm_ts)
             since = request.META.get('HTTP_IF_MODIFIED_SINCE')
             if since:
                 try:
-                    if int(last_modified.timestamp()) <= parse_http_date(since):
-                        return HttpResponseNotModified()
+                    if int(lm_ts) <= parse_http_date(since):
+                        resp = HttpResponseNotModified()
+                        resp['Last-Modified'] = lm_header
+                        resp['Cache-Control'] = 'private, max-age=0, must-revalidate'
+                        return resp
                 except (ValueError, TypeError):
                     pass
 
+        payload = [self.serialize(o) for o in self.get_queryset(request)]
+        response = JsonResponse(payload, safe=False)
+        if last_modified:
+            response['Last-Modified'] = lm_header
         response['Cache-Control'] = 'private, max-age=0, must-revalidate'
         return response
 

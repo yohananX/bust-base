@@ -15,12 +15,16 @@ urlpatterns = [
     path('secure-control-panel/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
     path('teacher/', include('academics.urls')),
+    path('teacher/lessons/', include('lessons.teacher_urls')),
     path('parent/', include('students.urls')),
     path('student/', include('students.student_urls')),
     path('fees/', include('fees.urls')),
     path('payroll/', include('payroll.urls')),
     path('notifications/', include('notifications.urls')),
+    path('school-admin/lessons/', include('lessons.urls')),
+    path('school-admin/import/', include('data_import.urls')),
     path('school-admin/', include('school_admin.urls')),
+    path('school-admin/', include('finance.urls')),
     path('', RedirectView.as_view(url='/accounts/redirect/', permanent=False), name='home'),
 ]
 

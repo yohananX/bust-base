@@ -1,0 +1,1661 @@
+19:51:23 [Q] INFO Q Cluster speaker-quebec-six-five starting.
+19:51:24 [Q] INFO Process-c6630a596e314ae68d55af25ae016d71 guarding cluster speaker-quebec-six-five [GHSS]
+19:51:24 [Q] INFO Q Cluster speaker-quebec-six-five [GHSS] running.
+19:51:25 [Q] INFO Process-a00f82b1d4314d438c3b3c163c195c14 ready for work at 18344
+19:51:25 [Q] INFO Process-26b003cb40cd476bb96771c64b18b65f ready for work at 11976
+19:51:25 [Q] INFO Process-00ff94413382439c9c852c338399f310 monitoring at 14400
+19:51:25 [Q] INFO Process-964ae03815124d33a6e512c2a83b33de pushing tasks at 1360
+Process Process-964ae03815124d33a6e512c2a83b33de:
+Process Process-a00f82b1d4314d438c3b3c163c195c14:
+Process Process-26b003cb40cd476bb96771c64b18b65f:
+Process Process-00ff94413382439c9c852c338399f310:
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 102, in get
+    with self._rlock:
+         ^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+07:43:02 [Q] CRITICAL reincarnated worker Process-26b003cb40cd476bb96771c64b18b65f after death
+07:43:02 [Q] CRITICAL reincarnated monitor Process-00ff94413382439c9c852c338399f310 after sudden death
+07:43:02 [Q] CRITICAL reincarnated pusher Process-964ae03815124d33a6e512c2a83b33de after sudden death
+07:43:02 [Q] CRITICAL reincarnated worker Process-a00f82b1d4314d438c3b3c163c195c14 after death
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 13, in <module>
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 13, in <module>
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 11, in <module>
+    apps.check_apps_ready()
+    apps.check_apps_ready()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+    apps.check_apps_ready()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 9, in <module>
+    apps.check_apps_ready()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+During handling of the above exception, another exception occurred:
+During handling of the above exception, another exception occurred:
+
+
+During handling of the above exception, another exception occurred:
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+
+  File "<string>", line 1, in <module>
+Traceback (most recent call last):
+During handling of the above exception, another exception occurred:
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+  File "<string>", line 1, in <module>
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+    exitcode = _main(fd, parent_sentinel)
+    exitcode = _main(fd, parent_sentinel)
+    exitcode = _main(fd, parent_sentinel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+    self = reduction.pickle.load(from_parent)
+    self = reduction.pickle.load(from_parent)
+    self = reduction.pickle.load(from_parent)
+    self = reduction.pickle.load(from_parent)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 13, in <module>
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 17, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 15, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 17, in <module>
+    django.setup()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 24, in setup
+    django.setup()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 24, in setup
+    django.setup()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 24, in setup
+    django.setup()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 16, in setup
+    apps.populate(settings.INSTALLED_APPS)
+    from django.urls import set_script_prefix
+    apps.populate(settings.INSTALLED_APPS)
+    apps.populate(settings.INSTALLED_APPS)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\urls\__init__.py", line 1, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 116, in populate
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 116, in populate
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 116, in populate
+    app_config.import_models()
+    app_config.import_models()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\config.py", line 269, in import_models
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\config.py", line 269, in import_models
+    app_config.import_models()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\config.py", line 269, in import_models
+    self.models_module = import_module(models_module_name)
+    self.models_module = import_module(models_module_name)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py", line 90, in import_module
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    self.models_module = import_module(models_module_name)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+    return _bootstrap._gcd_import(name[level:], package, level)
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\core\models.py", line 14, in <module>
+  File "C:\Users\pasto\bust-base\core\models.py", line 14, in <module>
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\core\models.py", line 14, in <module>
+    class TenantScopedModel(models.Model):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\base.py", line 145, in __new__
+    class TenantScopedModel(models.Model):
+    class TenantScopedModel(models.Model):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\base.py", line 145, in __new__
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\base.py", line 145, in __new__
+    new_class.add_to_class("_meta", Options(meta, app_label))
+    new_class.add_to_class("_meta", Options(meta, app_label))
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\base.py", line 393, in add_to_class
+    new_class.add_to_class("_meta", Options(meta, app_label))
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\base.py", line 393, in add_to_class
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\base.py", line 393, in add_to_class
+    value.contribute_to_class(cls, name)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\options.py", line 238, in contribute_to_class
+    value.contribute_to_class(cls, name)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\options.py", line 238, in contribute_to_class
+    value.contribute_to_class(cls, name)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\options.py", line 238, in contribute_to_class
+    from .base import (
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\urls\base.py", line 5, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\connection.py", line 15, in __getattr__
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\connection.py", line 15, in __getattr__
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\connection.py", line 15, in __getattr__
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\http\__init__.py", line 9, in <module>
+    from django.http.response import (
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\http\response.py", line 19, in <module>
+    from django.core.serializers.json import DjangoJSONEncoder
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\core\serializers\__init__.py", line 23, in <module>
+    return getattr(self._connections[self._alias], item)
+    return getattr(self._connections[self._alias], item)
+    return getattr(self._connections[self._alias], item)
+                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\connection.py", line 62, in __getitem__
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\connection.py", line 62, in __getitem__
+                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\connection.py", line 62, in __getitem__
+    conn = self.create_connection(alias)
+    conn = self.create_connection(alias)
+    conn = self.create_connection(alias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\utils.py", line 196, in create_connection
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\utils.py", line 196, in create_connection
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\utils.py", line 196, in create_connection
+    backend = load_backend(db["ENGINE"])
+    backend = load_backend(db["ENGINE"])
+    backend = load_backend(db["ENGINE"])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\utils.py", line 116, in load_backend
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\utils.py", line 116, in load_backend
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\utils.py", line 116, in load_backend
+    return import_module("%s.base" % backend_name)
+    return import_module("%s.base" % backend_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    return import_module("%s.base" % backend_name)
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py", line 90, in import_module
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py", line 90, in import_module
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 25, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 25, in <module>
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 25, in <module>
+    from .schema import DatabaseSchemaEditor
+    from .schema import DatabaseSchemaEditor
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\backends\sqlite3\schema.py", line 6, in <module>
+    from .schema import DatabaseSchemaEditor
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\backends\sqlite3\schema.py", line 6, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\backends\sqlite3\schema.py", line 6, in <module>
+    from django.core.serializers.base import SerializerDoesNotExist
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\core\serializers\base.py", line 8, in <module>
+    from django.db.backends.base.schema import BaseDatabaseSchemaEditor
+    from django.db.backends.base.schema import BaseDatabaseSchemaEditor
+    from django.db.backends.base.schema import BaseDatabaseSchemaEditor
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1091, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 757, in _compile_bytecode
+  File "<frozen importlib._bootstrap_external>", line 757, in _compile_bytecode
+  File "<frozen importlib._bootstrap_external>", line 1190, in get_data
+KeyboardInterrupt
+KeyboardInterrupt
+KeyboardInterrupt
+    from django.db import models
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\__init__.py", line 3, in <module>
+    from django.db.models.aggregates import *  # NOQA
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\aggregates.py", line 7, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\expressions.py", line 13, in <module>
+    from django.db.models import fields
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\fields\__init__.py", line 11, in <module>
+    from django import forms
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\forms\__init__.py", line 6, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\forms\boundfield.py", line 4, in <module>
+    from django.forms.utils import RenderableFieldMixin, pretty_name
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\forms\utils.py", line 6, in <module>
+    from django.forms.renderers import get_default_renderer
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\forms\renderers.py", line 5, in <module>
+    from django.template.backends.django import DjangoTemplates
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\template\__init__.py", line 44, in <module>
+    from .engine import Engine
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\template\engine.py", line 7, in <module>
+07:43:35 [Q] INFO Q Cluster autumn-mars-hotel-moon starting.
+07:43:36 [Q] INFO Process-debdce12b07c4fb490492dc3a5dbffc2 guarding cluster autumn-mars-hotel-moon [GHSS]
+07:43:36 [Q] INFO Q Cluster autumn-mars-hotel-moon [GHSS] running.
+07:43:37 [Q] INFO Process-0f6e82d304924bdc9d3de6a13d38b78d ready for work at 32364
+07:43:37 [Q] INFO Process-9b3e2e3c79984694a1d3762754cc2f39 ready for work at 10356
+07:43:37 [Q] INFO Process-a7718a8faf10483ba23fdd5416e99834 monitoring at 9504
+07:43:37 [Q] INFO Process-abcd1d4b774d40bbb7bfefd41e2e013a pushing tasks at 11108
+Process Process-a7718a8faf10483ba23fdd5416e99834:
+Process Process-abcd1d4b774d40bbb7bfefd41e2e013a:
+Process Process-0f6e82d304924bdc9d3de6a13d38b78d:
+Process Process-9b3e2e3c79984694a1d3762754cc2f39:
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+KeyboardInterrupt
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 102, in get
+    with self._rlock:
+         ^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+07:52:35 [Q] CRITICAL reincarnated worker Process-9b3e2e3c79984694a1d3762754cc2f39 after death
+07:52:35 [Q] CRITICAL reincarnated monitor Process-a7718a8faf10483ba23fdd5416e99834 after sudden death
+07:52:35 [Q] CRITICAL reincarnated pusher Process-abcd1d4b774d40bbb7bfefd41e2e013a after sudden death
+07:52:36 [Q] CRITICAL reincarnated worker Process-0f6e82d304924bdc9d3de6a13d38b78d after death
+07:52:36 [Q] INFO Process-e69592994baa4bab9689addcde62019d ready for work at 22148
+07:52:36 [Q] INFO Process-842e6d723d9941aca713ee186d29ddea monitoring at 20184
+07:52:36 [Q] INFO Process-45830b9e7204458abc8304c824213b0c pushing tasks at 29880
+07:52:36 [Q] INFO Process-e22b79b0ae3c4688880945a082a7854a ready for work at 31228
+Process Process-e22b79b0ae3c4688880945a082a7854a:
+Process Process-842e6d723d9941aca713ee186d29ddea:
+Process Process-45830b9e7204458abc8304c824213b0c:
+Process Process-e69592994baa4bab9689addcde62019d:
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 102, in get
+    with self._rlock:
+         ^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+08:00:54 [Q] INFO Q Cluster london-pluto-jersey-mirror starting.
+08:00:55 [Q] INFO Process-6baa12ace59e4c8a87b079adf2fedee5 guarding cluster london-pluto-jersey-mirror [GHSS]
+08:00:55 [Q] INFO Q Cluster london-pluto-jersey-mirror [GHSS] running.
+08:00:56 [Q] INFO Process-47fcb3ea6ab94e8aa7cc7680a6f0c88f ready for work at 7956
+08:00:56 [Q] INFO Process-d984f060bf784592929e007dfe49d028 ready for work at 30748
+08:00:56 [Q] INFO Process-87a038e4523a423eaa024fd25e400079 pushing tasks at 27268
+08:00:56 [Q] INFO Process-5dcaef10dd0e43e1ada923824953bf84 monitoring at 31000
+Process Process-87a038e4523a423eaa024fd25e400079:
+Process Process-5dcaef10dd0e43e1ada923824953bf84:
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Process Process-47fcb3ea6ab94e8aa7cc7680a6f0c88f:
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Process Process-d984f060bf784592929e007dfe49d028:
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+08:07:49 [Q] CRITICAL reincarnated worker Process-d984f060bf784592929e007dfe49d028 after death
+08:07:49 [Q] CRITICAL reincarnated monitor Process-5dcaef10dd0e43e1ada923824953bf84 after sudden death
+08:07:49 [Q] CRITICAL reincarnated pusher Process-87a038e4523a423eaa024fd25e400079 after sudden death
+08:07:50 [Q] CRITICAL reincarnated worker Process-47fcb3ea6ab94e8aa7cc7680a6f0c88f after death
+08:07:50 [Q] INFO Process-ae1e650ea8aa4f849cd6ea2923427873 ready for work at 17600
+08:07:50 [Q] INFO Process-50d414a35e684aa9a787b67973f82632 monitoring at 26516
+08:07:50 [Q] INFO Process-716c0d3ce86c42b8b75cfebf470ad7e8 pushing tasks at 25400
+08:07:50 [Q] INFO Process-0e0983aefd364eab8ba82184fc745fa4 ready for work at 27068
+Process Process-716c0d3ce86c42b8b75cfebf470ad7e8:
+Process Process-50d414a35e684aa9a787b67973f82632:
+Process Process-ae1e650ea8aa4f849cd6ea2923427873:
+Process Process-0e0983aefd364eab8ba82184fc745fa4:
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 102, in get
+    with self._rlock:
+         ^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+08:08:31 [Q] INFO Q Cluster papa-four-missouri-finch starting.
+08:08:32 [Q] INFO Process-828eae06f999434890798d4c0a8d6ed9 guarding cluster papa-four-missouri-finch [GHSS]
+08:08:32 [Q] INFO Q Cluster papa-four-missouri-finch [GHSS] running.
+08:08:33 [Q] INFO Process-2a0b8a1b9cd34db2af5e6546478a0661 ready for work at 25308
+08:08:33 [Q] INFO Process-0986d1e2e895477cb6d6dc7991dc3982 pushing tasks at 28060
+08:08:33 [Q] INFO Process-8cdaf1673f144e74addb478dec1554cd ready for work at 31432
+08:08:33 [Q] INFO Process-40c6fa9dd6714e97a52bf2fe3ca836fb monitoring at 19200
+Process Process-0986d1e2e895477cb6d6dc7991dc3982:
+Process Process-8cdaf1673f144e74addb478dec1554cd:
+Process Process-40c6fa9dd6714e97a52bf2fe3ca836fb:
+Process Process-2a0b8a1b9cd34db2af5e6546478a0661:
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 102, in get
+    with self._rlock:
+         ^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+08:24:07 [Q] CRITICAL reincarnated worker Process-2a0b8a1b9cd34db2af5e6546478a0661 after death
+08:24:07 [Q] CRITICAL reincarnated monitor Process-40c6fa9dd6714e97a52bf2fe3ca836fb after sudden death
+08:24:07 [Q] CRITICAL reincarnated pusher Process-0986d1e2e895477cb6d6dc7991dc3982 after sudden death
+08:24:08 [Q] CRITICAL reincarnated worker Process-8cdaf1673f144e74addb478dec1554cd after death
+08:24:08 [Q] INFO Process-8030d46acc0448c3af99ddfd4a65e08d ready for work at 31844
+08:24:08 [Q] INFO Process-f053cbde2a324fd3ab96e9d91e25055a pushing tasks at 16820
+08:24:08 [Q] INFO Process-df7a696e87214716bb326c3dd171d661 monitoring at 27664
+Process Process-f053cbde2a324fd3ab96e9d91e25055a:
+Process Process-df7a696e87214716bb326c3dd171d661:
+Process Process-8030d46acc0448c3af99ddfd4a65e08d:
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 13, in <module>
+    apps.check_apps_ready()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+    self = reduction.pickle.load(from_parent)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 17, in <module>
+    django.setup()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 24, in setup
+    apps.populate(settings.INSTALLED_APPS)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 116, in populate
+    app_config.import_models()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\config.py", line 269, in import_models
+    self.models_module = import_module(models_module_name)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1091, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1190, in get_data
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+08:24:34 [Q] INFO Q Cluster hotel-september-solar-mango starting.
+08:24:35 [Q] INFO Process-ddc321222a9744bda3eccb84a538675a guarding cluster hotel-september-solar-mango [GHSS]
+08:24:35 [Q] INFO Q Cluster hotel-september-solar-mango [GHSS] running.
+08:24:36 [Q] INFO Process-e516820a6fc245b6bebc08a5e1bb8130 ready for work at 24616
+08:24:36 [Q] INFO Process-a3adf0dfc7794eef990bce9835154391 ready for work at 28088
+08:24:36 [Q] INFO Process-f5d5010e497d4d0db87f2a734ea33044 monitoring at 16136
+08:24:36 [Q] INFO Process-d56b878a8581493f842ec32b93c3bc88 pushing tasks at 16896
+Process Process-d56b878a8581493f842ec32b93c3bc88:
+Process Process-f5d5010e497d4d0db87f2a734ea33044:
+Process Process-a3adf0dfc7794eef990bce9835154391:
+Process Process-e516820a6fc245b6bebc08a5e1bb8130:
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 102, in get
+    with self._rlock:
+         ^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+14:25:54 [Q] CRITICAL reincarnated worker Process-e516820a6fc245b6bebc08a5e1bb8130 after death
+14:25:54 [Q] CRITICAL reincarnated monitor Process-f5d5010e497d4d0db87f2a734ea33044 after sudden death
+14:25:54 [Q] CRITICAL reincarnated pusher Process-d56b878a8581493f842ec32b93c3bc88 after sudden death
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 9, in <module>
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 13, in <module>
+Traceback (most recent call last):
+    apps.check_apps_ready()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 11, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+    apps.check_apps_ready()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+    apps.check_apps_ready()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+14:25:55 [Q] CRITICAL reincarnated worker Process-a3adf0dfc7794eef990bce9835154391 after death
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+During handling of the above exception, another exception occurred:
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+
+Traceback (most recent call last):
+During handling of the above exception, another exception occurred:
+
+  File "<string>", line 1, in <module>
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+  File "<string>", line 1, in <module>
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+    exitcode = _main(fd, parent_sentinel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+    exitcode = _main(fd, parent_sentinel)
+    self = reduction.pickle.load(from_parent)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 13, in <module>
+    self = reduction.pickle.load(from_parent)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 15, in <module>
+    django.setup()
+    django.setup()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 17, in setup
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 17, in setup
+    self = reduction.pickle.load(from_parent)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 17, in <module>
+    django.setup()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 19, in setup
+    from django.utils.log import configure_logging
+    from django.utils.log import configure_logging
+    configure_logging(settings.LOGGING_CONFIG, settings.LOGGING)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\log.py", line 8, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\log.py", line 6, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\log.py", line 72, in configure_logging
+    from django.core.management.color import color_style
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\core\management\__init__.py", line 19, in <module>
+    from django.core import mail
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\core\mail\__init__.py", line 14, in <module>
+    logging.config.dictConfig(DEFAULT_LOGGING)
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\logging\config.py", line 942, in dictConfig
+    dictConfigClass(config).configure()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\logging\config.py", line 608, in configure
+    handler = self.configure_handler(handlers[name])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\logging\config.py", line 876, in configure_handler
+    result = factory(**kwargs)
+             ^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\log.py", line 90, in __init__
+    self.reporter_class = import_string(
+                          ^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\module_loading.py", line 30, in import_string
+    from django.core.management.base import (
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\core\management\base.py", line 16, in <module>
+    from django.core.mail.message import (
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\core\mail\message.py", line 2, in <module>
+    from django.core.management.color import color_style, no_style
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1091, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1190, in get_data
+KeyboardInterrupt
+    import email.policy
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\email\policy.py", line 9, in <module>
+    return cached_import(module_path, class_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\utils\module_loading.py", line 15, in cached_import
+    module = import_module(module_path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\views\debug.py", line 28, in <module>
+    from email.headerregistry import HeaderRegistry as HeaderRegistry
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\email\headerregistry.py", line 10, in <module>
+    DEBUG_ENGINE = Engine(
+                   ^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\template\engine.py", line 61, in __init__
+    self.template_libraries = self.get_template_libraries(libraries)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\template\engine.py", line 126, in get_template_libraries
+    loaded[name] = import_library(path)
+                   ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\template\library.py", line 481, in import_library
+    from email import _header_value_parser as parser
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\email\_header_value_parser.py", line 527, in <module>
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 13, in <module>
+    apps.check_apps_ready()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+    self = reduction.pickle.load(from_parent)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 17, in <module>
+    django.setup()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 16, in setup
+    from django.urls import set_script_prefix
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\urls\__init__.py", line 1, in <module>
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\templatetags\i18n.py", line 6, in <module>
+    from .base import (
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\urls\base.py", line 5, in <module>
+KeyboardInterrupt
+    from django.template.defaulttags import token_kwargs
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\template\defaulttags.py", line 43, in <module>
+    from .smartif import IfParser, Literal
+  File "<frozen importlib._bootstrap>", line 645, in parent
+KeyboardInterrupt
+    from django.http import QueryDict
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\http\__init__.py", line 9, in <module>
+    from django.http.response import (
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\http\response.py", line 11, in <module>
+    from http.client import responses
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\http\client.py", line 71, in <module>
+    import email.parser
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1091, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1190, in get_data
+KeyboardInterrupt
+16:36:13 [Q] INFO Q Cluster sodium-nitrogen-wolfram-papa starting.
+16:36:14 [Q] INFO Process-5896253cd0d84b52ab1af18dd39fa4fc guarding cluster sodium-nitrogen-wolfram-papa [GHSS]
+16:36:14 [Q] INFO Q Cluster sodium-nitrogen-wolfram-papa [GHSS] running.
+16:36:14 [Q] INFO Process-ee9b442bd0dc4be9b88ac6485e24a7d7 pushing tasks at 11704
+16:36:14 [Q] INFO Process-10be398b3df74dc584a79d24f22ebe68 monitoring at 4976
+16:36:14 [Q] INFO Process-1cd2930c08474858947e53e618c68f36 ready for work at 17436
+16:36:14 [Q] INFO Process-6e7ceb1fa2b940619e585ece70c25c78 ready for work at 24016
+Process Process-ee9b442bd0dc4be9b88ac6485e24a7d7:
+Process Process-1cd2930c08474858947e53e618c68f36:
+Process Process-6e7ceb1fa2b940619e585ece70c25c78:
+Process Process-10be398b3df74dc584a79d24f22ebe68:
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 102, in get
+    with self._rlock:
+         ^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+16:36:44 [Q] CRITICAL reincarnated pusher Process-ee9b442bd0dc4be9b88ac6485e24a7d7 after sudden death
+16:36:45 [Q] CRITICAL reincarnated worker Process-6e7ceb1fa2b940619e585ece70c25c78 after death
+16:36:45 [Q] CRITICAL reincarnated monitor Process-10be398b3df74dc584a79d24f22ebe68 after sudden death
+16:36:45 [Q] INFO Process-a616d6339b76465ea2c9a8a1d1220a3f pushing tasks at 5432
+16:36:45 [Q] CRITICAL reincarnated worker Process-1cd2930c08474858947e53e618c68f36 after death
+16:36:45 [Q] INFO Process-84afb5c8459e4498a73208d0b70a68ff ready for work at 3592
+16:36:45 [Q] INFO Process-0fe586a6f2f143f09c512c933a5b3376 monitoring at 25188
+Process Process-0fe586a6f2f143f09c512c933a5b3376:
+Process Process-84afb5c8459e4498a73208d0b70a68ff:
+Process Process-a616d6339b76465ea2c9a8a1d1220a3f:
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 13, in <module>
+    apps.check_apps_ready()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+    self = reduction.pickle.load(from_parent)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 17, in <module>
+    django.setup()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 16, in setup
+    from django.urls import set_script_prefix
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\urls\__init__.py", line 1, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\urls\base.py", line 5, in <module>
+    from django.http import QueryDict
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\http\__init__.py", line 9, in <module>
+    from django.http.response import (
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\http\response.py", line 19, in <module>
+    from django.core.serializers.json import DjangoJSONEncoder
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\core\serializers\__init__.py", line 23, in <module>
+    from django.core.serializers.base import SerializerDoesNotExist
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\core\serializers\base.py", line 8, in <module>
+    from django.db import models
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\__init__.py", line 3, in <module>
+    from django.db.models.aggregates import *  # NOQA
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\aggregates.py", line 7, in <module>
+    from django.db.models.expressions import (
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\expressions.py", line 13, in <module>
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\fields\__init__.py", line 11, in <module>
+    from django import forms
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\forms\__init__.py", line 6, in <module>
+    from django.forms.boundfield import *  # NOQA
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\forms\boundfield.py", line 5, in <module>
+16:39:14 [Q] INFO Q Cluster white-robert-fish-utah starting.
+16:39:14 [Q] INFO Process-d54d1156021142f19b2c206755696816 guarding cluster white-robert-fish-utah [GHSS]
+16:39:14 [Q] INFO Q Cluster white-robert-fish-utah [GHSS] running.
+16:39:15 [Q] INFO Process-a6f7a4ea60334cf7894677596a84fee8 monitoring at 18300
+16:39:15 [Q] INFO Process-7811dbaaba434710be11cb938687217b ready for work at 16232
+16:39:15 [Q] INFO Process-18cb4480b656481c92c13d7fc4eb680a ready for work at 16528
+16:39:15 [Q] INFO Process-af997b521b244eec8d76690f430b0e3d pushing tasks at 25176
+Process Process-af997b521b244eec8d76690f430b0e3d:
+Process Process-18cb4480b656481c92c13d7fc4eb680a:
+Process Process-a6f7a4ea60334cf7894677596a84fee8:
+Process Process-7811dbaaba434710be11cb938687217b:
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 102, in get
+    with self._rlock:
+         ^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+17:21:47 [Q] CRITICAL reincarnated worker Process-18cb4480b656481c92c13d7fc4eb680a after death
+17:21:47 [Q] CRITICAL reincarnated monitor Process-a6f7a4ea60334cf7894677596a84fee8 after sudden death
+17:21:47 [Q] CRITICAL reincarnated pusher Process-af997b521b244eec8d76690f430b0e3d after sudden death
+17:21:47 [Q] CRITICAL reincarnated worker Process-7811dbaaba434710be11cb938687217b after death
+17:21:48 [Q] INFO Process-f5fa67ad10ef44918122bd9f86dc5771 monitoring at 16020
+17:21:48 [Q] INFO Process-d09595bf75684eb8875e3e1b875ec54b pushing tasks at 9808
+17:21:48 [Q] INFO Process-c077a0724b214f1a9ee7184c6ccaa1f0 ready for work at 20824
+Process Process-d09595bf75684eb8875e3e1b875ec54b:
+Process Process-c077a0724b214f1a9ee7184c6ccaa1f0:
+Process Process-f5fa67ad10ef44918122bd9f86dc5771:
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 13, in <module>
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+    apps.check_apps_ready()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+    self = reduction.pickle.load(from_parent)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 17, in <module>
+    django.setup()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 16, in setup
+    from django.urls import set_script_prefix
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\urls\__init__.py", line 1, in <module>
+    from .base import (
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\urls\base.py", line 5, in <module>
+    from django.http import QueryDict
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\http\__init__.py", line 9, in <module>
+    from django.http.response import (
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\http\response.py", line 19, in <module>
+    from django.core.serializers.json import DjangoJSONEncoder
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\core\serializers\__init__.py", line 23, in <module>
+    from django.core.serializers.base import SerializerDoesNotExist
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\core\serializers\base.py", line 8, in <module>
+    from django.db import models
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\__init__.py", line 5, in <module>
+    from django.db.models.constraints import *  # NOQA
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\constraints.py", line 9, in <module>
+    from django.db.models.indexes import IndexExpression
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\db\models\indexes.py", line 8, in <module>
+    from django.db.models.sql import Query
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1091, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1190, in get_data
+KeyboardInterrupt
+08:20:27 [Q] INFO Q Cluster whiskey-quebec-queen-winter starting.
+08:20:28 [Q] INFO Process-e0481b11457648a48449dd1209cb6969 guarding cluster whiskey-quebec-queen-winter [GHSS]
+08:20:28 [Q] INFO Q Cluster whiskey-quebec-queen-winter [GHSS] running.
+08:20:29 [Q] INFO Process-e669ef8c44004807a1831485a48ca1dd ready for work at 16804
+08:20:29 [Q] INFO Process-0b258b76e3ad47a0950c8d7ea705814f monitoring at 27456
+08:20:29 [Q] INFO Process-b8d094b9d720481bba1109603afa96d5 ready for work at 27068
+08:20:29 [Q] INFO Process-df16613d673b4003b216e10e8be8b96b pushing tasks at 15672
+Process Process-df16613d673b4003b216e10e8be8b96b:
+Process Process-b8d094b9d720481bba1109603afa96d5:
+Process Process-e669ef8c44004807a1831485a48ca1dd:
+Process Process-0b258b76e3ad47a0950c8d7ea705814f:
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 102, in get
+    with self._rlock:
+         ^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+08:21:17 [Q] CRITICAL reincarnated worker Process-e669ef8c44004807a1831485a48ca1dd after death
+08:21:17 [Q] CRITICAL reincarnated monitor Process-0b258b76e3ad47a0950c8d7ea705814f after sudden death
+08:21:17 [Q] CRITICAL reincarnated pusher Process-df16613d673b4003b216e10e8be8b96b after sudden death
+08:21:18 [Q] CRITICAL reincarnated worker Process-b8d094b9d720481bba1109603afa96d5 after death
+08:21:18 [Q] INFO Process-a5509e9cb81a4e0e995b88165dc5f285 pushing tasks at 25884
+08:21:18 [Q] INFO Process-5551e8cb13fd41ccb36cba43ce5d6bb6 ready for work at 25628
+08:21:18 [Q] INFO Process-6b1e7d9cfe3b4813816ee82e7ab41db9 monitoring at 24544
+Process Process-a5509e9cb81a4e0e995b88165dc5f285:
+Process Process-6b1e7d9cfe3b4813816ee82e7ab41db9:
+Process Process-5551e8cb13fd41ccb36cba43ce5d6bb6:
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 13, in <module>
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    apps.check_apps_ready()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\pusher.py", line 45, in pusher
+    task_set = broker.dequeue()
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\brokers\orm.py", line 84, in dequeue
+    sleep(Conf.POLL)
+KeyboardInterrupt
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 138, in check_apps_ready
+Traceback (most recent call last):
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\monitor.py", line 44, in monitor
+    for task in iter(result_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 59, in worker
+    for task in iter(task_queue.get, "STOP"):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\queues.py", line 73, in get
+    x = super(Queue, self).get(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\queues.py", line 103, in get
+    res = self._recv_bytes()
+          ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    waitres = _winapi.WaitForMultipleObjects(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+    raise AppRegistryNotReady("Apps aren't loaded yet.")
+django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 132, in _main
+    self = reduction.pickle.load(from_parent)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django_q\worker.py", line 17, in <module>
+    django.setup()
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\__init__.py", line 24, in setup
+    apps.populate(settings.INSTALLED_APPS)
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\registry.py", line 91, in populate
+    app_config = AppConfig.create(entry)
+                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\apps\config.py", line 111, in create
+    app_module = import_module(entry)
+                 ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pasto\bust-base\venv\Lib\site-packages\django\contrib\admin\__init__.py", line 22, in <module>
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1091, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1191, in get_data
+KeyboardInterrupt
+08:21:37 [Q] INFO Q Cluster oscar-ack-fanta-emma starting.
+08:21:38 [Q] INFO Process-e36afb8a6ea34a8e833db83676f9aec8 guarding cluster oscar-ack-fanta-emma [GHSS]
+08:21:38 [Q] INFO Q Cluster oscar-ack-fanta-emma [GHSS] running.
+08:21:38 [Q] INFO Process-8fdda834560f460f93c1da596320e905 ready for work at 12668
+08:21:38 [Q] INFO Process-91f90378453f4e0da529e04885830d36 ready for work at 17724
+08:21:38 [Q] INFO Process-342ba06394eb4a13879dcef16b8c1afe monitoring at 24868
+08:21:38 [Q] INFO Process-1ad95cf04ec84a388e79cb0289322222 pushing tasks at 6324

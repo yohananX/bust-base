@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ghss_test
+          POSTGRES_PASSWORD: ghss_test
+          POSTGRES_DB: ghss_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ghss_test -d ghss_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libpango-1.0-0 \
+            libpangoft2-1.0-0 \
+            libcairo2 \
+            libgdk-pixbuf-2.0-0 \
+            libharfbuzz-subset0
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create .env file
+        run: |
+          echo "DATABASE_URL=postgres://ghss_test:ghss_test@localhost:5432/ghss_test" > .env
+          echo "SECRET_KEY=ci-secret-key-not-for-production" >> .env
+          echo "DEBUG=True" >> .env
+          echo "ALLOWED_HOSTS=*" >> .env
+          echo "PAYSTACK_SECRET_KEY=sk_test_dummy" >> .env
+          echo "PAYSTACK_PUBLIC_KEY=pk_test_dummy" >> .env
+          echo "DEFAULT_FROM_EMAIL=test@ghss.edu.ng" >> .env
+          echo "PAYSTACK_BASE_URL=https://api.paystack.co" >> .env
+
+      - name: Wait for Postgres
+        run: |
+          sudo apt-get install -y postgresql-client
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5432 -U ghss_test -d ghss_test && break
+            echo "Waiting for Postgres... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run migrations
+        run: python manage.py migrate
+
+      - name: Run tests
+        run: python manage.py test --verbosity=2
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libpango-1.0-0 \
+            libpangoft2-1.0-0 \
+            libcairo2 \
+            libgdk-pixbuf-2.0-0 \
+            libharfbuzz-subset0
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create minimal .env file
+        run: |
+          echo "SECRET_KEY=ci-secret-key-not-for-production" > .env
+          echo "DEBUG=True" >> .env
+
+      - name: Django system check
+        run: python manage.py check
+
+      - name: Python syntax check
+        run: find . -name "*.py" -exec python -m py_compile {} +

@@ -1,0 +1,160 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Registration — {{ enrollment.child_name }}{% endblock %}
+{% block page_header %}Registration Detail{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <a href="{% url 'lessons:enrollment_list' %}" class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+      </a>
+      <div>
+        <h2 class="text-lg font-display font-semibold text-gray-900">{{ enrollment.child_name }}</h2>
+        <p class="text-sm text-gray-500">{{ enrollment.lesson_class.name }} · {{ enrollment.lesson_class.period.name }}</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'lessons:enrollment_form' enrollment.pk %}"
+         class="inline-flex items-center px-4 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">
+        <i data-lucide="pencil" class="w-4 h-4 mr-1.5"></i>Edit
+      </a>
+      <a href="{% url 'lessons:enrollment_print' enrollment.pk %}" target="_blank"
+         class="inline-flex items-center px-4 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">
+        <i data-lucide="printer" class="w-4 h-4 mr-1.5"></i>Print Form
+      </a>
+      {% if enrollment.status != 'CANCELLED' %}
+      <form method="post" action="{% url 'lessons:enrollment_cancel' enrollment.pk %}" onsubmit="return confirm('Cancel this registration?')">
+        {% csrf_token %}
+        <button type="submit"
+                class="inline-flex items-center px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-xl hover:bg-red-50 transition-colors">
+          <i data-lucide="x-circle" class="w-4 h-4 mr-1.5"></i>Cancel
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Payment summary -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+      <p class="text-xs font-medium text-gray-500 mb-1">Fee</p>
+      <p class="text-xl font-display font-semibold text-gray-900">₦{{ enrollment.fee_amount|floatformat:2 }}</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+      <p class="text-xs font-medium text-gray-500 mb-1">Paid</p>
+      <p class="text-xl font-display font-semibold text-success">₦{{ enrollment.amount_paid|floatformat:2 }}</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+      <p class="text-xs font-medium text-gray-500 mb-1">Balance</p>
+      <p class="text-xl font-display font-semibold {% if balance == 0 %}text-success{% else %}text-amber-600{% endif %}">
+        ₦{{ balance|floatformat:2 }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Record payment -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <h3 class="text-sm font-semibold text-gray-900 mb-4">Record payment</h3>
+    <form method="post" action="{% url 'lessons:enrollment_pay' enrollment.pk %}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+      {% csrf_token %}
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Amount (₦)</label>
+        <input type="number" name="amount" min="0.01" step="0.01" value="{{ enrollment.fee_amount|default:'' }}" required
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Method</label>
+        <select name="method" required
+                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="CASH">Cash</option>
+          <option value="BANK_TRANSFER">Bank Transfer</option>
+          <option value="POS">POS / Card</option>
+          <option value="CHEQUE">Cheque</option>
+          <option value="USSD">USSD</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Reference (optional)</label>
+        <input type="text" name="reference" placeholder="Transfer ref"
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <button type="submit"
+              class="inline-flex items-center justify-center px-5 py-2.5 bg-success text-white text-sm font-medium rounded-xl hover:opacity-90 transition-opacity shadow-sm">
+        <i data-lucide="banknote" class="w-4 h-4 mr-1.5"></i>Save Payment
+      </button>
+    </form>
+  </div>
+
+  <!-- Payment history -->
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-900">Payment history</h3>
+    </div>
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
+          <th class="px-5 py-3 font-semibold">Date</th>
+          <th class="px-5 py-3 font-semibold">Method</th>
+          <th class="px-5 py-3 font-semibold">Reference</th>
+          <th class="px-5 py-3 font-semibold text-right">Amount</th>
+          <th class="px-5 py-3 font-semibold text-right">Receipt</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pmt in payments %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+          <td class="px-5 py-3 text-gray-600 whitespace-nowrap">{{ pmt.paid_on|date:"M j, Y H:i" }}</td>
+          <td class="px-5 py-3 text-gray-600">{{ pmt.get_method_display }}</td>
+          <td class="px-5 py-3 text-gray-500">{{ pmt.reference|default:'—' }}</td>
+          <td class="px-5 py-3 text-right font-medium text-gray-900">₦{{ pmt.amount|floatformat:2 }}</td>
+          <td class="px-5 py-3 text-right">
+            <a href="{% url 'fees:payment-receipt' pmt.pk %}" target="_blank"
+               class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              <i data-lucide="receipt" class="w-3.5 h-3.5"></i>Receipt
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-100">
+          <td colspan="5" class="px-5 py-8 text-center text-gray-400 text-sm">No payments recorded yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- Child & parent details -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-900 mb-3">Child details</h3>
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between"><dt class="text-gray-500">Type</dt><dd class="text-gray-900">{% if enrollment.student %}Linked student{% else %}External{% endif %}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Age</dt><dd class="text-gray-900">{{ enrollment.age|default:'—' }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Current class</dt><dd class="text-gray-900">{{ enrollment.current_class_text|default:'—' }}</dd></div>
+      </dl>
+    </div>
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-900 mb-3">Parent / guardian</h3>
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between"><dt class="text-gray-500">Name</dt><dd class="text-gray-900">{{ enrollment.parent_name }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Phone</dt><dd class="text-gray-900">{{ enrollment.parent_phone }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Relationship</dt><dd class="text-gray-900">{{ enrollment.get_relationship_display }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Emergency</dt><dd class="text-gray-900">{{ enrollment.emergency_contact|default:'—' }}</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  {% if enrollment.learning_goals %}
+  <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+    <h3 class="text-sm font-semibold text-gray-900 mb-2">Learning goals / needs</h3>
+    <p class="text-sm text-gray-600">{{ enrollment.learning_goals }}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

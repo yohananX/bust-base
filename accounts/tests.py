@@ -5,6 +5,28 @@ from django.views import View
 from core.models import School
 from .models import Roles
 from .mixins import RoleRequiredMixin
+from .utils import generate_username, unique_username
+
+
+class GenerateUsernameTests(TestCase):
+    """Tests for name-based username generation helpers."""
+
+    def test_generate_username_basic(self):
+        self.assertEqual(generate_username('John', 'Doe'), 'john.doe')
+
+    def test_generate_username_strips_invalid_characters(self):
+        self.assertEqual(generate_username("O'Brien", 'Mac-Arthur'), 'obrien.macarthur')
+
+    def test_unique_username_no_collision(self):
+        self.assertEqual(unique_username('John', 'Doe'), 'john.doe')
+
+    def test_unique_username_appends_counter_on_collision(self):
+        User = get_user_model()
+        school = School.objects.create(name='S', short_code='s')
+        User.objects.create_user(username='john.doe', school=school, role=Roles.TEACHER)
+        self.assertEqual(unique_username('John', 'Doe'), 'john.doe1')
+        User.objects.create_user(username='john.doe1', school=school, role=Roles.TEACHER)
+        self.assertEqual(unique_username('John', 'Doe'), 'john.doe2')
 
 
 class UserModelTests(TestCase):

@@ -123,6 +123,35 @@ def generate_invoices_for_class(school_class, term):
     return generated
 
 
+def generate_invoices_for_term(school, term):
+    """Generate invoices for every active student enrolled in ``term``.
+
+    Students who already have an invoice for the term, or who have no
+    current enrollment in the term's session, are skipped. Returns a
+    ``(generated, skipped)`` tuple.
+
+    Canonical bulk entry point — used by the admin portal view and the
+    Django admin action.
+    """
+    from students.models import Student
+
+    students = Student.objects.filter(
+        school=school,
+        status=Student.ACTIVE,
+        enrollments__session=term.session,
+        enrollments__is_current=True,
+    ).distinct()
+
+    generated = 0
+    skipped = 0
+    for student in students:
+        if generate_invoice_for_student(student, term) is None:
+            skipped += 1
+        else:
+            generated += 1
+    return generated, skipped
+
+
 def sync_class_invoices(school_class, term):
     """Re-price invoices that have no payment history yet.
 

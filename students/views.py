@@ -13,6 +13,7 @@ from students.models import Student, StudentGuardianLink, ClassEnrollment
 from fees.checkout import get_checkout_options, current_term
 from fees.models import Invoice, Payment
 from fees.selectors import owed_term_ids as owed_term_ids_for
+from fees.selectors import owed_term_ids_from
 
 from academics.models import Score, TermResult, TeacherAssignment
 
@@ -42,9 +43,7 @@ def _parent_portal_context(request) -> dict:
 
     # Term ids with an unpaid balance — those results stay locked for the child.
     owed_by_student = {
-        student_id: {
-            inv.term_id for inv in invoices if inv.balance > 0
-        }
+        student_id: owed_term_ids_from(invoices)
         for student_id, invoices in invoices_by_student.items()
     }
 
@@ -198,11 +197,7 @@ class ParentChildDetailView(RoleRequiredMixin, View):
         # Terms with outstanding fees — results for those stay locked.
         # balance is a computed property (total − confirmed payments), so it
         # is evaluated per invoice, in memory, against the prefetched list.
-        owed_term_ids = {
-            inv.term_id
-            for inv in invoices
-            if inv.balance > 0
-        }
+        owed_term_ids = owed_term_ids_from(invoices)
         published_terms = [
             term for term in published_term_qs if term.pk not in owed_term_ids
         ]
@@ -499,11 +494,7 @@ class StudentOverviewView(RoleRequiredMixin, View):
         # A term's booklet stays locked while the student owes fees for it.
         # balance is a computed property (total − confirmed payments), so
         # it must be evaluated per invoice, against the prefetched list.
-        owed_term_ids = {
-            inv.term_id
-            for inv in invoices
-            if inv.balance > 0
-        }
+        owed_term_ids = owed_term_ids_from(invoices)
         booklet_terms = [
             {'term': term, 'locked': term.pk in owed_term_ids}
             for term in published_terms

@@ -1,0 +1,94 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Extra Lessons — Periods — School Admin{% endblock %}
+{% block page_header %}Extra Lessons{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div>
+      <h2 class="text-lg font-display font-semibold text-gray-900">Periods</h2>
+      <p class="text-sm text-gray-500">Summer school and holiday programme windows.</p>
+    </div>
+    <a href="{% url 'lessons:period_new' %}"
+       class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+      <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>New Period
+    </a>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
+          <th class="px-5 py-3.5 font-semibold">Period</th>
+          <th class="px-5 py-3.5 font-semibold">Dates</th>
+          <th class="px-5 py-3.5 font-semibold">Classes</th>
+          <th class="px-5 py-3.5 font-semibold">Status</th>
+          <th class="px-5 py-3.5 font-semibold text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in periods %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+          <td class="px-5 py-3.5">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="sun" class="w-4.5 h-4.5"></i>
+              </div>
+              <div>
+                <span class="font-medium text-gray-900">{{ p.name }}</span>
+                {% if p.description %}<p class="text-xs text-gray-400 mt-0.5 max-w-60 truncate">{{ p.description }}</p>{% endif %}
+              </div>
+            </div>
+          </td>
+          <td class="px-5 py-3.5 text-gray-600 whitespace-nowrap">{{ p.start_date|date:"M j, Y" }} — {{ p.end_date|date:"M j, Y" }}</td>
+          <td class="px-5 py-3.5">
+            <span class="inline-flex items-center gap-1.5 text-gray-700">
+              <i data-lucide="book-open" class="w-3.5 h-3.5 text-gray-400"></i>{{ p.class_count }}
+            </span>
+          </td>
+          <td class="px-5 py-3.5">
+            {% if p.status == 'OPEN' %}{% include 'components/badge.html' with status='success' text='Open' %}
+            {% elif p.status == 'CLOSED' %}{% include 'components/badge.html' with status='danger' text='Closed' %}
+            {% else %}{% include 'components/badge.html' with status='warning' text='Draft' %}{% endif %}
+          </td>
+          <td class="px-5 py-3.5">
+            <div class="flex items-center justify-end gap-1">
+              <a href="{% url 'lessons:class_list' %}?period={{ p.pk }}" title="Classes"
+                 class="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-amber-50 transition-colors">
+                <i data-lucide="book-open" class="w-4 h-4"></i>
+              </a>
+              <a href="{% url 'lessons:period_form' p.pk %}" title="Edit"
+                 class="p-2 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </a>
+              {% if p.status != 'CLOSED' %}
+              <form method="post" action="{% url 'lessons:period_close' p.pk %}">
+                {% csrf_token %}
+                <button type="submit" title="Close period"
+                        class="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
+                  <i data-lucide="lock" class="w-4 h-4"></i>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-100">
+          <td colspan="5" class="px-5 py-12 text-center">
+            <div class="flex flex-col items-center gap-2 text-gray-400">
+              <i data-lucide="sun" class="w-8 h-8"></i>
+              <p class="text-sm">No periods yet. Create your first holiday programme.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

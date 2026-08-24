@@ -30,7 +30,7 @@ class ProjectListView(RoleRequiredMixin, View):
             'filter_status': status,
             'status_choices': Project.Status.choices,
         }
-        return render(request, 'school_admin/project_list.html', context)
+        return render(request, 'finance/project_list.html', context)
 
 
 class ProjectDetailView(RoleRequiredMixin, View):
@@ -49,7 +49,7 @@ class ProjectDetailView(RoleRequiredMixin, View):
             'project': project,
             'expenditures': expenditures,
         }
-        return render(request, 'school_admin/project_detail.html', context)
+        return render(request, 'finance/project_detail.html', context)
 
 
 class ExpenditureListView(RoleRequiredMixin, View):
@@ -81,7 +81,7 @@ class ExpenditureListView(RoleRequiredMixin, View):
             'filter_category': category_id,
             'filter_project': project_id,
         }
-        return render(request, 'school_admin/expenditure_list.html', context)
+        return render(request, 'finance/expenditure_list.html', context)
 
 
 class FinancialReportView(RoleRequiredMixin, View):
@@ -147,7 +147,7 @@ class FinancialReportView(RoleRequiredMixin, View):
             "expenditure_total": expenditure_total,
             "net": net,
         }
-        return render(request, "school_admin/financial_report.html", context)
+        return render(request, "finance/financial_report.html", context)
 
     def _get_default_range(self, school):
         current_term = Term.objects.filter(school=school, is_current=True).first()

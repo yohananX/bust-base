@@ -119,7 +119,7 @@ class InvoiceAdmin(admin.ModelAdmin):
     def generate_invoices_for_term(self, request, queryset):
         """Generate invoices for all active students for selected terms."""
         from django.contrib.admin import helpers
-        from .generation import generate_invoice_for_student
+        from .generation import generate_invoices_for_term
 
         if 'apply' in request.POST:
             term_id = request.POST.get('term')
@@ -128,7 +128,6 @@ class InvoiceAdmin(admin.ModelAdmin):
                 return HttpResponseRedirect(request.get_full_path())
 
             from core.models import Term
-            from students.models import Student
 
             try:
                 term = Term.objects.get(pk=term_id)
@@ -136,32 +135,10 @@ class InvoiceAdmin(admin.ModelAdmin):
                 self.message_user(request, _('Selected term not found.'), level=messages.ERROR)
                 return HttpResponseRedirect(request.get_full_path())
 
-            students = Student.objects.filter(
-                school=term.school,
-                status=Student.ACTIVE,
-                enrollments__session=term.session,
-                enrollments__is_current=True,
-            ).distinct()
+            generated, skipped = generate_invoices_for_term(term.school, term)
 
-            generated = 0
-            skipped_already = 0
-            skipped_inactive = 0
-            for student in students:
-                if Invoice.objects.filter(
-                    school=term.school, student=student, term=term
-                ).exists():
-                    skipped_already += 1
-                    continue
-                if not student.enrollments.filter(
-                    session=term.session, is_current=True
-                ).exists():
-                    skipped_inactive += 1
-                    continue
-                if generate_invoice_for_student(student, term) is not None:
-                    generated += 1
-
-            msg = _('Generated {} invoice(s). {} already existed (skipped). {} students without current enrollment (skipped).').format(
-                generated, skipped_already, skipped_inactive
+            msg = _('Generated {} invoice(s). {} skipped (already existed or no current enrollment).').format(
+                generated, skipped
             )
             self.message_user(request, msg, level=messages.SUCCESS)
             return HttpResponseRedirect(request.get_full_path())

@@ -14,6 +14,7 @@
 
     <div style="padding: 20px; background: #f8f8f8; border: 1px solid #ddd; margin: 20px 0;">
       <p>{% trans "Selected payslips:" %} {{ queryset|length }}</p>
+      <div style="overflow-x:auto;">
       <table>
         <tr>
           <td><label for="method" style="font-weight: bold;">{% trans "Method:" %}</label></td>
@@ -37,6 +38,7 @@
           <td><input type="datetime-local" name="disbursed_on" id="disbursed_on" style="padding: 5px;" /></td>
         </tr>
       </table>
+      </div>
     </div>
 
     <div style="padding: 10px 0;">

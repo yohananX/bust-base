@@ -1,5 +1,4 @@
 """Fee and invoice management views for school admin portal."""
-import csv
 from decimal import Decimal
 from uuid import uuid4
 
@@ -10,7 +9,6 @@ from django.contrib import messages
 from django.db import transaction
 from django.db.models import Count, OuterRef, Q, Subquery, Sum
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse
 from django.utils import timezone
 
 from accounts.mixins import RoleRequiredMixin
@@ -516,26 +514,9 @@ class GenerateInvoicesView(RoleRequiredMixin, View):
 
         term = get_object_or_404(Term, school=school, pk=term_id)
 
-        from fees.generation import generate_invoice_for_student
+        from fees.generation import generate_invoices_for_term
 
-        generated = 0
-        skipped = 0
-
-        students = Student.objects.filter(
-            school=school,
-            status=Student.ACTIVE,
-            enrollments__session=term.session,
-            enrollments__is_current=True,
-        ).distinct()
-
-        for student in students:
-            if Invoice.objects.filter(school=school, student=student, term=term).exists():
-                skipped += 1
-                continue
-            if generate_invoice_for_student(student, term) is None:
-                skipped += 1
-            else:
-                generated += 1
+        generated, skipped = generate_invoices_for_term(school, term)
 
         messages.success(
             request,
@@ -690,13 +671,15 @@ class OutstandingFeesReportView(RoleRequiredMixin, View):
 
     def _csv_response(self, qs):
         """Serve the filtered debtor list as a CSV download."""
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="outstanding_fees.csv"'
-        writer = csv.writer(response)
-        writer.writerow([
-            'Student', 'Admission No', 'Class', 'Term',
-            'Total (NGN)', 'Paid (NGN)', 'Balance (NGN)', 'Status', 'Age Bucket',
-        ])
+        from core.utils import csv_response
+
+        response, writer = csv_response(
+            'outstanding_fees.csv',
+            header=[
+                'Student', 'Admission No', 'Class', 'Term',
+                'Total (NGN)', 'Paid (NGN)', 'Balance (NGN)', 'Status', 'Age Bucket',
+            ],
+        )
         for inv in qs.order_by('-balance_annotated'):
             row = self._debtor_row(inv)
             writer.writerow([

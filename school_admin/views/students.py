@@ -1,6 +1,4 @@
 """Student management views for school admin portal."""
-import re
-import secrets
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
@@ -12,6 +10,7 @@ from django.db.models import Q
 from django.utils.dateparse import parse_date
 
 from accounts.mixins import RoleRequiredMixin
+from accounts.utils import generate_password, generate_username
 from accounts.models import Roles, User
 from students.models import Student, SchoolClass, ClassEnrollment, StudentGuardianLink
 from core.models import AcademicSession
@@ -117,15 +116,8 @@ class StudentDetailView(RoleRequiredMixin, View):
 
 
 def _sanitize_username(first_name, last_name):
-    """Generate a username from first and last name, sanitized.
-
-    Lowercase, replace spaces with dots, strip non-alphanumeric characters
-    (except dots).
-    """
-    base = f"{first_name.strip()}.{last_name.strip()}"
-    base = base.lower().replace(' ', '.')
-    base = re.sub(r'[^a-z0-9.]', '', base)
-    return base
+    """Generate a username from first and last name, sanitized."""
+    return generate_username(first_name, last_name)
 
 
 class StudentCreateView(RoleRequiredMixin, View):
@@ -190,7 +182,7 @@ class StudentCreateView(RoleRequiredMixin, View):
                     counter += 1
 
                 # Generate random password
-                password = secrets.token_urlsafe(6)
+                password = generate_password(8)
 
                 user = User.objects.create_user(
                     username=username_input,
@@ -278,7 +270,7 @@ class StudentCreateView(RoleRequiredMixin, View):
                             parent_username = f"{parent_base}{parent_counter}"
                             parent_counter += 1
 
-                        parent_password = secrets.token_urlsafe(6)
+                        parent_password = generate_password(8)
                         parent_user = User.objects.create_user(
                             username=parent_username,
                             email=parent_email,
@@ -589,7 +581,7 @@ class StudentPasswordChangeView(RoleRequiredMixin, View):
         new_password = request.POST.get('new_password', '').strip()
 
         if action == 'auto_generate':
-            password = secrets.token_urlsafe(6)
+            password = generate_password(8)
         elif new_password:
             password = new_password
         else:

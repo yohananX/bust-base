@@ -67,7 +67,7 @@
     <div class="px-6 py-5 space-y-6">
 
       {# ═══ STUDENT INFO ═══ #}
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm bg-gray-50 rounded-xl p-4 border border-gray-100">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm bg-gray-50 rounded-xl p-4 border border-gray-100">
         <div><span class="text-gray-500">Name:</span> <span class="font-medium text-gray-900">{{ student.user.get_full_name }}</span></div>
         <div><span class="text-gray-500">Admission No.:</span> <span class="font-medium text-gray-900">{{ student.admission_number }}</span></div>
         <div><span class="text-gray-500">Class:</span> <span class="font-medium text-gray-900">{{ school_class.name }}</span></div>
@@ -170,7 +170,7 @@
 
       {# ═══ ATTENDANCE ═══ #}
       {% if term_result.total_days %}
-      <div class="grid grid-cols-3 gap-4 bg-gray-50 rounded-2xl p-4 border border-gray-100 text-center">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 rounded-2xl p-4 border border-gray-100 text-center">
         <div>
           <div class="text-xl font-bold text-gray-900">{{ term_result.days_present|default:"—" }}</div>
           <div class="text-xs text-gray-500">Days Present</div>

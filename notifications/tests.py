@@ -10,7 +10,6 @@ from core.models import AcademicSession, School, Term
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 
 from .models import NotificationLog
-from .tasks import process_notification
 from .utils import notify, notify_admins
 
 User = get_user_model()
@@ -268,50 +267,6 @@ class NotifyHelperTest(BaseNotificationTest):
         self.assertEqual(NotificationLog.objects.count(), 0)
 
 
-# ─── Process Notification Tests ─────────────────────────────────────────
-
-class ProcessNotificationTest(BaseNotificationTest):
-    """Tests for the process_notification task."""
-
-    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
-    def test_process_email_flips_to_sent(self):
-        """Processing a queued EMAIL notification sets status to SENT."""
-        log = NotificationLog.objects.create(
-            school=self.school,
-            recipient=self.parent_user,
-            channel=NotificationLog.Channel.EMAIL,
-            subject='Process test',
-            message='Will this flip to SENT?',
-            status=NotificationLog.Status.QUEUED,
-        )
-        process_notification(log.id)
-
-        log.refresh_from_db()
-        self.assertEqual(log.status, NotificationLog.Status.SENT)
-        self.assertIsNotNone(log.sent_at)
-
-    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
-    def test_process_sms_flips_to_sent(self):
-        """Processing a queued SMS notification sets status to SENT."""
-        log = NotificationLog.objects.create(
-            school=self.school,
-            recipient=self.parent_user,
-            channel=NotificationLog.Channel.SMS,
-            message='SMS test message',
-            status=NotificationLog.Status.QUEUED,
-        )
-        process_notification(log.id)
-
-        log.refresh_from_db()
-        self.assertEqual(log.status, NotificationLog.Status.SENT)
-        self.assertIsNotNone(log.sent_at)
-
-    def test_process_nonexistent_log_does_not_raise(self):
-        """process_notification with a non-existent ID silently returns."""
-        # Should not raise any exception
-        process_notification(99999)
-
-
 # ─── Failure Handling Tests ────────────────────────────────────────────
 
 class FailureHandlingTest(BaseNotificationTest):
@@ -328,17 +283,14 @@ class FailureHandlingTest(BaseNotificationTest):
             school=self.school,
             role=Roles.PARENT,
         )
-        log = NotificationLog.objects.create(
-            school=self.school,
+        log = notify(
             recipient=no_email_user,
             channel=NotificationLog.Channel.EMAIL,
             subject='No email',
             message='This should fail.',
-            status=NotificationLog.Status.QUEUED,
         )
-        process_notification(log.id)
 
-        log.refresh_from_db()
+        self.assertIsNotNone(log)
         self.assertEqual(log.status, NotificationLog.Status.FAILED)
         self.assertNotEqual(log.error_message, '')
 
@@ -503,38 +455,6 @@ class NotifyManyTest(BaseNotificationTest):
 
 class InAppChannelTest(BaseNotificationTest):
     """Tests for the IN_APP notification channel."""
-
-    def test_process_in_app_stays_queued(self):
-        """Processing a queued IN_APP notification leaves it QUEUED (unread)."""
-        log = NotificationLog.objects.create(
-            school=self.school,
-            recipient=self.parent_user,
-            channel=NotificationLog.Channel.IN_APP,
-            subject='In-app test',
-            message='This is an in-app notification.',
-            status=NotificationLog.Status.QUEUED,
-        )
-        process_notification(log.id)
-
-        log.refresh_from_db()
-        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
-        self.assertIsNone(log.sent_at)
-
-    def test_in_app_notification_no_external_delivery(self):
-        """IN_APP notifications do not trigger external delivery errors."""
-        log = NotificationLog.objects.create(
-            school=self.school,
-            recipient=self.parent_user,
-            channel=NotificationLog.Channel.IN_APP,
-            subject='No external delivery',
-            message='Stored for in-app display only.',
-            status=NotificationLog.Status.QUEUED,
-        )
-        process_notification(log.id)
-
-        log.refresh_from_db()
-        self.assertEqual(log.status, NotificationLog.Status.QUEUED)
-        self.assertEqual(log.error_message, '')
 
 
 # --- Bell View Tests ---

@@ -48,11 +48,11 @@ class DataImportView(RoleRequiredMixin, View):
 
         if not csv_file:
             messages.error(request, 'Please select a CSV file to upload.')
-            return redirect('school_admin:import')
+            return redirect('data_import:import')
 
         if import_type not in IMPORTERS:
             messages.error(request, 'Invalid import type.')
-            return redirect('school_admin:import')
+            return redirect('data_import:import')
 
         # Read and parse the CSV
         try:
@@ -61,11 +61,11 @@ class DataImportView(RoleRequiredMixin, View):
             all_rows = list(reader)
         except Exception as e:
             messages.error(request, f'Error reading CSV file: {e}')
-            return redirect('school_admin:import')
+            return redirect('data_import:import')
 
         if not all_rows:
             messages.error(request, 'The CSV file is empty or has no data rows.')
-            return redirect('school_admin:import')
+            return redirect('data_import:import')
 
         # Run dry_run to get created/skipped/error counts
         tmp = tempfile.NamedTemporaryFile(mode='w', newline='', suffix='.csv', delete=False, encoding='utf-8')
@@ -119,7 +119,7 @@ class DataImportConfirmView(RoleRequiredMixin, View):
         import_data = request.session.get('import_data')
         if not import_data:
             messages.error(request, 'No import data found. Please upload a file again.')
-            return redirect('school_admin:import')
+            return redirect('data_import:import')
 
         import_type = import_data['type']
         filename = import_data['filename']
@@ -164,7 +164,7 @@ class DataImportConfirmView(RoleRequiredMixin, View):
                     f'{result["skipped"]} skipped, {len(result["errors"])} errors.'
                 ),
                 reference=f'import:{log.id}',
-                url=reverse('school_admin:import'),
+                url=reverse('data_import:import'),
             )
 
             # Clear session data
@@ -187,9 +187,11 @@ class DataImportTemplateDownloadView(RoleRequiredMixin, View):
     def get(self, request, type):
         if type not in TEMPLATES:
             messages.error(request, 'Invalid template type.')
-            return redirect('school_admin:import')
+            return redirect('data_import:import')
 
         content = TEMPLATES[type]
-        response = HttpResponse(content, content_type='text/csv')
-        response['Content-Disposition'] = f'attachment; filename="{type}_template.csv"'
+        from core.utils import csv_response
+
+        response = csv_response(f'{type}_template.csv')
+        response.write(content)
         return response

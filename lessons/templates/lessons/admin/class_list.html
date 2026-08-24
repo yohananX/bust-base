@@ -1,0 +1,128 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Extra Lessons — Classes — School Admin{% endblock %}
+{% block page_header %}Extra Lessons{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div class="flex-1 min-w-52">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
+        <input type="text" name="q" value="{{ q }}" placeholder="Class or period name"
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Period</label>
+        <select name="period"
+                class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">All periods</option>
+          {% for p in periods %}
+          <option value="{{ p.pk }}" {% if period_id == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit"
+              class="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors">
+        Filter
+      </button>
+      <a href="{% url 'lessons:class_list' %}"
+         class="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Clear</a>
+    </form>
+  </div>
+
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div>
+      <h2 class="text-lg font-display font-semibold text-gray-900">Classes</h2>
+      <p class="text-sm text-gray-500">Set a fixed fee per class — editable anytime.</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="{% url 'lessons:class_new' %}"
+         class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Class
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
+          <th class="px-5 py-3.5 font-semibold">Class</th>
+          <th class="px-5 py-3.5 font-semibold">Period</th>
+          <th class="px-5 py-3.5 font-semibold">Teachers</th>
+          <th class="px-5 py-3.5 font-semibold">Enrolled</th>
+          <th class="px-5 py-3.5 font-semibold text-right">Fee</th>
+          <th class="px-5 py-3.5 font-semibold text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in classes %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+          <td class="px-5 py-3.5">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="book-open" class="w-4.5 h-4.5"></i>
+              </div>
+              <div>
+                <span class="font-medium text-gray-900">{{ c.name }}</span>
+                {% if c.level_hint %}<p class="text-xs text-gray-400 mt-0.5">{{ c.level_hint }}</p>{% endif %}
+              </div>
+            </div>
+          </td>
+          <td class="px-5 py-3.5 text-gray-600">{{ c.period.name }}</td>
+          <td class="px-5 py-3.5 text-gray-600">
+            {% if c.teachers %}
+              {% for t in c.teachers %}<span class="inline-flex items-center gap-1 mr-1 mb-1 bg-violet-50 text-violet-700 text-xs font-medium px-2 py-0.5 rounded-full">{{ t.get_full_name|default:t.username }}</span>{% endfor %}
+            {% else %}
+              <span class="text-gray-400">—</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3.5">
+            <span class="inline-flex items-center gap-1.5 text-gray-700">
+              <i data-lucide="users" class="w-3.5 h-3.5 text-gray-400"></i>{{ c.enrolled_count }}
+            </span>
+          </td>
+          <td class="px-5 py-3.5 text-right font-medium text-gray-900 whitespace-nowrap">₦{{ c.fee_amount|floatformat:2 }}</td>
+          <td class="px-5 py-3.5">
+            <div class="flex items-center justify-end gap-1">
+              <a href="{% url 'lessons:enrollment_list' %}?class={{ c.pk }}" title="Enrollments"
+                 class="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-amber-50 transition-colors">
+                <i data-lucide="users" class="w-4 h-4"></i>
+              </a>
+              <a href="{% url 'lessons:class_teachers' c.pk %}" title="Teachers"
+                 class="p-2 rounded-lg text-gray-500 hover:text-violet-600 hover:bg-violet-50 transition-colors">
+                <i data-lucide="user-cog" class="w-4 h-4"></i>
+              </a>
+              <a href="{% url 'lessons:class_form' c.pk %}" title="Edit"
+                 class="p-2 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </a>
+              <form method="post" action="{% url 'lessons:class_delete' c.pk %}" onsubmit="return confirm('Delete this class?')">
+                {% csrf_token %}
+                <button type="submit" title="Delete"
+                        class="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-100">
+          <td colspan="6" class="px-5 py-12 text-center">
+            <div class="flex flex-col items-center gap-2 text-gray-400">
+              <i data-lucide="book-open" class="w-8 h-8"></i>
+              <p class="text-sm">No classes found.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

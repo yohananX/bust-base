@@ -81,6 +81,7 @@
     <div class="px-4 py-3 border-b border-gray-100">
       <h3 class="font-semibold text-gray-800">Amount Due by Class</h3>
     </div>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead>
         <tr class="bg-gray-50 text-left text-gray-600">
@@ -103,6 +104,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 
   {# ── By-Term Breakdown (all-terms view only) ── #}
@@ -111,6 +113,7 @@
     <div class="px-4 py-3 border-b border-gray-100">
       <h3 class="font-semibold text-gray-800">Amount Due by Term</h3>
     </div>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead>
         <tr class="bg-gray-50 text-left text-gray-600">
@@ -133,6 +136,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
   {% endif %}
 
@@ -142,6 +146,7 @@
       <h3 class="font-semibold text-gray-800">Debtors</h3>
       <span class="text-xs text-gray-400">{{ debtors|length }} invoice{{ debtors|length|pluralize }} with balance</span>
     </div>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead>
         <tr class="bg-gray-50 text-left text-gray-600">
@@ -191,6 +196,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 {% endblock %}

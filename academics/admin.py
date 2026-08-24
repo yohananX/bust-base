@@ -143,79 +143,14 @@ class ScoreAdmin(admin.ModelAdmin):
 
             # Notify each student and their guardians (per child, child-
             # specific deep link). Rows dedup by reference + recipient.
-            from notifications.utils import notify
-            from notifications.models import NotificationLog
-            from students.models import Student, StudentGuardianLink
-            from django.contrib.auth import get_user_model
-            from django.urls import reverse as url_reverse
+            from .publishing import notify_results_published
 
             student_ids = (
                 queryset.filter(term=term)
                 .values_list('student', flat=True)
                 .distinct()
             )
-            student_users = {
-                pk: user_id for pk, user_id in Student.objects.filter(
-                    pk__in=list(student_ids), user__isnull=False,
-                ).values_list('pk', 'user_id')
-            }
-            users_by_id = {
-                u.pk: u for u in get_user_model().objects.filter(
-                    pk__in=list(student_users.values())
-                )
-            }
-
-            links = StudentGuardianLink.objects.filter(
-                student__in=list(student_ids),
-                is_primary_contact=True,
-            ).select_related('student__user', 'guardian')
-
-            notified = set(
-                NotificationLog.objects.filter(
-                    reference__startswith='term-results:{}'.format(term.id),
-                    recipient_id__in=(
-                        list(student_users.values())
-                        + list(links.values_list('guardian', flat=True))
-                    ),
-                ).values_list('recipient_id', 'reference')
-            )
-
-            for link in links:
-                ref = 'term-results:{}:g:{}'.format(term.id, link.student_id)
-                if (link.guardian_id, ref) in notified:
-                    continue
-                notify(
-                    recipient=link.guardian,
-                    channel='IN_APP',
-                    subject=_('Results available for {term}').format(term=term.name),
-                    message=_(
-                        '{child}\'s results for {term} are now available.'
-                    ).format(
-                        child=link.student.user.get_full_name(), term=term.name
-                    ),
-                    reference=ref,
-                    url=url_reverse('parent-child-result-booklet', kwargs={
-                        'child_pk': link.student_id,
-                        'term_id': term.id,
-                    }),
-                )
-
-            for student_id, user_id in student_users.items():
-                ref = 'term-results:{}:s:{}'.format(term.id, student_id)
-                if (user_id, ref) in notified:
-                    continue
-                notify(
-                    recipient=users_by_id[user_id],
-                    channel='IN_APP',
-                    subject=_('Results available for {term}').format(term=term.name),
-                    message=_(
-                        'Your results for {term} are now available.'
-                    ).format(term=term.name),
-                    reference=ref,
-                    url=url_reverse('student-result-booklet', kwargs={
-                        'term_id': term.id,
-                    }),
-                )
+            notify_results_published(term, student_ids)
 
             self.message_user(
                 request,

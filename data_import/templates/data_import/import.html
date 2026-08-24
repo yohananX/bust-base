@@ -15,22 +15,22 @@
     <h2 class="text-lg font-medium text-gray-900 mb-4">Download Templates</h2>
     <p class="text-sm text-gray-500 mb-4">Download a CSV template with the correct column headers for each import type.</p>
     <div class="flex flex-wrap gap-3">
-      <a href="{% url 'school_admin:import_template' type='classes' %}"
+      <a href="{% url 'data_import:import_template' type='classes' %}"
          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         Classes
       </a>
-      <a href="{% url 'school_admin:import_template' type='subjects' %}"
+      <a href="{% url 'data_import:import_template' type='subjects' %}"
          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         Subjects
       </a>
-      <a href="{% url 'school_admin:import_template' type='students' %}"
+      <a href="{% url 'data_import:import_template' type='students' %}"
          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         Students
       </a>
-      <a href="{% url 'school_admin:import_template' type='staff' %}"
+      <a href="{% url 'data_import:import_template' type='staff' %}"
          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         Staff
@@ -41,8 +41,8 @@
   {# Upload Form #}
   <div class="bg-white rounded-lg border border-gray-200 p-6">
     <h2 class="text-lg font-medium text-gray-900 mb-4">Upload CSV</h2>
-    <form method="post" action="{% url 'school_admin:import' %}" enctype="multipart/form-data"
-          hx-post="{% url 'school_admin:import' %}" hx-target="#import-preview" hx-swap="innerHTML">
+    <form method="post" action="{% url 'data_import:import' %}" enctype="multipart/form-data"
+          hx-post="{% url 'data_import:import' %}" hx-target="#import-preview" hx-swap="innerHTML">
       {% csrf_token %}
       <div class="space-y-4">
         <div>

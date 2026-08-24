@@ -636,7 +636,7 @@ class ImportConfirmNotifiesAdminsTest(TestCase):
         }
         session.save()
 
-        response = self.client.post(reverse('school_admin:import_confirm'), HTTP_HOST='localhost')
+        response = self.client.post(reverse('data_import:import_confirm'), HTTP_HOST='localhost')
         self.assertEqual(response.status_code, 200)
 
         row = NotificationLog.objects.filter(
@@ -645,4 +645,4 @@ class ImportConfirmNotifiesAdminsTest(TestCase):
         self.assertIsNotNone(row)
         self.assertEqual(row.channel, NotificationLog.Channel.IN_APP)
         self.assertTrue(row.subject.startswith('Import complete: 1'))
-        self.assertEqual(row.url, reverse('school_admin:import'))
+        self.assertEqual(row.url, reverse('data_import:import'))

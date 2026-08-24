@@ -61,3 +61,7 @@ System/
 
 # Duplicate venv
 venv/
+
+tools/
+db.sqlite3
+

@@ -1,0 +1,167 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}Edit Registration{% else %}New Registration{% endif %} — Extra Lessons{% endblock %}
+{% block page_header %}{% if is_edit %}Edit Registration{% else %}New Registration{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+        <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+      </div>
+      <p class="text-sm text-gray-600">Summer School Registration Form.</p>
+    </div>
+
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+
+      <!-- Class -->
+      <div>
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Class</h3>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Class <span class="text-red-500">*</span></label>
+          <select name="lesson_class" required
+                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            {% for p in periods %}
+            <optgroup label="{{ p.name }}">
+              {% for c in p.lesson_classes.all %}
+              <option value="{{ c.pk }}" {% if enrollment.lesson_class_id == c.pk %}selected{% endif %}>{{ c.name }} — ₦{{ c.fee_amount|floatformat:2 }}</option>
+              {% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Child -->
+      <div>
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Child details</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Link existing student (optional)</label>
+            <select name="student"
+                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+              <option value="">— External / walk-in child —</option>
+              {% for s in students %}
+              <option value="{{ s.pk }}" {% if enrollment.student_id == s.pk %}selected{% endif %}>{{ s.user.get_full_name|default:s.user.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">External child full name</label>
+            <input type="text" name="external_name" value="{{ enrollment.external_name|default:'' }}"
+                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Age</label>
+            <input type="number" name="age" min="1" max="99" value="{{ enrollment.age|default:'' }}"
+                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Current class / grade</label>
+            <input type="text" name="current_class_text" value="{{ enrollment.current_class_text|default:'' }}"
+                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          </div>
+        </div>
+      </div>
+
+      <!-- Parent / guardian -->
+      <div>
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Parent / guardian</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Parent full name <span class="text-red-500">*</span></label>
+            <input type="text" name="parent_name" value="{{ enrollment.parent_name|default:'' }}" required
+                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Parent phone <span class="text-red-500">*</span></label>
+            <input type="tel" name="parent_phone" value="{{ enrollment.parent_phone|default:'' }}" required
+                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Relationship to child</label>
+            <select name="relationship"
+                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+              <option value="FATHER" {% if enrollment.relationship == 'FATHER' or not enrollment %}selected{% endif %}>Father</option>
+              <option value="MOTHER" {% if enrollment.relationship == 'MOTHER' %}selected{% endif %}>Mother</option>
+              <option value="GUARDIAN" {% if enrollment.relationship == 'GUARDIAN' %}selected{% endif %}>Guardian</option>
+              <option value="OTHER" {% if enrollment.relationship == 'OTHER' %}selected{% endif %}>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Emergency contact</label>
+            <input type="text" name="emergency_contact" value="{{ enrollment.emergency_contact|default:'' }}"
+                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          </div>
+        </div>
+      </div>
+
+      <!-- Learning goals & source -->
+      <div>
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Learning goals & referral</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Learning goals / needs</label>
+            <textarea name="learning_goals" rows="2"
+                      class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">{{ enrollment.learning_goals|default:'' }}</textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">How did you hear about us?</label>
+            <select name="source"
+                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+              <option value="REFERRAL" {% if enrollment.source == 'REFERRAL' %}selected{% endif %}>Referral</option>
+              <option value="SOCIAL_MEDIA" {% if enrollment.source == 'SOCIAL_MEDIA' %}selected{% endif %}>Social Media</option>
+              <option value="CHURCH" {% if enrollment.source == 'CHURCH' %}selected{% endif %}>Church / Community</option>
+              <option value="SCHOOL_STAFF" {% if enrollment.source == 'SCHOOL_STAFF' %}selected{% endif %}>School Staff</option>
+              <option value="OTHER" {% if enrollment.source == 'OTHER' or not enrollment %}selected{% endif %}>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Referral notes</label>
+            <input type="text" name="referral_notes" value="{{ enrollment.referral_notes|default:'' }}"
+                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          </div>
+        </div>
+      </div>
+
+      <!-- Consent -->
+      <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" name="consent_given" {% if enrollment.consent_given %}checked{% endif %}
+                 class="w-4.5 h-4.5 rounded border-gray-300 text-primary focus:ring-primary/20">
+          <span class="text-sm font-medium text-gray-700">Parent consent given</span>
+        </label>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Consent date</label>
+          <input type="date" name="consent_date" value="{{ enrollment.consent_date|date:'Y-m-d'|default:'' }}"
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+      </div>
+
+      {% if is_edit %}
+      <div>
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Status</h3>
+        <select name="status"
+                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="REGISTERED" {% if enrollment.status == 'REGISTERED' %}selected{% endif %}>Registered</option>
+          <option value="PAID" {% if enrollment.status == 'PAID' %}selected{% endif %}>Paid</option>
+          <option value="CANCELLED" {% if enrollment.status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+        </select>
+      </div>
+      {% endif %}
+
+      <div class="flex items-center gap-4 pt-2">
+        <button type="submit"
+                class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+          {% if is_edit %}<i data-lucide="check" class="w-4 h-4 mr-2"></i>{% else %}<i data-lucide="plus" class="w-4 h-4 mr-2"></i>{% endif %}
+          {% if is_edit %}Update Registration{% else %}Save Registration{% endif %}
+        </button>
+        <a href="{% url 'lessons:enrollment_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

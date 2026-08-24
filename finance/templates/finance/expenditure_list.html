@@ -33,7 +33,7 @@
         <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
           <i data-lucide="filter" class="w-4 h-4 mr-2"></i>Filter
         </button>
-        <a href="{% url 'school_admin:expenditure_list' %}" class="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Clear</a>
+        <a href="{% url 'finance:expenditure_list' %}" class="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Clear</a>
       </div>
     </form>
   </div>
@@ -61,7 +61,7 @@
             <td class="px-5 py-3.5 text-gray-600 max-w-xs truncate">{{ e.description }}</td>
             <td class="px-5 py-3.5">
               {% if e.project %}
-                <a href="{% url 'school_admin:project_detail' e.project.pk %}" class="text-primary hover:underline font-medium">{{ e.project.name }}</a>
+                <a href="{% url 'finance:project_detail' e.project.pk %}" class="text-primary hover:underline font-medium">{{ e.project.name }}</a>
               {% else %}
                 <span class="text-gray-400">—</span>
               {% endif %}

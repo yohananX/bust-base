@@ -273,7 +273,7 @@ class AdminPortalLeakageTests(TwoSchoolsFixture):
             target_amount=Decimal('1000000.00'),
             created_by=self.a['admin'],
         )
-        resp = self.client.get(reverse('school_admin:project_list'))
+        resp = self.client.get(reverse('finance:project_list'))
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, 'Foreign Project')
 
@@ -291,12 +291,12 @@ class AdminPortalLeakageTests(TwoSchoolsFixture):
             amount=Decimal('10000.00'), recorded_by=self.a['admin'],
             date=date(2026, 1, 10),
         )
-        resp = self.client.get(reverse('school_admin:expenditure_list'))
+        resp = self.client.get(reverse('finance:expenditure_list'))
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, 'Foreign Category')
 
     def test_financial_report_reachable(self):
-        resp = self.client.get(reverse('school_admin:financial_report'))
+        resp = self.client.get(reverse('finance:financial_report'))
         self.assertEqual(resp.status_code, 200)
 
     def test_subject_edit_foreign_pk_404(self):

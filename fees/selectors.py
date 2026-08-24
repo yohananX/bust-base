@@ -28,11 +28,19 @@ def owed_term_ids(student) -> set:
     Prefetches payments so the balance rule is evaluated in memory — a
     constant number of queries regardless of how many invoices exist.
     """
-    return {
-        inv.term_id
-        for inv in Invoice.objects.filter(student=student).prefetch_related('payments')
-        if inv.balance > 0
-    }
+    return owed_term_ids_from(
+        Invoice.objects.filter(student=student).prefetch_related('payments')
+    )
+
+
+def owed_term_ids_from(invoices) -> set:
+    """Owed term ids computed from an already-fetched invoice iterable.
+
+    Use when the caller already holds the invoices (with payments
+    prefetched) and passing them again would only duplicate queries.
+    The "balance > 0 means the term is owed" rule lives here.
+    """
+    return {inv.term_id for inv in invoices if inv.balance > 0}
 
 
 def _paid_amount_subquery():

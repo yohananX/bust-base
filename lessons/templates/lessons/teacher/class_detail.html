@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ lesson_class.name }} — Students{% endblock %}
+{% block page_header %}Class Roster{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+  <div class="flex items-center gap-3 mb-6">
+    <a href="{% url 'lessons_teacher:class_list' %}" class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+      <i data-lucide="arrow-left" class="w-5 h-5"></i>
+    </a>
+    <div>
+      <h2 class="text-lg font-display font-semibold text-gray-900">{{ lesson_class.name }}</h2>
+      <p class="text-sm text-gray-500">{{ lesson_class.period.name }} · {{ lesson_class.level_hint|default:'General' }}</p>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-900">Enrolled students</h3>
+      <span class="text-xs text-gray-500">{{ enrollments|length }} student(s)</span>
+    </div>
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
+          <th class="px-5 py-3 font-semibold">Child</th>
+          <th class="px-5 py-3 font-semibold">Age</th>
+          <th class="px-5 py-3 font-semibold">Current class</th>
+          <th class="px-5 py-3 font-semibold">Parent</th>
+          <th class="px-5 py-3 font-semibold">Phone</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in enrollments %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+          <td class="px-5 py-3 font-medium text-gray-900">{{ e.child_name }}</td>
+          <td class="px-5 py-3 text-gray-600">{{ e.age|default:'—' }}</td>
+          <td class="px-5 py-3 text-gray-600">{{ e.current_class_text|default:'—' }}</td>
+          <td class="px-5 py-3 text-gray-600">{{ e.parent_name }}</td>
+          <td class="px-5 py-3 text-gray-600">{{ e.parent_phone }}</td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-100">
+          <td colspan="5" class="px-5 py-12 text-center">
+            <div class="flex flex-col items-center gap-2 text-gray-400">
+              <i data-lucide="users" class="w-8 h-8"></i>
+              <p class="text-sm">No students enrolled yet.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

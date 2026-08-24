@@ -4,9 +4,6 @@ All views require the ADMIN role via RoleRequiredMixin.
 """
 from django.urls import path
 
-from data_import.views import (
-    DataImportView, DataImportConfirmView, DataImportTemplateDownloadView,
-)
 from school_admin.views import (
     DashboardView,
     StudentListView, StudentCreateView, StudentDetailView,
@@ -29,8 +26,6 @@ from school_admin.views import (
     PayGradeListView, AllowanceDeductionListView,
     PayrollRunListView, PayrollRunDetailView,
     GeneratePayrollView, RecordDisbursementView,
-    ProjectListView, ProjectDetailView,
-    ExpenditureListView, FinancialReportView,
     PublishResultsView, ResultReviewView,
     SessionListView, SessionCreateView, SessionSetCurrentView, TermSetCurrentView,
     SchoolSettingsView,
@@ -122,12 +117,6 @@ path('students/<int:pk>/record-payment/', StudentRecordPaymentView.as_view(), na
     path('payroll/runs/<int:pk>/', PayrollRunDetailView.as_view(), name='payroll_run_detail'),
     path('payroll/disburse/<int:payslip_id>/', RecordDisbursementView.as_view(), name='record_disbursement'),
 
-    # Finance
-    path('finance/projects/', ProjectListView.as_view(), name='project_list'),
-    path('finance/projects/<int:pk>/', ProjectDetailView.as_view(), name='project_detail'),
-    path('finance/expenditures/', ExpenditureListView.as_view(), name='expenditure_list'),
-    path('finance/report/', FinancialReportView.as_view(), name='financial_report'),
-
     # Results
     path('results/publish/', PublishResultsView.as_view(), name='publish_results'),
     path('results/review/', ResultReviewView.as_view(), name='review_results'),
@@ -156,9 +145,4 @@ path('students/<int:pk>/record-payment/', StudentRecordPaymentView.as_view(), na
     path('credentials/print/', CredentialBatchPrintView.as_view(), name='credential_batch_print'),
     path('credentials/user/<int:pk>/reset/', CredentialSingleResetView.as_view(), name='credential_single_reset'),
     path('credentials/member/<int:pk>/', CredentialMemberConfirmView.as_view(), name='credential_member_confirm'),
-
-    # Data Import
-    path('import/', DataImportView.as_view(), name='import'),
-    path('import/confirm/', DataImportConfirmView.as_view(), name='import_confirm'),
-    path('import/template/<str:type>/', DataImportTemplateDownloadView.as_view(), name='import_template'),
 ]

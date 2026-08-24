@@ -1,0 +1,54 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260819194345
+Username: CHANGE_CONSULTS\pasto
+RunAs User: CHANGE_CONSULTS\pasto
+Configuration Name: 
+Machine: CHANGE_CONSULTS (Microsoft Windows NT 10.0.22631.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:\Users\pasto\bust-base\scripts\run_tasks.ps1
+Process ID: 10076
+PSVersion: 5.1.22621.4391
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.22621.4391
+BuildVersion: 10.0.22621.4391
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is C:\Users\pasto\bust-base\scripts\run_tasks.log
+===== GHSS-Technitium =====
+
+TaskName:                             \GHSS-Technitium
+Status:                               Queued
+Last Run Time:                        19/08/2026 19:41:09
+Last Result:                          0
+Task To Run:                          C:\Users\pasto\bust-base\scripts\start_technitium.bat
+Run As User:                          SYSTEM
+-- running --
+SUCCESS: Attempted to run the scheduled task "GHSS-Technitium".
+===== GHSS-Caddy =====
+TaskName:                             \GHSS-Caddy
+Status:                               Queued
+Last Run Time:                        19/08/2026 19:41:09
+Last Result:                          0
+Task To Run:                          C:\Users\pasto\bust-base\scripts\start_caddy.bat
+Run As User:                          SYSTEM
+-- running --
+SUCCESS: Attempted to run the scheduled task "GHSS-Caddy".
+===== GHSS-Portal =====
+TaskName:                             \GHSS-Portal
+Status:                               Queued
+Last Run Time:                        19/08/2026 19:41:09
+Last Result:                          0
+Task To Run:                          C:\Users\pasto\bust-base\scripts\start_lan.bat
+Run As User:                          SYSTEM
+-- running --
+SUCCESS: Attempted to run the scheduled task "GHSS-Portal".
+===== post-run processes =====
+===== ports =====
+
+**********************
+Windows PowerShell transcript end
+End time: 20260819194401
+**********************

@@ -180,6 +180,14 @@ class Payment(TenantScopedModel):
         related_name='payments',
         verbose_name=_('student'),
     )
+    lesson_enrollment = models.ForeignKey(
+        'lessons.LessonEnrollment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments',
+        verbose_name=_('lesson enrollment'),
+    )
     description = models.CharField(
         max_length=255, blank=True, default='', verbose_name=_('description')
     )

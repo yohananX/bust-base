@@ -14,7 +14,7 @@ import random
 import sys
 from datetime import datetime, timedelta
 
-sys.path.insert(0, r'C:\Users\pasto\bust-base')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'school.settings')
 
 import django

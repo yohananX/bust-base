@@ -63,7 +63,7 @@
   {# ── QUICK ACTIONS ── #}
   <div>
     <h3 class="text-sm font-semibold text-ink mb-3">Quick Actions</h3>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3">
       {% if assignments %}
       <a href="{% url 'score_grid' assignments.0.pk %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-line rounded-2xl hover:shadow-md hover:border-primary/40 transition-all group">
         <div class="w-10 h-10 rounded-xl bg-primary-tint flex items-center justify-center text-primary group-hover:bg-primary/10 transition-colors">

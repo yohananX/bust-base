@@ -6,7 +6,6 @@ from django.test import TestCase
 
 from accounts.models import Roles, User
 from academics.models import Score, Subject, TeacherAssignment
-from academics.permissions import teacher_can_access
 from academics.ranking import compute_positions, compute_term_summary
 from core.models import AcademicSession, School, Term
 from students.models import (
@@ -195,43 +194,6 @@ class TeacherAssignmentModelTests(TestCase):
                 session=self.session,
             )
             assignment.full_clean()
-
-    def test_teacher_can_access_assigned(self):
-        """teacher_can_access should return True for an assigned teacher."""
-        TeacherAssignment.objects.create(
-            school=self.school,
-            teacher=self.teacher_user,
-            subject=self.subject,
-            school_class=self.school_class,
-            session=self.session,
-        )
-        self.assertTrue(
-            teacher_can_access(
-                self.teacher_user, self.subject, self.school_class, self.session,
-            )
-        )
-
-    def test_teacher_can_access_unassigned(self):
-        """teacher_can_access should return False for a different teacher."""
-        other_teacher = User.objects.create_user(
-            username="other_teacher",
-            email="other@grace.edu",
-            password="testpass123",
-            school=self.school,
-            role=Roles.TEACHER,
-        )
-        TeacherAssignment.objects.create(
-            school=self.school,
-            teacher=self.teacher_user,
-            subject=self.subject,
-            school_class=self.school_class,
-            session=self.session,
-        )
-        self.assertFalse(
-            teacher_can_access(
-                other_teacher, self.subject, self.school_class, self.session,
-            )
-        )
 
 
 # ---------------------------------------------------------------------------

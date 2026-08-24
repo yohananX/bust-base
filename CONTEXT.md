@@ -109,3 +109,29 @@ EMAIL/SMS are audit records, IN_APP rows power the bell.
 - **Notification preferences (per-recipient channel opt-out: e.g. email-only or
   quiet hours for the bell) is explicitly deferred** — user said "later". All
   channels remain all-on until then.
+
+## Extra Lessons / Summer School (lessons app, 2026-08-20)
+
+- New Django app `lessons`. Admin-centric holiday-programme registration stream
+  (paper "Summer School Registration Form" parity). No student/parent portal in v1;
+  teachers get a read-only roster of their assigned classes.
+- **Models** (all `TenantScopedModel`): `LessonPeriod` (DRAFT/OPEN/CLOSED),
+  `LessonClass` (per-period, fixed `fee_amount` editable anytime), 
+  `LessonTeacherAssignment` (teacher = accounts.User, role TEACHER), and
+  `LessonEnrollment` (REGISTERED/PAID/CANCELLED).
+- **Enrollment** links an existing Student OR captures an external child
+  (`external_name`, `age`, `current_class_text`). Parent/guardian, learning goals,
+  referral/source, and consent fields mirror the paper form.
+- **Payments** reuse `fees.Payment` via a new nullable `lesson_enrollment` FK
+  (migration `fees.0008_payment_lesson_enrollment`); `issue_receipt` issues the
+  standard `FeeReceipt`. `LessonEnrollment.payment_status` is PAID/PARTIAL/UNPAID
+  from confirmed payments; recording full payment auto-marks the enrollment PAID.
+- **Routes**: admin under `/school-admin/lessons/` (namespace `lessons`), teacher
+  under `/teacher/lessons/` (namespace `lessons_teacher`). Sidebar: "Extra Lessons"
+  (admin, Academics section) and "My Extra Classes" (teacher).
+- **CSV export** (`enrollments/export/`) honours the same period/status filters.
+- **Notification**: payment recorded for a linked student sends an IN_APP row
+  (`lesson-payment:{id}`) to the student only (no email unless explicit); fee
+  receipts reuse the existing receipt flow.
+- **Test**: `lessons/tests.py` (22 tests: model, admin CRUD, enrollment, payment,
+  CSV, teacher scoping). Run `python manage.py test lessons`.

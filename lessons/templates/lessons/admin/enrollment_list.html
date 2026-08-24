@@ -1,0 +1,131 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Extra Lessons — Registrations — School Admin{% endblock %}
+{% block page_header %}Extra Lessons{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+  <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div class="flex-1 min-w-52">
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
+        <input type="text" name="q" value="{{ q }}" placeholder="Child, parent, or phone"
+               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Period</label>
+        <select name="period"
+                class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">All periods</option>
+          {% for p in periods %}
+          <option value="{{ p.pk }}" {% if period_id == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
+        <select name="status"
+                class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">All</option>
+          <option value="REGISTERED" {% if status == 'REGISTERED' %}selected{% endif %}>Registered</option>
+          <option value="PAID" {% if status == 'PAID' %}selected{% endif %}>Paid</option>
+          <option value="CANCELLED" {% if status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+        </select>
+      </div>
+      <button type="submit"
+              class="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors">
+        Filter
+      </button>
+      <a href="{% url 'lessons:enrollment_list' %}"
+         class="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Clear</a>
+    </form>
+  </div>
+
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div>
+      <h2 class="text-lg font-display font-semibold text-gray-900">Registrations</h2>
+      <p class="text-sm text-gray-500">Record children, track fees, and export.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'lessons:enrollment_export' %}?{% if period_id %}period={{ period_id }}&{% endif %}{% if status %}status={{ status }}&{% endif %}q={{ q }}"
+         class="inline-flex items-center px-4 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">
+        <i data-lucide="download" class="w-4 h-4 mr-1.5"></i>Export CSV
+      </a>
+      <a href="{% url 'lessons:enrollment_new' %}"
+         class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>New Registration
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
+          <th class="px-5 py-3.5 font-semibold">Child</th>
+          <th class="px-5 py-3.5 font-semibold">Class</th>
+          <th class="px-5 py-3.5 font-semibold">Parent</th>
+          <th class="px-5 py-3.5 font-semibold text-right">Fee</th>
+          <th class="px-5 py-3.5 font-semibold text-right">Paid</th>
+          <th class="px-5 py-3.5 font-semibold">Status</th>
+          <th class="px-5 py-3.5 font-semibold text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in enrollments %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+          <td class="px-5 py-3.5">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="user" class="w-4.5 h-4.5"></i>
+              </div>
+              <div>
+                <span class="font-medium text-gray-900">{{ e.child_name }}</span>
+                <p class="text-xs text-gray-400">{{ e.lesson_class.period.name }}</p>
+              </div>
+            </div>
+          </td>
+          <td class="px-5 py-3.5 text-gray-600">{{ e.lesson_class.name }}</td>
+          <td class="px-5 py-3.5">
+            <div class="text-gray-800">{{ e.parent_name }}</div>
+            <div class="text-xs text-gray-400">{{ e.parent_phone }}</div>
+          </td>
+          <td class="px-5 py-3.5 text-right text-gray-600 whitespace-nowrap">₦{{ e.fee_amount|floatformat:2 }}</td>
+          <td class="px-5 py-3.5 text-right font-medium text-gray-900 whitespace-nowrap">₦{{ e.amount_paid|floatformat:2 }}</td>
+          <td class="px-5 py-3.5">
+            {% if e.status == 'PAID' %}{% include 'components/badge.html' with status='success' text='Paid' %}
+            {% elif e.status == 'CANCELLED' %}{% include 'components/badge.html' with status='danger' text='Cancelled' %}
+            {% elif e.payment_status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text='Partial' %}
+            {% else %}{% include 'components/badge.html' with status='info' text='Registered' %}{% endif %}
+          </td>
+          <td class="px-5 py-3.5">
+            <div class="flex items-center justify-end gap-1">
+              <a href="{% url 'lessons:enrollment_print' e.pk %}" target="_blank" title="Print form"
+                 class="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-amber-50 transition-colors">
+                <i data-lucide="printer" class="w-4 h-4"></i>
+              </a>
+              <a href="{% url 'lessons:enrollment_detail' e.pk %}" title="View"
+                 class="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-amber-50 transition-colors">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-gray-100">
+          <td colspan="7" class="px-5 py-12 text-center">
+            <div class="flex flex-col items-center gap-2 text-gray-400">
+              <i data-lucide="clipboard-list" class="w-8 h-8"></i>
+              <p class="text-sm">No registrations found.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

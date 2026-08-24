@@ -360,12 +360,37 @@ class FlowReproTest(TestCase):
     def test_staff_create_redirects_to_assignments(self):
         self.client.login(username='adminx', password='pass123')
         resp = self.client.post(reverse('school_admin:staff_create'), {
-            'username': 'teacher1', 'first_name': 'Tee', 'last_name': 'Cher',
+            'first_name': 'Tee', 'last_name': 'Cher',
             'phone_number': '08012345678', 'email': 't@test.com', 'role': 'TEACHER',
         })
         self.assertEqual(resp.status_code, 302)
         self.assertIn('/school-admin/assignments/', resp.url)
         self.assertIn('teacher_id=', resp.url)
+
+    def test_staff_create_auto_generates_username(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:staff_create'), {
+            'username': 'ignored-input',
+            'first_name': 'Grace', 'last_name': 'House',
+            'phone_number': '08011112222', 'role': 'ADMIN',
+        })
+        self.assertEqual(resp.status_code, 302)
+        user = User.objects.get(email='', first_name='Grace', last_name='House')
+        self.assertEqual(user.username, 'grace.house')
+        self.assertEqual(user.role, Roles.ADMIN)
+
+    def test_staff_create_uniquifies_duplicate_names(self):
+        User.objects.create_user(
+            username='john.doe', email='jd@test.com', password='pass123',
+            school=self.school, role=Roles.TEACHER,
+        )
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:staff_create'), {
+            'first_name': 'John', 'last_name': 'Doe',
+            'phone_number': '08033334444', 'role': 'TEACHER',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(User.objects.filter(username='john.doe1').exists())
 
     def test_student_create_creates_new_user(self):
         self.client.login(username='adminx', password='pass123')

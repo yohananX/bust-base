@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'finance',
     'notifications',
     'data_import',
+    'lessons',
     'school_admin',
     # Django contrib
     'django_q',

@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Registration Form — {{ enrollment.child_name }}{% endblock %}
+
+{% block content %}
+<style>
+  @media print { .no-print { display: none !important; } body { background: white; } }
+  .doc { max-width: 760px; margin: 0 auto; background: white; padding: 40px; font-family: 'Inter', system-ui, sans-serif; color: #111827; }
+  .doc h1 { font-size: 20px; font-weight: 700; text-align: center; margin: 4px 0; }
+  .doc .school-name { font-size: 13px; color: #6b7280; text-align: center; }
+  .doc table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+  .doc th, .doc td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
+  .doc th { background: #f9fafb; font-weight: 600; width: 40%; }
+</style>
+
+<div class="no-print flex justify-center py-6">
+  <button onclick="window.print()"
+          class="inline-flex items-center px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors">
+    <i data-lucide="printer" class="w-4 h-4 mr-1.5"></i>Print
+  </button>
+</div>
+
+<div class="doc">
+  <p class="school-name">{{ school.name }}</p>
+  <h1>Summer School Registration Form</h1>
+  <p class="school-name">{{ enrollment.lesson_class.period.name }}</p>
+
+  <table>
+    <tr><th>Class</th><td>{{ enrollment.lesson_class.name }}</td></tr>
+    <tr><th>Child full name</th><td>{{ enrollment.child_name }}</td></tr>
+    <tr><th>Student type</th><td>{% if enrollment.student %}Existing student{% else %}External{% endif %}</td></tr>
+    <tr><th>Age</th><td>{{ enrollment.age|default:'—' }}</td></tr>
+    <tr><th>Current class / grade</th><td>{{ enrollment.current_class_text|default:'—' }}</td></tr>
+    <tr><th>Parent / guardian name</th><td>{{ enrollment.parent_name }}</td></tr>
+    <tr><th>Parent phone</th><td>{{ enrollment.parent_phone }}</td></tr>
+    <tr><th>Relationship to child</th><td>{{ enrollment.get_relationship_display }}</td></tr>
+    <tr><th>Emergency contact</th><td>{{ enrollment.emergency_contact|default:'—' }}</td></tr>
+    <tr><th>Learning goals / needs</th><td>{{ enrollment.learning_goals|default:'—' }}</td></tr>
+    <tr><th>How did you hear about us?</th><td>{{ enrollment.get_source_display }}</td></tr>
+    <tr><th>Referral notes</th><td>{{ enrollment.referral_notes|default:'—' }}</td></tr>
+    <tr><th>Fee</th><td>₦{{ enrollment.fee_amount|floatformat:2 }}</td></tr>
+    <tr><th>Amount paid</th><td>₦{{ enrollment.amount_paid|floatformat:2 }}</td></tr>
+    <tr><th>Balance</th><td>₦{{ balance|floatformat:2 }}</td></tr>
+    <tr><th>Status</th><td>{{ enrollment.get_status_display }}</td></tr>
+    <tr><th>Registered on</th><td>{{ enrollment.registered_on|date:"F j, Y" }}</td></tr>
+    <tr><th>Parent consent</th><td>{% if enrollment.consent_given %}Yes — {{ enrollment.consent_date|date:"F j, Y" }}{% else %}No{% endif %}</td></tr>
+  </table>
+
+  <div style="margin-top: 48px; display: flex; justify-content: space-between;">
+    <div>
+      <p style="border-top: 1px solid #9ca3af; padding-top: 6px; font-size: 12px; color: #6b7280;">Parent / Guardian signature</p>
+    </div>
+    <div>
+      <p style="border-top: 1px solid #9ca3af; padding-top: 6px; font-size: 12px; color: #6b7280;">School official signature</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
