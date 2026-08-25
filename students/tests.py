@@ -10,6 +10,7 @@ from accounts.models import Roles
 from academics.models import Subject, TeacherAssignment, TermResult, Score
 from fees.models import Invoice, Payment
 from .models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from lessons.models import LessonPeriod, LessonClass, LessonEnrollment
 
 
 class StudentModelTests(TestCase):
@@ -1160,4 +1161,193 @@ class ResultFeeLockTests(TestCase):
         resp = self.client.get(reverse(
             "student-result-booklet", kwargs={"term_id": self.term.pk}
         ))
+        self.assertEqual(resp.status_code, 200)
+
+
+class ExtraLessonsPortalTests(TestCase):
+    """Phase B: parents/students see their (read-only) Extra Lessons."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.school = School.objects.create(
+            name="Grace House School", short_code="grace-house",
+        )
+        self.parent = User.objects.create_user(
+            username="parent", password="testpass123", school=self.school,
+            role=Roles.PARENT, first_name="Jane", last_name="Parent",
+        )
+        self.other_parent = User.objects.create_user(
+            username="other_parent", password="testpass123", school=self.school,
+            role=Roles.PARENT, first_name="Mary", last_name="Other",
+        )
+        self.student_user = User.objects.create_user(
+            username="student", password="testpass123", school=self.school,
+            role=Roles.STUDENT, first_name="Kelechi", last_name="Okafor",
+        )
+        self.child = Student.objects.create(
+            school=self.school, user=self.student_user,
+            admission_number="GH-001", gender=Student.MALE,
+            date_of_birth="2012-05-15", admission_date="2025-09-01",
+        )
+        self.other_student_user = User.objects.create_user(
+            username="other_student", password="testpass123", school=self.school,
+            role=Roles.STUDENT, first_name="Zainab", last_name="Musa",
+        )
+        self.other_child = Student.objects.create(
+            school=self.school, user=self.other_student_user,
+            admission_number="GH-002", gender=Student.FEMALE,
+            date_of_birth="2013-03-10", admission_date="2025-09-01",
+        )
+        StudentGuardianLink.objects.create(
+            school=self.school, student=self.child, guardian=self.parent,
+            relationship=StudentGuardianLink.MOTHER, is_primary_contact=True,
+        )
+        StudentGuardianLink.objects.create(
+            school=self.school, student=self.other_child, guardian=self.other_parent,
+            relationship=StudentGuardianLink.MOTHER, is_primary_contact=True,
+        )
+        self.period = LessonPeriod.objects.create(
+            school=self.school, name="Summer School 2026",
+            start_date="2026-08-01", end_date="2026-08-28",
+            status=LessonPeriod.Status.OPEN,
+        )
+        self.lesson_class = LessonClass.objects.create(
+            school=self.school, period=self.period,
+            name="Mathematics Booster", fee_amount=Decimal("15000.00"),
+        )
+        self.enrollment = LessonEnrollment.objects.create(
+            school=self.school, lesson_class=self.lesson_class,
+            student=self.child, parent_name="Jane Parent",
+            parent_phone="08012345678",
+        )
+        self.other_enrollment = LessonEnrollment.objects.create(
+            school=self.school, lesson_class=self.lesson_class,
+            student=self.other_child, parent_name="Mary Other",
+            parent_phone="08099999999",
+        )
+
+    def _login(self, user):
+        self.client.force_login(user)
+
+    def test_parent_sees_own_child_enrollment(self):
+        self._login(self.parent)
+        resp = self.client.get(reverse("parent-extra-lessons"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Mathematics Booster")
+        self.assertContains(resp, "Kelechi Okafor")
+
+    def test_parent_does_not_see_other_child(self):
+        self._login(self.parent)
+        resp = self.client.get(reverse("parent-extra-lessons"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "Zainab Musa")
+
+    def test_parent_balance_reflects_unpaid_fee(self):
+        self._login(self.parent)
+        resp = self.client.get(reverse("parent-extra-lessons"))
+        self.assertContains(resp, "15000.00")
+
+    def test_parent_cannot_access_student_view(self):
+        self._login(self.parent)
+        resp = self.client.get(reverse("student-extra-lessons"))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_student_sees_own_enrollment(self):
+        self._login(self.student_user)
+        resp = self.client.get(reverse("student-extra-lessons"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Mathematics Booster")
+
+    def test_student_does_not_see_other_enrollment(self):
+        self._login(self.student_user)
+        resp = self.client.get(reverse("student-extra-lessons"))
+        self.assertNotContains(resp, "Zainab Musa")
+
+    def test_student_cannot_access_parent_view(self):
+        self._login(self.student_user)
+        resp = self.client.get(reverse("parent-extra-lessons"))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_cancelled_enrollment_hidden(self):
+        self.enrollment.status = LessonEnrollment.Status.CANCELLED
+        self.enrollment.save()
+        self._login(self.parent)
+        # A cancelled-only enrollment means no active one exists, so the view
+        # redirects back to the children list (tab would also be hidden).
+        resp = self.client.get(reverse("parent-extra-lessons"))
+        self.assertRedirects(resp, reverse("parent-children"))
+
+    def _make_student(self, username, admission="GH-900"):
+        user = get_user_model().objects.create_user(
+            username=username, password="testpass123", school=self.school,
+            role=Roles.STUDENT, first_name="No", last_name="Lessons",
+        )
+        return Student.objects.create(
+            school=self.school, user=user, admission_number=admission,
+            gender=Student.MALE, date_of_birth="2012-01-01",
+            admission_date="2025-09-01",
+        )
+
+    def test_student_tab_hidden_without_enrollment(self):
+        """A student not registered for Extra Lessons never sees the tab."""
+        lone = self._make_student("lone_student", "GH-901")
+        self._login(lone.user)
+        resp = self.client.get(reverse("student-overview"))
+        self.assertNotContains(resp, "My Extra Lessons")
+
+    def test_student_tab_visible_when_enrolled(self):
+        self._login(self.student_user)
+        resp = self.client.get(reverse("student-overview"))
+        self.assertContains(resp, "My Extra Lessons")
+
+    def test_parent_tab_hidden_without_child_enrollment(self):
+        """A parent whose children have no Extra Lessons never sees the tab."""
+        lone = self._make_student("lone_child", "GH-902")
+        User = get_user_model()
+        p = User.objects.create_user(
+            username="lone_parent", password="testpass123", school=self.school,
+            role=Roles.PARENT, first_name="No", last_name="Lessons",
+        )
+        StudentGuardianLink.objects.create(
+            school=self.school, student=lone, guardian=p,
+            relationship=StudentGuardianLink.MOTHER, is_primary_contact=True,
+        )
+        self._login(p)
+        resp = self.client.get(reverse("parent-dashboard"))
+        self.assertNotContains(resp, "Extra Lessons")
+
+    def test_parent_tab_visible_with_enrollment(self):
+        self._login(self.parent)
+        resp = self.client.get(reverse("parent-dashboard"))
+        self.assertContains(resp, "Extra Lessons")
+
+    def test_student_view_redirects_when_no_enrollment(self):
+        lone = self._make_student("redirect_student", "GH-903")
+        self._login(lone.user)
+        resp = self.client.get(reverse("student-extra-lessons"))
+        self.assertRedirects(resp, reverse("student-overview"))
+
+    def test_parent_view_redirects_when_no_child_enrollment(self):
+        lone = self._make_student("redirect_child", "GH-904")
+        User = get_user_model()
+        p = User.objects.create_user(
+            username="redirect_parent", password="testpass123", school=self.school,
+            role=Roles.PARENT, first_name="No", last_name="Lessons",
+        )
+        StudentGuardianLink.objects.create(
+            school=self.school, student=lone, guardian=p,
+            relationship=StudentGuardianLink.MOTHER, is_primary_contact=True,
+        )
+        self._login(p)
+        resp = self.client.get(reverse("parent-extra-lessons"))
+        self.assertRedirects(resp, reverse("parent-children"))
+
+    def test_student_view_renders_when_enrolled(self):
+        self._login(self.student_user)
+        resp = self.client.get(reverse("student-extra-lessons"))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_parent_view_renders_when_enrolled(self):
+        self._login(self.parent)
+        resp = self.client.get(reverse("parent-extra-lessons"))
         self.assertEqual(resp.status_code, 200)

@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Extra Lessons — Grace House{% endblock %}
+{% block page_header %}Extra Lessons{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+  {# ── HEADLINE: outstanding balance across children ── #}
+  <div class="bg-white rounded-2xl border border-line p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+      <div class="min-w-0">
+        <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mb-1">Outstanding balance</p>
+        <p class="text-3xl font-bold text-ink tabular-nums">&#8358;{{ total_outstanding|floatformat:2 }}</p>
+        <p class="text-sm text-ink-muted mt-1">{{ enrollment_count }} enrollment{{ enrollment_count|pluralize }} across your children</p>
+      </div>
+      <a href="{% url 'parent-pay' %}" class="inline-flex items-center px-4 py-2.5 bg-white border border-line text-ink text-sm font-medium rounded-xl hover:bg-surface-muted transition-colors">
+        <i data-lucide="banknote" class="w-4 h-4 mr-2 text-primary"></i>Pay Fees
+      </a>
+    </div>
+  </div>
+
+  {# ── CHILDREN'S EXTRA LESSONS ── #}
+  <div id="children">
+    <h3 class="text-sm font-semibold text-ink mb-3">Your Children's Extra Lessons</h3>
+    <div class="grid gap-4">
+      {% for child in children %}
+      <div class="bg-white rounded-2xl border border-line p-6">
+        <div class="flex items-center min-w-0 mb-4">
+          {% include "components/avatar.html" with name=child.student.user.get_full_name size="md" %}
+          <div class="ml-3 min-w-0">
+            <h3 class="font-semibold text-ink truncate">{{ child.student.user.get_full_name }}</h3>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left text-ink-muted uppercase text-xs tracking-wider">
+              <th class="px-4 py-3 font-semibold">Class</th>
+              <th class="px-4 py-3 font-semibold">Period</th>
+              <th class="px-4 py-3 font-semibold text-right">Fee</th>
+              <th class="px-4 py-3 font-semibold text-right">Paid</th>
+              <th class="px-4 py-3 font-semibold text-right">Balance</th>
+              <th class="px-4 py-3 font-semibold">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in child.enrollments %}
+            <tr class="border-t border-line">
+              <td class="px-4 py-3 text-ink font-medium">{{ e.lesson_class.name }}</td>
+              <td class="px-4 py-3 text-ink-muted">{{ e.lesson_class.period.name }}</td>
+              <td class="px-4 py-3 text-right text-ink tabular-nums">&#8358;{{ e.fee_amount|floatformat:2 }}</td>
+              <td class="px-4 py-3 text-right text-ink tabular-nums">&#8358;{{ e.amount_paid|floatformat:2 }}</td>
+              <td class="px-4 py-3 text-right tabular-nums {% if e.balance > 0 %}text-warning font-semibold{% else %}text-ink-muted{% endif %}">&#8358;{{ e.balance|floatformat:2 }}</td>
+              <td class="px-4 py-3">
+                {% if e.status == 'PAID' %}{% include 'components/badge.html' with status='success' text='Paid' %}
+                {% elif e.payment_status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text='Partial' %}
+                {% elif e.payment_status == 'UNPAID' %}{% include 'components/badge.html' with status='info' text='Unpaid' %}
+                {% else %}{% include 'components/badge.html' with status='info' text='Registered' %}{% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr class="border-t border-line">
+              <td colspan="6" class="px-4 py-8 text-center text-ink-muted text-sm">No extra lessons enrolled yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+      {% empty %}
+      <div class="bg-white rounded-2xl border border-line py-12 text-center">
+        <div class="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center mx-auto mb-3"><i data-lucide="sun" class="w-5 h-5 text-ink-faint"></i></div>
+        <p class="text-sm text-ink-muted">No extra lessons enrollments for your children yet.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,5 +1,7 @@
 """Template context processors shared across portals."""
 from accounts.models import Roles
+from lessons.models import LessonEnrollment
+from students.models import StudentGuardianLink
 
 
 def login_school(request):
@@ -152,9 +154,37 @@ _nav_item(path, 'Awaiting Confirmation', '/school-admin/fees/pending/', 'clock',
         _nav_item(path, 'My Payslips', '/payroll/payslips/', 'banknote'),
     ]
 
+    # The Extra Lessons tab is only shown once the user (or their children)
+    # actually has a summer-school registration. External/walk-in summer
+    # students have no portal login at all, and an existing student shouldn't
+    # see the tab until the admin registers them for a lesson — so the tab is
+    # gated on a real LessonEnrollment rather than always present.
+    school = getattr(request, 'school', None)
+    show_student_lessons = False
+    show_parent_lessons = False
+    if role == Roles.STUDENT and school:
+        profile = getattr(request.user, 'student_profile', None)
+        if profile:
+            show_student_lessons = LessonEnrollment.objects.filter(
+                school=school, student=profile,
+            ).exclude(status=LessonEnrollment.Status.CANCELLED).exists()
+    elif role == Roles.PARENT and school:
+        child_ids = StudentGuardianLink.objects.filter(
+            guardian=request.user,
+        ).values_list('student_id', flat=True)
+        show_parent_lessons = LessonEnrollment.objects.filter(
+            school=school, student_id__in=child_ids,
+        ).exclude(status=LessonEnrollment.Status.CANCELLED).exists()
+
     student_nav = [
         _nav_item(path, 'Dashboard', '/student/', 'layout-dashboard', exact=True),
         _nav_item(path, 'Pay Fees', '/student/pay/', 'banknote'),
+    ]
+    if show_student_lessons:
+        student_nav.append(
+            _nav_item(path, 'My Extra Lessons', '/student/extra-lessons/', 'sun'),
+        )
+    student_nav += [
         _nav_item(path, 'My Subjects', '/student/subjects/', 'book-open'),
         _nav_item(path, 'My Results', '/student/results/', 'file-text'),
         _nav_item(path, 'Change Password', '/student/password/', 'key-round'),
@@ -163,6 +193,12 @@ _nav_item(path, 'Awaiting Confirmation', '/school-admin/fees/pending/', 'clock',
     parent_nav = [
         _nav_item(path, 'Dashboard', '/parent/', 'layout-dashboard', exact=True),
         _nav_item(path, 'My Children', '/parent/children/', 'users'),
+    ]
+    if show_parent_lessons:
+        parent_nav.append(
+            _nav_item(path, 'Extra Lessons', '/parent/extra-lessons/', 'sun'),
+        )
+    parent_nav += [
         _nav_item(path, 'Pay Fees', '/parent/pay/', 'banknote'),
         _nav_item(path, 'Invoices', '/parent/invoices/', 'credit-card', badge=badges.get('/parent/invoices/')),
     ]

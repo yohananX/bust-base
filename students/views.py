@@ -16,6 +16,7 @@ from fees.selectors import owed_term_ids as owed_term_ids_for
 from fees.selectors import owed_term_ids_from
 
 from academics.models import Score, TermResult, TeacherAssignment
+from lessons.models import LessonEnrollment
 
 
 def _parent_portal_context(request) -> dict:
@@ -302,6 +303,66 @@ class ParentInvoiceDetailView(RoleRequiredMixin, View):
         })
 
 
+class ParentExtraLessonsView(RoleRequiredMixin, View):
+    """Parent view of their children's Extra Lessons enrollments + balances.
+
+    Read-only: admin remains the source of truth for registration. A parent
+    sees only enrollments linked to a child they are guardian for (the
+    enrollment's ``student`` FK matches one of their children). External
+    walk-in enrollments are never shown because they have no linked student.
+    """
+
+    allowed_roles = [Roles.PARENT]
+
+    def get(self, request):
+        student_ids = StudentGuardianLink.objects.filter(
+            guardian=request.user,
+        ).values_list('student_id', flat=True)
+
+        # Guard: no child enrolled for Extra Lessons → send the parent back to
+        # their children list. Mirrors the booklet-lock redirect pattern; the
+        # nav already hides the tab, this is the backstop.
+        if not LessonEnrollment.objects.filter(
+            school=request.school, student_id__in=student_ids,
+        ).exclude(status=LessonEnrollment.Status.CANCELLED).exists():
+            messages.info(
+                request,
+                'None of your children are enrolled in extra lessons yet.',
+            )
+            return redirect('parent-children')
+
+        enrollments = (
+            LessonEnrollment.objects
+            .filter(school=request.school, student_id__in=student_ids)
+            .exclude(status=LessonEnrollment.Status.CANCELLED)
+            .select_related(
+                'lesson_class', 'lesson_class__period',
+                'student', 'student__user',
+            )
+            .prefetch_related('payments')
+            .order_by('student__user__last_name', '-registered_on')
+        )
+
+        children = {}
+        total_outstanding = Decimal('0.00')
+        for e in enrollments:
+            balance = max(e.fee_amount - e.amount_paid, Decimal('0.00'))
+            e.balance = balance
+            if balance > 0:
+                total_outstanding += balance
+            child = children.setdefault(e.student_id, {
+                'student': e.student,
+                'enrollments': [],
+            })
+            child['enrollments'].append(e)
+
+        return render(request, 'students/parent/extra_lessons.html', {
+            'children': list(children.values()),
+            'total_outstanding': total_outstanding,
+            'enrollment_count': enrollments.count(),
+        })
+
+
 class MakePaymentView(RoleRequiredMixin, View):
     """Pay page — one view serving both the parent and student portals.
 
@@ -541,6 +602,50 @@ class StudentOverviewView(RoleRequiredMixin, View):
             'results_locked': results_locked,
             'outstanding': outstanding,
             'unpaid_count': unpaid_count,
+        })
+
+
+class StudentExtraLessonsView(RoleRequiredMixin, View):
+    """Simple read-only view of the student's own Extra Lessons enrollments.
+
+    Mirrors the parent view but scoped to the logged-in student. Admin stays
+    the source of truth, so this is display-only.
+    """
+
+    allowed_roles = [Roles.STUDENT]
+
+    def get(self, request):
+        student = request.user.student_profile
+
+        # Guard: not registered for Extra Lessons → back to the dashboard.
+        # The nav already hides the tab; this is the backstop redirect.
+        if not LessonEnrollment.objects.filter(
+            school=request.school, student=student,
+        ).exclude(status=LessonEnrollment.Status.CANCELLED).exists():
+            messages.info(
+                request, 'You have no extra lessons enrollments yet.',
+            )
+            return redirect('student-overview')
+
+        enrollments = (
+            LessonEnrollment.objects
+            .filter(school=request.school, student=student)
+            .exclude(status=LessonEnrollment.Status.CANCELLED)
+            .select_related('lesson_class', 'lesson_class__period')
+            .prefetch_related('payments')
+            .order_by('-registered_on')
+        )
+
+        total_outstanding = Decimal('0.00')
+        for e in enrollments:
+            balance = max(e.fee_amount - e.amount_paid, Decimal('0.00'))
+            e.balance = balance
+            if balance > 0:
+                total_outstanding += balance
+
+        return render(request, 'students/student/extra_lessons.html', {
+            'enrollments': enrollments,
+            'total_outstanding': total_outstanding,
         })
 
 

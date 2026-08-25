@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}My Extra Lessons — Grace House{% endblock %}
+{% block page_header %}My Extra Lessons{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+
+  {# ── HEADLINE: outstanding balance ── #}
+  <div class="bg-white rounded-2xl border border-line p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+      <div class="min-w-0">
+        <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mb-1">Outstanding balance</p>
+        <p class="text-3xl font-bold text-ink tabular-nums">&#8358;{{ total_outstanding|floatformat:2 }}</p>
+        <p class="text-sm text-ink-muted mt-1">{{ enrollments|length }} enrollment{{ enrollments|length|pluralize }}</p>
+      </div>
+      <a href="{% url 'student-pay' %}" class="inline-flex items-center px-4 py-2.5 bg-white border border-line text-ink text-sm font-medium rounded-xl hover:bg-surface-muted transition-colors">
+        <i data-lucide="banknote" class="w-4 h-4 mr-2 text-primary"></i>Pay Fees
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-line overflow-hidden">
+    <div class="px-5 py-4 border-b border-line">
+      <h3 class="text-sm font-semibold text-ink">Enrolled Classes</h3>
+    </div>
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-surface-muted text-left text-ink-muted uppercase text-xs tracking-wider">
+          <th class="px-5 py-3 font-semibold">Class</th>
+          <th class="px-5 py-3 font-semibold">Period</th>
+          <th class="px-5 py-3 font-semibold text-right">Fee</th>
+          <th class="px-5 py-3 font-semibold text-right">Paid</th>
+          <th class="px-5 py-3 font-semibold text-right">Balance</th>
+          <th class="px-5 py-3 font-semibold">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in enrollments %}
+        <tr class="border-t border-line">
+          <td class="px-5 py-3 text-ink font-medium">{{ e.lesson_class.name }}</td>
+          <td class="px-5 py-3 text-ink-muted">{{ e.lesson_class.period.name }}</td>
+          <td class="px-5 py-3 text-right text-ink tabular-nums">&#8358;{{ e.fee_amount|floatformat:2 }}</td>
+          <td class="px-5 py-3 text-right text-ink tabular-nums">&#8358;{{ e.amount_paid|floatformat:2 }}</td>
+          <td class="px-5 py-3 text-right tabular-nums {% if e.balance > 0 %}text-warning font-semibold{% else %}text-ink-muted{% endif %}">&#8358;{{ e.balance|floatformat:2 }}</td>
+          <td class="px-5 py-3">
+            {% if e.status == 'PAID' %}{% include 'components/badge.html' with status='success' text='Paid' %}
+            {% elif e.payment_status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text='Partial' %}
+            {% elif e.payment_status == 'UNPAID' %}{% include 'components/badge.html' with status='info' text='Unpaid' %}
+            {% else %}{% include 'components/badge.html' with status='info' text='Registered' %}{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-line">
+          <td colspan="6" class="px-5 py-12 text-center">
+            <div class="flex flex-col items-center gap-2 text-ink-muted">
+              <i data-lucide="sun" class="w-8 h-8"></i>
+              <p class="text-sm">You are not enrolled in any extra lessons yet.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
