@@ -110,6 +110,7 @@
     #sidebar { width: 16rem; }
     @media (min-width: 1024px) { #sidebar { width: 15rem; } }
     #sidebar.sidebar-collapsed { width: 4.25rem; }
+    @media (max-width: 1023px) { #sidebar.sidebar-collapsed { width: 16rem; } }
 
     /* Collapsed: hide labels, center icons, hide section headers & badges */
     .sidebar-collapsed .nav-label,
@@ -126,6 +127,10 @@
     .sidebar-collapsed #sidebar-nav a i { margin-right: 0; }
     .sidebar-collapsed .section-toggle { justify-content: center; padding-left: 0; padding-right: 0; }
     .sidebar-collapsed .brand-inner, .sidebar-collapsed .profile-inner { justify-content: center; }
+    .sidebar-collapsed .section-body { margin-bottom: 0.25rem; }
+    .sidebar-collapsed .nav-label { display: none; }
+    .sidebar-collapsed .profile-inner { position: relative; }
+    .sidebar-collapsed .profile-menu { left: 4.75rem; bottom: 0; width: 12rem; }
     .sidebar-collapsed .collapse-open { display: inline-flex; }
     .sidebar-collapsed .collapse-close { display: none; }
     .collapse-open { display: none; }
@@ -187,7 +192,7 @@
       <nav class="flex-1 py-4 overflow-y-auto" id="sidebar-nav">
         {% for section in sidebar_sections %}
           {% if section.section %}
-            <button type="button" data-section="{{ section.section }}"
+            <button type="button" data-section="{{ section.section }}" aria-label="{{ section.section }}" title="{{ section.section }}"
                     class="section-toggle w-full flex items-center justify-between pl-5 pr-4 mx-2 rounded-lg py-3 text-xs font-semibold text-ink-muted uppercase tracking-wider hover:text-ink transition-colors{% if forloop.counter0 %} border-t border-line/70{% endif %}">
               <span class="flex items-center gap-2 min-w-0">
                 {% if section.icon %}<i data-lucide="{{ section.icon }}" class="w-[18px] h-[18px] flex-shrink-0"></i>{% endif %}
@@ -204,11 +209,12 @@
         {% endfor %}
       </nav>
 
-      {# Profile + logout #}
+      {# Profile + account actions #}
       <div class="p-3 border-t border-line/70 flex-shrink-0">
         {% if user.is_authenticated %}
-          <div class="profile-inner bg-white rounded-2xl border border-line p-3">
-            <div class="flex items-center gap-3">
+          <div class="profile-inner relative">
+            <button type="button" onclick="toggleProfileMenu()" aria-label="Open account menu" aria-expanded="false"
+                    class="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/80 transition-colors">
               <div class="w-9 h-9 rounded-full bg-primary-tint text-primary ring-1 ring-line flex items-center justify-center text-xs font-bold flex-shrink-0">
                 {{ user.first_name|first|default:'U' }}{{ user.last_name|first|default:'' }}
               </div>
@@ -216,13 +222,16 @@
                 <p class="text-xs font-semibold text-ink truncate">{{ user.get_full_name|default:user.username }}</p>
                 <p class="text-xs text-ink-muted">{{ user.get_role_display }}</p>
               </div>
-            </div>
-            <form method="post" action="{% url 'logout' %}" class="mt-2 pt-2 border-t border-line">
+              <i data-lucide="more-horizontal" class="profile-menu-trigger w-4 h-4 text-ink-faint flex-shrink-0"></i>
+            </button>
+            <div id="profile-menu" class="profile-menu hidden absolute left-0 right-0 bottom-full mb-2 bg-white rounded-xl border border-line shadow-lg p-1.5 z-10">
+              <form method="post" action="{% url 'logout' %}">
               {% csrf_token %}
-              <button type="submit" class="flex items-center w-full px-3 py-2 rounded-lg text-danger hover:bg-danger-tint text-xs font-medium transition-all">
-                <i data-lucide="log-out" class="w-4 h-4 mr-3 flex-shrink-0"></i><span class="profile-logout-label">Logout</span>
-              </button>
-            </form>
+                <button type="submit" class="flex items-center w-full px-3 py-2 rounded-lg text-danger hover:bg-danger-tint text-xs font-medium transition-all">
+                  <i data-lucide="log-out" class="w-4 h-4 mr-3 flex-shrink-0"></i>Logout
+                </button>
+              </form>
+            </div>
           </div>
         {% else %}
           <a href="{% url 'login' %}" class="flex items-center px-3 py-2 rounded-lg text-ink-muted hover:bg-white/70 text-xs font-medium transition-all">
@@ -393,31 +402,74 @@
     }
     function toggleCollapseSidebar() {
       const sidebar = document.getElementById('sidebar');
+      if (!window.matchMedia('(min-width: 1024px)').matches) return;
       const collapsed = sidebar.classList.toggle('sidebar-collapsed');
       localStorage.setItem('sbCollapsed', collapsed ? '1' : '0');
     }
+    function toggleProfileMenu() {
+      const menu = document.getElementById('profile-menu');
+      const trigger = document.querySelector('[aria-label="Open account menu"]');
+      if (!menu || !trigger) return;
+      const hidden = menu.classList.toggle('hidden');
+      trigger.setAttribute('aria-expanded', String(!hidden));
+    }
+    document.addEventListener('click', function(event) {
+      const menu = document.getElementById('profile-menu');
+      const trigger = document.querySelector('[aria-label="Open account menu"]');
+      if (menu && trigger && !menu.contains(event.target) && !trigger.contains(event.target)) {
+        menu.classList.add('hidden');
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+    });
     /* Restore collapsed state + section states */
     (function() {
       const sidebar = document.getElementById('sidebar');
-      if (localStorage.getItem('sbCollapsed') === '1') sidebar.classList.add('sidebar-collapsed');
+      if (window.matchMedia('(min-width: 1024px)').matches && localStorage.getItem('sbCollapsed') === '1') {
+        sidebar.classList.add('sidebar-collapsed');
+      }
+      window.addEventListener('resize', function() {
+        if (!window.matchMedia('(min-width: 1024px)').matches) sidebar.classList.remove('sidebar-collapsed');
+      });
+      let openSectionFound = false;
       document.querySelectorAll('.section-toggle').forEach(function(btn) {
         const body = btn.nextElementSibling;
         const key = 'sbSection:' + btn.dataset.section;
         const syncAria = function(collapsed) {
           btn.setAttribute('aria-expanded', String(!collapsed));
         };
-        if (localStorage.getItem(key) === '0') {
-          body.classList.add('hidden');
-          btn.classList.add('section-collapsed');
-          syncAria(true);
-        } else {
-          syncAria(false);
-        }
-        btn.addEventListener('click', function() {
-          const collapsed = body.classList.toggle('hidden');
+        const setCollapsed = function(collapsed) {
+          body.classList.toggle('hidden', collapsed);
           btn.classList.toggle('section-collapsed', collapsed);
           syncAria(collapsed);
           localStorage.setItem(key, collapsed ? '0' : '1');
+        };
+        if (localStorage.getItem(key) === '0') {
+          setCollapsed(true);
+        } else if (openSectionFound) {
+          setCollapsed(true);
+        } else {
+          setCollapsed(false);
+          openSectionFound = true;
+        }
+        btn.addEventListener('click', function() {
+          const collapsed = !body.classList.contains('hidden');
+          if (!collapsed) {
+            document.querySelectorAll('.section-toggle').forEach(function(otherBtn) {
+              if (otherBtn !== btn) {
+                const otherBody = otherBtn.nextElementSibling;
+                otherBody.classList.add('hidden');
+                otherBtn.classList.add('section-collapsed');
+                otherBtn.setAttribute('aria-expanded', 'false');
+                localStorage.setItem('sbSection:' + otherBtn.dataset.section, '0');
+              }
+            });
+          }
+          setCollapsed(collapsed);
+        });
+      });
+      document.querySelectorAll('#sidebar-nav a').forEach(function(link) {
+        link.addEventListener('click', function() {
+          if (!window.matchMedia('(min-width: 1024px)').matches) toggleSidebar();
         });
       });
     })();
