@@ -1239,6 +1239,8 @@ class ReceiptViewTest(BaseFeesTest):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Receipt')
         self.assertContains(response, 'Print Receipt')
+        self.assertContains(response, '@page { size: 80mm 150mm; margin: 0; }')
+        self.assertContains(response, 'Received From')
         self.assertNotContains(response, 'Download PDF')
         self.assertTrue(FeeReceipt.objects.filter(payment=payment).exists())
 

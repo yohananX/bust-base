@@ -6,25 +6,111 @@
 
 {% block content %}
 <style>
-  @page { size: A4; margin: 8mm; }
+  .receipt-page { max-width: 31rem; }
+  .receipt-sheet {
+    --receipt-primary: #8A6420;
+    --receipt-primary-hover: #7A5A1E;
+    --receipt-tint: #F6EFE1;
+    --receipt-ink: #1B2430;
+    --receipt-muted: #5B6472;
+    --receipt-line: #E4E2DB;
+    --receipt-line-strong: #C9C6BC;
+    background: #fff;
+    border: 1px solid var(--receipt-line);
+    border-radius: 3px;
+    box-shadow: 0 18px 45px rgba(27, 36, 48, 0.12);
+    color: var(--receipt-ink);
+  }
+  .receipt-masthead {
+    position: relative;
+    padding: 1rem 1.25rem 0.8rem;
+    text-align: center;
+    border-bottom: 5px solid var(--receipt-primary);
+    background: linear-gradient(180deg, #ffffff 0%, #FCFBF8 100%);
+  }
+  .receipt-masthead:after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -5px;
+    height: 1px;
+    background: var(--receipt-primary-hover);
+  }
+  .receipt-logo { width: 32rem; height: 5rem; margin: 0 auto 0.3rem; object-fit: contain; }
+  .receipt-school-address { background: var(--receipt-primary); color: #fff; font-size: 0.62rem; line-height: 1.35; margin: 0.15rem -1.25rem 0; padding: 0.28rem 1rem; }
+  .receipt-title-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 0.7rem; }
+  .receipt-title { background: var(--receipt-primary); color: #fff; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em; padding: 0.35rem 0.55rem; text-transform: uppercase; }
+  .receipt-number { color: var(--receipt-ink); font-family: ui-monospace, monospace; font-size: 0.62rem; font-weight: 700; }
+  .receipt-content { padding: 0.9rem 1.25rem 0.75rem; }
+  .receipt-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+  .receipt-field { border-bottom: 1px solid var(--receipt-line-strong); padding-bottom: 0.25rem; }
+  .receipt-label { color: var(--receipt-muted); font-size: 0.55rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .receipt-value { color: var(--receipt-ink); font-size: 0.74rem; font-weight: 600; margin-top: 0.15rem; overflow-wrap: anywhere; }
+  .receipt-amount { align-items: center; background: var(--receipt-tint); border: 1px solid #E5D3A8; display: flex; justify-content: space-between; margin-bottom: 0.75rem; padding: 0.55rem 0.7rem; }
+  .receipt-amount strong { color: var(--receipt-primary); font-size: 1.15rem; }
+  .receipt-detail-list { border-top: 1px solid var(--receipt-primary); }
+  .receipt-detail-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 1rem; }
+  .receipt-detail { border-bottom: 1px solid var(--receipt-line); min-width: 0; padding: 0.38rem 0; }
+  .receipt-detail .receipt-value { margin-top: 0.15rem; overflow-wrap: anywhere; }
+  .receipt-detail-full { grid-column: 1 / -1; }
+  .receipt-total { color: var(--receipt-primary); font-size: 1rem; font-weight: 800; }
+  .receipt-signature { border-top: 1px solid var(--receipt-line-strong); display: flex; justify-content: space-between; margin-top: 0.75rem; padding-top: 0.55rem; }
+  .receipt-footer { background: var(--receipt-primary); color: #fff; font-size: 0.58rem; letter-spacing: 0.02em; padding: 0.45rem 0.7rem; text-align: center; }
+  @media (max-width: 640px) {
+    .receipt-content, .receipt-masthead { padding-left: 1.15rem; padding-right: 1.15rem; }
+    .receipt-school-name { font-size: 1.35rem; }
+  }
+  @page { size: 80mm 150mm; margin: 0; }
   @media print {
     #sidebar, #mobile-overlay, #toast-container, header,
     .no-print { display: none !important; }
+    html, body, .flex.h-screen, .flex-1.flex.flex-col.min-w-0 { height: auto !important; min-height: 0 !important; overflow: visible !important; }
     main { overflow: visible !important; padding: 0 !important; }
     body { background: #fff !important; }
-    .receipt-sheet { zoom: 0.95; }
-    .receipt-sheet .px-6 { padding-left: 12px !important; padding-right: 12px !important; }
-    .receipt-sheet .py-5 { padding-top: 8px !important; padding-bottom: 8px !important; }
-    .receipt-sheet .pt-6 { padding-top: 8px !important; }
-    .receipt-sheet .p-6 { padding: 10px !important; }
-    .receipt-sheet .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 8px !important; }
+    .receipt-page { width: 80mm !important; max-width: none !important; margin: 0 !important; }
+    .receipt-sheet {
+      width: 80mm !important;
+      max-width: none !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      overflow: visible !important;
+      color: #111 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .receipt-sheet .px-6 { padding-left: 5mm !important; padding-right: 5mm !important; }
+    .receipt-sheet .py-5 { padding-top: 3mm !important; padding-bottom: 3mm !important; }
+    .receipt-sheet .pt-6 { padding-top: 4mm !important; }
+    .receipt-sheet .p-6 { padding: 4mm 5mm !important; }
+    .receipt-sheet .pb-6 { padding-bottom: 4mm !important; }
+    .receipt-sheet .pb-5 { padding-bottom: 3mm !important; }
+    .receipt-sheet .receipt-details { grid-template-columns: 1fr 1fr !important; gap: 3mm 4mm !important; }
+    .receipt-sheet .receipt-details .sm\:col-span-2 { grid-column: 1 / -1 !important; }
+    .receipt-sheet .receipt-label { font-size: 7px !important; }
+    .receipt-sheet .receipt-value { font-size: 10px !important; line-height: 1.2 !important; }
+    .receipt-sheet .text-2xl { font-size: 17px !important; }
+    .receipt-sheet .border-t { padding-top: 3mm !important; }
+    .receipt-sheet .receipt-masthead { padding: 3mm 5mm 2mm !important; }
+    .receipt-sheet .receipt-content { padding: 3mm 5mm 2mm !important; }
+    .receipt-sheet .receipt-logo { height: 12mm !important; margin-bottom: 1mm !important; }
+    .receipt-sheet .receipt-school-address { margin-left: -5mm !important; margin-right: -5mm !important; padding: 1mm 3mm !important; }
+    .receipt-sheet .receipt-school-name { font-size: 17px !important; }
+    .receipt-sheet .receipt-subtitle, .receipt-sheet .receipt-school-address { font-size: 7px !important; }
+    .receipt-sheet .receipt-title-row { margin-top: 2mm !important; }
+    .receipt-sheet .receipt-meta { margin-bottom: 2mm !important; }
+    .receipt-sheet .receipt-detail { padding: 1.5mm 0 !important; }
+    .receipt-sheet .receipt-footer { padding: 1.5mm 3mm !important; }
   }
 </style>
 {% with student_obj=student|default:payment.student|default_if_none:'' %}
 {% with school_obj=school|default_if_none:'' %}
 {% with receipt_obj=receipt|default:payment.receipt %}
 {% with current_enrollment=student_obj.enrollments.all|first %}
-<div class="max-w-3xl mx-auto space-y-6">
+<div class="receipt-page mx-auto space-y-6">
 
   {# ===== Back Link ===== #}
   <div class="no-print">
@@ -44,124 +130,93 @@
   </div>
 
   {# ===== Receipt Card ===== #}
-  <div class="receipt-sheet bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div class="receipt-sheet overflow-hidden">
 
     {# Branded header strip — school logo + name, gold theme #}
-    <div class="bg-primary px-6 py-5 flex items-center justify-between gap-4">
-      <div class="min-w-0 flex items-center gap-4">
-        {% if school_obj.logo %}
-        <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-          <img src="{{ school_obj.logo.url }}" alt="{{ school_obj.name }} logo" class="max-h-full max-w-full object-contain">
-        </div>
-        {% endif %}
-        <div class="min-w-0">
-          <p class="text-[11px] font-bold uppercase tracking-[0.15em] text-primary-tint">Official Receipt</p>
-          <h1 class="text-lg font-semibold text-white mt-0.5 truncate">{{ school_obj.name|default:"Grace House School" }}</h1>
-          {% if student_obj %}
-          <p class="text-sm text-primary-tint mt-1 truncate">{{ student_obj.user.get_full_name }}{% if invoice %} &middot; {{ invoice.term.name }}{% elif payment.description %} &middot; {{ payment.description }}{% endif %}</p>
-          {% endif %}
-        </div>
-      </div>
-      <div class="text-right flex-shrink-0">
+    <div class="receipt-masthead">
+      {% if school_obj.logo %}
+      <img src="{{ school_obj.logo.url }}" alt="{{ school_obj.name }} logo" class="receipt-logo">
+      {% endif %}
+      
+      <div class="receipt-title-row">
+        <span class="receipt-title">Official School Fees Receipt</span>
         {% if receipt_obj %}
-        <span class="inline-block bg-white/20 text-white text-xs font-mono font-medium rounded-lg px-3 py-1.5">#{{ receipt_obj.receipt_number }}</span>
+        <span class="receipt-number">No. {{ receipt_obj.receipt_number }}</span>
         {% else %}
-        <span class="inline-block bg-white/20 text-white text-xs font-mono font-medium rounded-lg px-3 py-1.5">#{{ payment.pk }}</span>
+        <span class="receipt-number">No. {{ payment.pk }}</span>
         {% endif %}
       </div>
     </div>
 
-    {# Amount highlight #}
-    <div class="px-6 pt-6">
-      <div class="bg-primary-tint border border-primary/20 rounded-xl px-5 py-4 flex items-center justify-between">
-        <span class="text-sm font-medium text-gray-600">Amount Paid</span>
-        <span class="text-2xl font-bold text-gray-900 tabular-nums">&#8358;{{ payment.amount|floatformat:2 }}</span>
+    <div class="receipt-content">
+      <div class="receipt-meta">
+        <div class="receipt-field">
+          <span class="receipt-label">Date</span>
+          <span class="receipt-value">{{ payment.paid_on|date:"d M Y" }}</span>
+        </div>
+        {% if student_obj %}
+        <div class="receipt-field">
+          <span class="receipt-label">Received From</span>
+          <span class="receipt-value">{{ student_obj.user.get_full_name }}</span>
+        </div>
+        {% endif %}
       </div>
-    </div>
+      <div class="receipt-amount">
+        <span class="receipt-label">Amount Paid</span>
+        <strong class="tabular-nums">&#8358;{{ payment.amount|floatformat:2 }}</strong>
+      </div>
 
     {# Receipt details grid — invoice-dependent rows are guarded #}
-    <div class="p-6 pt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5 text-sm">
-      {% if student_obj %}
-      <div>
-        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Student</p>
-        <p class="font-semibold text-gray-900">{{ student_obj.user.get_full_name }}</p>
-      </div>
-      {% endif %}
+    <div class="receipt-details receipt-detail-list receipt-detail-grid text-sm">
       {% if invoice %}
-      <div>
-        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Class</p>
-        <p class="text-gray-700">{{ current_enrollment.school_class.name|default:"—" }}</p>
+      <div class="receipt-detail">
+        <span class="receipt-label">Class</span>
+        <span class="receipt-value">{{ current_enrollment.school_class.name|default:"—" }}</span>
       </div>
-      <div>
-        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Term</p>
-        <p class="text-gray-700">{{ invoice.term.name }}</p>
+      <div class="receipt-detail">
+        <span class="receipt-label">Term</span>
+        <span class="receipt-value">{{ invoice.term.name }}</span>
       </div>
       {% endif %}
       {% if payment.description %}
-      <div class="sm:col-span-2">
-        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Description</p>
-        <p class="text-gray-700">{{ payment.description }}</p>
+      <div class="receipt-detail">
+        <span class="receipt-label">Description</span>
+        <span class="receipt-value">{{ payment.description }}</span>
       </div>
       {% endif %}
-      <div>
-        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Method</p>
-        <p class="text-gray-700">{{ payment.get_method_display|default:"Paystack" }}</p>
+      <div class="receipt-detail">
+        <span class="receipt-label">Method</span>
+        <span class="receipt-value">{{ payment.get_method_display|default:"Paystack" }}</span>
       </div>
-      <div>
-        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Reference</p>
-        <p class="text-gray-700 font-mono text-xs break-all">{{ payment.reference|default:"—" }}</p>
+      <div class="receipt-detail">
+        <span class="receipt-label">Reference</span>
+        <span class="receipt-value font-mono text-xs break-all">{{ payment.reference|default:"—" }}</span>
       </div>
-      <div>
-        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Channel</p>
-        <p class="text-gray-700">{{ payment.channel|default:"Online" }}</p>
-      </div>
-      <div>
-        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Fees Charged</p>
-        <p class="text-gray-700 tabular-nums">&#8358;{{ payment.fees_charged|floatformat:2 }}</p>
-      </div>
-      <div>
-        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Date Paid</p>
-        <p class="text-gray-700 tabular-nums">{{ payment.paid_on|date:"d M Y H:i" }}</p>
+      <div class="receipt-detail">
+        <span class="receipt-label">Time Paid</span>
+        <span class="receipt-value tabular-nums">{{ payment.paid_on|date:"H:i" }}</span>
       </div>
       {% if invoice %}
-      <div>
-        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Balance Remaining</p>
-        <p class="text-gray-700 tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</p>
+      <div class="receipt-detail receipt-detail-full">
+        <span class="receipt-label">Balance Remaining</span>
+        <span class="receipt-value tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</span>
       </div>
       {% endif %}
-      <div>
-        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Status</p>
-        {% include 'components/badge.html' with status='success' text=payment.get_status_display %}
-      </div>
     </div>
 
-    {% if payment.proof_image %}
-    <div class="px-6 pb-5">
-      <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Transfer Proof</p>
-      <a href="{{ payment.proof_image.url }}" target="_blank" rel="noopener" class="inline-block group">
-        {% if payment.proof_image.name|lower|slice:"-4:" == ".pdf" %}
-        <span class="inline-flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm font-medium text-red-700 group-hover:bg-red-100 transition-colors">
-          <i data-lucide="file-text" class="w-5 h-5"></i>View uploaded proof (PDF)
-        </span>
-        {% else %}
-        <img src="{{ payment.proof_image.url }}" alt="Transfer proof"
-             class="h-24 rounded-xl border border-gray-200 object-cover group-hover:opacity-90 transition-opacity">
-        {% endif %}
-      </a>
-    </div>
-    {% endif %}
 
     {# Authorized signature footer #}
-    <div class="px-6 pb-6">
-      <div class="border-t border-gray-100 pt-4 flex items-end justify-between gap-4">
+    <div class="receipt-content">
+      <div class="receipt-signature">
         <div class="min-w-0">
-          <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Authorized Signature</p>
-          <p class="text-sm font-semibold text-gray-900">{{ school_obj.principal_name|default:"Principal" }}</p>
-          {% if school_obj.address %}<p class="text-xs text-gray-400 mt-0.5 truncate">{{ school_obj.address }}</p>{% endif %}
+          <p class="receipt-label">Authorized Signature</p>
+          <p class="receipt-value">{{ school_obj.principal_name|default:"Principal" }}</p>
         </div>
-        <p class="text-xs text-gray-400 tabular-nums flex-shrink-0">{{ payment.paid_on|date:"d M Y" }}</p>
+        <p class="receipt-label">Thank you</p>
       </div>
     </div>
+
+    <div class="receipt-footer">Thank you for trusting us as your parenting partners.</div>
 
     {# Actions #}
     <div class="no-print px-6 pb-6 flex flex-wrap items-center gap-3">
