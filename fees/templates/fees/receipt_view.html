@@ -137,7 +137,9 @@
       {% if school_obj.logo %}
       <img src="{{ school_obj.logo.url }}" alt="{{ school_obj.name }} logo" class="receipt-logo">
       {% endif %}
-      
+      {% if school_obj.address %}
+      <div class="receipt-school-address">{{ school_obj.address }}</div>
+      {% endif %}
       <div class="receipt-title-row">
         <span class="receipt-title">Official School Fees Receipt</span>
         {% if receipt_obj %}

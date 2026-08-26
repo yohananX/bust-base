@@ -1231,6 +1231,8 @@ class ReceiptViewTest(BaseFeesTest):
         """A linked parent can view the receipt; a missing receipt is issued lazily."""
         from fees.models import FeeReceipt, Payment
 
+        self.school.address = '3 Etofia Street, Beside Itam Flyover 3, Uyo, Akwa Ibom State.'
+        self.school.save(update_fields=['address'])
         payment = self._create_payment(Payment.Status.CONFIRMED)
         self.client.force_login(self.parent_user)
 
@@ -1240,6 +1242,7 @@ class ReceiptViewTest(BaseFeesTest):
         self.assertContains(response, 'Receipt')
         self.assertContains(response, 'Print Receipt')
         self.assertContains(response, '@page { size: 80mm 150mm; margin: 0; }')
+        self.assertContains(response, self.school.address)
         self.assertContains(response, 'Received From')
         self.assertNotContains(response, 'Download PDF')
         self.assertTrue(FeeReceipt.objects.filter(payment=payment).exists())
