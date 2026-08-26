@@ -1,5 +1,5 @@
 <a href="{{ item.url }}" title="{{ item.label }}" {% if item.active %}aria-current="page"{% endif %}
-   class="group flex items-center {% if indented %}pl-11{% else %}px-5{% endif %} py-3 text-sm transition-all duration-150 mx-2 rounded-lg
+  class="group nav-item flex items-center {% if indented %}pl-11{% else %}px-5{% endif %} py-3 text-sm transition-all duration-150 mx-2 rounded-lg
    {% if item.active %}sidebar-active font-semibold{% else %}text-ink-muted font-medium hover:bg-white/70 hover:text-ink{% endif %}">
   <i data-lucide="{{ item.icon }}" class="w-[18px] h-[18px] mr-3 flex-shrink-0 {% if item.active %}text-primary{% else %}text-ink-muted{% endif %}"></i>
   <span class="nav-label truncate flex-1">{{ item.label }}</span>

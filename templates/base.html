@@ -112,7 +112,7 @@
     #sidebar.sidebar-collapsed { width: 4.25rem; }
     @media (max-width: 1023px) { #sidebar.sidebar-collapsed { width: 16rem; } }
 
-    /* Collapsed: hide labels, center icons, hide section headers & badges */
+    /* Collapsed rail: keep a deliberate icon rhythm while preserving tooltips. */
     .sidebar-collapsed .nav-label,
     .sidebar-collapsed .nav-badge,
     .sidebar-collapsed .brand-text,
@@ -121,15 +121,47 @@
     .sidebar-collapsed .profile-logout-label,
     .sidebar-collapsed .section-toggle-text,
     .sidebar-collapsed .section-chev { display: none; }
-    .sidebar-collapsed .brand-banner { display: none; }
-    .sidebar-collapsed .brand-wrap { padding-left: 0.75rem; padding-right: 0.75rem; }
-    .sidebar-collapsed #sidebar-nav a { justify-content: center; padding-left: 0; padding-right: 0; }
-    .sidebar-collapsed #sidebar-nav a i { margin-right: 0; }
-    .sidebar-collapsed .section-toggle { justify-content: center; padding-left: 0; padding-right: 0; }
+    .sidebar-collapsed .brand-wrap { padding: 0.9rem 0.75rem; }
+    .sidebar-collapsed .brand-banner { display: flex; width: 2.5rem; height: 2.5rem; border-radius: 0.75rem; margin: 0 auto; }
+    .sidebar-collapsed #sidebar-nav { padding: 0.75rem 0.5rem; }
+    .sidebar-collapsed #sidebar-nav a {
+      position: relative;
+      justify-content: center;
+      width: 2.75rem;
+      height: 2.75rem;
+      padding: 0;
+      margin: 0.2rem auto;
+      border-radius: 0.75rem;
+    }
+    .sidebar-collapsed #sidebar-nav a i { width: 1.15rem; height: 1.15rem; margin-right: 0; }
+    .sidebar-collapsed #sidebar-nav a:not(.sidebar-active):hover { background: rgba(255, 255, 255, 0.8); }
+    .sidebar-collapsed #sidebar-nav a.sidebar-active::before {
+      content: '';
+      position: absolute;
+      left: -0.5rem;
+      width: 0.2rem;
+      height: 1.5rem;
+      border-radius: 999px;
+      background: var(--color-primary);
+    }
+    .sidebar-collapsed .section-toggle {
+      justify-content: center;
+      width: 2.75rem;
+      height: 2rem;
+      padding: 0;
+      margin: 0.65rem auto 0.1rem;
+      border-top: 1px solid var(--color-line-strong);
+      border-radius: 0;
+      color: var(--color-primary);
+    }
+    .sidebar-collapsed .section-toggle:first-child { border-top: 0; }
+    .sidebar-collapsed .section-toggle > span { justify-content: center; }
+    .sidebar-collapsed .section-toggle > span i { width: 1rem; height: 1rem; }
     .sidebar-collapsed .brand-inner, .sidebar-collapsed .profile-inner { justify-content: center; }
-    .sidebar-collapsed .section-body { margin-bottom: 0.25rem; }
+    .sidebar-collapsed .section-body { margin-bottom: 0.4rem; }
     .sidebar-collapsed .nav-label { display: none; }
     .sidebar-collapsed .profile-inner { position: relative; }
+    .sidebar-collapsed .profile-inner > button { justify-content: center; width: 2.75rem; height: 2.75rem; margin: 0 auto; padding: 0; border-radius: 0.75rem; }
     .sidebar-collapsed .profile-menu { left: 4.75rem; bottom: 0; width: 12rem; }
     .sidebar-collapsed .collapse-open { display: inline-flex; }
     .sidebar-collapsed .collapse-close { display: none; }
