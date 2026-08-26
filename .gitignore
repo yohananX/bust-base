@@ -65,3 +65,6 @@ venv/
 tools/
 db.sqlite3
 
+# Logs
+logs/
+
