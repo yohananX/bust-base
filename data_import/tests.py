@@ -8,12 +8,13 @@ from django.core.management import call_command
 
 from core.models import School, AcademicSession
 from accounts.models import User, Roles
-from students.models import SchoolClass, Student
+from students.models import SchoolClass, Student, StudentGuardianLink
 from academics.models import Subject
 from data_import.importers import (
     ClassImporter, SubjectImporter, StudentImporter, StaffImporter,
-    _generate_code, _generate_username,
+    _generate_code,
 )
+from accounts.utils import generate_username
 from data_import.models import ImportLog
 
 
@@ -62,13 +63,13 @@ class GenerateCodeTest(TestCase):
 
 class GenerateUsernameTest(TestCase):
     def test_basic(self):
-        self.assertEqual(_generate_username('John', 'Doe'), 'johndoe')
+        self.assertEqual(generate_username('John', 'Doe'), 'john.doe')
 
     def test_with_spaces(self):
-        self.assertEqual(_generate_username('Mary', 'Jane Smith'), 'maryjanesmith')
+        self.assertEqual(generate_username('Mary', 'Jane Smith'), 'mary.jane.smith')
 
     def test_special_chars(self):
-        self.assertEqual(_generate_username("O'Brien", 'Mac'), 'obrienmac')
+        self.assertEqual(generate_username("O'Brien", 'Mac'), 'obrien.mac')
 
 
 # ─── ClassImporter tests ─────────────────────────────────────────────────
@@ -451,7 +452,7 @@ class StudentImporterAutoGeneratesUsernameTest(BaseImportTestCase):
             result = importer.import_csv(csv_path)
 
             self.assertEqual(result['created'], 1)
-            self.assertTrue(User.objects.filter(username='johndoe').exists())
+            self.assertTrue(User.objects.filter(username='john.doe').exists())
         finally:
             os.unlink(csv_path)
 
@@ -470,8 +471,82 @@ class StudentImporterAutoGeneratesAdmissionNumberTest(BaseImportTestCase):
             result = importer.import_csv(csv_path)
 
             student = Student.objects.get(school=self.school)
-            self.assertTrue(student.admission_number.startswith('STU-'))
-            self.assertTrue(len(student.admission_number) > 4)
+            self.assertTrue(student.admission_number.startswith('TES'))
+            self.assertRegex(student.admission_number, r'^[A-Z]{3}\d{2}[A-Z0-9]{2}\d{3}$')
+        finally:
+            os.unlink(csv_path)
+
+
+class StudentImporterMultiGuardianTest(BaseImportTestCase):
+    def test_creates_multiple_guardians(self):
+        csv_path = _write_csv(
+            ['first_name', 'last_name', 'date_of_birth', 'gender',
+             'guardian_1_name', 'guardian_1_email', 'guardian_1_phone', 'guardian_1_relationship',
+             'guardian_2_name', 'guardian_2_email', 'guardian_2_phone', 'guardian_2_relationship',
+             'class_name'],
+            [{'first_name': 'John', 'last_name': 'Doe', 'date_of_birth': '2010-01-15', 'gender': 'M',
+              'guardian_1_name': 'Jane Doe', 'guardian_1_email': 'jane@example.com', 'guardian_1_phone': '08011111111', 'guardian_1_relationship': 'MOTHER',
+              'guardian_2_name': 'John Doe Sr', 'guardian_2_email': 'john.sr@example.com', 'guardian_2_phone': '08022222222', 'guardian_2_relationship': 'FATHER',
+              'class_name': ''}],
+        )
+        try:
+            importer = StudentImporter(school=self.school)
+            result = importer.import_csv(csv_path)
+
+            self.assertEqual(result['created'], 1)
+            student = Student.objects.get(school=self.school)
+            links = StudentGuardianLink.objects.filter(student=student)
+            self.assertEqual(links.count(), 2)
+            self.assertTrue(links.filter(guardian__email='jane@example.com').exists())
+            self.assertTrue(links.filter(guardian__email='john.sr@example.com').exists())
+        finally:
+            os.unlink(csv_path)
+
+    def test_deduplicates_parents_by_email_across_rows(self):
+        parent_email = 'shared@example.com'
+        csv_path = _write_csv(
+            ['first_name', 'last_name', 'date_of_birth', 'gender',
+             'guardian_1_name', 'guardian_1_email', 'guardian_1_phone', 'guardian_1_relationship',
+             'class_name'],
+            [
+                {'first_name': 'Child1', 'last_name': 'Doe', 'date_of_birth': '2010-01-15', 'gender': 'M',
+                 'guardian_1_name': 'Jane Doe', 'guardian_1_email': parent_email, 'guardian_1_phone': '08011111111', 'guardian_1_relationship': 'MOTHER',
+                 'class_name': ''},
+                {'first_name': 'Child2', 'last_name': 'Doe', 'date_of_birth': '2011-02-15', 'gender': 'F',
+                 'guardian_1_name': 'Jane Doe', 'guardian_1_email': parent_email, 'guardian_1_phone': '08011111111', 'guardian_1_relationship': 'MOTHER',
+                 'class_name': ''},
+            ],
+        )
+        try:
+            importer = StudentImporter(school=self.school)
+            result = importer.import_csv(csv_path)
+
+            self.assertEqual(result['created'], 2)
+            parent_count = User.objects.filter(school=self.school, role=Roles.PARENT, email=parent_email).count()
+            self.assertEqual(parent_count, 1)
+            children = Student.objects.filter(school=self.school)
+            self.assertEqual(children.count(), 2)
+            for child in children:
+                self.assertEqual(child.guardian_links.count(), 1)
+                self.assertEqual(child.guardian_links.first().guardian.email, parent_email)
+        finally:
+            os.unlink(csv_path)
+
+    def test_parses_delimited_guardians_column(self):
+        csv_path = _write_csv(
+            ['first_name', 'last_name', 'date_of_birth', 'gender', 'guardians', 'class_name'],
+            [{'first_name': 'John', 'last_name': 'Doe', 'date_of_birth': '2010-01-15', 'gender': 'M',
+              'guardians': 'Jane Doe|jane@example.com|08011111111|MOTHER;John Doe Sr|john.sr@example.com|08022222222|FATHER',
+              'class_name': ''}],
+        )
+        try:
+            importer = StudentImporter(school=self.school)
+            result = importer.import_csv(csv_path)
+
+            self.assertEqual(result['created'], 1)
+            student = Student.objects.get(school=self.school)
+            links = StudentGuardianLink.objects.filter(student=student)
+            self.assertEqual(links.count(), 2)
         finally:
             os.unlink(csv_path)
 

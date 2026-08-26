@@ -1,15 +1,16 @@
 import csv
 import re
-import time
 from datetime import date
 
 from django.db import transaction
 from django.utils import timezone
 
 from accounts.models import User, Roles
+from accounts.utils import generate_username
 from academics.models import Subject
 from core.models import AcademicSession
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from students.utils import generate_admission_number, find_or_create_parent
 
 
 def _generate_code(name):
@@ -23,18 +24,6 @@ def _generate_code(name):
     else:
         code = ''.join(w[0] for w in words)[:6].upper()
     return code
-
-
-def _generate_username(first_name, last_name):
-    """Generate a lowercase username with no spaces from first and last name."""
-    base = f"{first_name}{last_name}".lower().replace(' ', '').replace('-', '').replace('.', '')
-    return re.sub(r'[^a-z0-9]', '', base)
-
-
-def _generate_admission_number():
-    """Generate a unique admission number using timestamp."""
-    ts = int(time.time() * 1000) % 10_000_000
-    return f"STU-{ts:07d}"
 
 
 def _map_gender(raw):
@@ -238,7 +227,7 @@ class StudentImporter(BaseImporter):
 
             # Auto-generate username if missing
             if not username:
-                username = _generate_username(first_name, last_name)
+                username = generate_username(first_name, last_name)
 
             # Skip if username already exists
             if User.objects.filter(username=username).exists():
@@ -269,7 +258,7 @@ class StudentImporter(BaseImporter):
                     continue
 
             # Generate admission number
-            admission_number = _generate_admission_number()
+            admission_number = generate_admission_number(self.school, school_class)
 
             if not self.dry_run:
                 with transaction.atomic():
@@ -303,62 +292,73 @@ class StudentImporter(BaseImporter):
                         from fees.generation import generate_invoice_for_current_term
                         generate_invoice_for_current_term(student)
 
-                    # Create parent/guardian if parent_name is provided.
-                    if parent_name:
-                        parent_parts = parent_name.split(None, 1)
-                        parent_first = parent_parts[0]
-                        parent_last = parent_parts[1] if len(parent_parts) > 1 else ''
+                    # Create parent/guardian(s). Supports two formats:
+                    # 1. Repeated columns: guardian_1_name, guardian_1_email, ...
+                    # 2. Single delimited column: guardians="Jane Doe|jane@test.com|08011111111|MOTHER;John Doe|..."
+                    guardian_entries = []
 
-                        # Determine relationship (guess from name or default)
-                        relationship = 'OTHER'
-                        if parent_first.lower().startswith(('mr', 'man', 'dad', 'pa')):
-                            relationship = 'FATHER'
-                        elif parent_first.lower().startswith(('mrs', 'miss', 'mum', 'mom', 'ma')):
-                            relationship = 'MOTHER'
+                    # Collect from repeated columns first
+                    idx = 1
+                    while True:
+                        g_name = row.get(f'guardian_{idx}_name', '').strip()
+                        g_email = row.get(f'guardian_{idx}_email', '').strip()
+                        g_phone = row.get(f'guardian_{idx}_phone', '').strip()
+                        g_rel = row.get(f'guardian_{idx}_relationship', 'GUARDIAN').strip().upper()
+                        if not g_name and not g_email and not g_phone:
+                            break
+                        guardian_entries.append({
+                            'name': g_name,
+                            'email': g_email,
+                            'phone': g_phone,
+                            'relationship': g_rel or 'GUARDIAN',
+                        })
+                        idx += 1
 
-                        # Reuse an existing account with the same email in
-                        # this school, so siblings sharing one parent email
-                        # collapse into a single parent account (one login
-                        # per parent, linked to all their children).
-                        parent_user = None
-                        if parent_email:
-                            parent_user = User.objects.filter(
-                                school=self.school,
-                                role=Roles.PARENT,
-                                email__iexact=parent_email,
-                            ).first()
+                    # Fallback: parse delimited guardians column
+                    if not guardian_entries:
+                        raw = row.get('guardians', '').strip()
+                        if raw:
+                            for chunk in raw.split(';'):
+                                chunk = chunk.strip()
+                                if not chunk:
+                                    continue
+                                parts = [p.strip() for p in chunk.split('|')]
+                                guardian_entries.append({
+                                    'name': parts[0] if len(parts) > 0 else '',
+                                    'email': parts[1] if len(parts) > 1 else '',
+                                    'phone': parts[2] if len(parts) > 2 else '',
+                                    'relationship': parts[3].upper() if len(parts) > 3 else 'GUARDIAN',
+                                })
 
-                        if parent_user is None:
-                            parent_username = _generate_username(parent_first, parent_last)
+                    # Legacy single-column fallback
+                    if not guardian_entries and (parent_name or parent_email or parent_phone):
+                        guardian_entries.append({
+                            'name': parent_name,
+                            'email': parent_email,
+                            'phone': parent_phone,
+                            'relationship': 'OTHER',
+                        })
 
-                            # Ensure parent_username is unique
-                            base_parent_username = parent_username
-                            counter = 1
-                            while User.objects.filter(username=parent_username).exists():
-                                parent_username = f"{base_parent_username}{counter}"
-                                counter += 1
+                    for g_idx, entry in enumerate(guardian_entries):
+                        name = entry['name']
+                        email = entry['email']
+                        phone = entry['phone']
+                        relationship = entry['relationship']
 
-                            parent_user = User.objects.create_user(
-                                username=parent_username,
-                                first_name=parent_first,
-                                last_name=parent_last,
-                                school=self.school,
-                                role=Roles.PARENT,
-                            )
+                        if not name and not email and not phone:
+                            continue
 
-                            if parent_email:
-                                parent_user.email = parent_email
-                            if parent_phone:
-                                parent_user.phone_number = parent_phone
-                            if parent_email or parent_phone:
-                                parent_user.save()
+                        parent_user = find_or_create_parent(
+                            self.school, name, email=email, phone=phone,
+                            relationship=relationship,
+                        )
 
                         StudentGuardianLink.objects.create(
                             school=self.school,
                             student=student,
                             guardian=parent_user,
                             relationship=relationship,
-                            is_primary_contact=True,
+                            is_primary_contact=(g_idx == 0),
                         )
 
             created += 1
@@ -406,7 +406,7 @@ class StaffImporter(BaseImporter):
 
             # Auto-generate username if missing
             if not username:
-                username = _generate_username(first_name, last_name)
+                username = generate_username(first_name, last_name)
 
             # Skip if username already exists
             if User.objects.filter(username=username).exists():

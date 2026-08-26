@@ -1351,3 +1351,67 @@ class ExtraLessonsPortalTests(TestCase):
         self._login(self.parent)
         resp = self.client.get(reverse("parent-extra-lessons"))
         self.assertEqual(resp.status_code, 200)
+
+
+class GenerateAdmissionNumberTest(TestCase):
+    """Tests for students.utils.generate_admission_number."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Test School', short_code='test-school')
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date='2025-09-01', end_date='2026-07-31',
+            is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school, session=self.session, name='First Term',
+            start_date='2025-09-01', end_date='2025-12-15',
+            is_current=True,
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', level='JSS1',
+        )
+
+    def test_basic_format(self):
+        from students.utils import generate_admission_number
+        adm = generate_admission_number(self.school, self.school_class, year=2026)
+        self.assertEqual(adm, 'TES26J1001')
+
+    def test_sequential_increment(self):
+        from students.utils import generate_admission_number
+        User = get_user_model()
+        user1 = User.objects.create_user(username='s1', password='test', school=self.school, role=Roles.STUDENT)
+        user2 = User.objects.create_user(username='s2', password='test', school=self.school, role=Roles.STUDENT)
+        Student.objects.create(school=self.school, user=user1, admission_number='TES26J1001',
+                               gender='M', date_of_birth='2010-01-01', admission_date='2025-09-01')
+        Student.objects.create(school=self.school, user=user2, admission_number='TES26J1002',
+                               gender='M', date_of_birth='2010-01-01', admission_date='2025-09-01')
+
+        adm = generate_admission_number(self.school, self.school_class, year=2026)
+        self.assertEqual(adm, 'TES26J1003')
+
+    def test_different_class_different_sequence(self):
+        from students.utils import generate_admission_number
+        class_b = SchoolClass.objects.create(school=self.school, name='JSS1B', level='JSS1')
+        adm_a = generate_admission_number(self.school, self.school_class, year=2026)
+        adm_b = generate_admission_number(self.school, class_b, year=2026)
+        self.assertEqual(adm_a, 'TES26J1001')
+        self.assertEqual(adm_b, 'TES26J1001')
+
+    def test_reception_class_header(self):
+        from students.utils import generate_admission_number
+        reception = SchoolClass.objects.create(school=self.school, name='Reception', level='Reception')
+        adm = generate_admission_number(self.school, reception, year=2026)
+        self.assertEqual(adm, 'TES26R001')
+
+    def test_primary_class_header(self):
+        from students.utils import generate_admission_number
+        primary = SchoolClass.objects.create(school=self.school, name='Primary 1', level='Primary')
+        adm = generate_admission_number(self.school, primary, year=2026)
+        self.assertEqual(adm, 'TES26P1001')
+
+    def test_uses_current_year_by_default(self):
+        from students.utils import generate_admission_number
+        adm = generate_admission_number(self.school, self.school_class)
+        current_year_2d = str(timezone.now().year)[-2:]
+        self.assertIn(current_year_2d, adm)

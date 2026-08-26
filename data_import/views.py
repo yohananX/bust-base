@@ -25,7 +25,7 @@ IMPORTERS = {
 TEMPLATES = {
     'classes': 'name,section\nReception,\nPrimary 1,Primary\nPrimary 2,Primary\nJSS 1,Junior\nJSS 2,Junior\nSS 1,Senior',
     'subjects': 'class_name,subject_name\nReception,Literacy\nReception,Numeracy\nPrimary 1,English Studies\nPrimary 1,Mathematics\nJSS 1,Basic Science',
-    'students': 'first_name,last_name,username,date_of_birth,gender,parent_name,parent_email,parent_phone,class_name\nJohn,Doe,johndoe,2010-01-15,M,Jane Doe,jane@example.com,08012345678,JSS 1',
+    'students': 'first_name,last_name,date_of_birth,gender,parent_name,parent_email,parent_phone,class_name\nJohn,Doe,2010-01-15,M,Jane Doe,jane@example.com,08012345678,JSS 1',
     'staff': 'first_name,last_name,username,email,phone_number,role\nEmeka,Teacher,emekat,emeka@school.com,08011112222,TEACHER',
 }
 

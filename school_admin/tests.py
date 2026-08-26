@@ -396,14 +396,13 @@ class FlowReproTest(TestCase):
         self.client.login(username='adminx', password='pass123')
         resp = self.client.post(reverse('school_admin:student_create'), {
             'first_name': 'New', 'last_name': 'Kid',
-            'admission_number': 'S002',
             'date_of_birth': '2013-05-05', 'gender': 'FEMALE',
             'admission_date': '2026-09-01', 'status': 'ACTIVE',
             'class_id': self.school_class.pk,
             'session_id': self.session.pk,
         })
         self.assertEqual(resp.status_code, 302)
-        student = Student.objects.get(admission_number='S002')
+        student = Student.objects.get(user__first_name='New', user__last_name='Kid')
         self.assertEqual(student.user.first_name, 'New')
         self.assertEqual(student.user.role, Roles.STUDENT)
         self.assertTrue(
@@ -485,7 +484,7 @@ class PaymentAdminActionsTest(TestCase):
         self.assertEqual(self.invoice.balance, Decimal('35000.00'))
 
     def test_record_payment_without_invoice(self):
-        """A payment can be recorded against a student with no invoice."""
+        """A payment recorded without an invoice auto-links to the oldest outstanding invoice."""
         self.client.force_login(self.admin_user)
         resp = self.client.post(
             reverse('school_admin:student_record_payment', kwargs={'pk': self.student.pk}),
@@ -497,11 +496,47 @@ class PaymentAdminActionsTest(TestCase):
             },
         )
         self.assertEqual(resp.status_code, 302)
-        payment = Payment.objects.get(student=self.student, invoice__isnull=True)
+        payment = Payment.objects.get(student=self.student, invoice=self.invoice)
         self.assertEqual(payment.method, Payment.Method.CHEQUE)
         self.assertEqual(payment.status, Payment.Status.CONFIRMED)
         self.assertEqual(payment.description, 'Books')
+        self.assertEqual(self.invoice.balance, Decimal('55000.00'))
         self.assertIsNotNone(payment.receipt)
+
+    def test_record_payment_without_invoice_remains_unlinked_when_no_outstanding(self):
+        """A payment without an invoice stays invoice-less if the student owes nothing."""
+        user2 = User.objects.create_user(
+            username='student4', email='student4@test.com', password='testpass123',
+            school=self.school, role=Roles.STUDENT, first_name='No', last_name='Debt',
+        )
+        student2 = Student.objects.create(
+            school=self.school, user=user2, admission_number='STU004',
+            date_of_birth=date(2010, 1, 1), gender=Student.MALE,
+            admission_date=date(2025, 9, 1), status=Student.ACTIVE,
+        )
+        ClassEnrollment.objects.create(
+            school=self.school, student=student2, school_class=self.school_class,
+            session=self.session, is_current=True,
+        )
+        paid_inv = Invoice.objects.create(
+            school=self.school, student=student2, term=self.term,
+            total_amount=Decimal('20000.00'),
+        )
+        Payment.objects.create(
+            school=self.school, invoice=paid_inv, student=student2,
+            amount=Decimal('20000.00'), method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED, paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(
+            reverse('school_admin:student_record_payment', kwargs={'pk': student2.pk}),
+            {'amount': '3000.00', 'method': 'CASH'},
+        )
+        self.assertEqual(resp.status_code, 302)
+        payment = Payment.objects.get(student=student2, invoice__isnull=True)
+        self.assertEqual(payment.amount, Decimal('3000.00'))
+        self.assertEqual(paid_inv.balance, Decimal('0.00'))
 
     def test_record_payment_attaches_to_invoice(self):
         """An invoice-id in the record form links the payment to that invoice."""
@@ -773,26 +808,26 @@ class FirstLoginPasswordFlagTests(TestCase):
     def test_student_create_sets_flag(self):
         resp = self.client.post(reverse('school_admin:student_create'), {
             'first_name': 'New', 'last_name': 'Kid',
-            'admission_number': 'S002',
             'date_of_birth': '2013-05-05', 'gender': 'FEMALE',
             'admission_date': '2026-09-01', 'status': 'ACTIVE',
             'class_id': self.school_class.pk,
             'session_id': self.session.pk,
         })
         self.assertEqual(resp.status_code, 302)
-        student = Student.objects.get(admission_number='S002')
+        student = Student.objects.get(user__first_name='New', user__last_name='Kid')
         self.assertTrue(student.user.must_change_password)
 
     def test_parent_create_sets_flag(self):
         resp = self.client.post(reverse('school_admin:student_create'), {
             'first_name': 'New', 'last_name': 'Kid',
-            'admission_number': 'S003',
             'date_of_birth': '2013-05-05', 'gender': 'FEMALE',
             'admission_date': '2026-09-01', 'status': 'ACTIVE',
             'class_id': self.school_class.pk,
             'session_id': self.session.pk,
-            'parent_name': 'Mama New',
-            'parent_email': 'mama.new@test.com', 'parent_phone': '08000000000',
+            'guardian_0_name': 'Mama New',
+            'guardian_0_email': 'mama.new@test.com',
+            'guardian_0_phone': '08000000000',
+            'guardian_0_relationship': 'MOTHER',
         })
         self.assertEqual(resp.status_code, 302)
         parent = User.objects.get(email='mama.new@test.com')
@@ -1005,3 +1040,76 @@ class StudentMiddleNameTests(TestCase):
             'name="user_middle_name" value="Ade"',
             html=False,
         )
+
+
+class DashboardCollectedThisTermTest(TestCase):
+    """Dashboard 'Collected This Term' and fee chart count payments by invoice term."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Test School', short_code='test')
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school, session=self.session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+        self.admin_user = User.objects.create_user(
+            username='admin1', email='admin@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', level='JSS1',
+        )
+        self.student_user = User.objects.create_user(
+            username='student1', email='student1@test.com', password='testpass123',
+            school=self.school, role=Roles.STUDENT, first_name='Kid', last_name='One',
+        )
+        self.student = Student.objects.create(
+            school=self.school, user=self.student_user, admission_number='M001',
+            date_of_birth=date(2012, 1, 1), gender='MALE',
+            admission_date=date(2025, 9, 1), status='ACTIVE',
+        )
+        ClassEnrollment.objects.create(
+            school=self.school, student=self.student, school_class=self.school_class,
+            session=self.session, is_current=True,
+        )
+        self.invoice = Invoice.objects.create(
+            school=self.school, student=self.student, term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def test_collected_this_term_counts_pre_term_payments(self):
+        """Payments made before the term starts still count for the term."""
+        self.client.force_login(self.admin_user)
+        Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=Decimal('30000.00'), method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.make_aware(
+                timezone.datetime(2025, 8, 1, 10, 0, 0)
+            ),
+            recorded_by=self.admin_user,
+        )
+        resp = self.client.get(reverse('school_admin:dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '30000')
+
+    def test_fee_chart_groups_by_invoice_term_not_payment_date(self):
+        """Chart buckets a payment under its invoice's term, not paid_on date."""
+        self.client.force_login(self.admin_user)
+        Payment.objects.create(
+            school=self.school, invoice=self.invoice, student=self.student,
+            amount=Decimal('25000.00'), method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.make_aware(
+                timezone.datetime(2025, 8, 1, 10, 0, 0)
+            ),
+            recorded_by=self.admin_user,
+        )
+        resp = self.client.get(reverse('school_admin:dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '25000')

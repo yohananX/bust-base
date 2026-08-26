@@ -72,13 +72,7 @@
             <input type="text" name="last_name" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           </div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Username</label>
-            <input type="text" name="new_username" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            <p class="text-xs text-gray-400 mt-1">Auto-generated from name if left blank.</p>
-          </div>
-          <div>
+        <div>
             <label class="block text-sm font-medium text-gray-600 mb-1.5">Email <span class="text-gray-400 font-normal">(Optional)</span></label>
             <input type="email" name="new_email" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           </div>
@@ -101,10 +95,18 @@
       <h3 class="text-sm font-semibold text-gray-800 mb-4">Student Information</h3>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {% if is_edit %}
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1.5">Admission Number <span class="text-red-500">*</span></label>
-          <input type="text" name="admission_number" value="{% if is_edit %}{{ student.admission_number }}{% endif %}" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <input type="text" name="admission_number" value="{{ student.admission_number }}" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
         </div>
+        {% else %}
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Admission Number</label>
+          <input type="text" value="Auto-generated on creation" disabled class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500 outline-none cursor-not-allowed">
+          <p class="text-xs text-gray-400 mt-1">A unique sequential ID will be assigned automatically when the student is created.</p>
+        </div>
+        {% endif %}
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1.5">Date of Birth <span class="text-red-500">*</span></label>
           <input type="date" name="date_of_birth" value="{% if is_edit %}{{ student.date_of_birth|date:'Y-m-d' }}{% endif %}" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
@@ -181,33 +183,82 @@
         <p class="text-sm text-gray-400 mb-4">No guardian linked yet. You can link one from the student detail page.</p>
         {% endif %}
       {% else %}
-      <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-100">
-        <p class="text-xs text-gray-500 mb-3">Optionally create a parent/guardian account and link them to this student.</p>
-        <div class="mb-3">
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Name</label>
-          <input type="text" name="parent_name" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="e.g. Jane Doe">
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Email <span class="text-gray-400 font-normal">(Optional)</span></label>
-            <input type="email" name="parent_email" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+      <div id="guardians-container">
+        <div class="guardian-entry bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100">
+          <p class="text-xs text-gray-500 mb-3">Optionally create parent/guardian accounts and link them to this student.</p>
+          <div class="mb-3">
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Name</label>
+            <input type="text" name="guardian_0_name" class="guardian-name w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="e.g. Jane Doe">
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Phone <span class="text-gray-400 font-normal">(Optional)</span></label>
-            <input type="text" name="parent_phone" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Email <span class="text-gray-400 font-normal">(Optional)</span></label>
+              <input type="email" name="guardian_0_email" class="guardian-email w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Phone <span class="text-gray-400 font-normal">(Optional)</span></label>
+              <input type="text" name="guardian_0_phone" class="guardian-phone w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+            </div>
           </div>
+          <div class="mb-1">
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Relationship</label>
+            <select name="guardian_0_relationship" class="guardian-relationship w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+              <option value="FATHER">Father</option>
+              <option value="MOTHER">Mother</option>
+              <option value="GUARDIAN" selected>Guardian</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <button type="button" onclick="removeGuardian(this)" class="text-xs text-red-500 hover:text-red-700 mt-2 hidden">Remove</button>
         </div>
-        <div class="mb-1">
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Relationship</label>
-          <select name="parent_relationship" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
-            <option value="FATHER">Father</option>
-            <option value="MOTHER">Mother</option>
-            <option value="GUARDIAN" selected>Guardian</option>
-            <option value="OTHER">Other</option>
-          </select>
-        </div>
-        <p class="text-xs text-gray-400 mt-2">Email and phone are optional — the parent account will be created without them if left blank.</p>
       </div>
+      <button type="button" onclick="addGuardian()" class="inline-flex items-center gap-1 text-sm text-primary hover:text-primary-hover font-medium mb-4">
+        <i data-lucide="plus" class="w-4 h-4"></i> Add another guardian
+      </button>
+      <p class="text-xs text-gray-400 mt-1">Email and phone are optional — parent accounts will be created without them if left blank. Duplicate parents are automatically linked.</p>
+      <script>
+        let guardianIndex = 1;
+        function addGuardian() {
+          const container = document.getElementById('guardians-container');
+          const entry = document.createElement('div');
+          entry.className = 'guardian-entry bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100';
+          entry.innerHTML = `
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Name</label>
+              <input type="text" name="guardian_${guardianIndex}_name" class="guardian-name w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="e.g. Jane Doe">
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Email <span class="text-gray-400 font-normal">(Optional)</span></label>
+                <input type="email" name="guardian_${guardianIndex}_email" class="guardian-email w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Phone <span class="text-gray-400 font-normal">(Optional)</span></label>
+                <input type="text" name="guardian_${guardianIndex}_phone" class="guardian-phone w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+              </div>
+            </div>
+            <div class="mb-1">
+              <label class="block text-sm font-medium text-gray-600 mb-1.5">Relationship</label>
+              <select name="guardian_${guardianIndex}_relationship" class="guardian-relationship w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                <option value="FATHER">Father</option>
+                <option value="MOTHER">Mother</option>
+                <option value="GUARDIAN" selected>Guardian</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <button type="button" onclick="removeGuardian(this)" class="text-xs text-red-500 hover:text-red-700 mt-2">Remove</button>
+          `;
+          container.appendChild(entry);
+          guardianIndex++;
+          lucide.createIcons();
+        }
+        function removeGuardian(btn) {
+          const entry = btn.closest('.guardian-entry');
+          if (document.querySelectorAll('.guardian-entry').length > 1) {
+            entry.remove();
+          }
+        }
+      </script>
       {% endif %}
 
       {# ============================================================ #}

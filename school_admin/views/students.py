@@ -13,6 +13,7 @@ from accounts.mixins import RoleRequiredMixin
 from accounts.utils import generate_password, generate_username
 from accounts.models import Roles, User
 from students.models import Student, SchoolClass, ClassEnrollment, StudentGuardianLink
+from students.utils import generate_admission_number, find_or_create_parent
 from core.models import AcademicSession
 from fees.models import Invoice, Payment
 
@@ -138,7 +139,6 @@ class StudentCreateView(RoleRequiredMixin, View):
 
     def post(self, request):
         school = request.school
-        admission_number = request.POST.get('admission_number')
         date_of_birth = request.POST.get('date_of_birth')
         gender = request.POST.get('gender')
         admission_date = request.POST.get('admission_date')
@@ -147,13 +147,8 @@ class StudentCreateView(RoleRequiredMixin, View):
         session_id = request.POST.get('session_id')
 
         # Validate required student fields
-        if not all([admission_number, date_of_birth, gender, admission_date]):
+        if not all([date_of_birth, gender, admission_date]):
             messages.error(request, 'All student fields are required.')
-            return redirect('school_admin:student_create')
-
-        # Validate unique admission number
-        if Student.objects.filter(school=school, admission_number=admission_number).exists():
-            messages.error(request, 'A student with this admission number already exists.')
             return redirect('school_admin:student_create')
 
         try:
@@ -203,6 +198,18 @@ class StudentCreateView(RoleRequiredMixin, View):
                     f'Password: {password}',
                 )
 
+                # Determine school_class for admission number generation
+                school_class = None
+                if class_id:
+                    school_class = SchoolClass.objects.filter(
+                        school=school, pk=class_id
+                    ).first()
+
+                # Auto-generate sequential admission number
+                admission_number = generate_admission_number(
+                    school, school_class
+                )
+
                 # Create student record
                 student = Student(
                     school=school,
@@ -226,7 +233,8 @@ class StudentCreateView(RoleRequiredMixin, View):
 
                 # Auto-enroll if class and session provided
                 if class_id and session_id:
-                    school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
+                    if school_class is None:
+                        school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
                     session = get_object_or_404(AcademicSession, school=school, pk=session_id)
                     ClassEnrollment.objects.create(
                         school=school,
@@ -244,62 +252,37 @@ class StudentCreateView(RoleRequiredMixin, View):
                     subject=f'New student registered: {student}',
                     message=(
                         f'{student} ({admission_number}) has been registered'
-                        f'{" in " + school_class.name if class_id and session_id else ""}.'
+                        f'{" in " + school_class.name if school_class else ""}'
+                        f'{" for " + session.name if class_id and session_id else ""}.'
                     ),
                     reference=f'student-new:{student.pk}',
                     url=reverse('school_admin:student_detail', kwargs={'pk': student.pk}),
                 )
 
                 # --- Optional parent/guardian creation ---
-                parent_name = request.POST.get('parent_name', '').strip()
-                parent_email = request.POST.get('parent_email', '').strip()
-                parent_phone = request.POST.get('parent_phone', '').strip()
+                guardian_index = 0
+                while True:
+                    name = request.POST.get(f'guardian_{guardian_index}_name', '').strip()
+                    email = request.POST.get(f'guardian_{guardian_index}_email', '').strip()
+                    phone = request.POST.get(f'guardian_{guardian_index}_phone', '').strip()
+                    relationship = request.POST.get(f'guardian_{guardian_index}_relationship', 'GUARDIAN')
 
-                if parent_name or parent_email or parent_phone:
-                    # Split parent name into first/last
-                    parent_name_parts = parent_name.split(None, 1)
-                    parent_first = parent_name_parts[0] if parent_name_parts else ''
-                    parent_last = parent_name_parts[1] if len(parent_name_parts) > 1 else ''
+                    if not name and not email and not phone:
+                        break
 
-                    if parent_first:
-                        # Generate parent username
-                        parent_username = _sanitize_username(parent_first, parent_last) if parent_last else parent_first.lower()
-                        parent_base = parent_username
-                        parent_counter = 1
-                        while User.objects.filter(username=parent_username).exists():
-                            parent_username = f"{parent_base}{parent_counter}"
-                            parent_counter += 1
-
-                        parent_password = generate_password(8)
-                        parent_user = User.objects.create_user(
-                            username=parent_username,
-                            email=parent_email,
-                            password=parent_password,
-                            first_name=parent_first,
-                            last_name=parent_last,
-                            role=Roles.PARENT,
-                            school=school,
-                            phone_number=parent_phone,
-                            must_change_password=True,
+                    if name:
+                        parent_user = find_or_create_parent(
+                            school, name, email=email, phone=phone, relationship=relationship
                         )
-
-                        # Link parent as guardian
-                        relationship = request.POST.get('parent_relationship', 'GUARDIAN')
-                        link = StudentGuardianLink(
+                        StudentGuardianLink.objects.create(
+                            school=school,
                             student=student,
                             guardian=parent_user,
                             relationship=relationship,
-                            is_primary_contact=True,
-                            school=school,
+                            is_primary_contact=(guardian_index == 0),
                         )
-                        link.full_clean()
-                        link.save()
 
-                        messages.success(
-                            request,
-                            f'Parent "{parent_user.get_full_name() or parent_user.username}" '
-                            f'created and linked. Password: {parent_password}',
-                        )
+                    guardian_index += 1
 
                 messages.success(request, f'Student "{user.get_full_name()}" created successfully.')
                 return redirect('school_admin:student_detail', pk=student.pk)
