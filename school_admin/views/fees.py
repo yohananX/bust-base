@@ -910,6 +910,11 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
             if invoice.student_id != student.pk:
                 messages.error(request, 'That invoice belongs to a different student.')
                 return redirect('school_admin:student_detail', pk=student.pk)
+        else:
+            candidate = invoices_with_balance(
+                Invoice.objects.filter(school=school, student=student)
+            ).filter(balance_annotated__gt=0).order_by('term__start_date').first()
+            invoice = candidate
 
         payment = Payment.objects.create(
             school=school,

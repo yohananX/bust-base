@@ -297,7 +297,7 @@
         </select>
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">Invoice (optional)</label>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Invoice <span class="text-gray-400">(optional — auto-links to oldest outstanding if blank)</span></label>
         <select name="invoice_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">— None (record against student) —</option>
           {% for inv in invoices %}
