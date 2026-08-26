@@ -89,10 +89,10 @@
   </div>
 
   {# ── KPI ROW ── #}
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-stretch">
 
     {# Students #}
-    <a href="{% url 'school_admin:student_list' %}" class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm block hover:shadow-md transition-shadow">
+    <a href="{% url 'school_admin:student_list' %}" class="h-full bg-white rounded-2xl p-5 border border-gray-100 shadow-sm block hover:shadow-md transition-shadow">
       <div class="flex items-start justify-between">
         <div class="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600">
           <i data-lucide="users" class="w-5 h-5"></i>
@@ -114,7 +114,7 @@
     </a>
 
     {# Teachers on staff #}
-    <a href="{% url 'school_admin:staff_list' %}" class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm block hover:shadow-md transition-shadow">
+    <a href="{% url 'school_admin:staff_list' %}" class="h-full bg-white rounded-2xl p-5 border border-gray-100 shadow-sm block hover:shadow-md transition-shadow">
       <div class="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600">
         <i data-lucide="graduation-cap" class="w-5 h-5"></i>
       </div>
@@ -123,7 +123,7 @@
     </a>
 
     {# Outstanding Fees #}
-    <a href="{% url 'school_admin:outstanding_fees' %}" class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm block hover:shadow-md transition-shadow">
+    <a href="{% url 'school_admin:outstanding_fees' %}" class="h-full bg-white rounded-2xl p-5 border border-gray-100 shadow-sm block hover:shadow-md transition-shadow">
       <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
         <i data-lucide="banknote" class="w-5 h-5"></i>
       </div>
@@ -135,7 +135,7 @@
     </a>
 
     {# Collected this term #}
-    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <div class="h-full bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
       <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
         <i data-lucide="wallet" class="w-5 h-5"></i>
       </div>
@@ -147,29 +147,83 @@
     </div>
   </div>
 
-  {# ── CHARTS + PENDING ACTIONS ── #}
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-    {# Fee Collection by Term #}
-    <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-      <div class="mb-4">
-        <h3 class="text-sm font-semibold text-gray-800">Fee Collection by Term</h3>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+  {# ── QUICK ACTIONS ── #}
+  <section aria-labelledby="quick-actions-title" class="lg:col-span-1">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <h2 id="quick-actions-title" class="text-lg font-display font-semibold text-gray-900">Quick Actions</h2>
+        <p class="text-xs text-gray-500 mt-0.5">Jump straight into the tasks you use most.</p>
       </div>
-      {% if fee_trend_has_data %}
-      <div class="h-64 relative">
-        <canvas id="feeChart"></canvas>
-      </div>
-      {% else %}
-      <div class="h-64 flex items-center justify-center">
-        <p class="text-sm text-gray-400">No fee collection data yet</p>
-      </div>
-      {% endif %}
     </div>
+    <div class="grid grid-cols-2 gap-3 items-stretch">
+      <a href="{% url 'school_admin:student_create' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:border-primary/40 hover:shadow-md transition-all">
+        <span class="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="user-plus" class="w-5 h-5"></i>
+        </span>
+        <span class="min-w-0 w-full pr-3">
+          <span class="block text-sm font-semibold text-gray-800">Add student</span>
+          <span class="block text-xs text-gray-500 mt-0.5">Create a new student record</span>
+        </span>
+        <i data-lucide="arrow-up-right" class="absolute right-3 top-3 w-3.5 h-3.5 text-gray-300 group-hover:text-primary transition-colors"></i>
+      </a>
+      <a href="{% url 'school_admin:review_results' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:border-primary/40 hover:shadow-md transition-all">
+        <span class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="clipboard-check" class="w-5 h-5"></i>
+        </span>
+        <span class="min-w-0 w-full pr-3">
+          <span class="block text-sm font-semibold text-gray-800">Review results</span>
+          <span class="block text-xs text-gray-500 mt-0.5">Moderate submitted scores</span>
+        </span>
+        <i data-lucide="arrow-up-right" class="absolute right-3 top-3 w-3.5 h-3.5 text-gray-300 group-hover:text-primary transition-colors"></i>
+      </a>
+      <a href="{% url 'school_admin:publish_results' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:border-primary/40 hover:shadow-md transition-all">
+        <span class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="send" class="w-5 h-5"></i>
+        </span>
+        <span class="min-w-0 w-full pr-3">
+          <span class="block text-sm font-semibold text-gray-800">Publish results</span>
+          <span class="block text-xs text-gray-500 mt-0.5">Release approved report cards</span>
+        </span>
+        <i data-lucide="arrow-up-right" class="absolute right-3 top-3 w-3.5 h-3.5 text-gray-300 group-hover:text-primary transition-colors"></i>
+      </a>
+      <a href="{% url 'school_admin:pending_transfers' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:border-primary/40 hover:shadow-md transition-all">
+        <span class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="badge-check" class="w-5 h-5"></i>
+        </span>
+        <span class="min-w-0 w-full pr-3">
+          <span class="block text-sm font-semibold text-gray-800">Confirm payments</span>
+          <span class="block text-xs text-gray-500 mt-0.5">Review pending bank transfers</span>
+        </span>
+        <i data-lucide="arrow-up-right" class="absolute right-3 top-3 w-3.5 h-3.5 text-gray-300 group-hover:text-primary transition-colors"></i>
+      </a>
+      <a href="{% url 'school_admin:generate_invoices' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:border-primary/40 hover:shadow-md transition-all">
+        <span class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="file-plus-2" class="w-5 h-5"></i>
+        </span>
+        <span class="min-w-0 w-full pr-3">
+          <span class="block text-sm font-semibold text-gray-800">Generate invoices</span>
+          <span class="block text-xs text-gray-500 mt-0.5">Create current fee invoices</span>
+        </span>
+        <i data-lucide="arrow-up-right" class="absolute right-3 top-3 w-3.5 h-3.5 text-gray-300 group-hover:text-primary transition-colors"></i>
+      </a>
+      <a href="{% url 'school_admin:staff_create' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:border-primary/40 hover:shadow-md transition-all">
+        <span class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="user-cog" class="w-5 h-5"></i>
+        </span>
+        <span class="min-w-0 w-full pr-3">
+          <span class="block text-sm font-semibold text-gray-800">Add staff member</span>
+          <span class="block text-xs text-gray-500 mt-0.5">Set up a teacher or staff account</span>
+        </span>
+        <i data-lucide="arrow-up-right" class="absolute right-3 top-3 w-3.5 h-3.5 text-gray-300 group-hover:text-primary transition-colors"></i>
+      </a>
+    </div>
+  </section>
 
-    {# Pending Actions #}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+  {# Pending Actions #}
+  <section aria-labelledby="pending-actions-title" class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div class="px-5 py-4 border-b border-gray-100">
-        <h3 class="text-sm font-semibold text-gray-800">Pending Actions</h3>
+        <h2 id="pending-actions-title" class="text-sm font-semibold text-gray-800">Pending Actions</h2>
       </div>
       {% if pending_transfers or results_to_review or owing_students %}
       <div class="divide-y divide-gray-50">
@@ -222,14 +276,14 @@
         <p class="text-xs text-gray-400 mt-1">Nothing needs your attention right now.</p>
       </div>
       {% endif %}
-    </div>
+  </section>
   </div>
 
   {# ── TABLES ── #}
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
 
     {# Recent Fee Payments #}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="h-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h3 class="text-sm font-semibold text-gray-800">Recent Fee Payments</h3>
         <a href="{% url 'school_admin:invoice_list' %}" class="text-xs text-violet-600 hover:text-violet-700 font-medium">View All</a>
@@ -288,7 +342,7 @@
     </div>
 
     {# Top Owing Students #}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="h-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h3 class="text-sm font-semibold text-gray-800">Students Owing</h3>
         <a href="{% url 'school_admin:outstanding_fees' %}" class="text-xs text-violet-600 hover:text-violet-700 font-medium">View All</a>
@@ -331,47 +385,4 @@
     </div>
   </div>
 </div>
-{% endblock %}
-
-{% block extra_scripts %}
-<script>
-(function () {
-  if (typeof Chart === 'undefined') return;
-
-  const feeEl = document.getElementById('feeChart');
-  if (feeEl) {
-    new Chart(feeEl.getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: {{ term_labels|safe }},
-        datasets: [{
-          label: 'Collected (₦)',
-          data: {{ term_fees|safe }},
-          backgroundColor: '#8A6420',
-          borderRadius: 6,
-          barThickness: 42,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function (ctx) {
-                return ' ₦' + Number(ctx.parsed.y).toLocaleString();
-              }
-            }
-          }
-        },
-        scales: {
-          y: { beginAtZero: true, grid: { color: '#F3F4F6', drawBorder: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } },
-          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#9CA3AF' } }
-        }
-      }
-    });
-  }
-})();
-</script>
 {% endblock %}

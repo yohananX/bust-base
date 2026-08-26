@@ -73,48 +73,17 @@ class DashboardView(RoleRequiredMixin, View):
 
         active_classes = SchoolClass.objects.filter(school=school).count()
 
-        # Collected this term — confirmed payments within the current term
+        # Collected this term — confirmed payments for the current term's invoices
         collected_this_term = Decimal('0')
         if current_term:
             collected_this_term = (
                 Payment.objects.filter(
                     school=school,
                     status=Payment.Status.CONFIRMED,
-                    paid_on__date__gte=current_term.start_date,
-                    paid_on__date__lte=current_term.end_date,
+                    invoice__term=current_term,
                 ).aggregate(total=Sum('amount'))['total']
                 or Decimal('0')
             )
-
-        # Fee collection by term — schools think in terms, not months.
-        terms = list(
-            Term.objects.filter(school=school)
-            .select_related('session')
-            .order_by('start_date')
-        )
-        chart_terms = terms[-6:]
-        term_fees = {t.pk: Decimal('0') for t in chart_terms}
-        if chart_terms:
-            first_start = chart_terms[0].start_date
-            last_end = chart_terms[-1].end_date
-            for paid_on, amount in Payment.objects.filter(
-                school=school,
-                status=Payment.Status.CONFIRMED,
-                paid_on__date__gte=first_start,
-                paid_on__date__lte=last_end,
-            ).values_list('paid_on', 'amount'):
-                d = paid_on.date()
-                for term in chart_terms:
-                    if term.start_date <= d <= term.end_date:
-                        term_fees[term.pk] = (
-                            term_fees.get(term.pk, Decimal('0')) + amount
-                        )
-                        break
-        term_labels = [
-            f"{t.name} · {t.session.name}" for t in chart_terms
-        ]
-        term_fees_list = [float(term_fees[t.pk]) for t in chart_terms]
-        fee_trend_has_data = any(term_fees_list)
 
         # Recent confirmed payments
         recent_payments = []
@@ -178,9 +147,6 @@ class DashboardView(RoleRequiredMixin, View):
             'current_term_name': current_term.name if current_term else None,
             'results_published': results_published,
             'active_classes': active_classes,
-            'term_labels': term_labels,
-            'term_fees': term_fees_list,
-            'fee_trend_has_data': fee_trend_has_data,
             'pending_transfers': pending_transfers,
             'results_to_review': results_to_review,
             'top_owing_students': top_owing_students,
