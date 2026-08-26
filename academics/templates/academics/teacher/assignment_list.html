@@ -4,6 +4,23 @@
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
 
+  {# ── GREETING + CONTEXT ── #}
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h2 class="text-2xl font-display font-semibold text-ink">Welcome back, {{ user.first_name|default:user.username }}</h2>
+      <p class="text-sm text-ink-muted mt-1">
+        {% if current_term %}
+          {{ current_term.name }} &middot; {{ current_term.session.name }}
+        {% else %}
+          No active term
+        {% endif %}
+        {% if subject_count %}
+          &middot; {{ subject_count }} subject{{ subject_count|pluralize }} &middot; {{ class_count }} class{{ class_count|pluralize:"es" }}
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
   {# ── STATUS / ALERT BANNER (task first) ── #}
   {% if incomplete_assignments %}
     <div class="bg-warning-tint border border-line rounded-2xl p-4 flex items-center justify-between">

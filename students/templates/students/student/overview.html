@@ -5,6 +5,29 @@
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
 
+  {# ── GREETING + CONTEXT ── #}
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h2 class="text-2xl font-display font-semibold text-ink">Welcome back, {{ user.first_name|default:user.username }}</h2>
+      <p class="text-sm text-ink-muted mt-1">
+        {% if enrollment %}
+          {{ enrollment.school_class.name }} &middot;
+        {% endif %}
+        {% if current_term %}
+          {{ current_term.name }} &middot; {{ current_term.session.name }}
+        {% else %}
+          No active term
+        {% endif %}
+      </p>
+    </div>
+    {% if enrollment %}
+    <div class="flex items-center gap-2 text-sm text-ink-muted">
+      <i data-lucide="users" class="w-4 h-4"></i>
+      <span>{{ enrollment.school_class.name }}</span>
+    </div>
+    {% endif %}
+  </div>
+
   {# ── METRIC TILES ── #}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
@@ -20,6 +43,10 @@
       {% if unpaid_count != 0 %}
       <a href="{% url 'student-pay' %}" class="mt-3 inline-flex items-center justify-center px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
         <i data-lucide="wallet" class="w-4 h-4 mr-2"></i>Pay Fees
+      </a>
+      {% else %}
+      <a href="#invoices" class="mt-3 inline-flex items-center text-sm font-medium text-ink-muted hover:text-ink transition-colors">
+        <i data-lucide="receipt" class="w-4 h-4 mr-1.5"></i>View payment history
       </a>
       {% endif %}
     </div>
@@ -57,6 +84,33 @@
         <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">Position</p>
       </div>
       <p class="text-2xl font-bold text-ink">{{ term_result.overall_position }}</p>
+    </div>
+    {% else %}
+    {# Subjects enrolled — fills the empty space when results are unpublished #}
+    <div class="bg-white rounded-2xl p-5 border border-line">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-lg bg-info-tint flex items-center justify-center text-info">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+        </div>
+        <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">Subjects</p>
+      </div>
+      <p class="text-2xl font-bold text-ink tabular-nums">{{ subject_count|default:"—" }}</p>
+      <a href="{% url 'student-subjects' %}" class="mt-3 text-sm font-medium text-ink-muted hover:text-ink transition-colors">View subjects</a>
+    </div>
+    <div class="bg-white rounded-2xl p-5 border border-line">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-lg bg-primary-tint flex items-center justify-center text-primary">
+          <i data-lucide="calendar-check" class="w-4 h-4"></i>
+        </div>
+        <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">Last payment</p>
+      </div>
+      {% if last_payment %}
+      <p class="text-2xl font-bold text-ink tabular-nums">&#8358;{{ last_payment.amount|floatformat:0|intcomma }}</p>
+      <p class="mt-3 text-sm text-ink-muted">{{ last_payment.paid_on|date:"M d, Y" }}</p>
+      {% else %}
+      <p class="text-2xl font-bold text-ink-faint">—</p>
+      <p class="mt-3 text-sm text-ink-muted">No payments yet</p>
+      {% endif %}
     </div>
     {% endif %}
   </div>
@@ -101,7 +155,7 @@
     <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center flex-shrink-0">
       <i data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>
     </div>
-    <div class="min-w-0 flex-1">
+    <div class="min-w-0 flex-1 pr-8">
       <h3 class="text-sm font-semibold text-ink">Results for the current term are not yet published</h3>
       <p class="text-xs text-ink-muted mt-1">They will appear here once released by the school.</p>
     </div>
@@ -113,7 +167,9 @@
     <div class="px-6 py-4 border-b border-line">
       <h3 class="text-sm font-semibold text-ink">My Invoices</h3>
     </div>
-    <div class="overflow-x-auto">
+
+    {# Desktop table #}
+    <div class="hidden sm:block overflow-x-auto">
       <table class="w-full">
         <thead>
           <tr class="text-left text-xs text-ink-muted border-b border-line bg-surface-muted/50">
@@ -144,6 +200,29 @@
           {% endfor %}
         </tbody>
       </table>
+    </div>
+
+    {# Mobile stacked cards #}
+    <div class="sm:hidden divide-y divide-line/70">
+      {% for invoice in invoices %}
+      <div class="px-4 py-4">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-sm font-medium text-ink">{{ invoice.term.name }}</p>
+          {% if invoice.status == 'PAID' %}{% include 'components/badge.html' with status='success' text=invoice.status %}
+          {% elif invoice.status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text=invoice.status %}
+          {% else %}{% include 'components/badge.html' with status='danger' text=invoice.status %}{% endif %}
+        </div>
+        <p class="text-xs text-ink-muted mb-1">{{ invoice.term.session.name }}</p>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-ink-muted">Amount: &#8358;{{ invoice.total_amount|floatformat:2|intcomma }}</span>
+          <span class="font-semibold text-ink">Balance: &#8358;{{ invoice.balance|floatformat:2|intcomma }}</span>
+        </div>
+      </div>
+      {% empty %}
+      <div class="py-10 text-center text-sm text-ink-muted">
+        No invoices yet — <a href="{% url 'student-pay' %}" class="text-primary hover:text-primary-hover underline">pay fees now</a>
+      </div>
+      {% endfor %}
     </div>
   </div>
 

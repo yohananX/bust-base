@@ -1,29 +1,37 @@
 {% extends 'base.html' %}
+{% load humanize %}
 {% block title %}Dashboard — Grace House{% endblock %}
 {% block page_header %}Dashboard{% endblock %}
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
 
-  {# ── GREETING ── #}
-  <div>
-    <h2 class="text-2xl font-display font-semibold text-ink">Welcome back, {{ user.first_name|default:user.username }}</h2>
-    {% if children_data|length == 1 %}
-    <p class="text-sm text-ink-muted mt-1">Here's what's happening with your child today.</p>
-    {% elif children_data|length > 1 %}
-    <p class="text-sm text-ink-muted mt-1">Here's what's happening with your children today.</p>
-    {% else %}
-    <p class="text-sm text-ink-muted mt-1">You don't have any children linked to your account yet.</p>
-    {% endif %}
+  {# ── GREETING + CONTEXT ── #}
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h2 class="text-2xl font-display font-semibold text-ink">Welcome back, {{ user.first_name|default:user.username }}</h2>
+      <p class="text-sm text-ink-muted mt-1">
+        {% if children_data|length == 1 %}
+          Here's what's happening with your child
+        {% elif children_data|length > 1 %}
+          Here's what's happening with your children
+        {% else %}
+          You don't have any children linked to your account yet
+        {% endif %}
+        {% if current_term %}
+          &middot; {{ current_term.name }} &middot; {{ current_term.session.name }}
+        {% endif %}
+      </p>
+    </div>
   </div>
 
   {# ── RESULTS BANNER ── #}
   {% if results_published %}
-    <div data-dismiss="attention-results-parent-{{ current_term.id }}" class="bg-success-tint border border-line rounded-2xl p-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
+    <div data-dismiss="attention-results-parent-{{ current_term.id }}" class="bg-success-tint border border-line rounded-2xl p-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-full bg-success-tint flex items-center justify-center flex-shrink-0">
           <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
         </div>
-        <div>
+        <div class="min-w-0">
           <p class="text-sm font-semibold text-ink">
             {{ current_term.name }} results are published
             {% if current_term.session %} for {{ current_term.session.name }}{% endif %}
@@ -32,19 +40,19 @@
         </div>
       </div>
       <div class="flex items-center gap-2 shrink-0">
+        <a href="{% url 'parent-children' %}" class="hidden sm:inline-flex text-sm font-medium text-primary hover:text-primary-hover hover:underline shrink-0">View Results</a>
         <button type="button" data-dismiss-btn aria-label="Dismiss alert" class="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
-        <a href="{% url 'parent-children' %}" class="text-sm font-medium text-primary hover:text-primary-hover hover:underline shrink-0">View Results</a>
       </div>
     </div>
   {% else %}
-    <div data-dismiss="attention-results-parent-{{ current_term.id }}" class="bg-warning-tint border border-line rounded-2xl p-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
+    <div data-dismiss="attention-results-parent-{{ current_term.id }}" class="bg-warning-tint border border-line rounded-2xl p-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center flex-shrink-0">
           <i data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>
         </div>
-        <div>
+        <div class="min-w-0">
           <p class="text-sm font-semibold text-ink">Results for the current term are not yet published</p>
           <p class="text-xs text-ink-muted">They will appear here once released by the school.</p>
         </div>
@@ -99,9 +107,11 @@
     <a href="{% url 'parent-invoices' %}" class="inline-flex items-center px-4 py-2.5 bg-white border border-line text-ink text-sm font-medium rounded-xl hover:bg-surface-muted transition-colors">
       <i data-lucide="file-text" class="w-4 h-4 mr-2 text-primary"></i>View Invoices
     </a>
+    {% if total_owed_all > 0 %}
     <a href="{% url 'parent-pay' %}" class="inline-flex items-center px-4 py-2.5 bg-white border border-line text-ink text-sm font-medium rounded-xl hover:bg-surface-muted transition-colors">
       <i data-lucide="banknote" class="w-4 h-4 mr-2 text-primary"></i>Pay Fees
     </a>
+    {% endif %}
   </div>
 
   {# ── FEES CHART ── #}

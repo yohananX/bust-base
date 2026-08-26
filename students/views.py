@@ -520,6 +520,22 @@ class StudentOverviewView(RoleRequiredMixin, View):
         outstanding = sum(inv.balance for inv in unpaid_invoices)
         unpaid_count = len(unpaid_invoices)
 
+        # Subject count for current term
+        subject_count = 0
+        if enrollment and current_term and enrollment.session_id == current_term.session_id:
+            subject_count = TeacherAssignment.objects.filter(
+                school=request.school,
+                school_class=enrollment.school_class,
+                session=current_term.session,
+            ).values('subject_id').distinct().count()
+
+        # Last confirmed payment
+        last_payment = Payment.objects.filter(
+            school=request.school,
+            student__user=request.user,
+            status=Payment.Status.CONFIRMED,
+        ).order_by('-paid_on').first()
+
         # One-time success toast when fees just became fully paid: fires only
         # when the balance transitions from owing → paid (once), so students
         # who were always paid don't get a spur-of-the-moment confirmation.
@@ -541,6 +557,8 @@ class StudentOverviewView(RoleRequiredMixin, View):
             'results_locked': results_locked,
             'outstanding': outstanding,
             'unpaid_count': unpaid_count,
+            'subject_count': subject_count,
+            'last_payment': last_payment,
         })
 
 
