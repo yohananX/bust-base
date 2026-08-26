@@ -150,13 +150,13 @@ class FinancialReportView(RoleRequiredMixin, View):
         return render(request, "finance/financial_report.html", context)
 
     def _get_default_range(self, school):
-        current_term = Term.objects.filter(school=school, is_current=True).first()
-        if current_term:
-            return current_term.start_date, current_term.end_date
         current_session = AcademicSession.objects.filter(
             school=school, is_current=True
         ).first()
         if current_session:
             return current_session.start_date, current_session.end_date
+        current_term = Term.objects.filter(school=school, is_current=True).first()
+        if current_term:
+            return current_term.start_date, current_term.end_date
         today = date.today()
         return date(today.year, 1, 1), date(today.year, 12, 31)
