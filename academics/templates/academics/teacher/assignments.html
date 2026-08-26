@@ -1,41 +1,41 @@
 {% extends 'base.html' %}
-{% block title %}My Assignments{% endblock %}
+{% block title %}My Assignments — Grace House{% endblock %}
 {% block page_header %}My Assignments{% endblock %}
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-6">
 
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+  <div class="bg-white rounded-2xl border border-line overflow-hidden">
+    <div class="px-6 py-4 border-b border-line flex items-center justify-between">
       <div>
-        <h3 class="text-sm font-semibold text-gray-800">Teaching Assignments</h3>
-        <p class="text-xs text-gray-400 mt-0.5">Current session</p>
+        <h3 class="text-sm font-semibold text-ink">Teaching Assignments</h3>
+        <p class="text-xs text-ink-muted mt-0.5">Current session</p>
       </div>
-      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">
+      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary-tint text-primary border border-line">
         {{ assignments|length }} total
       </span>
     </div>
-    <div class="divide-y divide-gray-50">
+    <div class="divide-y divide-line/70">
       {% for a in assignments %}
-      <a href="{% url 'score_grid' a.pk %}" class="flex items-center justify-between px-6 py-4 hover:bg-gray-50/70 transition-colors group">
+      <a href="{% url 'score_grid' a.pk %}" class="flex items-center justify-between px-6 py-4 hover:bg-surface-muted/50 transition-colors group">
         <div class="flex items-center gap-3 min-w-0">
-          <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-100 flex items-center justify-center flex-shrink-0 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-primary-tint text-primary group-hover:bg-primary/10 flex items-center justify-center flex-shrink-0 transition-colors">
             <i data-lucide="book-open" class="w-5 h-5"></i>
           </div>
           <div class="min-w-0">
-            <p class="font-medium text-sm text-gray-900 truncate">{{ a.subject.name }}</p>
-            <p class="text-xs text-gray-400">{{ a.school_class.name }} — {{ a.session.name }}</p>
+            <p class="font-medium text-sm text-ink truncate">{{ a.subject.name }}</p>
+            <p class="text-xs text-ink-muted">{{ a.school_class.name }} — {{ a.session.name }}</p>
           </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
           <span class="text-xs font-medium text-primary group-hover:underline">Enter Scores</span>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400 group-hover:text-primary transition-colors"></i>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-ink-faint group-hover:text-primary transition-colors"></i>
         </div>
       </a>
       {% empty %}
       <div class="py-16 text-center">
-        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="book-open" class="w-5 h-5 text-gray-400"></i></div>
-        <p class="text-sm font-medium text-gray-600">No assignments for the current session</p>
-        <p class="text-xs text-gray-400 mt-1">Contact the school admin to set up your teaching assignments.</p>
+        <div class="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center mx-auto mb-3"><i data-lucide="book-open" class="w-5 h-5 text-ink-faint"></i></div>
+        <p class="text-sm font-medium text-ink-muted">No assignments for the current session</p>
+        <p class="text-xs text-ink-faint mt-1">Contact the school admin to set up your teaching assignments.</p>
       </div>
       {% endfor %}
     </div>
