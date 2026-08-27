@@ -1,0 +1,65 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Record Stock Removal — School Admin{% endblock %}
+{% block page_header %}Record Stock Removal{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Item *</label>
+        <select name="item_id" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">Select item...</option>
+          {% for item in items %}
+          <option value="{{ item.id }}">
+            {{ item.name }} ({{ item.get_category_display }})
+            {% if item.school_class %}— {{ item.school_class.name }}{% else %}— No class{% endif %}
+            — Stock: {{ item.total_stock }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Quantity to Remove *</label>
+          <input type="number" name="quantity" min="1" required
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Reason *</label>
+          <select name="reason" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            {% for value, label in reason_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
+        <textarea name="notes" rows="3" placeholder="e.g., Distributed to JSS1 teachers on 15 Oct"
+                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all"></textarea>
+        <p class="text-xs text-gray-500 mt-1">Optional details: who took it, which class, date, etc.</p>
+      </div>
+
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 mt-0.5"></i>
+        <div>
+          <p class="text-sm font-medium text-amber-800">This action reduces stock</p>
+          <p class="text-xs text-amber-600 mt-0.5">An adjustment transaction will be logged and cannot be undone. If you need to correct it later, create another adjustment with an explanation.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-4">
+        <a href="{% url 'school_admin:inventory_item_list' %}" class="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Cancel</a>
+        <button type="submit" class="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">Record Removal</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -90,7 +90,13 @@
               {% endif %}
             </td>
             <td class="px-6 py-3.5 text-sm text-gray-600">{{ item.get_category_display }}</td>
-            <td class="px-6 py-3.5 text-sm text-gray-600">{{ item.school_class.name }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">
+              {% if item.school_class %}
+                {{ item.school_class.name }}
+              {% else %}
+                <span class="text-gray-400 italic">No class</span>
+              {% endif %}
+            </td>
             <td class="px-6 py-3.5">
               <span class="text-sm font-medium {% if item.available_stock <= item.min_stock_threshold %}text-red-600{% endif %}">
                 {{ item.available_stock }}

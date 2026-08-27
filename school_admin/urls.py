@@ -39,7 +39,7 @@ from school_admin.views import (
 )
 from inventory.views import (
     AdminItemListView, AdminItemCreateView, AdminItemEditView,
-    AdminItemDeleteView, AdminProcurementCreateView,
+    AdminItemDeleteView, AdminProcurementCreateView, AdminStockRemovalView,
     AdminTransactionListView, AdminLowStockView,
 )
 
@@ -157,6 +157,7 @@ path('students/<int:pk>/record-payment/', StudentRecordPaymentView.as_view(), na
     path('inventory/items/<int:pk>/edit/', AdminItemEditView.as_view(), name='inventory_item_edit'),
     path('inventory/items/<int:pk>/delete/', AdminItemDeleteView.as_view(), name='inventory_item_delete'),
     path('inventory/procurement/', AdminProcurementCreateView.as_view(), name='inventory_procurement'),
+    path('inventory/stock-removal/', AdminStockRemovalView.as_view(), name='inventory_stock_removal'),
     path('inventory/transactions/', AdminTransactionListView.as_view(), name='inventory_transactions'),
     path('inventory/low-stock/', AdminLowStockView.as_view(), name='inventory_low_stock'),
 ]

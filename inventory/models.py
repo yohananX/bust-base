@@ -23,8 +23,10 @@ class InventoryItem(TenantScopedModel):
     school_class = models.ForeignKey(
         'students.SchoolClass',
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         verbose_name=_('school class'),
-        help_text=_('Items without a class assignment are admin-only.'),
+        help_text=_('Leave blank for admin-only or teacher-use items.'),
     )
     sku = models.CharField(max_length=50, blank=True, verbose_name=_('SKU'))
     unit = models.CharField(max_length=50, default='piece', verbose_name=_('unit'))
@@ -45,7 +47,8 @@ class InventoryItem(TenantScopedModel):
         ordering = ['category', 'name']
 
     def __str__(self):
-        return f'{self.name} ({self.school_class.name})'
+        class_name = self.school_class.name if self.school_class else 'No class'
+        return f'{self.name} ({class_name})'
 
     def clean(self):
         if self.total_stock < 0:

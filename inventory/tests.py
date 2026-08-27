@@ -337,3 +337,90 @@ class DecimalCheckTest(BaseInventoryTest):
                         self.fail(
                             f'FLOAT USAGE FOUND: {filename}:{i}: {stripped}'
                         )
+
+
+class InventoryItemOptionalClassTest(BaseInventoryTest):
+    def test_item_without_class_creation(self):
+        item = InventoryItem.objects.create(
+            school=self.school, name='Office Pen',
+            school_class=None,
+            category='WRITING',
+            unit_price=Decimal('200.00'),
+            total_stock=100,
+        )
+        self.assertEqual(str(item), 'Office Pen (No class)')
+        self.assertIsNone(item.school_class)
+
+    def test_item_without_class_is_active(self):
+        item = InventoryItem.objects.create(
+            school=self.school, name='Office Pen',
+            school_class=None,
+            category='WRITING',
+            unit_price=Decimal('200.00'),
+            total_stock=100,
+        )
+        self.assertTrue(item.is_active)
+
+
+class AdminStockRemovalViewTest(BaseInventoryTest):
+    def test_stock_removal_requires_login(self):
+        item = InventoryItem.objects.create(
+            school=self.school, name='Blue Pen',
+            school_class=None,
+            category='WRITING',
+            unit_price=Decimal('200.00'),
+            total_stock=10,
+        )
+        response = self.client.get(
+            reverse('school_admin:inventory_stock_removal')
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_stock_removal_success(self):
+        self.client.force_login(self.admin_user)
+        item = InventoryItem.objects.create(
+            school=self.school, name='Blue Pen',
+            school_class=None,
+            category='WRITING',
+            unit_price=Decimal('200.00'),
+            total_stock=10,
+        )
+        response = self.client.post(
+            reverse('school_admin:inventory_stock_removal'),
+            {
+                'item_id': item.pk,
+                'quantity': '3',
+                'reason': 'TEACHER_DISTRIBUTION',
+                'notes': 'Distributed to JSS1 teachers',
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('school_admin:inventory_item_list'))
+        item.refresh_from_db()
+        self.assertEqual(item.total_stock, 7)
+        tx = InventoryTransaction.objects.first()
+        self.assertEqual(tx.transaction_type, InventoryTransaction.TransactionType.ADJUSTMENT)
+        self.assertEqual(tx.quantity_change, -3)
+        self.assertEqual(tx.balance_after, 7)
+
+    def test_stock_removal_insufficient_stock(self):
+        self.client.force_login(self.admin_user)
+        item = InventoryItem.objects.create(
+            school=self.school, name='Blue Pen',
+            school_class=None,
+            category='WRITING',
+            unit_price=Decimal('200.00'),
+            total_stock=2,
+        )
+        response = self.client.post(
+            reverse('school_admin:inventory_stock_removal'),
+            {
+                'item_id': item.pk,
+                'quantity': '5',
+                'reason': 'LOST',
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+        item.refresh_from_db()
+        self.assertEqual(item.total_stock, 2)
+        self.assertEqual(InventoryTransaction.objects.count(), 0)

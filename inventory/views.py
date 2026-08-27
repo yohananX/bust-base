@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.views.generic.base import View
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 from django.core.paginator import Paginator
 from decimal import Decimal
@@ -78,18 +79,19 @@ class AdminItemCreateView(RoleRequiredMixin, View):
 
     def post(self, request):
         school = request.school
-        required = ['name', 'school_class']
+        required = ['name']
         if not all(request.POST.get(f) for f in required):
-            messages.error(request, 'Name and class are required.')
+            messages.error(request, 'Name is required.')
             return redirect('school_admin:inventory_item_create')
 
         try:
             with transaction.atomic():
+                school_class_id = request.POST.get('school_class')
                 item = InventoryItem(
                     school=school,
                     name=request.POST.get('name', '').strip(),
                     category=request.POST.get('category', 'BOOK'),
-                    school_class_id=request.POST.get('school_class'),
+                    school_class_id=school_class_id if school_class_id else None,
                     sku=request.POST.get('sku', '').strip(),
                     unit=request.POST.get('unit', 'piece'),
                     total_stock=int(request.POST.get('initial_stock', 0)),
@@ -139,7 +141,8 @@ class AdminItemEditView(RoleRequiredMixin, View):
         try:
             item.name = request.POST.get('name', item.name).strip()
             item.category = request.POST.get('category', item.category)
-            item.school_class_id = request.POST.get('school_class', item.school_class_id)
+            school_class_id = request.POST.get('school_class')
+            item.school_class_id = school_class_id if school_class_id else None
             item.sku = request.POST.get('sku', '').strip()
             item.unit = request.POST.get('unit', item.unit)
             item.min_stock_threshold = int(request.POST.get('min_stock_threshold', item.min_stock_threshold))
@@ -224,6 +227,85 @@ class AdminProcurementCreateView(RoleRequiredMixin, View):
         except Exception as e:
             messages.error(request, f'Error recording procurement: {e}')
             return redirect('school_admin:inventory_procurement')
+
+
+# ======================================================================
+# STOCK REMOVAL / ADJUSTMENT
+# ======================================================================
+
+class AdminStockRemovalView(RoleRequiredMixin, View):
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request):
+        items = InventoryItem.objects.filter(
+            school=request.school, is_active=True
+        ).select_related('school_class')
+        return render(request, 'school_admin/inventory/stock_removal_form.html', {
+            'items': items,
+            'reason_choices': [
+                ('DAMAGED', 'Damaged / Defective'),
+                ('LOST', 'Lost / Missing'),
+                ('TEACHER_DISTRIBUTION', 'Teacher Distribution'),
+                ('OFFICE_USE', 'Office / Admin Use'),
+                ('OTHER', 'Other'),
+            ],
+        })
+
+    def post(self, request):
+        school = request.school
+        required = ['item_id', 'quantity', 'reason']
+        if not all(request.POST.get(f) for f in required):
+            messages.error(request, 'All fields are required.')
+            return redirect('school_admin:inventory_stock_removal')
+
+        try:
+            with transaction.atomic():
+                item = get_object_or_404(
+                    InventoryItem, pk=request.POST.get('item_id'), school=school
+                )
+                quantity = int(request.POST.get('quantity', 0))
+                reason = request.POST.get('reason', 'OTHER')
+                notes = request.POST.get('notes', '')
+
+                if quantity <= 0:
+                    messages.error(request, 'Quantity must be positive.')
+                    return redirect('school_admin:inventory_stock_removal')
+
+                if quantity > item.available_stock:
+                    messages.error(
+                        request,
+                        f'Insufficient stock. Only {item.available_stock} available.',
+                    )
+                    return redirect('school_admin:inventory_stock_removal')
+
+                # Update stock atomically
+                InventoryItem.objects.filter(pk=item.pk).update(
+                    total_stock=F('total_stock') - quantity
+                )
+                item.refresh_from_db()
+
+                # Create adjustment transaction
+                InventoryTransaction.objects.create(
+                    school=school,
+                    item=item,
+                    transaction_type=InventoryTransaction.TransactionType.ADJUSTMENT,
+                    quantity_change=-quantity,
+                    balance_after=item.total_stock,
+                    reference=f'removal:{reason.lower()}',
+                    created_by=request.user,
+                    notes=f'{reason}: {notes}'.strip(),
+                )
+
+                messages.success(
+                    request,
+                    f'Stock removal recorded: {quantity} × {item.name}. '
+                    f'New stock: {item.total_stock}'
+                )
+                return redirect('school_admin:inventory_item_list')
+
+        except Exception as e:
+            messages.error(request, f'Error recording stock removal: {e}')
+            return redirect('school_admin:inventory_stock_removal')
 
 
 # ======================================================================

@@ -26,13 +26,14 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">School Class *</label>
-        <select name="school_class" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-          <option value="">Select class...</option>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">School Class <span class="text-gray-400">(optional)</span></label>
+        <select name="school_class" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">— No class (admin/teacher use only) —</option>
           {% for c in classes %}
-          <option value="{{ c.id }}" {% if item.school_class.id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.level }})</option>
+          <option value="{{ c.id }}" {% if item.school_class and item.school_class.id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.level }})</option>
           {% endfor %}
         </select>
+        <p class="text-xs text-gray-500 mt-1">Leave blank if this item is for admin or teacher use only and should not be visible to students.</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
