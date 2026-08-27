@@ -1218,12 +1218,12 @@ class ExtraLessonsPortalTests(TestCase):
         self.enrollment = LessonEnrollment.objects.create(
             school=self.school, lesson_class=self.lesson_class,
             student=self.child, parent_name="Jane Parent",
-            parent_phone="08012345678",
+            parent_phones=["08012345678"],
         )
         self.other_enrollment = LessonEnrollment.objects.create(
             school=self.school, lesson_class=self.lesson_class,
             student=self.other_child, parent_name="Mary Other",
-            parent_phone="08099999999",
+            parent_phones=["08099999999"],
         )
 
     def _login(self, user):

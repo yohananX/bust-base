@@ -37,6 +37,11 @@ from school_admin.views import (
     InvoiceSearchAPIView, ClassSearchAPIView, SubjectSearchAPIView,
     NotificationSearchAPIView,
 )
+from inventory.views import (
+    AdminItemListView, AdminItemCreateView, AdminItemEditView,
+    AdminItemDeleteView, AdminProcurementCreateView,
+    AdminTransactionListView, AdminLowStockView,
+)
 
 app_name = 'school_admin'
 
@@ -145,4 +150,13 @@ path('students/<int:pk>/record-payment/', StudentRecordPaymentView.as_view(), na
     path('credentials/print/', CredentialBatchPrintView.as_view(), name='credential_batch_print'),
     path('credentials/user/<int:pk>/reset/', CredentialSingleResetView.as_view(), name='credential_single_reset'),
     path('credentials/member/<int:pk>/', CredentialMemberConfirmView.as_view(), name='credential_member_confirm'),
+
+    # Inventory Management
+    path('inventory/items/', AdminItemListView.as_view(), name='inventory_item_list'),
+    path('inventory/items/new/', AdminItemCreateView.as_view(), name='inventory_item_create'),
+    path('inventory/items/<int:pk>/edit/', AdminItemEditView.as_view(), name='inventory_item_edit'),
+    path('inventory/items/<int:pk>/delete/', AdminItemDeleteView.as_view(), name='inventory_item_delete'),
+    path('inventory/procurement/', AdminProcurementCreateView.as_view(), name='inventory_procurement'),
+    path('inventory/transactions/', AdminTransactionListView.as_view(), name='inventory_transactions'),
+    path('inventory/low-stock/', AdminLowStockView.as_view(), name='inventory_low_stock'),
 ]

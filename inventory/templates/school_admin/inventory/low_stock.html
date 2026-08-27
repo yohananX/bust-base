@@ -1,0 +1,76 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Low Stock Alert — School Admin{% endblock %}
+{% block page_header %}Low Stock Alert{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+  <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+    <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 mt-0.5"></i>
+    <div>
+      <p class="text-sm font-medium text-amber-800">Low Stock Items</p>
+      <p class="text-xs text-amber-600 mt-0.5">These items have reached or fallen below their minimum stock threshold. Consider reordering soon.</p>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Item</th>
+            <th class="px-6 py-3 font-medium">Category</th>
+            <th class="px-6 py-3 font-medium">Class</th>
+            <th class="px-6 py-3 font-medium">Current Stock</th>
+            <th class="px-6 py-3 font-medium">Threshold</th>
+            <th class="px-6 py-3 font-medium text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for item in items %}
+          <tr class="group hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5">
+              <div class="text-sm font-medium text-gray-900">{{ item.name }}</div>
+              {% if item.sku %}
+              <p class="text-xs text-gray-500">{{ item.sku }}</p>
+              {% endif %}
+            </td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ item.get_category_display }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ item.school_class.name }}</td>
+            <td class="px-6 py-3.5">
+              <span class="text-sm font-bold text-red-600">{{ item.available_stock }}</span>
+            </td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ item.min_stock_threshold }}</td>
+            <td class="px-6 py-3.5 text-right">
+              <a href="{% url 'school_admin:inventory_procurement' %}"
+                 class="inline-flex items-center px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-medium rounded-lg transition-colors">
+                <i data-lucide="plus" class="w-3 h-3 mr-1"></i>Add Stock
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-12 text-gray-400">
+              <div class="flex flex-col items-center">
+                <i data-lucide="check-circle" class="w-10 h-10 mb-2 text-green-300"></i>
+                <p class="text-sm font-medium text-green-700">All items are well-stocked!</p>
+                <p class="text-xs text-gray-500 mt-1">No items below the minimum stock threshold.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="text-center">
+    <a href="{% url 'school_admin:inventory_item_list' %}" class="text-sm text-gray-500 hover:text-primary transition-colors">
+      &larr; Back to all items
+    </a>
+  </div>
+
+</div>
+{% endblock %}

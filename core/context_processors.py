@@ -108,6 +108,7 @@ SECTION_ICONS = {
     'Fees': 'receipt',
     'Payroll': 'coins',
     'Finance': 'bar-chart-3',
+    'Inventory': 'package',
     'System': 'server',
 }
 
@@ -137,7 +138,11 @@ def sidebar_nav(request):
         _nav_item(path, 'Fees & Pricing', '/school-admin/fees/', 'tags', section='Fees'),
         _nav_item(path, 'Invoices', '/school-admin/invoices/', 'file-text', section='Fees', badge=badges.get('/school-admin/invoices/')),
 _nav_item(path, 'Fees Due', '/school-admin/fees/outstanding/', 'alert-circle', section='Fees'),
-_nav_item(path, 'Awaiting Confirmation', '/school-admin/fees/pending/', 'clock', section='Fees', badge=badges.get('/school-admin/fees/pending/')),
+        _nav_item(path, 'Awaiting Confirmation', '/school-admin/fees/pending/', 'clock', section='Fees', badge=badges.get('/school-admin/fees/pending/')),
+        _nav_item(path, 'Items', '/school-admin/inventory/items/', 'package', section='Inventory'),
+        _nav_item(path, 'Procurement', '/school-admin/inventory/procurement/', 'package-plus', section='Inventory'),
+        _nav_item(path, 'Transactions', '/school-admin/inventory/transactions/', 'history', section='Inventory'),
+        _nav_item(path, 'Low Stock', '/school-admin/inventory/low-stock/', 'alert-triangle', section='Inventory'),
         _nav_item(path, 'Pay Grades', '/school-admin/payroll/grades/', 'banknote', section='Payroll'),
         _nav_item(path, 'Runs', '/school-admin/payroll/runs/', 'wallet', section='Payroll'),
         _nav_item(path, 'Projects', '/school-admin/finance/projects/', 'folder-kanban', section='Finance'),

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     # Local apps first
     'core',
     'fees',
+    'inventory',
     'accounts',
     'students',
     'academics',

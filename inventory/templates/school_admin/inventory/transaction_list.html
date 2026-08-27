@@ -1,0 +1,111 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Inventory Transactions — School Admin{% endblock %}
+{% block page_header %}Inventory Transactions{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+  {# ── Filters ── #}
+  <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+    <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Item</label>
+        <select name="item_id" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">All Items</option>
+          {% for item in items %}
+          <option value="{{ item.id }}" {% if selected_item == item.id|stringformat:'s' %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Type</label>
+        <select name="type" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">All Types</option>
+          {% for value, label in type_choices %}
+          <option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">Filter</button>
+        <a href="{% url 'school_admin:inventory_transactions' %}" class="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Clear</a>
+      </div>
+    </form>
+  </div>
+
+  {# ── Transaction Table ── #}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <th class="px-6 py-3 font-medium">Date</th>
+            <th class="px-6 py-3 font-medium">Item</th>
+            <th class="px-6 py-3 font-medium">Type</th>
+            <th class="px-6 py-3 font-medium">Change</th>
+            <th class="px-6 py-3 font-medium">Balance</th>
+            <th class="px-6 py-3 font-medium">Reference</th>
+            <th class="px-6 py-3 font-medium">Created By</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for tx in transactions %}
+          <tr class="group hover:bg-gray-50/50 transition-colors">
+            <td class="px-6 py-3.5 text-sm text-gray-600 tabular-nums">{{ tx.created_at|date:"d M Y H:i" }}</td>
+            <td class="px-6 py-3.5 text-sm font-medium text-gray-900">{{ tx.item.name }}</td>
+            <td class="px-6 py-3.5">
+              {% if tx.transaction_type == 'PROCUREMENT' %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Procurement</span>
+              {% elif tx.transaction_type == 'SALE' %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Sale</span>
+              {% elif tx.transaction_type == 'REFUND' %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Refund</span>
+              {% else %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Adjustment</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-3.5 text-sm tabular-nums {% if tx.quantity_change > 0 %}text-green-600{% elif tx.quantity_change < 0 %}text-red-600{% endif %}">
+              {{ tx.quantity_change|default:"0"|add:"0"|intformat }}
+            </td>
+            <td class="px-6 py-3.5 text-sm text-gray-900 tabular-nums font-medium">{{ tx.balance_after }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-500">{{ tx.reference|default:'—' }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ tx.created_by.get_full_name|default:tx.created_by.username|default:'System' }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center py-12 text-gray-400">
+              <div class="flex flex-col items-center">
+                <i data-lucide="history" class="w-10 h-10 mb-2 text-gray-300"></i>
+                <p class="text-sm">No transactions found.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Pagination ── #}
+  {% if transactions.has_other_pages %}
+  <div class="flex items-center justify-between">
+    <div class="text-sm text-gray-500">
+      Page {{ transactions.number }} of {{ transactions.paginator.num_pages }}
+    </div>
+    <div class="flex gap-2">
+      {% if transactions.has_previous %}
+      <a href="?page={{ transactions.previous_page_number }}&{{ request.GET.urlencode|slice:'1:' }}"
+         class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Previous</a>
+      {% endif %}
+      {% if transactions.has_next %}
+      <a href="?page={{ transactions.next_page_number }}&{{ request.GET.urlencode|slice:'1:' }}"
+         class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Next</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
