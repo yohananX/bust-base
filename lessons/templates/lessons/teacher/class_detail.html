@@ -39,7 +39,7 @@
           <td class="px-5 py-3 text-gray-600">{{ e.age|default:'—' }}</td>
           <td class="px-5 py-3 text-gray-600">{{ e.current_class_text|default:'—' }}</td>
           <td class="px-5 py-3 text-gray-600">{{ e.parent_name }}</td>
-          <td class="px-5 py-3 text-gray-600">{{ e.parent_phone }}</td>
+          <td class="px-5 py-3 text-gray-600">{{ e.parent_phones|join:", " }}</td>
         </tr>
         {% empty %}
         <tr class="border-t border-gray-100">

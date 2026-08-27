@@ -248,7 +248,8 @@ class ScoreModelTests(BaseTest):
         """School-level score scheme (item 26) governs validation.
 
         Defaults are 10 per test / 70 exam. A school that configures
-        test_max_score=20 accepts 15 for a test but still rejects 25.
+        test_max_scores={'test_1': 20, 'test_2': 20, 'test_3': 20} accepts
+        15 for a test but still rejects 25.
         """
         # Defaults: 15 for test_1 > 10 → rejected
         over_default = Score(
@@ -263,7 +264,7 @@ class ScoreModelTests(BaseTest):
             over_default.full_clean()
 
         # Custom scheme: 20 per test, 100 exam
-        self.school.test_max_score = 20
+        self.school.test_max_scores = {'test_1': 20, 'test_2': 20, 'test_3': 20}
         self.school.exam_max_score = 100
         self.school.save()
 
@@ -292,7 +293,7 @@ class ScoreModelTests(BaseTest):
 
     def test_score_component_maxima_helper(self):
         """score_component_maxima maps the school's scheme per component."""
-        self.school.test_max_score = 15
+        self.school.test_max_scores = {'test_1': 15, 'test_2': 15, 'test_3': 15}
         self.school.exam_max_score = 60
         self.school.save()
 

@@ -42,9 +42,11 @@ class School(models.Model):
     bank_name = models.CharField(max_length=100, blank=True, verbose_name=_('bank name'))
     account_name = models.CharField(max_length=200, blank=True, verbose_name=_('account name'))
     account_number = models.CharField(max_length=50, blank=True, verbose_name=_('account number'))
-    test_max_score = models.PositiveSmallIntegerField(
-        default=10, verbose_name=_('test max score'),
-        help_text=_('Maximum marks for each continuous assessment test (Test 1, 2, 3)'),
+    test_max_scores = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name=_('test max scores'),
+        help_text=_('Maximum marks per test, e.g. {"test_1": 10, "test_2": 10, "test_3": 10}'),
     )
     exam_max_score = models.PositiveSmallIntegerField(
         default=70, verbose_name=_('exam max score'),
@@ -64,20 +66,26 @@ class School(models.Model):
     def score_component_maxima(self) -> dict:
         """Per-component score caps for this school.
 
-        Returns ``{'test_1': ..., 'test_2': ..., 'test_3': ..., 'exam_score': ...}``
-        so views, entry grids, and validation can enforce the school's own
-        marking scheme instead of the historical 10/10/10/70 defaults.
+        Returns a dict mapping every configured test key plus ``exam_score``
+        to its maximum, e.g.
+        ``{'test_1': 10, 'test_2': 10, 'test_3': 10, 'test_4': 10, 'exam_score': 70}``.
+        Falls back to the legacy ``test_max_score`` / ``exam_max_score`` fields
+        when the JSON stores are empty, so existing schools keep working.
         """
-        return {
-            'test_1': self.test_max_score,
-            'test_2': self.test_max_score,
-            'test_3': self.test_max_score,
-            'exam_score': self.exam_max_score,
-        }
+        maxima = dict(self.test_max_scores or {})
+        if not maxima:
+            maxima = {
+                'test_1': 10,
+                'test_2': 10,
+                'test_3': 10,
+            }
+        maxima.setdefault('exam_score', self.exam_max_score)
+        return maxima
 
     def total_score_max(self) -> int:
         """Highest possible total for a complete score (tests + exam)."""
-        return 3 * self.test_max_score + self.exam_max_score
+        maxima = self.score_component_maxima()
+        return sum(v for k, v in maxima.items() if k != 'exam_score') + maxima.get('exam_score', 0)
 
 
 class AcademicSession(TenantScopedModel):

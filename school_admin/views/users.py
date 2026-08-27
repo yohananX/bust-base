@@ -23,6 +23,7 @@ class UserListView(RoleRequiredMixin, View):
             users = users.filter(
                 Q(first_name__icontains=q) |
                 Q(last_name__icontains=q) |
+                Q(middle_name__icontains=q) |
                 Q(email__icontains=q) |
                 Q(username__icontains=q)
             )
@@ -50,10 +51,15 @@ class UserCreateView(RoleRequiredMixin, View):
         username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()
         first_name = request.POST.get('first_name', '').strip()
+        middle_name = request.POST.get('middle_name', '').strip()
         last_name = request.POST.get('last_name', '').strip()
         role = request.POST.get('role', '')
         password = request.POST.get('password', '')
         phone_number = request.POST.get('phone_number', '').strip()
+        other_phones = [
+            p.strip() for p in request.POST.getlist('phone_number_extra')
+            if p.strip()
+        ]
 
         if not all([username, email, role, password]):
             messages.error(request, 'Username, email, role, and password are required.')
@@ -72,10 +78,12 @@ class UserCreateView(RoleRequiredMixin, View):
             email=email,
             password=password,
             first_name=first_name,
+            middle_name=middle_name,
             last_name=last_name,
             role=role,
             school=school,
             phone_number=phone_number,
+            other_phones=other_phones,
         )
         # Store the raw password ONLY in the session so the printable
         # credential slip can display it; never persist it elsewhere.
@@ -105,9 +113,14 @@ class UserEditView(RoleRequiredMixin, View):
 
         email = request.POST.get('email', '').strip()
         first_name = request.POST.get('first_name', '').strip()
+        middle_name = request.POST.get('middle_name', '').strip()
         last_name = request.POST.get('last_name', '').strip()
         role = request.POST.get('role', '')
         phone_number = request.POST.get('phone_number', '').strip()
+        other_phones = [
+            p.strip() for p in request.POST.getlist('phone_number_extra')
+            if p.strip()
+        ]
         password = request.POST.get('password', '').strip()
 
         if not all([email, role]):
@@ -129,9 +142,11 @@ class UserEditView(RoleRequiredMixin, View):
 
         user.email = email
         user.first_name = first_name
+        user.middle_name = middle_name
         user.last_name = last_name
         user.role = role
         user.phone_number = phone_number
+        user.other_phones = other_phones
         if password:
             user.set_password(password)
         user.save()

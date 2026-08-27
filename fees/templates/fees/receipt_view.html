@@ -40,7 +40,7 @@
   .receipt-logo { width: 32rem; height: 5rem; margin: 0 auto 0.3rem; object-fit: contain; }
   .receipt-school-address { background: var(--receipt-primary); color: #fff; font-size: 0.62rem; line-height: 1.35; margin: 0.15rem -1.25rem 0; padding: 0.28rem 1rem; }
   .receipt-title-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 0.7rem; }
-  .receipt-title { background: var(--receipt-primary); color: #fff; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em; padding: 0.35rem 0.55rem; text-transform: uppercase; }
+  .receipt-title {  color: #000000; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.06em; padding: 0.35rem 0.55rem; text-transform: uppercase; }
   .receipt-number { color: var(--receipt-ink); font-family: ui-monospace, monospace; font-size: 0.62rem; font-weight: 700; }
   .receipt-content { padding: 0.9rem 1.25rem 0.75rem; }
   .receipt-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
@@ -57,6 +57,7 @@
   .receipt-total { color: var(--receipt-primary); font-size: 1rem; font-weight: 800; }
   .receipt-signature { border-top: 1px solid var(--receipt-line-strong); display: flex; justify-content: space-between; margin-top: 0.75rem; padding-top: 0.55rem; }
   .receipt-footer { background: var(--receipt-primary); color: #fff; font-size: 0.58rem; letter-spacing: 0.02em; padding: 0.45rem 0.7rem; text-align: center; }
+  .receipt-actions { align-items: center; background: #fff; border: 1px solid var(--receipt-line); border-radius: 3px; box-shadow: 0 8px 24px rgba(27, 36, 48, 0.08); display: flex; justify-content: flex-end; margin-top: 1rem; padding: 0.75rem 1rem; }
   @media (max-width: 640px) {
     .receipt-content, .receipt-masthead { padding-left: 1.15rem; padding-right: 1.15rem; }
     .receipt-school-name { font-size: 1.35rem; }
@@ -220,13 +221,14 @@
 
     <div class="receipt-footer">Thank you for trusting us as parenting partners in empowering your child for change in the society.</div>
 
-    {# Actions #}
-    <div class="no-print px-6 pb-6 flex flex-wrap items-center gap-3">
-      <button type="button" onclick="window.print()"
-              class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm hover:shadow">
-        <i data-lucide="printer" class="w-4 h-4 mr-2"></i>Print Receipt
-      </button>
-    </div>
+  </div>
+
+  {# Actions stay outside the document so they are not visually part of the receipt. #}
+  <div class="receipt-actions no-print">
+    <button type="button" onclick="window.print()"
+            class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm hover:shadow">
+      <i data-lucide="printer" class="w-4 h-4 mr-2"></i>Print Receipt
+    </button>
   </div>
 </div>
 {% endwith %}

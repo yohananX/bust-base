@@ -34,7 +34,7 @@
     <tr><th>Age</th><td>{{ enrollment.age|default:'—' }}</td></tr>
     <tr><th>Current class / grade</th><td>{{ enrollment.current_class_text|default:'—' }}</td></tr>
     <tr><th>Parent / guardian name</th><td>{{ enrollment.parent_name }}</td></tr>
-    <tr><th>Parent phone</th><td>{{ enrollment.parent_phone }}</td></tr>
+    <tr><th>Parent phone</th><td>{{ enrollment.parent_phones|join:", " }}</td></tr>
     <tr><th>Relationship to child</th><td>{{ enrollment.get_relationship_display }}</td></tr>
     <tr><th>Emergency contact</th><td>{{ enrollment.emergency_contact|default:'—' }}</td></tr>
     <tr><th>Learning goals / needs</th><td>{{ enrollment.learning_goals|default:'—' }}</td></tr>

@@ -143,7 +143,7 @@
       <h3 class="text-sm font-semibold text-gray-900 mb-3">Parent / guardian</h3>
       <dl class="space-y-2 text-sm">
         <div class="flex justify-between"><dt class="text-gray-500">Name</dt><dd class="text-gray-900">{{ enrollment.parent_name }}</dd></div>
-        <div class="flex justify-between"><dt class="text-gray-500">Phone</dt><dd class="text-gray-900">{{ enrollment.parent_phone }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Phone</dt><dd class="text-gray-900">{{ enrollment.parent_phones|join:", " }}</dd></div>
         <div class="flex justify-between"><dt class="text-gray-500">Relationship</dt><dd class="text-gray-900">{{ enrollment.get_relationship_display }}</dd></div>
         <div class="flex justify-between"><dt class="text-gray-500">Emergency</dt><dd class="text-gray-900">{{ enrollment.emergency_contact|default:'—' }}</dd></div>
       </dl>

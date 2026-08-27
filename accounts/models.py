@@ -60,6 +60,12 @@ class User(AbstractUser, TenantScopedModel):
         blank=True,
         verbose_name=_('phone number'),
     )
+    other_phones = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_('other phone numbers'),
+        help_text=_('Additional contact numbers as a JSON list of strings.'),
+    )
     passport = models.ImageField(
         upload_to='passports/',
         blank=True,

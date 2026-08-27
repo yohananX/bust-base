@@ -32,4 +32,4 @@ class LessonTeacherAssignmentAdmin(admin.ModelAdmin):
 class LessonEnrollmentAdmin(admin.ModelAdmin):
     list_display = ('child_name', 'lesson_class', 'parent_name', 'status', 'registered_on', 'school')
     list_filter = ('status', 'source', 'lesson_class__period')
-    search_fields = ('external_name', 'parent_name', 'parent_phone')
+    search_fields = ('external_name', 'parent_name', 'parent_phones__0')

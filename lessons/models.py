@@ -33,6 +33,13 @@ class LessonPeriod(TenantScopedModel):
         verbose_name=_('status'),
     )
     description = models.TextField(blank=True, verbose_name=_('description'))
+    default_fee_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name=_('default fee amount'),
+        help_text=_('Default fee for classes in this period when a class-specific fee is not set.'),
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('created at'))
 
     class Meta:
@@ -62,8 +69,20 @@ class LessonClass(TenantScopedModel):
         null=True, blank=True, verbose_name=_('capacity'),
     )
     fee_amount = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal('0.00'),
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
         verbose_name=_('fee amount'),
+        help_text=_('Leave blank to inherit the period default fee.'),
+    )
+    school_class = models.ForeignKey(
+        'students.SchoolClass',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lesson_classes',
+        verbose_name=_('linked school class'),
     )
     notes = models.TextField(blank=True, verbose_name=_('notes'))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('created at'))
@@ -82,6 +101,12 @@ class LessonClass(TenantScopedModel):
         return [
             a.teacher for a in self.teacher_assignments.select_related('teacher').all()
         ]
+
+    @property
+    def resolved_fee_amount(self):
+        if self.fee_amount is not None:
+            return self.fee_amount
+        return self.period.default_fee_amount
 
 
 class LessonTeacherAssignment(TenantScopedModel):
@@ -163,7 +188,12 @@ class LessonEnrollment(TenantScopedModel):
 
     # Parent / guardian.
     parent_name = models.CharField(max_length=200, verbose_name=_('parent full name'))
-    parent_phone = models.CharField(max_length=30, verbose_name=_('parent phone number'))
+    parent_phones = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_('parent phone numbers'),
+        help_text=_('List of parent/guardian contact numbers.'),
+    )
     emergency_contact = models.CharField(
         max_length=200, blank=True, verbose_name=_('emergency contact'),
     )
@@ -212,7 +242,9 @@ class LessonEnrollment(TenantScopedModel):
 
     @property
     def fee_amount(self):
-        return self.lesson_class.fee_amount
+        if self.lesson_class.fee_amount is not None:
+            return self.lesson_class.fee_amount
+        return self.lesson_class.period.default_fee_amount
 
     @property
     def amount_paid(self):

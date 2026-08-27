@@ -11,7 +11,16 @@ from core.models import Term
 from students.models import ClassEnrollment
 
 
-VALID_SCORE_FIELDS = {'test_1', 'test_2', 'test_3', 'exam_score'}
+VALID_SCORE_FIELDS = {'exam_score'}
+
+
+def _valid_score_fields(school):
+    """Return the set of valid score field names for a school."""
+    fields = set(VALID_SCORE_FIELDS)
+    for key in (school.score_component_maxima() or {}):
+        if key != 'exam_score':
+            fields.add(key)
+    return fields
 
 
 class TeacherAssignmentListView(RoleRequiredMixin, View):
@@ -209,6 +218,7 @@ class TeacherScoreGridView(RoleRequiredMixin, View):
         scores.sort(key=lambda s: s.student.admission_number)
 
         score_limits = request.school.score_component_maxima()
+        test_columns = [k for k in score_limits if k != 'exam_score']
 
         return render(request, 'academics/teacher/score_grid.html', {
             'assignment': assignment,
@@ -216,6 +226,7 @@ class TeacherScoreGridView(RoleRequiredMixin, View):
             'term': current_term,
             'score_limits': score_limits,
             'total_max': request.school.total_score_max(),
+            'test_columns_count': len(test_columns),
             'rejected_count': sum(
                 1 for s in scores
                 if s.moderation_status == Score.MODERATION_REJECTED
@@ -252,8 +263,9 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
         # htmx sends the field name as the POST key (e.g. test_1=8)
         field_name = None
         raw_value = None
+        valid_fields = _valid_score_fields(request.school)
         for key in request.POST:
-            if key in VALID_SCORE_FIELDS:
+            if key in valid_fields:
                 field_name = key
                 raw_value = request.POST.get(key, '').strip()
                 break
@@ -277,9 +289,15 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
             resp = HttpResponse(msg, status=400)
             return attach_toast(resp, msg, "error")
 
-        setattr(score, field_name, value)
-        score.entered_by = request.user
-        score.save(update_fields=[field_name, 'entered_by', 'updated_at'])
+        base_fields = {'test_1', 'test_2', 'test_3', 'exam_score'}
+        if field_name in base_fields:
+            setattr(score, field_name, value)
+            score.save(update_fields=[field_name, 'entered_by', 'updated_at'])
+        else:
+            extra = dict(score.extra_tests or {})
+            extra[field_name] = value
+            score.extra_tests = extra
+            score.save(update_fields=['extra_tests', 'entered_by', 'updated_at'])
 
         # Reset moderation if previously approved/rejected
         if score.moderation_status in (Score.MODERATION_APPROVED, Score.MODERATION_REJECTED):

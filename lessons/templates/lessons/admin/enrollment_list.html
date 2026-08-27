@@ -90,7 +90,7 @@
           <td class="px-5 py-3.5 text-gray-600">{{ e.lesson_class.name }}</td>
           <td class="px-5 py-3.5">
             <div class="text-gray-800">{{ e.parent_name }}</div>
-            <div class="text-xs text-gray-400">{{ e.parent_phone }}</div>
+            <div class="text-xs text-gray-400">{{ e.parent_phones|join:", " }}</div>
           </td>
           <td class="px-5 py-3.5 text-right text-gray-600 whitespace-nowrap">₦{{ e.fee_amount|floatformat:2 }}</td>
           <td class="px-5 py-3.5 text-right font-medium text-gray-900 whitespace-nowrap">₦{{ e.amount_paid|floatformat:2 }}</td>

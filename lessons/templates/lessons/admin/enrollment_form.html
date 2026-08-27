@@ -27,7 +27,7 @@
             {% for p in periods %}
             <optgroup label="{{ p.name }}">
               {% for c in p.lesson_classes.all %}
-              <option value="{{ c.pk }}" {% if enrollment.lesson_class_id == c.pk %}selected{% endif %}>{{ c.name }} — ₦{{ c.fee_amount|floatformat:2 }}</option>
+              <option value="{{ c.pk }}" {% if enrollment.lesson_class_id == c.pk %}selected{% endif %}>{{ c.name }} — ₦{{ c.resolved_fee_amount|floatformat:2 }}</option>
               {% endfor %}
             </optgroup>
             {% endfor %}
@@ -78,8 +78,26 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Parent phone <span class="text-red-500">*</span></label>
-            <input type="tel" name="parent_phone" value="{{ enrollment.parent_phone|default:'' }}" required
+            <input type="tel" name="parent_phones" value="{{ enrollment.parent_phones|first|default:'' }}" required
                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            <div id="extra-phones-container" class="mt-2 space-y-2">
+              {% if enrollment.parent_phones %}
+                {% for p in enrollment.parent_phones|slice:"1:" %}
+                <div class="flex items-center gap-2">
+                  <input type="tel" name="parent_phones" value="{{ p }}"
+                         class="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                  <button type="button" onclick="this.parentElement.remove()"
+                          class="p-2 text-gray-400 hover:text-red-600 transition-colors">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                  </button>
+                </div>
+                {% endfor %}
+              {% endif %}
+            </div>
+            <button type="button" id="add-phone-btn"
+                    class="inline-flex items-center gap-1 text-sm text-primary hover:text-primary-hover font-medium mt-2">
+              <i data-lucide="plus" class="w-4 h-4"></i> Add Number
+            </button>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Relationship to child</label>
@@ -161,6 +179,25 @@
         </button>
         <a href="{% url 'lessons:enrollment_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
       </div>
+
+      <script>
+        document.getElementById('add-phone-btn').addEventListener('click', function () {
+          const container = document.getElementById('extra-phones-container');
+          const div = document.createElement('div');
+          div.className = 'flex items-center gap-2';
+          div.innerHTML = `
+            <input type="tel" name="parent_phones"
+                   class="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all"
+                   placeholder="Additional number">
+            <button type="button" onclick="this.parentElement.remove()"
+                    class="p-2 text-gray-400 hover:text-red-600 transition-colors">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          `;
+          container.appendChild(div);
+          lucide.createIcons();
+        });
+      </script>
     </form>
   </div>
 </div>

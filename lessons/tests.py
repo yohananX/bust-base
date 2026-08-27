@@ -7,7 +7,7 @@ from django.urls import reverse
 from accounts.models import Roles
 from core.models import School
 from fees.models import Payment
-from students.models import Student
+from students.models import SchoolClass, Student
 
 from .models import (
     LessonClass,
@@ -78,6 +78,32 @@ class ModelTests(LessonsBase):
         )
         self.assertIn(assignment.teacher, self.lesson_class.teachers)
 
+    def test_period_default_fee_amount(self):
+        self.period.default_fee_amount = Decimal("10000.00")
+        self.period.save()
+        self.assertEqual(self.period.default_fee_amount, Decimal("10000.00"))
+
+    def test_resolved_fee_amount_uses_class_fee_when_set(self):
+        self.lesson_class.fee_amount = Decimal("20000.00")
+        self.lesson_class.save()
+        self.assertEqual(self.lesson_class.resolved_fee_amount, Decimal("20000.00"))
+
+    def test_resolved_fee_amount_falls_back_to_period_default(self):
+        self.lesson_class.fee_amount = None
+        self.lesson_class.save()
+        self.period.default_fee_amount = Decimal("12000.00")
+        self.period.save()
+        self.assertEqual(self.lesson_class.resolved_fee_amount, Decimal("12000.00"))
+
+    def test_lesson_class_can_link_school_class(self):
+        from students.models import SchoolClass
+        school_class = SchoolClass.objects.create(
+            school=self.school, name="JSS 1", level="JSS",
+        )
+        self.lesson_class.school_class = school_class
+        self.lesson_class.save()
+        self.assertEqual(self.lesson_class.school_class.name, "JSS 1")
+
 
 class EnrollmentTests(LessonsBase):
     def setUp(self):
@@ -85,7 +111,7 @@ class EnrollmentTests(LessonsBase):
         self.enrollment = LessonEnrollment.objects.create(
             school=self.school, lesson_class=self.lesson_class,
             student=self.student, parent_name="Obi Okafor",
-            parent_phone="08012345678",
+            parent_phones=["08012345678"],
         )
 
     def test_child_name_uses_student(self):
@@ -95,7 +121,7 @@ class EnrollmentTests(LessonsBase):
         external = LessonEnrollment.objects.create(
             school=self.school, lesson_class=self.lesson_class,
             external_name="Zainab Musa", parent_name="Amin Musa",
-            parent_phone="08022222222",
+            parent_phones=["08022222222"],
         )
         self.assertEqual(external.child_name, "Zainab Musa")
 
@@ -184,7 +210,7 @@ class EnrollmentViewTests(LessonsBase):
             "external_name": "Zainab Musa",
             "age": "10",
             "parent_name": "Amin Musa",
-            "parent_phone": "08022222222",
+            "parent_phones": ["08022222222"],
             "relationship": "MOTHER",
             "source": "REFERRAL",
             "consent_given": "on",
@@ -201,7 +227,7 @@ class EnrollmentViewTests(LessonsBase):
             "lesson_class": self.lesson_class.pk,
             "external_name": "Zainab Musa",
             "parent_name": "Amin Musa",
-            "parent_phone": "",
+            "parent_phones": [],
         })
         self.assertEqual(resp.status_code, 302)
         self.assertFalse(
@@ -214,7 +240,7 @@ class EnrollmentViewTests(LessonsBase):
         resp = self.client.post(reverse("lessons:enrollment_new"), {
             "lesson_class": self.lesson_class.pk,
             "parent_name": "Amin Musa",
-            "parent_phone": "08022222222",
+            "parent_phones": ["08022222222"],
         })
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(LessonEnrollment.objects.count(), 0)
@@ -223,7 +249,7 @@ class EnrollmentViewTests(LessonsBase):
         enrollment = LessonEnrollment.objects.create(
             school=self.school, lesson_class=self.lesson_class,
             student=self.student, parent_name="Obi Okafor",
-            parent_phone="08012345678",
+            parent_phones=["08012345678"],
         )
         resp = self.client.post(
             reverse("lessons:enrollment_pay", args=[enrollment.pk]),
@@ -240,7 +266,7 @@ class EnrollmentViewTests(LessonsBase):
         LessonEnrollment.objects.create(
             school=self.school, lesson_class=self.lesson_class,
             student=self.student, parent_name="Obi Okafor",
-            parent_phone="08012345678",
+            parent_phones=["08012345678"],
         )
         resp = self.client.get(reverse("lessons:enrollment_export"))
         self.assertEqual(resp.status_code, 200)
@@ -265,7 +291,7 @@ class TeacherPortalTests(LessonsBase):
         LessonEnrollment.objects.create(
             school=self.school, lesson_class=self.lesson_class,
             student=self.student, parent_name="Obi Okafor",
-            parent_phone="08012345678",
+            parent_phones=["08012345678"],
         )
         resp = self.client.get(
             reverse("lessons_teacher:class_detail", args=[self.lesson_class.pk]),

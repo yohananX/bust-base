@@ -12,7 +12,7 @@ from django.views.generic.base import View
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
-from students.models import Student
+from students.models import SchoolClass, Student
 
 from .models import (
     LessonClass,
@@ -140,10 +140,12 @@ class ClassFormView(RoleRequiredMixin, View):
         if pk:
             lesson_class = get_object_or_404(LessonClass, school=request.school, pk=pk)
         periods = LessonPeriod.objects.filter(school=request.school).order_by('-start_date')
+        school_classes = SchoolClass.objects.filter(school=request.school).order_by('level', 'name')
         context = {
             'lesson_class': lesson_class,
             'is_edit': pk is not None,
             'periods': periods,
+            'school_classes': school_classes,
         }
         return render(request, 'lessons/admin/class_form.html', context)
 
@@ -158,6 +160,7 @@ class ClassFormView(RoleRequiredMixin, View):
         level_hint = request.POST.get('level_hint', '').strip()
         capacity = request.POST.get('capacity', '').strip()
         fee_amount = request.POST.get('fee_amount', '').strip()
+        school_class_id = request.POST.get('school_class', '').strip()
         notes = request.POST.get('notes', '').strip()
 
         period = get_object_or_404(LessonPeriod, school=school, pk=period_id) if period_id else None
@@ -166,7 +169,7 @@ class ClassFormView(RoleRequiredMixin, View):
             return redirect('lessons:class_form', pk) if pk else redirect('lessons:class_new')
 
         try:
-            fee = Decimal(fee_amount) if fee_amount else Decimal('0.00')
+            fee = Decimal(fee_amount) if fee_amount else None
         except (ValueError, ArithmeticError):
             messages_error(request, 'Invalid fee amount.')
             return redirect('lessons:class_form', pk) if pk else redirect('lessons:class_new')
@@ -178,12 +181,20 @@ class ClassFormView(RoleRequiredMixin, View):
             messages_error(request, f'A class named "{name}" already exists in this period.')
             return redirect('lessons:class_form', pk) if pk else redirect('lessons:class_new')
 
+        school_class = None
+        if school_class_id:
+            try:
+                school_class = SchoolClass.objects.get(school=school, pk=school_class_id)
+            except SchoolClass.DoesNotExist:
+                pass
+
         defaults = {
             'period': period,
             'name': name,
             'level_hint': level_hint,
             'capacity': int(capacity) if capacity.isdigit() else None,
             'fee_amount': fee,
+            'school_class': school_class,
             'notes': notes,
         }
         if lesson_class:
@@ -266,7 +277,7 @@ class EnrollmentListView(RoleRequiredMixin, View):
             enrollments = enrollments.filter(
                 Q(external_name__icontains=q)
                 | Q(parent_name__icontains=q)
-                | Q(parent_phone__icontains=q)
+                | Q(parent_phones__0__icontains=q)
             )
         enrollments = enrollments.order_by('-registered_on')
         periods = LessonPeriod.objects.filter(school=school).order_by('-start_date')
@@ -321,7 +332,10 @@ class EnrollmentFormView(RoleRequiredMixin, View):
             'age': request.POST.get('age', '').strip() or None,
             'current_class_text': request.POST.get('current_class_text', '').strip(),
             'parent_name': request.POST.get('parent_name', '').strip(),
-            'parent_phone': request.POST.get('parent_phone', '').strip(),
+            'parent_phones': [
+                p.strip() for p in request.POST.getlist('parent_phones')
+                if p.strip()
+            ],
             'emergency_contact': request.POST.get('emergency_contact', '').strip(),
             'relationship': request.POST.get('relationship', LessonEnrollment.Relationship.GUARDIAN),
             'learning_goals': request.POST.get('learning_goals', '').strip(),
@@ -332,8 +346,8 @@ class EnrollmentFormView(RoleRequiredMixin, View):
             'status': request.POST.get('status', LessonEnrollment.Status.REGISTERED),
         }
 
-        if not data['parent_name'] or not data['parent_phone']:
-            messages_error(request, 'Parent name and phone are required.')
+        if not data['parent_name'] or not data['parent_phones']:
+            messages_error(request, 'Parent name and at least one phone number are required.')
             return redirect('lessons:enrollment_form', pk) if pk else redirect('lessons:enrollment_new')
         if not data['student'] and not data['external_name']:
             messages_error(request, 'Link an existing student or provide an external child name.')
@@ -347,7 +361,7 @@ class EnrollmentFormView(RoleRequiredMixin, View):
                 age=data['age'],
                 current_class_text=data['current_class_text'],
                 parent_name=data['parent_name'],
-                parent_phone=data['parent_phone'],
+                parent_phones=data['parent_phones'],
                 emergency_contact=data['emergency_contact'],
                 relationship=data['relationship'],
                 learning_goals=data['learning_goals'],
@@ -527,7 +541,7 @@ class EnrollmentExportView(RoleRequiredMixin, View):
                 e.age or '',
                 e.current_class_text,
                 e.parent_name,
-                e.parent_phone,
+                ', '.join(e.parent_phones or []),
                 e.relationship,
                 e.source,
                 e.fee_amount,

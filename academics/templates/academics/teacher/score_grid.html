@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load score_extras %}
 {% block title %}{{ assignment.subject.name }} — Scores{% endblock %}
 {% block page_header %}{{ assignment.subject.name }} — Scores{% endblock %}
 {% block extra_css %}
@@ -31,15 +32,20 @@
   {% endif %}
 
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h3 class="text-base font-display font-semibold text-gray-900">Test Marks and Exam Marks</h3>
+    </div>
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
             <th class="px-5 py-3.5 font-semibold w-12">S/N</th>
             <th class="px-5 py-3.5 font-semibold">Student Name</th>
-            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 1<span class="block text-[10px] font-normal text-gray-400">/{{ score_limits.test_1 }}</span></th>
-            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 2<span class="block text-[10px] font-normal text-gray-400">/{{ score_limits.test_2 }}</span></th>
-            <th class="px-5 py-3.5 font-semibold text-center w-20">Test 3<span class="block text-[10px] font-normal text-gray-400">/{{ score_limits.test_3 }}</span></th>
+            {% for key, limit in score_limits.items %}
+              {% if key != 'exam_score' %}
+              <th class="px-5 py-3.5 font-semibold text-center w-20">{{ key|replace:'test_','Test ' }}<span class="block text-[10px] font-normal text-gray-400">/{{ limit }}</span></th>
+              {% endif %}
+            {% endfor %}
             <th class="px-5 py-3.5 font-semibold text-center w-20">Exam<span class="block text-[10px] font-normal text-gray-400">/{{ score_limits.exam_score }}</span></th>
             <th class="px-5 py-3.5 font-semibold text-center w-16">Total<span class="block text-[10px] font-normal text-gray-400">/{{ total_max }}</span></th>
             <th class="px-5 py-3.5 font-semibold text-center w-16">Status</th>
@@ -56,32 +62,17 @@
               </div>
             </td>
 
-            {# Test 1 #}
-            <td class="px-1 py-1 text-center">
-              <input type="number" min="0" max="{{ score_limits.test_1 }}" value="{{ score.test_1|default:'' }}"
-                     hx-post="{% url 'score_update' assignment.pk score.pk %}"
-                     hx-trigger="blur" hx-target="closest td"
-                     name="test_1"
-                     class="w-14 text-center bg-gray-50 border border-gray-200 rounded-lg px-1 py-1.5 tabular-nums text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </td>
-
-            {# Test 2 #}
-            <td class="px-1 py-1 text-center">
-              <input type="number" min="0" max="{{ score_limits.test_2 }}" value="{{ score.test_2|default:'' }}"
-                     hx-post="{% url 'score_update' assignment.pk score.pk %}"
-                     hx-trigger="blur" hx-target="closest td"
-                     name="test_2"
-                     class="w-14 text-center bg-gray-50 border border-gray-200 rounded-lg px-1 py-1.5 tabular-nums text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </td>
-
-            {# Test 3 #}
-            <td class="px-1 py-1 text-center">
-              <input type="number" min="0" max="{{ score_limits.test_3 }}" value="{{ score.test_3|default:'' }}"
-                     hx-post="{% url 'score_update' assignment.pk score.pk %}"
-                     hx-trigger="blur" hx-target="closest td"
-                     name="test_3"
-                     class="w-14 text-center bg-gray-50 border border-gray-200 rounded-lg px-1 py-1.5 tabular-nums text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </td>
+            {% for key, limit in score_limits.items %}
+              {% if key != 'exam_score' %}
+              <td class="px-1 py-1 text-center">
+                <input type="number" min="0" max="{{ limit }}" value="{{ score|get_item:key|default:'' }}"
+                       hx-post="{% url 'score_update' assignment.pk score.pk %}"
+                       hx-trigger="blur" hx-target="closest td"
+                       name="{{ key }}"
+                       class="w-14 text-center bg-gray-50 border border-gray-200 rounded-lg px-1 py-1.5 tabular-nums text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+              </td>
+              {% endif %}
+            {% endfor %}
 
             {# Exam #}
             <td class="px-1 py-1 text-center">
@@ -118,7 +109,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="8" class="px-5 py-12 text-center">
+            <td colspan="{{ test_columns_count|add:5 }}" class="px-5 py-12 text-center">
               <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="users" class="w-5 h-5 text-gray-400"></i></div>
               <p class="text-sm text-gray-400">No students enrolled in this class.</p>
             </td>

@@ -51,6 +51,7 @@
       <thead>
         <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
           <th class="px-5 py-3.5 font-semibold">Class</th>
+          <th class="px-5 py-3.5 font-semibold">School Class</th>
           <th class="px-5 py-3.5 font-semibold">Period</th>
           <th class="px-5 py-3.5 font-semibold">Teachers</th>
           <th class="px-5 py-3.5 font-semibold">Enrolled</th>
@@ -71,6 +72,9 @@
                 {% if c.level_hint %}<p class="text-xs text-gray-400 mt-0.5">{{ c.level_hint }}</p>{% endif %}
               </div>
             </div>
+          </td>
+          <td class="px-5 py-3.5 text-gray-600">
+            {% if c.school_class %}{{ c.school_class.name }}{% else %}<span class="text-gray-400">—</span>{% endif %}
           </td>
           <td class="px-5 py-3.5 text-gray-600">{{ c.period.name }}</td>
           <td class="px-5 py-3.5 text-gray-600">
@@ -112,7 +116,7 @@
         </tr>
         {% empty %}
         <tr class="border-t border-gray-100">
-          <td colspan="6" class="px-5 py-12 text-center">
+          <td colspan="7" class="px-5 py-12 text-center">
             <div class="flex flex-col items-center gap-2 text-gray-400">
               <i data-lucide="book-open" class="w-8 h-8"></i>
               <p class="text-sm">No classes found.</p>

@@ -34,12 +34,25 @@ class SchoolSettingsView(RoleRequiredMixin, View):
         school.account_name = request.POST.get('account_name', '').strip()
         school.account_number = request.POST.get('account_number', '').strip()
 
-        for field in ('test_max_score', 'exam_max_score'):
-            raw = request.POST.get(field, '').strip()
-            if not raw.isdigit() or int(raw) < 1 or int(raw) > 32767:
-                messages.error(request, 'Score maxima must be whole numbers between 1 and 32767.')
-                return render(request, 'school_admin/school_settings.html', {'school': school})
-            setattr(school, field, int(raw))
+        exam_raw = request.POST.get('exam_max_score', '').strip()
+        if not exam_raw.isdigit() or int(exam_raw) < 1 or int(exam_raw) > 32767:
+            messages.error(request, 'Score maxima must be whole numbers between 1 and 32767.')
+            return render(request, 'school_admin/school_settings.html', {'school': school})
+        school.exam_max_score = int(exam_raw)
+
+        test_max_scores = {}
+        for key in request.POST:
+            if key.startswith('test_max_score_'):
+                test_key = key.replace('test_max_score_', '', 1)
+                raw = request.POST.get(key, '').strip()
+                if raw.isdigit():
+                    val = int(raw)
+                    if 1 <= val <= 32767:
+                        test_max_scores[test_key] = val
+        if not test_max_scores:
+            messages.error(request, 'Enter at least one test maximum score.')
+            return render(request, 'school_admin/school_settings.html', {'school': school})
+        school.test_max_scores = test_max_scores
 
         if not school.name:
             messages.error(request, 'School name is required.')

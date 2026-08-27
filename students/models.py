@@ -194,6 +194,12 @@ class StudentGuardianLink(TenantScopedModel):
         verbose_name=_('relationship'),
     )
     is_primary_contact = models.BooleanField(default=False, verbose_name=_('primary contact'))
+    other_phones = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_('other phone numbers'),
+        help_text=_('Additional contact numbers as a JSON list of strings.'),
+    )
 
     class Meta:
         verbose_name = _('student-guardian link')

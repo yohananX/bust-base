@@ -133,6 +133,12 @@ class Score(TenantScopedModel):
         validators=[MinValueValidator(0)],
         verbose_name=_('exam score'),
     )
+    extra_tests = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name=_('extra tests'),
+        help_text=_('Additional test scores, e.g. {"test_4": 8, "test_5": 9}'),
+    )
     position = models.PositiveIntegerField(
         null=True,
         blank=True,
@@ -183,16 +189,22 @@ class Score(TenantScopedModel):
 
     @property
     def total_score(self):
-        return (self.test_1 or 0) + (self.test_2 or 0) + (self.test_3 or 0) + (self.exam_score or 0)
+        base = (self.test_1 or 0) + (self.test_2 or 0) + (self.test_3 or 0) + (self.exam_score or 0)
+        extra = sum((v or 0) for v in (self.extra_tests or {}).values())
+        return base + extra
 
     @property
     def is_complete(self):
-        return all([
+        base_complete = all([
             self.test_1 is not None,
             self.test_2 is not None,
             self.test_3 is not None,
             self.exam_score is not None,
         ])
+        if not base_complete:
+            return False
+        extra = self.extra_tests or {}
+        return all(v is not None for v in extra.values())
 
     @property
     def passed(self):
@@ -203,18 +215,25 @@ class Score(TenantScopedModel):
     def clean(self):
         """Enforce the school's configured score maxima.
 
-        The per-component caps live on ``School.test_max_score`` /
-        ``School.exam_max_score`` (defaults 10 / 70), so each tenant can
-        configure its own marking scheme.
+        The per-component caps live on ``School.test_max_scores`` /
+        ``School.exam_max_score``. Extra tests are validated dynamically
+        against the same store.
         """
         maxima = self.school.score_component_maxima()
         for field, max_value in maxima.items():
-            value = getattr(self, field)
+            value = getattr(self, field, None)
             if value is not None and value > max_value:
                 raise ValidationError({
                     field: _(
                         '%(label)s must be at most %(max)d for this school.'
                     ) % {'label': self._meta.get_field(field).verbose_name, 'max': max_value},
+                })
+        extra = self.extra_tests or {}
+        for key, value in extra.items():
+            max_value = maxima.get(key)
+            if max_value is not None and value is not None and value > max_value:
+                raise ValidationError({
+                    key: _('%(label)s must be at most %(max)d for this school.') % {'label': key, 'max': max_value},
                 })
 
 
