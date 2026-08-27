@@ -67,7 +67,7 @@
               {% endif %}
             </td>
             <td class="px-6 py-3.5 text-sm tabular-nums {% if tx.quantity_change > 0 %}text-green-600{% elif tx.quantity_change < 0 %}text-red-600{% endif %}">
-              {{ tx.quantity_change|default:"0"|add:"0"|intformat }}
+              {{ tx.quantity_change|default:"0"|add:"0" }}
             </td>
             <td class="px-6 py-3.5 text-sm text-gray-900 tabular-nums font-medium">{{ tx.balance_after }}</td>
             <td class="px-6 py-3.5 text-sm text-gray-500">{{ tx.reference|default:'—' }}</td>
