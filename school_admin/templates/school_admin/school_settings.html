@@ -85,35 +85,36 @@
       <p class="text-sm text-gray-500 mb-5">Maximum marks per assessment component — used by teachers when entering scores, and enforced during moderation.</p>
 
       <div class="space-y-4">
-        <div class="grid grid-cols-4 gap-3" id="test-max-fields">
-          <div>
+        <div class="flex flex-wrap items-end gap-3">
+          <div class="flex-shrink-0">
             <label class="block text-xs font-medium text-gray-700 mb-1">Test 1 Max</label>
             <input type="number" name="test_max_score_test_1" min="1" max="32767" value="{{ school.test_max_scores.test_1|default:10 }}"
-                   class="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                   class="w-16 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           </div>
-          <div>
+          <div class="flex-shrink-0">
             <label class="block text-xs font-medium text-gray-700 mb-1">Test 2 Max</label>
             <input type="number" name="test_max_score_test_2" min="1" max="32767" value="{{ school.test_max_scores.test_2|default:10 }}"
-                   class="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                   class="w-16 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           </div>
-          <div>
+          <div class="flex-shrink-0">
             <label class="block text-xs font-medium text-gray-700 mb-1">Test 3 Max</label>
             <input type="number" name="test_max_score_test_3" min="1" max="32767" value="{{ school.test_max_scores.test_3|default:10 }}"
-                   class="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                   class="w-16 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           </div>
-          <div>
+          <div class="flex-shrink-0">
             <label class="block text-xs font-medium text-gray-700 mb-1">Exam Max</label>
             <input type="number" name="exam_max_score" min="1" max="32767" value="{{ school.exam_max_score }}"
-                   class="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                   class="w-16 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          </div>
+          <div class="flex-shrink-0 pb-1">
+            <button type="button" id="add-extra-test-max"
+                    class="inline-flex items-center px-2 py-1 border border-dashed border-gray-300 rounded text-xs text-gray-600 hover:border-primary hover:text-primary transition-colors">
+              <i data-lucide="plus" class="w-3 h-3 mr-1"></i>Add Extra Test
+            </button>
           </div>
         </div>
 
         <div id="extra-test-max-fields"></div>
-
-        <button type="button" id="add-extra-test-max"
-                class="inline-flex items-center px-3 py-1.5 border border-dashed border-gray-300 rounded-lg text-xs font-medium text-gray-600 hover:border-primary hover:text-primary transition-colors">
-          <i data-lucide="plus" class="w-3 h-3 mr-1"></i>Add Extra Test
-        </button>
       </div>
     </div>
 
@@ -168,9 +169,9 @@
       div.className = 'flex items-center gap-3';
       div.innerHTML =
         '<input type="number" name="test_max_score_extra_' + counter + '" min="1" max="32767" placeholder="Extra Test Max" ' +
-        'class="flex-1 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">' +
-        '<button type="button" class="remove-extra-test px-3 py-2 text-red-500 hover:text-red-700" aria-label="Remove">' +
-        '<i data-lucide="x" class="w-4 h-4"></i></button>';
+        'class="w-16 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">' +
+        '<button type="button" class="remove-extra-test px-2 py-1 text-red-500 hover:text-red-700" aria-label="Remove">' +
+        '<i data-lucide="x" class="w-3 h-3"></i></button>';
       container.appendChild(div);
       lucide.createIcons();
     }
