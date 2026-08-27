@@ -84,24 +84,19 @@
       <h2 class="text-base font-display font-semibold text-gray-900 mb-1">Test Marks and Exam Marks</h2>
       <p class="text-sm text-gray-500 mb-5">Maximum marks per assessment component — used by teachers when entering scores, and enforced during moderation.</p>
 
-      <div class="space-y-4">
-        <div class="flex flex-wrap items-end gap-3">
-          <div class="flex-shrink-0">
-            <label class="block text-xs font-medium text-gray-700 mb-1">Exam Max</label>
-            <input type="number" name="exam_max_score" min="1" max="32767" value="{{ school.exam_max_score }}"
-                   class="w-16 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-          </div>
-          <div class="flex-shrink-0 pb-1">
-            <button type="button" id="add-extra-test-max"
-                    class="inline-flex items-center px-2 py-1 border border-dashed border-gray-300 rounded text-xs text-gray-600 hover:border-primary hover:text-primary transition-colors">
-              <i data-lucide="plus" class="w-3 h-3 mr-1"></i>Add Test
-            </button>
-          </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex-shrink-0">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Exam Max</label>
+          <input type="number" name="exam_max_score" min="1" max="32767" value="{{ school.exam_max_score }}"
+                 class="w-16 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
         </div>
-
-        <div id="test-max-fields" class="flex flex-wrap items-end gap-3"></div>
-
-        <div id="extra-test-max-fields"></div>
+        <div class="flex-shrink-0">
+          <button type="button" id="add-extra-test-max"
+                  class="inline-flex items-center px-2 py-1 border border-dashed border-gray-300 rounded text-xs text-gray-600 hover:border-primary hover:text-primary transition-colors">
+            <i data-lucide="plus" class="w-3 h-3 mr-1"></i>Add Test
+          </button>
+        </div>
+        <div id="test-max-fields" class="flex flex-wrap items-center gap-3"></div>
       </div>
     </div>
 
@@ -145,41 +140,51 @@
 {% block extra_scripts %}
 <script>
   (function() {
-    var counter = 0;
     var container = document.getElementById('test-max-fields');
-    var extraContainer = document.getElementById('extra-test-max-fields');
     var btn = document.getElementById('add-extra-test-max');
     if (!btn || !container) return;
 
-    function addField(label, value) {
-      counter++;
-      var div = document.createElement('div');
-      div.className = 'flex items-center gap-3';
-      div.innerHTML =
-        '<input type="number" name="test_max_score_test_' + counter + '" min="1" max="32767" value="' + (value || '') + '" placeholder="Test ' + counter + '" ' +
+    function createRow(name, value) {
+      var wrapper = document.createElement('span');
+      wrapper.className = 'inline-flex items-center gap-1.5 test-field-row';
+      wrapper.innerHTML =
+        '<input type="number" name="' + name + '" min="1" max="32767" value="' + (value || '') + '" placeholder="' + name.replace('test_max_score_test_', 'Test ') + '" ' +
         'class="w-16 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">' +
-        '<button type="button" class="remove-extra-test px-2 py-1 text-red-500 hover:text-red-700" aria-label="Remove">' +
+        '<button type="button" class="remove-extra-test px-1.5 py-1 text-red-500 hover:text-red-700" aria-label="Remove">' +
         '<i data-lucide="x" class="w-3 h-3"></i></button>';
-      container.appendChild(div);
+      container.appendChild(wrapper);
       lucide.createIcons();
     }
 
+    function renumber() {
+      var rows = container.querySelectorAll('.test-field-row');
+      rows.forEach(function(row, idx) {
+        var input = row.querySelector('input[type="number"]');
+        var num = idx + 1;
+        input.setAttribute('name', 'test_max_score_test_' + num);
+        input.setAttribute('placeholder', 'Test ' + num);
+      });
+    }
+
     btn.addEventListener('click', function() {
-      addField('Test ' + (counter + 1));
+      createRow('test_max_score_test_' + (container.querySelectorAll('.test-field-row').length + 1), '');
+      renumber();
     });
 
     container.addEventListener('click', function(e) {
       if (e.target.closest('.remove-extra-test')) {
-        e.target.closest('.flex').remove();
+        e.target.closest('.test-field-row').remove();
+        renumber();
       }
     });
 
-    var existing = {{ school.test_max_scores|default:{}|safe }};
+    var existing = {{ school.test_max_scores|default:"{}"|safe }};
     if (existing && Object.keys(existing).length > 0) {
       var keys = Object.keys(existing).sort();
       keys.forEach(function(key) {
-        addField(key, existing[key]);
+        createRow('test_max_score_' + key, existing[key]);
       });
+      renumber();
     }
   })();
 </script>
