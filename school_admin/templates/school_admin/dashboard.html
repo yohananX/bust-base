@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}Dashboard — Grace House{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+{% block page_title %}Welcome back, {{ user.first_name|default:user.username }}{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
@@ -10,7 +10,6 @@
   {# ── GREETING + CONTEXT ── #}
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h2 class="text-2xl font-display font-semibold text-ink">Welcome back, {{ user.first_name|default:user.username }}</h2>
       <p class="text-sm text-ink-muted mt-1">
         {% if current_term_name %}
           {{ current_term_name }}
