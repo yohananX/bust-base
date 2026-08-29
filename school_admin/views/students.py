@@ -11,10 +11,9 @@ from django.utils.dateparse import parse_date
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
-from accounts.utils import generate_password, unique_username, ensure_unique_username
+from accounts.utils import generate_password, generate_username
 from students.models import Student, SchoolClass, ClassEnrollment, StudentGuardianLink
 from students.utils import generate_admission_number, find_or_create_parent
-from school_admin.views.credentials import store_credential_slip
 from core.models import AcademicSession
 from fees.models import Invoice, Payment
 
@@ -110,10 +109,16 @@ class StudentDetailView(RoleRequiredMixin, View):
             'guardian_links': guardian_links,
             'invoices': invoices,
             'invoice_less_payments': invoice_less_payments,
+            'parents': User.objects.filter(school=school, role=Roles.PARENT, is_active=True),
             'classes': SchoolClass.objects.filter(school=school, is_active=True),
             'sessions': AcademicSession.objects.filter(school=school),
         }
         return render(request, 'school_admin/student_detail.html', context)
+
+
+def _sanitize_username(first_name, last_name):
+    """Generate a username from first and last name, sanitized."""
+    return generate_username(first_name, last_name)
 
 
 class StudentCreateView(RoleRequiredMixin, View):
@@ -160,11 +165,18 @@ class StudentCreateView(RoleRequiredMixin, View):
                     messages.error(request, 'First name and last name are required for new users.')
                     return redirect('school_admin:student_create')
 
+                # Auto-generate username if empty
                 if not username_input:
-                    username_input = unique_username(first_name, last_name)
-                else:
-                    username_input = ensure_unique_username(username_input)
+                    username_input = _sanitize_username(first_name, last_name)
 
+                # Ensure unique username
+                base_username = username_input
+                counter = 1
+                while User.objects.filter(username=username_input).exists():
+                    username_input = f"{base_username}{counter}"
+                    counter += 1
+
+                # Generate random password
                 password = generate_password(8)
 
                 user = User.objects.create_user(
@@ -179,7 +191,12 @@ class StudentCreateView(RoleRequiredMixin, View):
                     phone_number=phone_number,
                     must_change_password=True,
                 )
-                store_credential_slip(request.session, user.pk, password)
+
+                messages.success(
+                    request,
+                    f'User "{user.get_full_name() or user.username}" created. '
+                    f'Password: {password}',
+                )
 
                 # Determine school_class for admission number generation
                 school_class = None
@@ -228,6 +245,19 @@ class StudentCreateView(RoleRequiredMixin, View):
                     )
                     from fees.generation import generate_invoice_for_current_term
                     generate_invoice_for_current_term(student)
+
+                from notifications.utils import notify_admins
+                notify_admins(
+                    school=school,
+                    subject=f'New student registered: {student}',
+                    message=(
+                        f'{student} ({admission_number}) has been registered'
+                        f'{" in " + school_class.name if school_class else ""}'
+                        f'{" for " + session.name if class_id and session_id else ""}.'
+                    ),
+                    reference=f'student-new:{student.pk}',
+                    url=reverse('school_admin:student_detail', kwargs={'pk': student.pk}),
+                )
 
                 # --- Optional parent/guardian creation ---
                 guardian_index = 0
@@ -531,11 +561,10 @@ class StudentGuardianCreateView(RoleRequiredMixin, View):
                 )
                 link.full_clean()
                 link.save()
-                store_credential_slip(request.session, guardian.pk, password)
 
                 messages.success(
                     request,
-                    f'Guardian "{guardian.get_full_name()}" added successfully.',
+                    f'Guardian "{guardian.get_full_name()}" added successfully. Password: {password}',
                 )
         except (IntegrityError, ValidationError) as e:
             messages.warning(request, f'Could not add guardian: {e}')
@@ -573,11 +602,12 @@ class StudentPasswordChangeView(RoleRequiredMixin, View):
         user.set_password(password)
         user.must_change_password = True
         user.save(update_fields=['password', 'must_change_password'])
-        store_credential_slip(request.session, user.pk, password)
 
-        name = user.get_full_name() or user.username
-        messages.success(request, f'Password has been changed for {name}.')
-        return redirect('school_admin:credential_slip', pk=user.pk)
+        messages.success(
+            request,
+            f'Password changed for {user.get_full_name()}. New password: {password}',
+        )
+        return redirect('school_admin:student_detail', pk=pk)
 
 
 class StudentGuardianLinkDeleteView(RoleRequiredMixin, View):

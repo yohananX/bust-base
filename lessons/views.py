@@ -12,8 +12,7 @@ from django.views.generic.base import View
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
-from accounts.utils import generate_password, generate_username, unique_username, parse_full_name
-from school_admin.views.credentials import store_credential_slip
+from accounts.utils import generate_password, generate_username, parse_full_name
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from students.utils import generate_admission_number, find_or_create_parent
 from core.models import AcademicSession

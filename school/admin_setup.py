@@ -64,6 +64,8 @@ def setup_admin():
 
         return ordered
 
+    original_logout = AdminSite.logout
+
     def custom_logout(self, request, extra_context=None):
         from django.contrib.auth import logout
         from django.shortcuts import redirect

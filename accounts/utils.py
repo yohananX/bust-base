@@ -14,25 +14,20 @@ def generate_username(first_name, last_name):
     return re.sub(r'[^a-z0-9.]', '', base)
 
 
-def ensure_unique_username(base):
-    """Return ``base`` or ``base1``, ``base2``, ... until unused."""
-    from accounts.models import User
-
-    stem = base or 'user'
-    username = stem
-    counter = 1
-    while User.objects.filter(username=username).exists():
-        username = f'{stem}{counter}'
-        counter += 1
-    return username
-
-
 def unique_username(first_name, last_name):
     """Generate a username from names, appending a counter on collision.
 
     e.g. john.doe, then john.doe1, john.doe2, ...
     """
-    return ensure_unique_username(generate_username(first_name, last_name) or 'user')
+    from accounts.models import User
+
+    base = generate_username(first_name, last_name) or 'user'
+    username = base
+    counter = 1
+    while User.objects.filter(username=username).exists():
+        username = f"{base}{counter}"
+        counter += 1
+    return username
 
 
 def generate_password(length=10):

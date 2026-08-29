@@ -20,11 +20,6 @@ def _session_key(pk):
     return f'credential_slip_{pk}'
 
 
-def store_credential_slip(session, user_pk, raw_password):
-    """Keep a one-time plaintext password in the session for the print slip."""
-    session[_session_key(user_pk)] = raw_password
-
-
 def _clear_slip_keys(session):
     """Remove every credential-slip key from the session."""
     for key in [k for k in session.keys() if k.startswith('credential_slip_')]:

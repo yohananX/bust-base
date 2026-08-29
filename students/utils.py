@@ -126,8 +126,13 @@ def find_or_create_parent(school, name, email='', phone='', relationship='GUARDI
         ).first()
 
     if parent is None:
-        from accounts.utils import unique_username
-        username = unique_username(first, last)
+        from accounts.utils import generate_username
+        username = generate_username(first, last)
+        base = username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base}{counter}"
+            counter += 1
         parent = User.objects.create_user(
             username=username,
             first_name=first,

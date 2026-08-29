@@ -9,7 +9,6 @@ from django.db.models import Q
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
 from accounts.utils import generate_password, unique_username
-from school_admin.views.credentials import store_credential_slip
 
 
 class StaffListView(RoleRequiredMixin, View):
@@ -89,10 +88,10 @@ class StaffCreateView(RoleRequiredMixin, View):
             phone_number=phone_number,
         )
 
-        store_credential_slip(request.session, user.pk, password)
         messages.success(
             request,
-            f'Staff "{user.get_full_name() or user.username}" created.',
+            f'Staff "{user.get_full_name() or user.username}" created. '
+            f'Username: {user.username} Password: {password}'
         )
 
         if role == Roles.TEACHER:
@@ -162,14 +161,9 @@ class StaffEditView(RoleRequiredMixin, View):
         user.phone_number = phone_number
         if password:
             user.set_password(password)
-            store_credential_slip(request.session, user.pk, password)
         user.save()
 
-        name = user.get_full_name() or user.username
-        if password:
-            messages.success(request, f'Password has been changed for {name}.')
-        else:
-            messages.success(request, f'Staff "{name}" updated successfully.')
+        messages.success(request, f'Staff "{user.get_full_name() or user.username}" updated successfully.')
         return redirect('school_admin:staff_list')
 
 
