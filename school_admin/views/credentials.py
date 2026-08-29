@@ -20,6 +20,11 @@ def _session_key(pk):
     return f'credential_slip_{pk}'
 
 
+def store_credential_slip(session, user_pk, raw_password):
+    """Keep a one-time plaintext password in the session for the print slip."""
+    session[_session_key(user_pk)] = raw_password
+
+
 def _clear_slip_keys(session):
     """Remove every credential-slip key from the session."""
     for key in [k for k in session.keys() if k.startswith('credential_slip_')]:
@@ -138,7 +143,8 @@ class CredentialSingleResetView(RoleRequiredMixin, View):
         # Drop stale slips so the print page only shows this card.
         _clear_slip_keys(request.session)
         request.session[_session_key(user.pk)] = raw_password
-        messages.success(request, f'New password generated for "{user.get_full_name() or user.username}".')
+        name = user.get_full_name() or user.username
+        messages.success(request, f'Password has been changed for {name}.')
         return redirect('school_admin:credential_slip', pk=user.pk)
 
 

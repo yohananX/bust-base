@@ -16,6 +16,7 @@ from academics.models import Subject
 from fees.models import Invoice
 from notifications.models import NotificationLog
 from students.models import Student, SchoolClass
+from lessons.models import LessonEnrollment
 
 
 class EntitySearchAPIView(RoleRequiredMixin, View):
@@ -106,16 +107,6 @@ class StaffSearchAPIView(EntitySearchAPIView):
         return _user_payload(user)
 
 
-class UserSearchAPIView(EntitySearchAPIView):
-    def get_queryset(self, request):
-        return User.objects.filter(
-            school=request.school,
-        ).order_by('role', 'last_name', 'first_name')
-
-    def serialize(self, user):
-        return _user_payload(user)
-
-
 class MemberSearchAPIView(EntitySearchAPIView):
     """Autocomplete for resettable school members (staff/student/parent)."""
 
@@ -189,4 +180,22 @@ class NotificationSearchAPIView(EntitySearchAPIView):
             'id': log.pk,
             'name': log.subject,
             'subtitle': log.recipient.email,
+        }
+
+
+class EnrollmentSearchAPIView(EntitySearchAPIView):
+    def get_queryset(self, request):
+        return LessonEnrollment.objects.filter(
+            school=request.school,
+        ).select_related(
+            'lesson_class', 'lesson_class__period', 'student', 'student__user',
+        ).order_by('-registered_on')
+
+    def serialize(self, enrollment):
+        name = enrollment.child_name
+        subtitle = f"{enrollment.lesson_class.name} · {enrollment.lesson_class.period.name}"
+        return {
+            'id': enrollment.pk,
+            'name': name,
+            'subtitle': subtitle,
         }

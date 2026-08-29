@@ -3,7 +3,7 @@ from .students import (
     StudentListView, StudentCreateView, StudentDetailView,
     StudentEditView, StudentDeleteView, StudentChangeClassView,
     StudentPasswordChangeView,
-    StudentGuardianLinkCreateView, StudentGuardianLinkDeleteView,
+    StudentGuardianCreateView, StudentGuardianLinkDeleteView,
 )
 from .staff import StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView
 from .parents import ParentListView
@@ -33,15 +33,12 @@ from .sessions import (
 )
 from .school_settings import SchoolSettingsView
 from .notifications import NotificationLogView
-from .users import (
-    UserListView, UserCreateView, UserEditView, UserToggleActiveView,
-)
 from .credentials import (
     CredentialSlipView, CredentialBatchView, CredentialBatchPrintView,
     CredentialSingleResetView, CredentialMemberConfirmView,
 )
 from .search import (
-    StudentSearchAPIView, StaffSearchAPIView, UserSearchAPIView, MemberSearchAPIView,
+    StudentSearchAPIView, StaffSearchAPIView, MemberSearchAPIView,
     InvoiceSearchAPIView, ClassSearchAPIView, SubjectSearchAPIView,
-    NotificationSearchAPIView,
+    NotificationSearchAPIView, EnrollmentSearchAPIView,
 )

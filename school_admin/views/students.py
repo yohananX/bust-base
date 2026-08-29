@@ -10,10 +10,11 @@ from django.db.models import Q
 from django.utils.dateparse import parse_date
 
 from accounts.mixins import RoleRequiredMixin
-from accounts.utils import generate_password, generate_username
 from accounts.models import Roles, User
+from accounts.utils import generate_password, unique_username, ensure_unique_username
 from students.models import Student, SchoolClass, ClassEnrollment, StudentGuardianLink
 from students.utils import generate_admission_number, find_or_create_parent
+from school_admin.views.credentials import store_credential_slip
 from core.models import AcademicSession
 from fees.models import Invoice, Payment
 
@@ -109,16 +110,10 @@ class StudentDetailView(RoleRequiredMixin, View):
             'guardian_links': guardian_links,
             'invoices': invoices,
             'invoice_less_payments': invoice_less_payments,
-            'parents': User.objects.filter(school=school, role=Roles.PARENT, is_active=True),
             'classes': SchoolClass.objects.filter(school=school, is_active=True),
             'sessions': AcademicSession.objects.filter(school=school),
         }
         return render(request, 'school_admin/student_detail.html', context)
-
-
-def _sanitize_username(first_name, last_name):
-    """Generate a username from first and last name, sanitized."""
-    return generate_username(first_name, last_name)
 
 
 class StudentCreateView(RoleRequiredMixin, View):
@@ -165,18 +160,11 @@ class StudentCreateView(RoleRequiredMixin, View):
                     messages.error(request, 'First name and last name are required for new users.')
                     return redirect('school_admin:student_create')
 
-                # Auto-generate username if empty
                 if not username_input:
-                    username_input = _sanitize_username(first_name, last_name)
+                    username_input = unique_username(first_name, last_name)
+                else:
+                    username_input = ensure_unique_username(username_input)
 
-                # Ensure unique username
-                base_username = username_input
-                counter = 1
-                while User.objects.filter(username=username_input).exists():
-                    username_input = f"{base_username}{counter}"
-                    counter += 1
-
-                # Generate random password
                 password = generate_password(8)
 
                 user = User.objects.create_user(
@@ -191,12 +179,7 @@ class StudentCreateView(RoleRequiredMixin, View):
                     phone_number=phone_number,
                     must_change_password=True,
                 )
-
-                messages.success(
-                    request,
-                    f'User "{user.get_full_name() or user.username}" created. '
-                    f'Password: {password}',
-                )
+                store_credential_slip(request.session, user.pk, password)
 
                 # Determine school_class for admission number generation
                 school_class = None
@@ -245,19 +228,6 @@ class StudentCreateView(RoleRequiredMixin, View):
                     )
                     from fees.generation import generate_invoice_for_current_term
                     generate_invoice_for_current_term(student)
-
-                from notifications.utils import notify_admins
-                notify_admins(
-                    school=school,
-                    subject=f'New student registered: {student}',
-                    message=(
-                        f'{student} ({admission_number}) has been registered'
-                        f'{" in " + school_class.name if school_class else ""}'
-                        f'{" for " + session.name if class_id and session_id else ""}.'
-                    ),
-                    reference=f'student-new:{student.pk}',
-                    url=reverse('school_admin:student_detail', kwargs={'pk': student.pk}),
-                )
 
                 # --- Optional parent/guardian creation ---
                 guardian_index = 0
@@ -507,41 +477,70 @@ class StudentChangeClassView(RoleRequiredMixin, View):
         return redirect('school_admin:student_detail', pk=student.pk)
 
 
-class StudentGuardianLinkCreateView(RoleRequiredMixin, View):
-    """Link a guardian (parent) to a student."""
+class StudentGuardianCreateView(RoleRequiredMixin, View):
+    """Create a new guardian/parent account and link it to a student."""
 
     allowed_roles = [Roles.ADMIN]
 
     def post(self, request, pk):
-        student_id = pk
-        guardian_id = request.POST.get('guardian_id')
-        relationship = request.POST.get('relationship')
+        school = request.school
+        student = get_object_or_404(Student, school=school, pk=pk)
+
+        first_name = request.POST.get('guardian_first_name', '').strip()
+        last_name = request.POST.get('guardian_last_name', '').strip()
+        email = request.POST.get('guardian_email', '').strip()
+        phone_number = request.POST.get('guardian_phone_number', '').strip()
+        relationship = request.POST.get('relationship', 'GUARDIAN')
         is_primary_contact = request.POST.get('is_primary_contact') == 'on'
 
-        student = get_object_or_404(Student, school=request.school, pk=student_id)
-        guardian = get_object_or_404(
-            User, school=request.school, role=Roles.PARENT,
-            pk=guardian_id, is_active=True,
-        )
+        if not first_name or not last_name:
+            messages.error(request, 'Guardian first and last name are required.')
+            return redirect('school_admin:student_detail', pk=student.pk)
 
         try:
             with transaction.atomic():
+                username = unique_username(first_name, last_name)
+                password = generate_password(8)
+
+                guardian = User.objects.create_user(
+                    username=username,
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email,
+                    phone_number=phone_number,
+                    role=Roles.PARENT,
+                    school=school,
+                    password=password,
+                    must_change_password=True,
+                )
+
+                uploaded = request.FILES.get('guardian_passport')
+                if uploaded:
+                    guardian.passport = uploaded
+                    guardian.save(update_fields=['passport'])
+
                 if is_primary_contact:
                     StudentGuardianLink.objects.filter(student=student).update(is_primary_contact=False)
+
                 link = StudentGuardianLink(
                     student=student,
                     guardian=guardian,
                     relationship=relationship,
                     is_primary_contact=is_primary_contact,
-                    school=request.school,
+                    school=school,
                 )
                 link.full_clean()
                 link.save()
-            messages.success(request, 'Guardian linked successfully.')
-        except (IntegrityError, ValidationError):
-            messages.warning(request, 'This guardian is already linked to this student.')
+                store_credential_slip(request.session, guardian.pk, password)
 
-        return redirect('school_admin:student_detail', pk=student_id)
+                messages.success(
+                    request,
+                    f'Guardian "{guardian.get_full_name()}" added successfully.',
+                )
+        except (IntegrityError, ValidationError) as e:
+            messages.warning(request, f'Could not add guardian: {e}')
+
+        return redirect('school_admin:student_detail', pk=student.pk)
 
 
 class StudentPasswordChangeView(RoleRequiredMixin, View):
@@ -574,12 +573,11 @@ class StudentPasswordChangeView(RoleRequiredMixin, View):
         user.set_password(password)
         user.must_change_password = True
         user.save(update_fields=['password', 'must_change_password'])
+        store_credential_slip(request.session, user.pk, password)
 
-        messages.success(
-            request,
-            f'Password changed for {user.get_full_name()}. New password: {password}',
-        )
-        return redirect('school_admin:student_detail', pk=pk)
+        name = user.get_full_name() or user.username
+        messages.success(request, f'Password has been changed for {name}.')
+        return redirect('school_admin:credential_slip', pk=user.pk)
 
 
 class StudentGuardianLinkDeleteView(RoleRequiredMixin, View):

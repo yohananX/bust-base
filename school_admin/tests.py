@@ -344,18 +344,23 @@ class FlowReproTest(TestCase):
 
     def test_link_second_guardian(self):
         self.client.login(username='adminx', password='pass123')
-        resp = self.client.post(reverse('school_admin:student_add_guardian', args=[self.student.pk]), {
-            'student_id': self.student.pk,
-            'guardian_id': self.parent2.pk,
-            'relationship': 'MOTHER',
-            'is_primary_contact': 'on',
-        })
+        resp = self.client.post(
+            reverse('school_admin:student_add_guardian', args=[self.student.pk]),
+            {
+                'guardian_first_name': 'Mama',
+                'guardian_last_name': 'Two',
+                'guardian_email': 'mama2@test.com',
+                'guardian_phone_number': '0802',
+                'relationship': 'MOTHER',
+                'is_primary_contact': 'on',
+            },
+        )
         self.assertEqual(resp.status_code, 302)
         links = StudentGuardianLink.objects.filter(student=self.student)
         self.assertEqual(links.count(), 2)
         primary = links.filter(is_primary_contact=True)
         self.assertEqual(primary.count(), 1)
-        self.assertEqual(primary.first().guardian, self.parent2)
+        self.assertEqual(primary.first().guardian.first_name, 'Mama')
 
     def test_staff_create_redirects_to_assignments(self):
         self.client.login(username='adminx', password='pass123')

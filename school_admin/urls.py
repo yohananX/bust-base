@@ -9,7 +9,7 @@ from school_admin.views import (
     StudentListView, StudentCreateView, StudentDetailView,
     StudentEditView, StudentDeleteView, StudentChangeClassView,
     StudentPasswordChangeView,
-    StudentGuardianLinkCreateView, StudentGuardianLinkDeleteView,
+    StudentGuardianCreateView, StudentGuardianLinkDeleteView,
     StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView,
     ParentListView,
     ClassListView, ClassCreateView, ClassEditView, ClassDeleteView,
@@ -30,12 +30,11 @@ from school_admin.views import (
     SessionListView, SessionCreateView, SessionSetCurrentView, TermSetCurrentView,
     SchoolSettingsView,
     NotificationLogView,
-    UserListView, UserCreateView, UserEditView, UserToggleActiveView,
     CredentialSlipView, CredentialBatchView, CredentialBatchPrintView, CredentialSingleResetView,
     CredentialMemberConfirmView,
-    StudentSearchAPIView, StaffSearchAPIView, UserSearchAPIView, MemberSearchAPIView,
+    StudentSearchAPIView, StaffSearchAPIView, MemberSearchAPIView,
     InvoiceSearchAPIView, ClassSearchAPIView, SubjectSearchAPIView,
-    NotificationSearchAPIView,
+    NotificationSearchAPIView, EnrollmentSearchAPIView,
 )
 from inventory.views import (
     AdminItemListView, AdminItemCreateView, AdminItemEditView,
@@ -53,19 +52,19 @@ urlpatterns = [
     path('students/', StudentListView.as_view(), name='student_list'),
     path('api/students/', StudentSearchAPIView.as_view(), name='student_search_api'),
     path('api/staff/', StaffSearchAPIView.as_view(), name='staff_search_api'),
-    path('api/users/', UserSearchAPIView.as_view(), name='user_search_api'),
     path('api/members/', MemberSearchAPIView.as_view(), name='member_search_api'),
     path('api/invoices/', InvoiceSearchAPIView.as_view(), name='invoice_search_api'),
     path('api/classes/', ClassSearchAPIView.as_view(), name='class_search_api'),
     path('api/subjects/', SubjectSearchAPIView.as_view(), name='subject_search_api'),
     path('api/notifications/', NotificationSearchAPIView.as_view(), name='notification_search_api'),
+    path('api/enrollments/', EnrollmentSearchAPIView.as_view(), name='enrollment_search_api'),
     path('students/new/', StudentCreateView.as_view(), name='student_create'),
     path('students/<int:pk>/', StudentDetailView.as_view(), name='student_detail'),
     path('students/<int:pk>/edit/', StudentEditView.as_view(), name='student_edit'),
     path('students/<int:pk>/delete/', StudentDeleteView.as_view(), name='student_delete'),
     path('students/<int:pk>/change-password/', StudentPasswordChangeView.as_view(), name='student_password_change'),
     path('students/<int:pk>/change-class/', StudentChangeClassView.as_view(), name='student_change_class'),
-    path('students/<int:pk>/add-guardian/', StudentGuardianLinkCreateView.as_view(), name='student_add_guardian'),
+    path('students/<int:pk>/add-guardian/', StudentGuardianCreateView.as_view(), name='student_add_guardian'),
     path('students/guardian/<int:pk>/delete/', StudentGuardianLinkDeleteView.as_view(), name='student_delete_guardian'),
 
     # Staff
@@ -137,12 +136,6 @@ path('students/<int:pk>/record-payment/', StudentRecordPaymentView.as_view(), na
 
     # School Settings
     path('settings/', SchoolSettingsView.as_view(), name='school_settings'),
-
-    # User Management
-    path('users/', UserListView.as_view(), name='user_list'),
-    path('users/new/', UserCreateView.as_view(), name='user_create'),
-    path('users/<int:pk>/edit/', UserEditView.as_view(), name='user_edit'),
-    path('users/<int:pk>/toggle-active/', UserToggleActiveView.as_view(), name='user_toggle_active'),
 
     # Credential Slips
     path('credentials/user/<int:pk>/', CredentialSlipView.as_view(), name='credential_slip'),
