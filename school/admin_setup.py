@@ -64,6 +64,14 @@ def setup_admin():
 
         return ordered
 
+    def custom_logout(self, request, extra_context=None):
+        from django.contrib.auth import logout
+        from django.shortcuts import redirect
+        logout(request)
+        return redirect('/accounts/login/')
+
+    AdminSite.logout = custom_logout
+
     AdminSite.get_app_list = ordered_get_app_list
-    logger.info("Admin setup: reordered %d apps, hidden %d apps + %d models",
+    logger.info("Admin setup: reordered %d apps, hidden %d apps + %d models, overrode logout redirect",
                 len(TARGET_ORDER), len(APPS_TO_HIDE), len(MODELS_TO_HIDE))

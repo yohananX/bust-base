@@ -15,6 +15,7 @@ Deliberately conservative:
   documented trade-off of the signals approach.
 """
 import threading
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
@@ -52,12 +53,24 @@ def _jsonable(value):
 
 
 def _snapshot(instance):
-    """JSON-safe snapshot of all concrete fields (excluding the PK)."""
-    return {
-        field.name: _jsonable(getattr(instance, field.name))
-        for field in instance._meta.concrete_fields
-        if not field.primary_key
-    }
+    """JSON-safe snapshot of all concrete fields (excluding the PK).
+
+    FK fields are read from their raw ``_id`` attribute so cascade-deleted
+    related objects do not raise ``DoesNotExist`` during ``post_delete``.
+    """
+    changes = {}
+    for field in instance._meta.concrete_fields:
+        if field.primary_key:
+            continue
+        if field.is_relation and field.many_to_one:
+            value = getattr(instance, field.attname)
+        else:
+            try:
+                value = getattr(instance, field.name)
+            except ObjectDoesNotExist:
+                value = None
+        changes[field.name] = _jsonable(value)
+    return changes
 
 
 def _write_log(instance, action, changes):

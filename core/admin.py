@@ -4,6 +4,19 @@ from django.utils.translation import gettext_lazy as _
 from .models import School, AcademicSession, Term
 
 
+# Restrict Django admin to superusers only.
+# School admins are already redirected to /school-admin/ by SchoolMiddleware.
+# This blocks any other non-superuser staff (e.g. teachers accidentally granted is_staff).
+def _superuser_only_has_permission(request):
+    return (
+        request.user.is_authenticated
+        and request.user.is_active
+        and request.user.is_superuser
+    )
+
+admin.site.has_permission = _superuser_only_has_permission
+
+
 @admin.register(School)
 class SchoolAdmin(admin.ModelAdmin):
     list_display = ['name', 'short_code', 'exam_max_score', 'is_active', 'created_at']
