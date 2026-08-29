@@ -25,6 +25,12 @@
          class="inline-flex items-center px-4 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">
         <i data-lucide="printer" class="w-4 h-4 mr-1.5"></i>Print Form
       </a>
+      {% if not enrollment.student %}
+      <a href="{% url 'lessons:enrollment_register_student' enrollment.pk %}"
+         class="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <i data-lucide="user-plus" class="w-4 h-4 mr-1.5"></i>Register as Student
+      </a>
+      {% endif %}
       {% if enrollment.status != 'CANCELLED' %}
       <form method="post" action="{% url 'lessons:enrollment_cancel' enrollment.pk %}" onsubmit="return confirm('Cancel this registration?')">
         {% csrf_token %}
@@ -136,7 +142,7 @@
       <dl class="space-y-2 text-sm">
         <div class="flex justify-between"><dt class="text-gray-500">Type</dt><dd class="text-gray-900">{% if enrollment.student %}Linked student{% else %}External{% endif %}</dd></div>
         <div class="flex justify-between"><dt class="text-gray-500">Age</dt><dd class="text-gray-900">{{ enrollment.age|default:'—' }}</dd></div>
-        <div class="flex justify-between"><dt class="text-gray-500">Current class</dt><dd class="text-gray-900">{{ enrollment.current_class_text|default:'—' }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Current class</dt><dd class="text-gray-900">{{ enrollment.lesson_class.name }}</dd></div>
       </dl>
     </div>
     <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">

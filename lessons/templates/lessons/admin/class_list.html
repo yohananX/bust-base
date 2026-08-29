@@ -10,7 +10,7 @@
     <form method="GET" class="flex flex-wrap gap-4 items-end">
       <div class="flex-1 min-w-52">
         <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
-        <input type="text" name="q" value="{{ q }}" placeholder="Class or period name"
+        <input type="text" name="q" value="{{ q }}" placeholder="Search classes, students, or parents…"
                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
       </div>
       <div>
@@ -37,7 +37,7 @@
       <h2 class="text-lg font-display font-semibold text-gray-900">Classes</h2>
       <p class="text-sm text-gray-500">Set a fixed fee per class — editable anytime.</p>
     </div>
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2">
       <a href="{% url 'lessons:class_new' %}"
          class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
         <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Class

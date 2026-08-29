@@ -307,3 +307,53 @@ class TeacherPortalTests(LessonsBase):
             reverse("lessons_teacher:class_detail", args=[other.pk]),
         )
         self.assertEqual(resp.status_code, 404)
+
+
+class EnrollmentRegisterStudentViewTests(LessonsBase):
+    def test_get_prepopulates_middle_name(self):
+        enrollment = LessonEnrollment.objects.create(
+            school=self.school, lesson_class=self.lesson_class,
+            external_name="Enoima Ini Jackson",
+            parent_name="Amin Musa",
+            parent_phones=["08022222222"],
+        )
+        resp = self.client.get(
+            reverse("lessons:enrollment_register_student", args=[enrollment.pk])
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'value="Enoima"')
+        self.assertContains(resp, 'value="Ini"')
+        self.assertContains(resp, 'value="Jackson"')
+
+    def test_post_saves_middle_name(self):
+        enrollment = LessonEnrollment.objects.create(
+            school=self.school, lesson_class=self.lesson_class,
+            external_name="Enoima Ini Jackson",
+            parent_name="Amin Musa",
+            parent_phones=["08022222222"],
+        )
+        resp = self.client.post(
+            reverse("lessons:enrollment_register_student", args=[enrollment.pk]),
+            {
+                "first_name": "Enoima",
+                "middle_name": "Ini",
+                "last_name": "Jackson",
+                "new_email": "enoima@example.com",
+                "new_phone_number": "08011111111",
+                "date_of_birth": "2015-06-01",
+                "gender": "FEMALE",
+                "admission_date": "2026-08-28",
+                "status": "ACTIVE",
+                "class_id": "",
+                "session_id": "",
+                "guardian_0_name": "Amin Musa",
+                "guardian_0_phone": "08022222222",
+                "guardian_0_relationship": "FATHER",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        enrollment.refresh_from_db()
+        self.assertIsNotNone(enrollment.student)
+        self.assertEqual(enrollment.student.user.middle_name, "Ini")
+        self.assertEqual(enrollment.student.user.first_name, "Enoima")
+        self.assertEqual(enrollment.student.user.last_name, "Jackson")

@@ -21,5 +21,6 @@ urlpatterns = [
     path('enrollments/<int:pk>/print/', views.EnrollmentPrintView.as_view(), name='enrollment_print'),
     path('enrollments/<int:pk>/cancel/', views.EnrollmentCancelView.as_view(), name='enrollment_cancel'),
     path('enrollments/<int:pk>/pay/', views.EnrollmentPaymentView.as_view(), name='enrollment_pay'),
+    path('enrollments/<int:pk>/register/', views.EnrollmentRegisterStudentView.as_view(), name='enrollment_register_student'),
     path('enrollments/export/', views.EnrollmentExportView.as_view(), name='enrollment_export'),
 ]

@@ -32,7 +32,7 @@
     <tr><th>Child full name</th><td>{{ enrollment.child_name }}</td></tr>
     <tr><th>Student type</th><td>{% if enrollment.student %}Existing student{% else %}External{% endif %}</td></tr>
     <tr><th>Age</th><td>{{ enrollment.age|default:'—' }}</td></tr>
-    <tr><th>Current class / grade</th><td>{{ enrollment.current_class_text|default:'—' }}</td></tr>
+    <tr><th>Current class / grade</th><td>{{ enrollment.lesson_class.name }}</td></tr>
     <tr><th>Parent / guardian name</th><td>{{ enrollment.parent_name }}</td></tr>
     <tr><th>Parent phone</th><td>{{ enrollment.parent_phones|join:", " }}</td></tr>
     <tr><th>Relationship to child</th><td>{{ enrollment.get_relationship_display }}</td></tr>

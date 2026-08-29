@@ -1,0 +1,182 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Register Student — {{ enrollment.child_name }} — Extra Lessons{% endblock %}
+{% block page_header %}Register Student from Extra Lesson{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+  <div class="bg-amber-50 border border-amber-100 rounded-2xl p-5 flex items-start gap-3">
+    <i data-lucide="info" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+    <div class="text-sm text-amber-800">
+      <p class="font-medium mb-1">Converting external participant</p>
+      <p>Fields below are pre-populated from the <strong>{{ enrollment.lesson_class.name }}</strong> registration. Please review and complete the required student details.</p>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">First Name <span class="text-red-500">*</span></label>
+          <input type="text" name="first_name" value="{{ first_name }}" required
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Middle Name <span class="text-gray-400 font-normal">(Optional)</span></label>
+          <input type="text" name="middle_name" value="{{ middle_name|default:'' }}"
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Last Name <span class="text-red-500">*</span></label>
+          <input type="text" name="last_name" value="{{ last_name }}" required
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Email <span class="text-gray-400 font-normal">(Optional)</span></label>
+          <input type="email" name="new_email" value="{{ new_email|default:'' }}"
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Phone Number <span class="text-gray-400 font-normal">(Optional)</span></label>
+          <input type="text" name="new_phone_number" value="{{ new_phone_number|default:'' }}"
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+      </div>
+
+      <div class="bg-blue-50 text-blue-800 rounded-xl p-3.5 text-sm border border-blue-100 flex items-start gap-2">
+        <i data-lucide="key-round" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+        <span>A random password will be generated automatically. You can share it with the student after creation.</span>
+      </div>
+
+      <hr class="border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">Student Information</h3>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Date of Birth <span class="text-red-500">*</span></label>
+          <input type="date" name="date_of_birth" value="{{ date_of_birth }}" required
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          {% if enrollment.age %}
+          <p class="text-xs text-gray-400 mt-1">Estimated from age {{ enrollment.age }}. Please verify.</p>
+          {% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Gender <span class="text-red-500">*</span></label>
+          <select name="gender" required
+                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            <option value="">— Select —</option>
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Admission Date <span class="text-red-500">*</span></label>
+          <input type="date" name="admission_date" value="{{ admission_date }}" required
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Status <span class="text-red-500">*</span></label>
+          <select name="status" required
+                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            <option value="ACTIVE" selected>Active</option>
+            <option value="GRADUATED">Graduated</option>
+            <option value="WITHDRAWN">Withdrawn</option>
+            <option value="SUSPENDED">Suspended</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Class (Optional)</label>
+          <select name="class_id"
+                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            <option value="">— Optional —</option>
+            {% for c in classes %}
+            <option value="{{ c.pk }}">{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Session (Optional)</label>
+          <select name="session_id"
+                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            <option value="">— Optional —</option>
+            {% for s in sessions %}
+            <option value="{{ s.pk }}">{{ s.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Current class / grade</label>
+          <input type="text" id="reg-current-class-display" value="" readonly
+                 class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-600 outline-none cursor-not-allowed">
+          <p class="text-xs text-gray-400 mt-1">Automatically set to the selected class above.</p>
+        </div>
+      </div>
+
+      <hr class="border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-800 mb-4">Parent / Guardian</h3>
+
+      <div id="guardians-container">
+        <div class="guardian-entry bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100">
+          <div class="mb-3">
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Name <span class="text-red-500">*</span></label>
+            <input type="text" name="guardian_0_name" value="{{ guardian_0_name|default:'' }}" required
+                   class="guardian-name w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Email <span class="text-gray-400 font-normal">(Optional)</span></label>
+              <input type="email" name="guardian_0_email" value="{{ guardian_0_email|default:'' }}"
+                     class="guardian-email w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Phone <span class="text-gray-400 font-normal">(Optional)</span></label>
+              <input type="text" name="guardian_0_phone" value="{{ guardian_0_phone|default:'' }}"
+                     class="guardian-phone w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+            </div>
+          </div>
+          <div class="mb-1">
+            <label class="block text-sm font-medium text-gray-600 mb-1.5">Relationship</label>
+            <select name="guardian_0_relationship"
+                    class="guardian-relationship w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+              <option value="FATHER">Father</option>
+              <option value="MOTHER">Mother</option>
+              <option value="GUARDIAN" selected>Guardian</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4 pt-2">
+        <button type="submit"
+                class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+          <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i>Register Student
+        </button>
+        <a href="{% url 'lessons:enrollment_detail' pk=enrollment.pk %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
+      </div>
+
+      <script>
+        function syncRegCurrentClass() {
+          const select = document.querySelector('select[name="class_id"]');
+          const display = document.getElementById('reg-current-class-display');
+          if (!select || !display) return;
+          const selectedOption = select.options[select.selectedIndex];
+          display.value = selectedOption ? selectedOption.textContent.trim() : '';
+        }
+
+        const regClassSelect = document.querySelector('select[name="class_id"]');
+        if (regClassSelect) {
+          regClassSelect.addEventListener('change', syncRegCurrentClass);
+          syncRegCurrentClass();
+        }
+      </script>
+    </form>
+  </div>
+</div>
+{% endblock %}

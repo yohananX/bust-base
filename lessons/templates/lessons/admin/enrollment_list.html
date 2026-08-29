@@ -10,8 +10,7 @@
     <form method="GET" class="flex flex-wrap gap-4 items-end">
       <div class="flex-1 min-w-52">
         <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
-        <input type="text" name="q" value="{{ q }}" placeholder="Child, parent, or phone"
-               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        {% include 'components/search_autocomplete.html' with cache_key='enrollments' api_path='/school-admin/api/enrollments/' item_url='/school-admin/lessons/enrollments/{id}/' placeholder='Search child, parent, or linked student…' %}
       </div>
       <div>
         <label class="block text-xs font-medium text-gray-500 mb-1.5">Period</label>
@@ -110,6 +109,12 @@
                  class="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-amber-50 transition-colors">
                 <i data-lucide="eye" class="w-4 h-4"></i>
               </a>
+              {% if not e.student %}
+              <a href="{% url 'lessons:enrollment_register_student' e.pk %}" title="Register as student"
+                 class="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-amber-50 transition-colors">
+                <i data-lucide="user-plus" class="w-4 h-4"></i>
+              </a>
+              {% endif %}
             </div>
           </td>
         </tr>

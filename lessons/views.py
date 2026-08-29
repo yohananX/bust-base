@@ -12,7 +12,11 @@ from django.views.generic.base import View
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
-from students.models import SchoolClass, Student
+from accounts.utils import generate_password, unique_username, parse_full_name
+from school_admin.views.credentials import store_credential_slip
+from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from students.utils import generate_admission_number, find_or_create_parent
+from core.models import AcademicSession
 
 from .models import (
     LessonClass,
@@ -121,7 +125,14 @@ class ClassListView(RoleRequiredMixin, View):
         if period_id:
             classes = classes.filter(period_id=period_id)
         if q:
-            classes = classes.filter(Q(name__icontains=q) | Q(period__name__icontains=q))
+            classes = classes.filter(
+                Q(name__icontains=q)
+                | Q(period__name__icontains=q)
+                | Q(enrollments__student__user__first_name__icontains=q)
+                | Q(enrollments__student__user__last_name__icontains=q)
+                | Q(enrollments__parent_name__icontains=q)
+                | Q(enrollments__external_name__icontains=q)
+            ).distinct()
         periods = LessonPeriod.objects.filter(school=school).order_by('-start_date')
         context = {
             'classes': classes,
@@ -278,6 +289,8 @@ class EnrollmentListView(RoleRequiredMixin, View):
                 Q(external_name__icontains=q)
                 | Q(parent_name__icontains=q)
                 | Q(parent_phones__0__icontains=q)
+                | Q(student__user__first_name__icontains=q)
+                | Q(student__user__last_name__icontains=q)
             )
         enrollments = enrollments.order_by('-registered_on')
         periods = LessonPeriod.objects.filter(school=school).order_by('-start_date')
@@ -304,11 +317,15 @@ class EnrollmentFormView(RoleRequiredMixin, View):
             )
         periods = LessonPeriod.objects.filter(school=request.school).order_by('-start_date')
         students = self._students(request)
+        current_class_text = ''
+        if enrollment and enrollment.lesson_class_id:
+            current_class_text = enrollment.lesson_class.name
         context = {
             'enrollment': enrollment,
             'is_edit': pk is not None,
             'periods': periods,
             'students': students,
+            'current_class_text': current_class_text,
         }
         return render(request, 'lessons/admin/enrollment_form.html', context)
 
@@ -330,7 +347,6 @@ class EnrollmentFormView(RoleRequiredMixin, View):
             'student': student,
             'external_name': request.POST.get('external_name', '').strip(),
             'age': request.POST.get('age', '').strip() or None,
-            'current_class_text': request.POST.get('current_class_text', '').strip(),
             'parent_name': request.POST.get('parent_name', '').strip(),
             'parent_phones': [
                 p.strip() for p in request.POST.getlist('parent_phones')
@@ -359,7 +375,6 @@ class EnrollmentFormView(RoleRequiredMixin, View):
                 student=data['student'],
                 external_name=data['external_name'],
                 age=data['age'],
-                current_class_text=data['current_class_text'],
                 parent_name=data['parent_name'],
                 parent_phones=data['parent_phones'],
                 emergency_contact=data['emergency_contact'],
@@ -539,7 +554,7 @@ class EnrollmentExportView(RoleRequiredMixin, View):
                 e.child_name,
                 'Yes' if e.student else 'No',
                 e.age or '',
-                e.current_class_text,
+                e.lesson_class.name,
                 e.parent_name,
                 ', '.join(e.parent_phones or []),
                 e.relationship,
@@ -552,3 +567,182 @@ class EnrollmentExportView(RoleRequiredMixin, View):
                 'Yes' if e.consent_given else 'No',
             ])
         return response
+
+
+class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request, pk):
+        school = request.school
+        enrollment = get_object_or_404(
+            LessonEnrollment,
+            school=school, pk=pk,
+        )
+        if enrollment.student:
+            messages_error(request, 'This participant is already linked to a student.')
+            return redirect('lessons:enrollment_detail', pk=enrollment.pk)
+
+        external_name = enrollment.external_name or ''
+        first_name, middle_name, last_name = parse_full_name(external_name)
+
+        estimated_dob = ''
+        if enrollment.age:
+            from datetime import date
+            today = date.today()
+            estimated_dob = date(today.year - enrollment.age, today.month, today.day).isoformat()
+
+        parent_phones = enrollment.parent_phones or []
+        parent_phone = parent_phones[0] if parent_phones else ''
+
+        context = {
+            'enrollment': enrollment,
+            'first_name': first_name,
+            'middle_name': middle_name,
+            'last_name': last_name,
+            'new_email': '',
+            'new_phone_number': parent_phone,
+            'date_of_birth': estimated_dob,
+            'admission_date': timezone.localdate().isoformat(),
+            'guardian_0_name': enrollment.parent_name,
+            'guardian_0_phone': parent_phone,
+            'guardian_0_relationship': enrollment.relationship,
+            'classes': SchoolClass.objects.filter(school=school, is_active=True),
+            'sessions': AcademicSession.objects.filter(school=school),
+        }
+        return render(request, 'lessons/admin/enrollment_register_student.html', context)
+
+    def post(self, request, pk):
+        school = request.school
+        enrollment = get_object_or_404(
+            LessonEnrollment,
+            school=school, pk=pk,
+        )
+        if enrollment.student:
+            messages_error(request, 'This participant is already linked to a student.')
+            return redirect('lessons:enrollment_detail', pk=enrollment.pk)
+
+        first_name = request.POST.get('first_name', '').strip()
+        middle_name = request.POST.get('middle_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        email = request.POST.get('new_email', '').strip()
+        phone_number = request.POST.get('new_phone_number', '').strip()
+        date_of_birth = request.POST.get('date_of_birth', '').strip()
+        gender = request.POST.get('gender', '').strip()
+        admission_date = request.POST.get('admission_date', '').strip()
+        status = request.POST.get('status', 'ACTIVE')
+        class_id = request.POST.get('class_id', '').strip()
+        session_id = request.POST.get('session_id', '').strip()
+
+        if not all([first_name, last_name, date_of_birth, gender, admission_date]):
+            messages_error(request, 'Name, date of birth, gender, and admission date are required.')
+            return redirect('lessons:enrollment_register_student', pk=enrollment.pk)
+
+        try:
+            with transaction.atomic():
+                username_input = generate_username(first_name, last_name)
+                base_username = username_input
+                counter = 1
+                while User.objects.filter(username=username_input).exists():
+                    username_input = f"{base_username}{counter}"
+                    counter += 1
+
+                password = generate_password(8)
+
+                user = User.objects.create_user(
+                    username=username_input,
+                    email=email,
+                    password=password,
+                    first_name=first_name,
+                    middle_name=middle_name,
+                    last_name=last_name,
+                    role=Roles.STUDENT,
+                    school=school,
+                    phone_number=phone_number,
+                    must_change_password=True,
+                )
+
+                from django.utils.dateparse import parse_date
+                school_class = None
+                if class_id:
+                    school_class = SchoolClass.objects.filter(
+                        school=school, pk=class_id
+                    ).first()
+
+                admission_number = generate_admission_number(school, school_class)
+
+                student = Student(
+                    school=school,
+                    user=user,
+                    admission_number=admission_number,
+                    date_of_birth=parse_date(date_of_birth),
+                    gender=gender,
+                    admission_date=parse_date(admission_date),
+                    status=status,
+                )
+                student.full_clean()
+                student.save()
+
+                if class_id and session_id:
+                    if school_class is None:
+                        school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
+                    session = get_object_or_404(AcademicSession, school=school, pk=session_id)
+                    ClassEnrollment.objects.create(
+                        school=school,
+                        student=student,
+                        school_class=school_class,
+                        session=session,
+                        is_current=True,
+                    )
+                    from fees.generation import generate_invoice_for_current_term
+                    generate_invoice_for_current_term(student)
+
+                guardian_index = 0
+                while True:
+                    g_name = request.POST.get(f'guardian_{guardian_index}_name', '').strip()
+                    g_email = request.POST.get(f'guardian_{guardian_index}_email', '').strip()
+                    g_phone = request.POST.get(f'guardian_{guardian_index}_phone', '').strip()
+                    g_relationship = request.POST.get(f'guardian_{guardian_index}_relationship', 'GUARDIAN')
+
+                    if not g_name and not g_email and not g_phone:
+                        break
+
+                    if g_name:
+                        parent_user = find_or_create_parent(
+                            school, g_name, email=g_email, phone=g_phone, relationship=g_relationship
+                        )
+                        StudentGuardianLink.objects.create(
+                            school=school,
+                            student=student,
+                            guardian=parent_user,
+                            relationship=g_relationship,
+                            is_primary_contact=(guardian_index == 0),
+                        )
+
+                    guardian_index += 1
+
+                enrollment.student = student
+                enrollment.external_name = ''
+                enrollment.age = None
+                enrollment.current_class_text = ''
+                enrollment.save(update_fields=['student', 'external_name', 'age', 'current_class_text'])
+
+                from notifications.utils import notify_admins
+                notify_admins(
+                    school=school,
+                    subject=f'Student registered from extra lesson: {student}',
+                    message=(
+                        f'{student} ({admission_number}) was registered from extra lesson enrollment for {enrollment.lesson_class}.'
+                    ),
+                    reference=f'lesson-register:{student.pk}',
+                    url=reverse('school_admin:student_detail', kwargs={'pk': student.pk}),
+                )
+
+                messages_success(
+                    request,
+                    f'Student "{user.get_full_name()}" registered successfully from extra lesson.',
+                )
+                return redirect('school_admin:student_detail', pk=student.pk)
+
+        except Exception as e:
+            messages_error(request, f'Error registering student: {e}')
+            return redirect('lessons:enrollment_register_student', pk=enrollment.pk)

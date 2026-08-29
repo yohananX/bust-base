@@ -37,7 +37,7 @@
         <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
           <td class="px-5 py-3 font-medium text-gray-900">{{ e.child_name }}</td>
           <td class="px-5 py-3 text-gray-600">{{ e.age|default:'—' }}</td>
-          <td class="px-5 py-3 text-gray-600">{{ e.current_class_text|default:'—' }}</td>
+          <td class="px-5 py-3 text-gray-600">{{ e.lesson_class.name }}</td>
           <td class="px-5 py-3 text-gray-600">{{ e.parent_name }}</td>
           <td class="px-5 py-3 text-gray-600">{{ e.parent_phones|join:", " }}</td>
         </tr>
