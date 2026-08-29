@@ -5,7 +5,7 @@ from django.views import View
 from core.models import School
 from .models import Roles
 from .mixins import RoleRequiredMixin
-from .utils import generate_username, unique_username
+from .utils import generate_username, unique_username, parse_full_name
 
 
 class GenerateUsernameTests(TestCase):
@@ -241,3 +241,23 @@ class SchoolScopingIsolationTest(TestCase):
         middleware(request)
         self.assertEqual(request.school, self.school_a)
         self.assertNotEqual(request.school, self.school_b)
+
+
+class ParseFullNameTests(TestCase):
+    def test_single_name(self):
+        self.assertEqual(parse_full_name('John'), ('John', '', ''))
+
+    def test_two_names(self):
+        self.assertEqual(parse_full_name('John Doe'), ('John', '', 'Doe'))
+
+    def test_three_names(self):
+        self.assertEqual(parse_full_name('Enoima Ini Jackson'), ('Enoima', 'Ini', 'Jackson'))
+
+    def test_four_names(self):
+        self.assertEqual(parse_full_name('Jean Claude Van Damme'), ('Jean', 'Claude Van', 'Damme'))
+
+    def test_extra_whitespace(self):
+        self.assertEqual(parse_full_name('  John   Doe  '), ('John', '', 'Doe'))
+
+    def test_empty_string(self):
+        self.assertEqual(parse_full_name(''), ('', '', ''))

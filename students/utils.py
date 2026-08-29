@@ -104,9 +104,8 @@ def find_or_create_parent(school, name, email='', phone='', relationship='GUARDI
     from accounts.models import User, Roles
     from students.models import StudentGuardianLink
 
-    parts = name.strip().split(None, 1)
-    first = parts[0]
-    last = parts[1] if len(parts) > 1 else ''
+    from accounts.utils import parse_full_name, strip_honorific
+    first, middle, last = parse_full_name(strip_honorific(name))
 
     parent = None
 
@@ -127,16 +126,12 @@ def find_or_create_parent(school, name, email='', phone='', relationship='GUARDI
         ).first()
 
     if parent is None:
-        from accounts.utils import generate_username
-        username = generate_username(first, last)
-        base = username
-        counter = 1
-        while User.objects.filter(username=username).exists():
-            username = f"{base}{counter}"
-            counter += 1
+        from accounts.utils import unique_username
+        username = unique_username(first, last)
         parent = User.objects.create_user(
             username=username,
             first_name=first,
+            middle_name=middle,
             last_name=last,
             school=school,
             role=Roles.PARENT,
