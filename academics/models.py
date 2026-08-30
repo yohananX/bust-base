@@ -9,8 +9,16 @@ from accounts.models import Roles
 
 
 class Subject(TenantScopedModel):
-    """A subject taught in the school."""
+    """A subject taught in a specific class."""
 
+    school_class = models.ForeignKey(
+        'students.SchoolClass',
+        on_delete=models.CASCADE,
+        related_name='subjects',
+        verbose_name=_('class'),
+        null=True,
+        blank=True,
+    )
     name = models.CharField(max_length=200, verbose_name=_('name'))
     code = models.CharField(max_length=20, verbose_name=_('code'))
     pass_mark = models.PositiveSmallIntegerField(default=40, verbose_name=_('pass mark'))
@@ -18,7 +26,7 @@ class Subject(TenantScopedModel):
     class Meta:
         verbose_name = _('subject')
         verbose_name_plural = _('subjects')
-        unique_together = ('school', 'code')
+        unique_together = ('school', 'school_class', 'code')
         ordering = ['name']
 
     def __str__(self):

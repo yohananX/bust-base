@@ -26,6 +26,12 @@ def _clear_slip_keys(session):
         del session[key]
 
 
+def store_credential_slip(session, pk, password):
+    """Store a one-time password in the session for the credential slip."""
+    session[_session_key(pk)] = password
+    session.modified = True
+
+
 class CredentialSlipView(RoleRequiredMixin, View):
     """Show the printable credential slip for a single user."""
 

@@ -95,6 +95,7 @@ class TwoSchoolsFixture(TestCase):
         )
         subject = Subject.objects.create(
             school=school, name=f'Maths {tag.upper()}', code=f'MTH-{tag.upper()}',
+            school_class=school_class,
         )
 
         student = Student.objects.create(

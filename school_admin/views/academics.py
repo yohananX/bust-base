@@ -19,17 +19,24 @@ class SubjectListView(RoleRequiredMixin, View):
 
     def get(self, request):
         school = request.school
-        subjects = Subject.objects.filter(school=school).order_by('name')
+        subjects = Subject.objects.filter(school=school).select_related('school_class').order_by('name')
 
         q = request.GET.get('q', '')
+        class_id = request.GET.get('class_id', '')
         if q:
             subjects = subjects.filter(
                 Q(name__icontains=q) | Q(code__icontains=q)
             )
+        if class_id:
+            subjects = subjects.filter(school_class_id=class_id)
+
+        classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
 
         context = {
             'subjects': subjects,
             'q': q,
+            'classes': classes,
+            'filter_class': class_id,
         }
         return render(request, 'school_admin/subject_list.html', context)
 
@@ -40,7 +47,9 @@ class SubjectCreateView(RoleRequiredMixin, View):
     allowed_roles = [Roles.ADMIN]
 
     def get(self, request):
-        context = {'is_edit': False}
+        school = request.school
+        classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
+        context = {'is_edit': False, 'classes': classes}
         return render(request, 'school_admin/subject_form.html', context)
 
     def post(self, request):
@@ -48,14 +57,25 @@ class SubjectCreateView(RoleRequiredMixin, View):
         name = request.POST.get('name', '').strip()
         code = request.POST.get('code', '').strip()
         pass_mark = request.POST.get('pass_mark', 40)
+        school_class_id = request.POST.get('school_class', '')
 
         if not name or not code:
             messages.error(request, 'Name and code are required.')
             return redirect('school_admin:subject_create')
 
-        # Validate unique code per school
-        if Subject.objects.filter(school=school, code__iexact=code).exists():
-            messages.error(request, f'A subject with code "{code}" already exists.')
+        school_class = None
+        if school_class_id:
+            school_class = get_object_or_404(SchoolClass, pk=school_class_id, school=school)
+
+        # Validate unique code per school + class
+        qs = Subject.objects.filter(school=school, code__iexact=code)
+        if school_class:
+            qs = qs.filter(school_class=school_class)
+        else:
+            qs = qs.filter(school_class__isnull=True)
+
+        if qs.exists():
+            messages.error(request, f'A subject with code "{code}" already exists for this class.')
             return redirect('school_admin:subject_create')
 
         try:
@@ -66,6 +86,7 @@ class SubjectCreateView(RoleRequiredMixin, View):
         with transaction.atomic():
             Subject.objects.create(
                 school=school,
+                school_class=school_class,
                 name=name,
                 code=code,
                 pass_mark=pass_mark,
@@ -83,10 +104,12 @@ class SubjectEditView(RoleRequiredMixin, View):
     def get(self, request, pk):
         school = request.school
         subject_obj = get_object_or_404(Subject, pk=pk, school=school)
+        classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
 
         context = {
             'is_edit': True,
             'subject': subject_obj,
+            'classes': classes,
         }
         return render(request, 'school_admin/subject_form.html', context)
 
@@ -97,14 +120,25 @@ class SubjectEditView(RoleRequiredMixin, View):
         name = request.POST.get('name', '').strip()
         code = request.POST.get('code', '').strip()
         pass_mark = request.POST.get('pass_mark', 40)
+        school_class_id = request.POST.get('school_class', '')
 
         if not name or not code:
             messages.error(request, 'Name and code are required.')
             return redirect('school_admin:subject_edit', pk=pk)
 
-        # Validate unique code per school (exclude current subject)
-        if Subject.objects.filter(school=school, code__iexact=code).exclude(pk=pk).exists():
-            messages.error(request, f'A subject with code "{code}" already exists.')
+        school_class = None
+        if school_class_id:
+            school_class = get_object_or_404(SchoolClass, pk=school_class_id, school=school)
+
+        # Validate unique code per school + class (exclude current subject)
+        qs = Subject.objects.filter(school=school, code__iexact=code).exclude(pk=pk)
+        if school_class:
+            qs = qs.filter(school_class=school_class)
+        else:
+            qs = qs.filter(school_class__isnull=True)
+
+        if qs.exists():
+            messages.error(request, f'A subject with code "{code}" already exists for this class.')
             return redirect('school_admin:subject_edit', pk=pk)
 
         try:
@@ -116,6 +150,7 @@ class SubjectEditView(RoleRequiredMixin, View):
             subject_obj.name = name
             subject_obj.code = code
             subject_obj.pass_mark = pass_mark
+            subject_obj.school_class = school_class
             subject_obj.save()
 
         messages.success(request, f'Subject "{name}" updated successfully.')
@@ -293,7 +328,10 @@ class AssignmentSubjectsPartialView(RoleRequiredMixin, View):
         class_id = request.GET.get('class_id', '')
         teacher_id = request.GET.get('teacher_id', '')
 
-        subjects = Subject.objects.filter(school=school).order_by('name')
+        subjects = Subject.objects.filter(school=school)
+        if class_id:
+            subjects = subjects.filter(school_class_id=class_id)
+        subjects = subjects.order_by('name')
 
         assigned_subject_ids = set()
         if teacher_id and class_id:

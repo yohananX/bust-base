@@ -640,6 +640,7 @@ class ResultModerationViewTests(TestCase):
         )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH', pass_mark=40,
+            school_class=self.school_class,
         )
         self.admin_user = User.objects.create_user(
             username='admin1', email='admin@test.com', password='testpass123',

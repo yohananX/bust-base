@@ -42,6 +42,7 @@ class BaseTest(TestCase):
         )
         self.subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
+            school_class=self.school_class,
         )
         self.student_profile = StudentProfile.objects.create(
             school=self.school, user=self.student_user,
@@ -72,6 +73,9 @@ class SubjectModelTests(TestCase):
             name="Grace House School",
             short_code="grace-house",
         )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name="JSS1A", level="JSS1",
+        )
 
     def test_subject_creation(self):
         """Subject should be created with correct default pass_mark."""
@@ -79,6 +83,7 @@ class SubjectModelTests(TestCase):
             school=self.school,
             name="Mathematics",
             code="MTH",
+            school_class=self.school_class,
         )
         self.assertEqual(subject.name, "Mathematics")
         self.assertEqual(subject.code, "MTH")
@@ -91,22 +96,27 @@ class SubjectModelTests(TestCase):
         """
         Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
+            school_class=self.school_class,
         )
         # Same school, same code → IntegrityError
         with self.assertRaises(IntegrityError):
             Subject.objects.create(
                 school=self.school, name="Maths", code="MTH",
+                school_class=self.school_class,
             )
 
     def test_same_code_different_schools(self):
         """Two different schools can have subjects with the same code."""
         school2 = School.objects.create(name="Other School", short_code="other")
+        class2 = SchoolClass.objects.create(school=school2, name="JSS1A", level="JSS1")
 
         Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
+            school_class=self.school_class,
         )
         Subject.objects.create(
             school=school2, name="Mathematics", code="MTH",
+            school_class=class2,
         )
 
         self.assertEqual(Subject.objects.for_school(self.school).count(), 1)
@@ -115,12 +125,15 @@ class SubjectModelTests(TestCase):
     def test_cross_school_isolation(self):
         """Subjects from different schools should not interfere with each other."""
         school2 = School.objects.create(name="Other School", short_code="other")
+        class2 = SchoolClass.objects.create(school=school2, name="JSS1A", level="JSS1")
 
         Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
+            school_class=self.school_class,
         )
         Subject.objects.create(
             school=school2, name="Mathematics", code="MTH",
+            school_class=class2,
         )
 
         self.assertEqual(Subject.objects.for_school(self.school).count(), 1)
@@ -155,11 +168,12 @@ class TeacherAssignmentModelTests(TestCase):
             school=self.school,
             role=Roles.ADMIN,
         )
-        self.subject = Subject.objects.create(
-            school=self.school, name="Mathematics", code="MTH",
-        )
         self.school_class = SchoolClass.objects.create(
             school=self.school, name="JSS1A", level="JSS1",
+        )
+        self.subject = Subject.objects.create(
+            school=self.school, name="Mathematics", code="MTH",
+            school_class=self.school_class,
         )
         self.session = AcademicSession.objects.create(
             school=self.school,
@@ -401,8 +415,8 @@ class ScoreModelTests(BaseTest):
             name="First Term", start_date="2025-09-01", end_date="2025-12-20",
             is_current=True,
         )
-        subject2 = Subject.objects.create(
-            school=school2, name="Mathematics", code="MTH",
+        school_class2 = SchoolClass.objects.create(
+            school=school2, name="JSS1A", level="JSS1",
         )
         student_user2 = User.objects.create_user(
             username="student2", email="s2@s2.com", password="pass",
@@ -417,6 +431,11 @@ class ScoreModelTests(BaseTest):
         teacher2 = User.objects.create_user(
             username="teacher2", email="t2@t2.com", password="pass",
             school=school2, role=Roles.TEACHER,
+        )
+
+        subject2 = Subject.objects.create(
+            school=school2, name="Mathematics", code="MTH",
+            school_class=school_class2,
         )
 
         # Create score in School A
@@ -475,9 +494,6 @@ class RankingTests(TestCase):
             school=self.school,
             role=Roles.TEACHER,
         )
-        self.subject = Subject.objects.create(
-            school=self.school, name="Mathematics", code="MTH", pass_mark=40,
-        )
         self.session = AcademicSession.objects.create(
             school=self.school,
             name="2025/2026",
@@ -493,6 +509,10 @@ class RankingTests(TestCase):
         )
         self.school_class = SchoolClass.objects.create(
             school=self.school, name="JSS1A", level="JSS1",
+        )
+        self.subject = Subject.objects.create(
+            school=self.school, name="Mathematics", code="MTH", pass_mark=40,
+            school_class=self.school_class,
         )
 
     # -- helpers -----------------------------------------------------------
@@ -764,9 +784,6 @@ class TermSummaryModerationTests(TestCase):
             username="mr_smith", email="smith@grace.edu",
             password="testpass123", school=self.school, role=Roles.TEACHER,
         )
-        self.subject = Subject.objects.create(
-            school=self.school, name="Mathematics", code="MTH", pass_mark=40,
-        )
         self.session = AcademicSession.objects.create(
             school=self.school, name="2025/2026",
             start_date=date(2025, 9, 1), end_date=date(2026, 7, 31),
@@ -778,6 +795,10 @@ class TermSummaryModerationTests(TestCase):
         )
         self.school_class = SchoolClass.objects.create(
             school=self.school, name="JSS1A", level="JSS1",
+        )
+        self.subject = Subject.objects.create(
+            school=self.school, name="Mathematics", code="MTH", pass_mark=40,
+            school_class=self.school_class,
         )
 
     def _make_student(self, username, admission_number):

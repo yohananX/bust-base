@@ -60,6 +60,7 @@ class PaymentEndToEndTest(TestCase):
         )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH',
+            school_class=self.school_class,
         )
 
         # Users

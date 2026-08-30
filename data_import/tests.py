@@ -191,8 +191,8 @@ class SubjectImporterRequiresExistingClassTest(BaseImportTestCase):
 
 class SubjectImporterSkipsDuplicatesTest(BaseImportTestCase):
     def test_skips_duplicates(self):
-        SchoolClass.objects.create(school=self.school, name='Primary 1', level='Primary')
-        Subject.objects.create(school=self.school, name='English Studies', code='ES')
+        school_class = SchoolClass.objects.create(school=self.school, name='Primary 1', level='Primary')
+        Subject.objects.create(school=self.school, name='English Studies', code='ES', school_class=school_class)
 
         csv_path = _write_csv(
             ['class_name', 'subject_name'],

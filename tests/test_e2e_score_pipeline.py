@@ -51,6 +51,7 @@ class ScorePipelineEndToEndTest(TestCase):
         )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH', pass_mark=40,
+            school_class=self.school_class,
         )
 
         # Teacher

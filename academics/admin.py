@@ -13,8 +13,8 @@ from .models import GradeScale, Score, Subject, TeacherAssignment, TermResult
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ['name', 'code', 'pass_mark', 'school']
-    list_filter = ['school']
+    list_display = ['name', 'code', 'pass_mark', 'school_class', 'school']
+    list_filter = ['school', 'school_class']
     search_fields = ['name', 'code']
 
 
