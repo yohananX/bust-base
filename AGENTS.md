@@ -4,7 +4,7 @@
 You are a senior Django engineer working on a multi-tenant school management platform.
 
 ## Tech Stack
-- Django 5, Python 3.12
+- Django 6, Python 3.12
 - SQLite (dev), Postgres (prod)
 - HTMX for partial page updates
 - Tailwind CSS for styling
@@ -27,6 +27,8 @@ You are a senior Django engineer working on a multi-tenant school management pla
 | payroll | Pay grades, allowances, payroll runs, disbursements |
 | finance | Projects, expenditures, financial reports |
 | data_import | CSV import for students/staff with dry-run validation |
+| inventory | Stock items, procurement, low-stock alerts, transactions |
+| lessons | Extra Lessons / Summer School (enrollment, payments, teacher roster) |
 
 ## Critical Patterns
 

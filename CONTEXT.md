@@ -2,7 +2,7 @@
 
 ## Project overview
 
-A multi-tenant school management platform (Django 5, SQLite dev / tenant-scoped models)
+A multi-tenant school management platform (Django 6, SQLite dev / tenant-scoped models)
 covering academics (scores, results, term results), fees (invoices, payments via Paystack,
 bank transfers, receipts), finance, payroll, data import, and role-specific portals
 (admin, teacher, parent, student). Notification delivery is synchronous in-process;
@@ -113,8 +113,9 @@ EMAIL/SMS are audit records, IN_APP rows power the bell.
 ## Extra Lessons / Summer School (lessons app, 2026-08-20)
 
 - New Django app `lessons`. Admin-centric holiday-programme registration stream
-  (paper "Summer School Registration Form" parity). No student/parent portal in v1;
-  teachers get a read-only roster of their assigned classes.
+  (paper "Summer School Registration Form" parity). Student and parent portals
+  exist for viewing enrollments and making payments; teachers get a read-only
+  roster of their assigned classes.
 - **Models** (all `TenantScopedModel`): `LessonPeriod` (DRAFT/OPEN/CLOSED),
   `LessonClass` (per-period, fixed `fee_amount` editable anytime), 
   `LessonTeacherAssignment` (teacher = accounts.User, role TEACHER), and

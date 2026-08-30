@@ -12,7 +12,7 @@ from django.views.generic.base import View
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
-from accounts.utils import generate_password, generate_username, parse_full_name
+from accounts.utils import generate_password, generate_username, unique_username, parse_full_name
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from students.utils import generate_admission_number, find_or_create_parent
 from core.models import AcademicSession
@@ -638,12 +638,7 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
 
         try:
             with transaction.atomic():
-                username_input = generate_username(first_name, last_name)
-                base_username = username_input
-                counter = 1
-                while User.objects.filter(username=username_input).exists():
-                    username_input = f"{base_username}{counter}"
-                    counter += 1
+                username_input = unique_username(first_name, last_name)
 
                 password = generate_password(8)
 
@@ -724,17 +719,6 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
                 enrollment.age = None
                 enrollment.current_class_text = ''
                 enrollment.save(update_fields=['student', 'external_name', 'age', 'current_class_text'])
-
-                from notifications.utils import notify_admins
-                notify_admins(
-                    school=school,
-                    subject=f'Student registered from extra lesson: {student}',
-                    message=(
-                        f'{student} ({admission_number}) was registered from extra lesson enrollment for {enrollment.lesson_class}.'
-                    ),
-                    reference=f'lesson-register:{student.pk}',
-                    url=reverse('school_admin:student_detail', kwargs={'pk': student.pk}),
-                )
 
                 messages_success(
                     request,

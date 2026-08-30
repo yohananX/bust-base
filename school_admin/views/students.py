@@ -11,7 +11,7 @@ from django.utils.dateparse import parse_date
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
-from accounts.utils import generate_password, generate_username
+from accounts.utils import generate_password, generate_username, unique_username
 from students.models import Student, SchoolClass, ClassEnrollment, StudentGuardianLink
 from students.utils import generate_admission_number, find_or_create_parent
 from core.models import AcademicSession
@@ -191,11 +191,11 @@ class StudentCreateView(RoleRequiredMixin, View):
                     phone_number=phone_number,
                     must_change_password=True,
                 )
+                request.session[f'credential_slip_{user.pk}'] = password
 
                 messages.success(
                     request,
-                    f'User "{user.get_full_name() or user.username}" created. '
-                    f'Password: {password}',
+                    f'Student "{user.get_full_name()}" created successfully.',
                 )
 
                 # Determine school_class for admission number generation
@@ -245,19 +245,6 @@ class StudentCreateView(RoleRequiredMixin, View):
                     )
                     from fees.generation import generate_invoice_for_current_term
                     generate_invoice_for_current_term(student)
-
-                from notifications.utils import notify_admins
-                notify_admins(
-                    school=school,
-                    subject=f'New student registered: {student}',
-                    message=(
-                        f'{student} ({admission_number}) has been registered'
-                        f'{" in " + school_class.name if school_class else ""}'
-                        f'{" for " + session.name if class_id and session_id else ""}.'
-                    ),
-                    reference=f'student-new:{student.pk}',
-                    url=reverse('school_admin:student_detail', kwargs={'pk': student.pk}),
-                )
 
                 # --- Optional parent/guardian creation ---
                 guardian_index = 0
@@ -561,10 +548,11 @@ class StudentGuardianCreateView(RoleRequiredMixin, View):
                 )
                 link.full_clean()
                 link.save()
+                request.session[f'credential_slip_{guardian.pk}'] = password
 
                 messages.success(
                     request,
-                    f'Guardian "{guardian.get_full_name()}" added successfully. Password: {password}',
+                    f'Guardian "{guardian.get_full_name()}" added successfully.',
                 )
         except (IntegrityError, ValidationError) as e:
             messages.warning(request, f'Could not add guardian: {e}')
@@ -602,12 +590,11 @@ class StudentPasswordChangeView(RoleRequiredMixin, View):
         user.set_password(password)
         user.must_change_password = True
         user.save(update_fields=['password', 'must_change_password'])
+        request.session[f'credential_slip_{user.pk}'] = password
 
-        messages.success(
-            request,
-            f'Password changed for {user.get_full_name()}. New password: {password}',
-        )
-        return redirect('school_admin:student_detail', pk=pk)
+        name = user.get_full_name() or user.username
+        messages.success(request, f'Password has been changed for {name}.')
+        return redirect('school_admin:credential_slip', pk=user.pk)
 
 
 class StudentGuardianLinkDeleteView(RoleRequiredMixin, View):
