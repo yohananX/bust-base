@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import Roles
-from academics.models import Subject, TeacherAssignment
+from academics.models import ClassSubject, Subject, TeacherAssignment
 from core.models import AcademicSession, School, Term
 from fees.models import Invoice, Payment
 from finance.models import Expenditure, ExpenditureCategory, Project
@@ -95,8 +95,8 @@ class TwoSchoolsFixture(TestCase):
         )
         subject = Subject.objects.create(
             school=school, name=f'Maths {tag.upper()}', code=f'MTH-{tag.upper()}',
-            school_class=school_class,
         )
+        ClassSubject.objects.create(school=school, subject=subject, school_class=school_class)
 
         student = Student.objects.create(
             school=school, user=student_user,

@@ -5,7 +5,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 
 from accounts.models import Roles, User
-from academics.models import Score, Subject, TeacherAssignment
+from academics.models import ClassSubject, Score, Subject, TeacherAssignment
 from academics.ranking import compute_positions, compute_term_summary
 from core.models import AcademicSession, School, Term
 from students.models import (
@@ -42,7 +42,9 @@ class BaseTest(TestCase):
         )
         self.subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
-            school_class=self.school_class,
+        )
+        ClassSubject.objects.create(
+            school=self.school, subject=self.subject, school_class=self.school_class,
         )
         self.student_profile = StudentProfile.objects.create(
             school=self.school, user=self.student_user,
@@ -83,7 +85,9 @@ class SubjectModelTests(TestCase):
             school=self.school,
             name="Mathematics",
             code="MTH",
-            school_class=self.school_class,
+        )
+        ClassSubject.objects.create(
+            school=self.school, subject=subject, school_class=self.school_class,
         )
         self.assertEqual(subject.name, "Mathematics")
         self.assertEqual(subject.code, "MTH")
@@ -94,15 +98,16 @@ class SubjectModelTests(TestCase):
 
         Two different schools CAN have the same code.
         """
-        Subject.objects.create(
+        subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
-            school_class=self.school_class,
+        )
+        ClassSubject.objects.create(
+            school=self.school, subject=subject, school_class=self.school_class,
         )
         # Same school, same code → IntegrityError
         with self.assertRaises(IntegrityError):
             Subject.objects.create(
                 school=self.school, name="Maths", code="MTH",
-                school_class=self.school_class,
             )
 
     def test_same_code_different_schools(self):
@@ -110,13 +115,17 @@ class SubjectModelTests(TestCase):
         school2 = School.objects.create(name="Other School", short_code="other")
         class2 = SchoolClass.objects.create(school=school2, name="JSS1A", level="JSS1")
 
-        Subject.objects.create(
+        subject1 = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
-            school_class=self.school_class,
         )
-        Subject.objects.create(
+        ClassSubject.objects.create(
+            school=self.school, subject=subject1, school_class=self.school_class,
+        )
+        subject2 = Subject.objects.create(
             school=school2, name="Mathematics", code="MTH",
-            school_class=class2,
+        )
+        ClassSubject.objects.create(
+            school=school2, subject=subject2, school_class=class2,
         )
 
         self.assertEqual(Subject.objects.for_school(self.school).count(), 1)
@@ -127,13 +136,17 @@ class SubjectModelTests(TestCase):
         school2 = School.objects.create(name="Other School", short_code="other")
         class2 = SchoolClass.objects.create(school=school2, name="JSS1A", level="JSS1")
 
-        Subject.objects.create(
+        subject1 = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
-            school_class=self.school_class,
         )
-        Subject.objects.create(
+        ClassSubject.objects.create(
+            school=self.school, subject=subject1, school_class=self.school_class,
+        )
+        subject2 = Subject.objects.create(
             school=school2, name="Mathematics", code="MTH",
-            school_class=class2,
+        )
+        ClassSubject.objects.create(
+            school=school2, subject=subject2, school_class=class2,
         )
 
         self.assertEqual(Subject.objects.for_school(self.school).count(), 1)
@@ -173,7 +186,9 @@ class TeacherAssignmentModelTests(TestCase):
         )
         self.subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
-            school_class=self.school_class,
+        )
+        ClassSubject.objects.create(
+            school=self.school, subject=self.subject, school_class=self.school_class,
         )
         self.session = AcademicSession.objects.create(
             school=self.school,
@@ -435,7 +450,9 @@ class ScoreModelTests(BaseTest):
 
         subject2 = Subject.objects.create(
             school=school2, name="Mathematics", code="MTH",
-            school_class=school_class2,
+        )
+        ClassSubject.objects.create(
+            school=school2, subject=subject2, school_class=school_class2,
         )
 
         # Create score in School A
@@ -512,7 +529,9 @@ class RankingTests(TestCase):
         )
         self.subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH", pass_mark=40,
-            school_class=self.school_class,
+        )
+        ClassSubject.objects.create(
+            school=self.school, subject=self.subject, school_class=self.school_class,
         )
 
     # -- helpers -----------------------------------------------------------
@@ -798,7 +817,9 @@ class TermSummaryModerationTests(TestCase):
         )
         self.subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH", pass_mark=40,
-            school_class=self.school_class,
+        )
+        ClassSubject.objects.create(
+            school=self.school, subject=self.subject, school_class=self.school_class,
         )
 
     def _make_student(self, username, admission_number):

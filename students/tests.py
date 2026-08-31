@@ -680,8 +680,10 @@ class StudentSubjectsViewTest(TestCase):
             school_class=self.school_class, session=self.session2, is_current=True,
         )
 
-        self.maths = Subject.objects.create(school=self.school, name="Mathematics", code="MAT", school_class=self.school_class)
-        self.english = Subject.objects.create(school=self.school, name="English", code="ENG", school_class=self.school_class)
+        self.maths = Subject.objects.create(school=self.school, name="Mathematics", code="MAT")
+        self.english = Subject.objects.create(school=self.school, name="English", code="ENG")
+        ClassSubject.objects.create(school=self.school, subject=self.maths, school_class=self.school_class)
+        ClassSubject.objects.create(school=self.school, subject=self.english, school_class=self.school_class)
 
     def _assign(self, session, subject):
         TeacherAssignment.objects.create(
@@ -885,8 +887,8 @@ class ResultFeeLockTests(TestCase):
         self.students = {}
         self.subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MATH",
-            school_class=self.school_class,
         )
+        ClassSubject.objects.create(school=self.school, subject=self.subject, school_class=self.school_class)
         for tag, first in [("owing", "Owing"), ("paid", "Paid"), ("free", "Free")]:
             user = User.objects.create_user(
                 username=f"{tag}_student", email=f"{tag}@lock.edu",
@@ -1040,8 +1042,8 @@ class ResultFeeLockTests(TestCase):
         """Rejected scores must never appear on the official booklet."""
         english = Subject.objects.create(
             school=self.school, name="English Language", code="ENG",
-            school_class=self.school_class,
         )
+        ClassSubject.objects.create(school=self.school, subject=english, school_class=self.school_class)
         Score.objects.filter(student=self.students["paid"], term=self.term).update(
             moderation_status=Score.MODERATION_APPROVED,
         )
@@ -1063,8 +1065,8 @@ class ResultFeeLockTests(TestCase):
         """Parents see the same moderation-safe booklet."""
         english = Subject.objects.create(
             school=self.school, name="English Language", code="ENG",
-            school_class=self.school_class,
         )
+        ClassSubject.objects.create(school=self.school, subject=english, school_class=self.school_class)
         Score.objects.filter(student=self.students["paid"], term=self.term).update(
             moderation_status=Score.MODERATION_APPROVED,
         )

@@ -4,18 +4,26 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 
-from .models import GradeScale, Score, Subject, TeacherAssignment, TermResult
+from .models import ClassSubject, GradeScale, Score, Subject, TeacherAssignment, TermResult
 
 
 # ---------------------------------------------------------------------------
 # Subject Admin
 # ---------------------------------------------------------------------------
 
+@admin.register(ClassSubject)
+class ClassSubjectAdmin(admin.ModelAdmin):
+    list_display = ['subject', 'school_class', 'school']
+    list_filter = ['school', 'school_class', 'subject']
+    search_fields = ['subject__name', 'subject__code', 'school_class__name']
+
+
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ['name', 'code', 'pass_mark', 'school_class', 'school']
-    list_filter = ['school', 'school_class']
+    list_display = ['name', 'code', 'pass_mark', 'school']
+    list_filter = ['school']
     search_fields = ['name', 'code']
+    raw_id_fields = ['school_classes']
 
 
 # ---------------------------------------------------------------------------

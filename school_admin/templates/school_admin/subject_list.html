@@ -49,7 +49,7 @@
         <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
           <th class="px-5 py-3.5 font-semibold">Name</th>
           <th class="px-5 py-3.5 font-semibold">Code</th>
-          <th class="px-5 py-3.5 font-semibold">Class</th>
+          <th class="px-5 py-3.5 font-semibold">Classes</th>
           <th class="px-5 py-3.5 font-semibold">Pass Mark</th>
           <th class="px-5 py-3.5 font-semibold text-right">Actions</th>
         </tr>
@@ -68,7 +68,15 @@
           <td class="px-5 py-3.5">
             <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium">{{ subj.code }}</span>
           </td>
-          <td class="px-5 py-3.5 text-gray-700">{{ subj.school_class.name|default:"—" }}</td>
+          <td class="px-5 py-3.5 text-gray-700">
+            {% with classes=subj.school_classes.all %}
+              {% if classes %}
+                {{ classes|join:", " }}
+              {% else %}
+                <span class="text-gray-400">—</span>
+              {% endif %}
+            {% endwith %}
+          </td>
           <td class="px-5 py-3.5 text-gray-700">{{ subj.pass_mark }}%</td>
           <td class="px-5 py-3.5">
             <div class="flex items-center justify-end gap-1">

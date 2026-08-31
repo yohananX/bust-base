@@ -9,28 +9,52 @@ from accounts.models import Roles
 
 
 class Subject(TenantScopedModel):
-    """A subject taught in a specific class."""
+    """A subject taught in the school."""
 
-    school_class = models.ForeignKey(
-        'students.SchoolClass',
-        on_delete=models.CASCADE,
-        related_name='subjects',
-        verbose_name=_('class'),
-        null=True,
-        blank=True,
-    )
     name = models.CharField(max_length=200, verbose_name=_('name'))
     code = models.CharField(max_length=20, verbose_name=_('code'))
     pass_mark = models.PositiveSmallIntegerField(default=40, verbose_name=_('pass mark'))
+    school_classes = models.ManyToManyField(
+        'students.SchoolClass',
+        through='ClassSubject',
+        related_name='subjects',
+        verbose_name=_('classes'),
+    )
 
     class Meta:
         verbose_name = _('subject')
         verbose_name_plural = _('subjects')
-        unique_together = ('school', 'school_class', 'code')
+        unique_together = ('school', 'code')
         ordering = ['name']
 
     def __str__(self):
         return self.name
+
+
+class ClassSubject(TenantScopedModel):
+    """Junction table linking subjects to classes."""
+
+    school_class = models.ForeignKey(
+        'students.SchoolClass',
+        on_delete=models.CASCADE,
+        related_name='class_subjects',
+        verbose_name=_('class'),
+    )
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name='class_subjects',
+        verbose_name=_('subject'),
+    )
+
+    class Meta:
+        verbose_name = _('class subject')
+        verbose_name_plural = _('class subjects')
+        unique_together = ('school', 'school_class', 'subject')
+        ordering = ['school_class__name', 'subject__name']
+
+    def __str__(self):
+        return f"{self.subject.name} - {self.school_class.name}"
 
 
 class TeacherAssignment(TenantScopedModel):

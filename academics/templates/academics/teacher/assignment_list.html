@@ -82,16 +82,16 @@
     <h3 class="text-sm font-semibold text-ink mb-3">Quick Actions</h3>
     <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3">
       {% if assignments %}
-      <a href="{% url 'score_grid' assignments.0.pk %}" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-line rounded-2xl hover:shadow-md hover:border-primary/40 transition-all group">
-        <div class="w-10 h-10 rounded-xl bg-primary-tint flex items-center justify-center text-primary group-hover:bg-primary/10 transition-colors">
-          <i data-lucide="calculator" class="w-5 h-5"></i>
+      <a href="{% url 'score_grid' assignments.0.pk %}" class="flex flex-col items-center justify-center gap-1 p-2 bg-white border border-line rounded-2xl hover:shadow-md hover:border-primary/40 transition-all group">
+        <div class="w-6 h-6 rounded-xl bg-primary-tint flex items-center justify-center text-primary group-hover:bg-primary/10 transition-colors">
+          <i data-lucide="calculator" class="w-3 h-3"></i>
         </div>
         <span class="text-xs font-medium text-ink group-hover:text-primary">Enter Scores</span>
       </a>
       {% endif %}
-      <a href="/payroll/payslips/" class="flex flex-col items-center justify-center gap-2 p-4 bg-white border border-line rounded-2xl hover:shadow-md hover:border-info/40 transition-all group">
-        <div class="w-10 h-10 rounded-xl bg-info-tint flex items-center justify-center text-info group-hover:bg-info/10 transition-colors">
-          <i data-lucide="wallet" class="w-5 h-5"></i>
+      <a href="/payroll/payslips/" class="flex flex-col items-center justify-center gap-1 p-2 bg-white border border-line rounded-2xl hover:shadow-md hover:border-info/40 transition-all group">
+        <div class="w-6 h-6 rounded-xl bg-info-tint flex items-center justify-center text-info group-hover:bg-info/10 transition-colors">
+          <i data-lucide="wallet" class="w-3 h-3"></i>
         </div>
         <span class="text-xs font-medium text-ink group-hover:text-info">View My Payslips</span>
       </a>

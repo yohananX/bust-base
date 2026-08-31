@@ -25,7 +25,7 @@ from notifications.models import NotificationLog
 from students.models import (
     SchoolClass, Student, ClassEnrollment, StudentGuardianLink,
 )
-from academics.models import Subject, TeacherAssignment
+from academics.models import ClassSubject, Subject, TeacherAssignment
 from accounts.models import User
 
 
@@ -60,8 +60,8 @@ class PaymentEndToEndTest(TestCase):
         )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH',
-            school_class=self.school_class,
         )
+        ClassSubject.objects.create(school=self.school, subject=self.subject, school_class=self.school_class)
 
         # Users
         self.admin_user = User.objects.create_user(

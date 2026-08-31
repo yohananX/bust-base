@@ -170,19 +170,19 @@
   </div>
 
   {# ── QUICK ACTIONS + PENDING ACTIONS ── #}
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
     {# ── QUICK ACTIONS ── #}
     <section aria-labelledby="quick-actions-title" class="lg:col-span-1">
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center justify-between mb-2">
         <div>
           <h2 id="quick-actions-title" class="text-lg font-display font-semibold text-ink">Quick Actions</h2>
           <p class="text-xs text-ink-muted mt-0.5">Jump straight into the tasks you use most.</p>
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-3 items-stretch">
-        <a href="{% url 'school_admin:student_create' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-line rounded-xl p-3 hover:border-primary/40 hover:shadow-md transition-all">
-          <span class="w-8 h-8 rounded-lg bg-primary-tint text-primary flex items-center justify-center flex-shrink-0">
-            <i data-lucide="user-plus" class="w-5 h-5"></i>
+      <div class="grid grid-cols-2 gap-2 items-stretch">
+        <a href="{% url 'school_admin:student_create' %}" class="h-full relative group flex flex-col items-start gap-1 bg-white border border-line rounded-xl p-2 hover:border-primary/40 hover:shadow-md transition-all">
+          <span class="w-5 h-5 rounded-lg bg-primary-tint text-primary flex items-center justify-center flex-shrink-0">
+            <i data-lucide="user-plus" class="w-3 h-3"></i>
           </span>
           <span class="min-w-0 w-full pr-3">
             <span class="block text-sm font-semibold text-ink">Add student</span>
@@ -190,9 +190,9 @@
           </span>
           <i data-lucide="arrow-up-right" class="absolute right-3 top-3 w-3.5 h-3.5 text-ink-faint group-hover:text-primary transition-colors"></i>
         </a>
-        <a href="{% url 'school_admin:review_results' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-line rounded-xl p-3 hover:border-primary/40 hover:shadow-md transition-all">
-          <span class="w-8 h-8 rounded-lg bg-info-tint text-info flex items-center justify-center flex-shrink-0">
-            <i data-lucide="clipboard-check" class="w-5 h-5"></i>
+        <a href="{% url 'school_admin:review_results' %}" class="h-full relative group flex flex-col items-start gap-1 bg-white border border-line rounded-xl p-2 hover:border-primary/40 hover:shadow-md transition-all">
+          <span class="w-5 h-5 rounded-lg bg-info-tint text-info flex items-center justify-center flex-shrink-0">
+            <i data-lucide="clipboard-check" class="w-3 h-3"></i>
           </span>
           <span class="min-w-0 w-full pr-3">
             <span class="block text-sm font-semibold text-ink">Review results</span>
@@ -200,9 +200,9 @@
           </span>
           <i data-lucide="arrow-up-right" class="absolute right-3 top-3 w-3.5 h-3.5 text-ink-faint group-hover:text-primary transition-colors"></i>
         </a>
-        <a href="{% url 'school_admin:publish_results' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-line rounded-xl p-3 hover:border-primary/40 hover:shadow-md transition-all">
-          <span class="w-8 h-8 rounded-lg bg-success-tint text-success flex items-center justify-center flex-shrink-0">
-            <i data-lucide="send" class="w-5 h-5"></i>
+        <a href="{% url 'school_admin:publish_results' %}" class="h-full relative group flex flex-col items-start gap-1 bg-white border border-line rounded-xl p-2 hover:border-primary/40 hover:shadow-md transition-all">
+          <span class="w-5 h-5 rounded-lg bg-success-tint text-success flex items-center justify-center flex-shrink-0">
+            <i data-lucide="send" class="w-3 h-3"></i>
           </span>
           <span class="min-w-0 w-full pr-3">
             <span class="block text-sm font-semibold text-ink">Publish results</span>
@@ -210,9 +210,9 @@
           </span>
           <i data-lucide="arrow-up-right" class="absolute right-3 top-3 w-3.5 h-3.5 text-ink-faint group-hover:text-primary transition-colors"></i>
         </a>
-        <a href="{% url 'school_admin:pending_transfers' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-line rounded-xl p-3 hover:border-primary/40 hover:shadow-md transition-all">
-          <span class="w-8 h-8 rounded-lg bg-warning-tint text-warning flex items-center justify-center flex-shrink-0">
-            <i data-lucide="badge-check" class="w-5 h-5"></i>
+        <a href="{% url 'school_admin:pending_transfers' %}" class="h-full relative group flex flex-col items-start gap-1 bg-white border border-line rounded-xl p-2 hover:border-primary/40 hover:shadow-md transition-all">
+          <span class="w-5 h-5 rounded-lg bg-warning-tint text-warning flex items-center justify-center flex-shrink-0">
+            <i data-lucide="badge-check" class="w-3 h-3"></i>
           </span>
           <span class="min-w-0 w-full pr-3">
             <span class="block text-sm font-semibold text-ink">Confirm payments</span>
@@ -220,9 +220,9 @@
           </span>
           <i data-lucide="arrow-up-right" class="absolute right-3 top-3 w-3.5 h-3.5 text-ink-faint group-hover:text-primary transition-colors"></i>
         </a>
-        <a href="{% url 'school_admin:generate_invoices' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-line rounded-xl p-3 hover:border-primary/40 hover:shadow-md transition-all">
-          <span class="w-8 h-8 rounded-lg bg-danger-tint text-danger flex items-center justify-center flex-shrink-0">
-            <i data-lucide="file-plus-2" class="w-5 h-5"></i>
+        <a href="{% url 'school_admin:generate_invoices' %}" class="h-full relative group flex flex-col items-start gap-1 bg-white border border-line rounded-xl p-2 hover:border-primary/40 hover:shadow-md transition-all">
+          <span class="w-5 h-5 rounded-lg bg-danger-tint text-danger flex items-center justify-center flex-shrink-0">
+            <i data-lucide="file-plus-2" class="w-3 h-3"></i>
           </span>
           <span class="min-w-0 w-full pr-3">
             <span class="block text-sm font-semibold text-ink">Generate invoices</span>
@@ -230,9 +230,9 @@
           </span>
           <i data-lucide="arrow-up-right" class="absolute right-3 top-3 w-3.5 h-3.5 text-ink-faint group-hover:text-primary transition-colors"></i>
         </a>
-        <a href="{% url 'school_admin:staff_create' %}" class="h-full relative group flex flex-col items-start gap-2 bg-white border border-line rounded-xl p-3 hover:border-primary/40 hover:shadow-md transition-all">
-          <span class="w-8 h-8 rounded-lg bg-info-tint text-info flex items-center justify-center flex-shrink-0">
-            <i data-lucide="user-cog" class="w-5 h-5"></i>
+        <a href="{% url 'school_admin:staff_create' %}" class="h-full relative group flex flex-col items-start gap-1 bg-white border border-line rounded-xl p-2 hover:border-primary/40 hover:shadow-md transition-all">
+          <span class="w-5 h-5 rounded-lg bg-info-tint text-info flex items-center justify-center flex-shrink-0">
+            <i data-lucide="user-cog" class="w-3 h-3"></i>
           </span>
           <span class="min-w-0 w-full pr-3">
             <span class="block text-sm font-semibold text-ink">Add staff member</span>

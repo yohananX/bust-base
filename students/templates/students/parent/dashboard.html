@@ -101,14 +101,14 @@
 
   {# ── QUICK ACTIONS ── #}
   <div class="flex flex-wrap gap-3">
-    <a href="{% url 'parent-children' %}" class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+    <a href="{% url 'parent-children' %}" class="inline-flex items-center px-3 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
       <i data-lucide="users" class="w-4 h-4 mr-2"></i>My Children
     </a>
-    <a href="{% url 'parent-invoices' %}" class="inline-flex items-center px-4 py-2.5 bg-white border border-line text-ink text-sm font-medium rounded-xl hover:bg-surface-muted transition-colors">
+    <a href="{% url 'parent-invoices' %}" class="inline-flex items-center px-3 py-2 bg-white border border-line text-ink text-sm font-medium rounded-xl hover:bg-surface-muted transition-colors">
       <i data-lucide="file-text" class="w-4 h-4 mr-2 text-primary"></i>View Invoices
     </a>
     {% if total_owed_all > 0 %}
-    <a href="{% url 'parent-pay' %}" class="inline-flex items-center px-4 py-2.5 bg-white border border-line text-ink text-sm font-medium rounded-xl hover:bg-surface-muted transition-colors">
+    <a href="{% url 'parent-pay' %}" class="inline-flex items-center px-3 py-2 bg-white border border-line text-ink text-sm font-medium rounded-xl hover:bg-surface-muted transition-colors">
       <i data-lucide="banknote" class="w-4 h-4 mr-2 text-primary"></i>Pay Fees
     </a>
     {% endif %}

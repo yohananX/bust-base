@@ -13,7 +13,7 @@ from django.urls import reverse
 from accounts.models import Roles
 from core.models import School, AcademicSession, Term
 from academics.models import (
-    Subject, TeacherAssignment, Score, TermResult, GradeScale,
+    ClassSubject, Subject, TeacherAssignment, Score, TermResult, GradeScale,
 )
 from students.models import (
     SchoolClass, Student, ClassEnrollment, StudentGuardianLink,
@@ -51,8 +51,8 @@ class ScorePipelineEndToEndTest(TestCase):
         )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH', pass_mark=40,
-            school_class=self.school_class,
         )
+        ClassSubject.objects.create(school=self.school, subject=self.subject, school_class=self.school_class)
 
         # Teacher
         self.teacher_user = User.objects.create_user(
