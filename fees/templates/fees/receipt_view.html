@@ -38,36 +38,36 @@
   }
 
   .receipt-masthead {
-    padding: 0.55rem 0.85rem 0.45rem;
+    padding: 0.5rem 0.75rem 0.4rem;
     text-align: center;
     border-bottom: 2px solid var(--gold);
   }
   .receipt-logo {
-    height: 2.6rem;
-    margin: 0 auto 0.15rem;
+    height: 2.2rem;
+    margin: 0 auto 0.1rem;
     object-fit: contain;
     display: block;
   }
   .receipt-school-name {
-    font-size: 0.88rem;
+    font-size: 0.82rem;
     font-weight: 700;
     letter-spacing: 0.02em;
     color: var(--ink);
     line-height: 1.15;
   }
   .receipt-school-address {
-    font-size: 0.52rem;
+    font-size: 0.5rem;
     color: var(--muted);
     line-height: 1.3;
-    margin-top: 0.1rem;
+    margin-top: 0.08rem;
   }
   .receipt-title-block {
-    margin-top: 0.35rem;
-    padding-top: 0.3rem;
+    margin-top: 0.25rem;
+    padding-top: 0.25rem;
     border-top: 1px solid var(--line);
   }
   .receipt-title {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     font-weight: 800;
     letter-spacing: 0.07em;
     text-transform: uppercase;
@@ -75,64 +75,64 @@
   }
   .receipt-number {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 0.58rem;
+    font-size: 0.56rem;
     font-weight: 600;
     color: var(--muted);
-    margin-top: 0.08rem;
+    margin-top: 0.06rem;
   }
 
-  .receipt-body { padding: 0.45rem 0.85rem 0.4rem; }
+  .receipt-body { padding: 0.4rem 0.75rem 0.35rem; }
 
   .receipt-row-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.35rem 0.6rem;
-    margin-bottom: 0.35rem;
+    gap: 0.3rem 0.5rem;
+    margin-bottom: 0.3rem;
   }
   .receipt-field {
     border-bottom: 1px solid var(--line);
-    padding-bottom: 0.18rem;
+    padding-bottom: 0.15rem;
     min-width: 0;
   }
   .receipt-label {
     display: block;
-    font-size: 0.48rem;
+    font-size: 0.5rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--muted);
-    margin-bottom: 0.06rem;
+    margin-bottom: 0.04rem;
   }
   .receipt-value {
-    font-size: 0.72rem;
-    font-weight: 600;
+    font-size: 0.78rem;
+    font-weight: 700;
     color: var(--ink);
-    line-height: 1.2;
+    line-height: 1.25;
     overflow-wrap: anywhere;
   }
   .receipt-value.mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 0.66rem;
+    font-size: 0.72rem;
   }
   .receipt-value .rel {
-    font-weight: 500;
+    font-weight: 600;
     color: var(--muted);
-    font-size: 0.62rem;
+    font-size: 0.68rem;
   }
 
   .receipt-parties {
     border: 1px solid var(--line);
     border-radius: 2px;
-    padding: 0.3rem 0.45rem 0.25rem;
-    margin-bottom: 0.35rem;
+    padding: 0.25rem 0.4rem 0.2rem;
+    margin-bottom: 0.3rem;
     background: #fafaf8;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.2rem 0.55rem;
+    gap: 0.15rem 0.5rem;
   }
   .receipt-parties .receipt-field {
     border-bottom: none;
-    padding-bottom: 0.12rem;
+    padding-bottom: 0.1rem;
   }
 
   .receipt-amount {
@@ -142,12 +142,12 @@
     background: var(--gold-tint);
     border: 1px solid #E5D3A8;
     border-left: 3px solid var(--gold);
-    padding: 0.35rem 0.5rem;
-    margin-bottom: 0.35rem;
+    padding: 0.3rem 0.45rem;
+    margin-bottom: 0.3rem;
   }
   .receipt-amount .receipt-label { margin-bottom: 0; }
   .receipt-amount strong {
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     font-weight: 800;
     color: var(--gold);
     letter-spacing: -0.01em;
@@ -157,21 +157,21 @@
   .receipt-details {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    column-gap: 0.6rem;
+    column-gap: 0.5rem;
     row-gap: 0;
     border-top: 1px solid var(--gold);
     padding-top: 0.1rem;
   }
   .receipt-detail {
     border-bottom: 1px solid var(--line);
-    padding: 0.22rem 0;
+    padding: 0.2rem 0;
     min-width: 0;
   }
   .receipt-detail.full { grid-column: 1 / -1; }
   .receipt-items { border-top: 1px solid var(--gold); padding-top: 0.1rem; }
   .receipt-item {
     border-bottom: 1px solid var(--line);
-    padding: 0.22rem 0;
+    padding: 0.2rem 0;
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -183,26 +183,29 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin-top: 0.4rem;
-    padding-top: 0.3rem;
+    margin-top: 0.35rem;
+    padding-top: 0.25rem;
     border-top: 1px solid var(--line-strong);
   }
-  .receipt-signature .receipt-value { font-weight: 600; }
+  .receipt-signature .receipt-value {
+    font-weight: 700;
+    font-size: 0.78rem;
+  }
 
   .receipt-footer {
     background: var(--gold);
     color: #fff;
-    font-size: 0.5rem;
+    font-size: 0.52rem;
     letter-spacing: 0.01em;
-    line-height: 1.35;
-    padding: 0.3rem 0.55rem;
+    line-height: 1.4;
+    padding: 0.28rem 0.5rem;
     text-align: center;
   }
 
   .receipt-actions {
     display: flex;
     justify-content: flex-end;
-    margin-top: 0.75rem;
+    margin-top: 0.7rem;
   }
   .btn-print {
     display: inline-flex;
@@ -212,8 +215,8 @@
     color: #fff;
     border: none;
     border-radius: 8px;
-    padding: 0.6rem 1.1rem;
-    font-size: 0.85rem;
+    padding: 0.55rem 1rem;
+    font-size: 0.82rem;
     font-weight: 700;
     cursor: pointer;
     box-shadow: 0 6px 20px rgba(138, 100, 32, 0.35);
@@ -262,7 +265,7 @@
       {% if school_obj.logo %}
       <img src="{{ school_obj.logo.url }}" alt="{{ school_obj.name }} logo" class="receipt-logo">
       {% else %}
-      <div style="font-size:1.15rem;font-weight:800;color:#8A6420;letter-spacing:-0.02em;line-height:1.1;">
+      <div style="font-size:1.05rem;font-weight:800;color:#8A6420;letter-spacing:-0.02em;line-height:1.1;">
         {{ school_obj.name|default:'GraceHouse' }}<span style="color:#1a1a1a;"></span>
       </div>
       {% endif %}
@@ -291,7 +294,7 @@
       <div class="receipt-parties">
         <div class="receipt-field">
           <span class="receipt-label">Student</span>
-          <span class="receipt-value">{{ student_obj.user.get_full_name|default:'' }}</span>
+          <span class="receipt-value">{{ display_student_name|default:'—' }}</span>
         </div>
         {% if student_obj.admission_number %}
         <div class="receipt-field">
@@ -301,19 +304,17 @@
         {% endif %}
         <div class="receipt-field">
           <span class="receipt-label">Class</span>
-          <span class="receipt-value">{{ current_enrollment.school_class.name|default:'—' }}</span>
+          <span class="receipt-value">{{ display_class|default:'—' }}</span>
         </div>
+        {% if payment.paid_by_name %}
         <div class="receipt-field">
           <span class="receipt-label">Paid by</span>
           <span class="receipt-value">
-            {% if payment.paid_by_name %}
-              {{ payment.paid_by_name }}
-              {% if payment.paid_by_relation %}<span class="rel">({{ payment.paid_by_relation }})</span>{% endif %}
-            {% else %}
-              —
-            {% endif %}
+            {{ payment.paid_by_name }}
+            {% if payment.paid_by_relation %}<span class="rel">({{ payment.paid_by_relation }})</span>{% endif %}
           </span>
         </div>
+        {% endif %}
       </div>
 
       <div class="receipt-amount">

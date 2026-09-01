@@ -815,6 +815,26 @@ class PaymentReceiptView(RoleRequiredMixin, View):
             student = payment.invoice.student
         term = payment.invoice.term if payment.invoice is not None else None
 
+        lesson_enrollment = payment.lesson_enrollment
+        if student is None and lesson_enrollment is not None:
+            student = lesson_enrollment.student
+
+        display_student_name = '—'
+        display_class = '—'
+        if student and student.user:
+            display_student_name = student.user.get_full_name() or student.user.username
+        if lesson_enrollment:
+            if lesson_enrollment.external_name:
+                display_student_name = lesson_enrollment.external_name
+            if lesson_enrollment.current_class_text:
+                display_class = lesson_enrollment.current_class_text
+            elif lesson_enrollment.lesson_class:
+                display_class = lesson_enrollment.lesson_class.name
+        elif student:
+            enrollment = student.enrollments.filter(is_current=True).select_related('school_class').first()
+            if enrollment and enrollment.school_class:
+                display_class = enrollment.school_class.name
+
         return render(request, 'fees/receipt_view.html', {
             'payment': payment,
             'invoice': payment.invoice,
@@ -822,6 +842,9 @@ class PaymentReceiptView(RoleRequiredMixin, View):
             'student': student,
             'term': term,
             'school': request.school,
+            'lesson_enrollment': lesson_enrollment,
+            'display_student_name': display_student_name,
+            'display_class': display_class,
         })
 
 
