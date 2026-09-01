@@ -27,7 +27,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from .models import FeeStructure, Invoice, InvoiceLineItem
+from .models import FeeStructure, Invoice, InvoiceLineItem, PaymentLineItem
 from core.models import Term
 from students.models import ClassEnrollment
 
@@ -383,8 +383,6 @@ def reconcile_checkout(student, term, selected_keys, amount) -> ReconcileResult:
         if next_invoice is not None:
             invoices.append(next_invoice)
 
-        # Everything is negotiable: any positive amount up to the total balance
-        # AFTER additions is acceptable (partial payments on any item).
         if not invoices:
             raise ValidationError('Select at least one item to pay for.')
 
@@ -395,12 +393,8 @@ def reconcile_checkout(student, term, selected_keys, amount) -> ReconcileResult:
             )
 
         if len(invoices) == 1:
-            # One invoice involved (current-term or next-term only): the whole
-            # amount lands on it, capped by its balance AFTER additions.
             allocations = [Allocation(invoices[0], amount)]
         else:
-            # Two invoices involved: split proportionally to each invoice's
-            # balance after additions so both receive a fair share.
             current_inv, next_inv = invoices
             current_share = (
                 amount * current_inv.balance / total_balance
@@ -423,3 +417,83 @@ def reconcile_checkout(student, term, selected_keys, amount) -> ReconcileResult:
         total_balance=total_balance,
         is_split=len(invoices) == 2,
     )
+
+
+def get_selected_items(student, term, selected_keys):
+    """Resolve selected checkout keys to item detail dicts.
+
+    Returns a list of dicts with keys:
+    kind, label, amount, source_key, category, term, session, invoice
+    """
+    keys = list(selected_keys or [])
+    if not keys:
+        return []
+
+    involves_outstanding = 'outstanding' in keys
+    extra_keys = [k for k in keys if k.startswith('extra:')]
+    next_keys = [k for k in keys if k.startswith('next:')]
+
+    next_term = None
+    if next_keys:
+        next_term = Term.objects.filter(
+            school=term.school, start_date__gt=term.start_date
+        ).order_by('start_date').first()
+
+    enrollment = None
+    if extra_keys or next_keys:
+        enrollment = ClassEnrollment.objects.filter(
+            student=student, is_current=True
+        ).select_related('school_class').first()
+
+    items = []
+    current_invoice = _invoice_for(student, term)
+
+    if involves_outstanding and current_invoice is not None and current_invoice.balance > 0:
+        items.append({
+            'kind': PaymentLineItem.KIND_OUTSTANDING,
+            'label': f"Outstanding: {term.name}",
+            'amount': current_invoice.balance,
+            'source_key': 'outstanding',
+            'category': None,
+            'term': term,
+            'session': term.session,
+            'invoice': current_invoice,
+        })
+
+    for key in extra_keys:
+        parsed = _parse_key(key)
+        if parsed is None:
+            continue
+        _, category_pk = parsed
+        fs = _resolve_fee_structure(student, enrollment, term, category_pk)
+        if fs is not None:
+            items.append({
+                'kind': PaymentLineItem.KIND_EXTRA,
+                'label': fs.category.name,
+                'amount': fs.amount,
+                'source_key': key,
+                'category': fs.category,
+                'term': term,
+                'session': term.session,
+                'invoice': current_invoice,
+            })
+
+    for key in next_keys:
+        parsed = _parse_key(key)
+        if parsed is None:
+            continue
+        _, category_pk = parsed
+        fs = _resolve_fee_structure(student, enrollment, next_term, category_pk)
+        if fs is not None:
+            items.append({
+                'kind': PaymentLineItem.KIND_NEXT,
+                'label': fs.category.name,
+                'amount': fs.amount,
+                'source_key': key,
+                'category': fs.category,
+                'term': next_term,
+                'session': next_term.session if next_term else None,
+                'invoice': _invoice_for(student, next_term),
+            })
+
+    return items

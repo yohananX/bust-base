@@ -36,7 +36,7 @@ from django.contrib.messages import get_messages
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
-from fees.models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment
+from fees.models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem
 from fees.checkout import get_checkout_options, reconcile_checkout
 try:
     from fees.views import CheckoutSubmitView
@@ -468,5 +468,38 @@ class FeeCheckoutTest(TestCase):
         messages = [str(m) for m in get_messages(response.wsgi_request)]
         self.assertTrue(
             any('authorized' in m.lower() for m in messages),
-            f'expected an authorization error message, got: {messages}',
+            f'expected an authorization message, got: {messages}',
         )
+
+    def test_checkout_creates_payment_line_items(self):
+        """Bank-transfer checkout creates PaymentLineItems for selected items."""
+        if CheckoutSubmitView is None:
+            self.skipTest('fees.views.CheckoutSubmitView not yet present')
+        self.client.force_login(self.parent_user)
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        response = self.client.post(reverse('fees:checkout-submit'), {
+            'student_id': str(self.student.pk),
+            'item': ['outstanding', f'extra:{self.books_category.pk}'],
+            'amount': '60000.00',
+            'method': 'bank_transfer',
+            'proof_image': SimpleUploadedFile(
+                'proof.png', b'\x89PNG\r\n\x1a\nfake-image-bytes', content_type='image/png'
+            ),
+            'paid_by_name': 'Parent One',
+            'paid_by_relation': 'Father',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        payment = Payment.objects.get(
+            status=Payment.Status.PENDING,
+            method=Payment.Method.BANK_TRANSFER,
+        )
+        line_items = payment.line_items.all()
+        self.assertEqual(line_items.count(), 2)
+        kinds = {item.kind for item in line_items}
+        self.assertIn(PaymentLineItem.KIND_OUTSTANDING, kinds)
+        self.assertIn(PaymentLineItem.KIND_EXTRA, kinds)
+        labels = {item.label for item in line_items}
+        self.assertIn('Outstanding: First Term', labels)
+        self.assertIn('Books', labels)

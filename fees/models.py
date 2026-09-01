@@ -370,3 +370,61 @@ class FeeReceipt(TenantScopedModel):
 
     def __str__(self):
         return self.receipt_number
+
+
+class PaymentLineItem(models.Model):
+    KIND_OUTSTANDING = 'outstanding'
+    KIND_EXTRA = 'extra'
+    KIND_NEXT = 'next'
+    KIND_CHOICES = [
+        (KIND_OUTSTANDING, _('Outstanding')),
+        (KIND_EXTRA, _('Extra')),
+        (KIND_NEXT, _('Next term')),
+    ]
+
+    payment = models.ForeignKey(
+        'fees.Payment',
+        on_delete=models.CASCADE,
+        related_name='line_items',
+        verbose_name=_('payment'),
+    )
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, verbose_name=_('kind'))
+    label = models.CharField(max_length=255, verbose_name=_('label'))
+    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('amount'))
+    source_key = models.CharField(max_length=100, verbose_name=_('source key'))
+    category = models.ForeignKey(
+        'fees.FeeCategory',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_('category'),
+    )
+    term = models.ForeignKey(
+        'core.Term',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_('term'),
+    )
+    session = models.ForeignKey(
+        'core.AcademicSession',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_('session'),
+    )
+    invoice = models.ForeignKey(
+        'fees.Invoice',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_('invoice'),
+    )
+
+    class Meta:
+        verbose_name = _('payment line item')
+        verbose_name_plural = _('payment line items')
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.kind}: {self.label} — ₦{self.amount:,.2f}'

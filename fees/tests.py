@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
-from fees.models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment
+from fees.models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem
 from fees.selectors import invoices_with_balance
 from notifications.models import NotificationLog
 
@@ -1239,13 +1239,56 @@ class ReceiptViewTest(BaseFeesTest):
         response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Receipt')
+        self.assertContains(response, 'Official School Fees Receipt')
         self.assertContains(response, 'Print Receipt')
-        self.assertContains(response, '@page { size: 80mm 150mm; margin: 0; }')
+        self.assertContains(response, '@page { size: 80mm 140mm; margin: 0; }')
         self.assertContains(response, self.school.address)
-        self.assertContains(response, 'Received From')
-        self.assertNotContains(response, 'Download PDF')
+        self.assertContains(response, 'Student')
+        self.assertContains(response, 'Reg. No.')
+        self.school.principal_name = 'Mrs. Esther Jackson'
+        self.school.save(update_fields=['principal_name'])
+        self.assertNotContains(response, 'Mrs. Esther Jackson')
         self.assertTrue(FeeReceipt.objects.filter(payment=payment).exists())
+
+    def test_receipt_shows_line_items_when_present(self):
+        """Receipt lists selected line items and omits principal name."""
+        from fees.models import FeeReceipt, Payment
+
+        payment = self._create_payment(Payment.Status.CONFIRMED)
+        PaymentLineItem.objects.create(
+            payment=payment,
+            kind=PaymentLineItem.KIND_OUTSTANDING,
+            label='Outstanding: First Term',
+            amount=Decimal('60000.00'),
+            source_key='outstanding',
+            term=self.term,
+            session=self.session,
+            invoice=self.invoice,
+        )
+        PaymentLineItem.objects.create(
+            payment=payment,
+            kind=PaymentLineItem.KIND_EXTRA,
+            label='Sports Fee',
+            amount=Decimal('10000.00'),
+            source_key=f'extra:{self.sports_category.pk}',
+            category=self.sports_category,
+            term=self.term,
+            session=self.session,
+            invoice=self.invoice,
+        )
+        self.client.force_login(self.parent_user)
+
+        response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Items Paid For')
+        self.assertContains(response, 'Outstanding: First Term')
+        self.assertContains(response, 'Sports Fee')
+        self.assertContains(response, '60,000.00')
+        self.assertContains(response, '10,000.00')
+        self.school.principal_name = 'Mrs. Esther Jackson'
+        self.school.save(update_fields=['principal_name'])
+        self.assertNotContains(response, 'Mrs. Esther Jackson')
 
     def test_receipt_page_unauthorized_parent(self):
         """A parent not linked to the student is redirected away."""

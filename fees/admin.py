@@ -5,7 +5,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from django.http import HttpResponseRedirect
 
-from .models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment
+from .models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem
 
 
 # ─── Inlines ─────────────────────────────────────────────────────────────────
@@ -165,3 +165,11 @@ class InvoiceAdmin(admin.ModelAdmin):
             'media': self.media,
         }
         return render(request, 'admin/fees/generate_invoices.html', context)
+
+
+@admin.register(PaymentLineItem)
+class PaymentLineItemAdmin(admin.ModelAdmin):
+    list_display = ['payment', 'kind', 'label', 'amount', 'category', 'term', 'session']
+    list_filter = ['kind', 'term', 'session', 'category']
+    search_fields = ['label', 'source_key', 'payment__reference']
+    readonly_fields = ['payment', 'kind', 'label', 'amount', 'source_key', 'category', 'term', 'session', 'invoice']

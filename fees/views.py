@@ -13,8 +13,8 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.views.generic.base import View
 
-from .checkout import reconcile_checkout, current_term
-from .models import Invoice, Payment
+from .checkout import reconcile_checkout, current_term, get_selected_items
+from .models import Invoice, Payment, PaymentLineItem
 from .paystack import initiate_payment as paystack_initiate
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
@@ -341,8 +341,9 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
             paid_by_relation = request.POST.get('paid_by_relation', '').strip()
 
             with transaction.atomic():
+                payments = []
                 for alloc in result.allocations:
-                    Payment.objects.create(
+                    payment = Payment.objects.create(
                         school=student.school,
                         invoice=alloc.invoice,
                         student=student,
@@ -357,6 +358,9 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
                         paid_by_name=paid_by_name,
                         paid_by_relation=paid_by_relation,
                     )
+                    payments.append(payment)
+                selected_items = get_selected_items(student, term, selected_keys)
+                self._create_payment_line_items(payments, selected_items)
             from notifications.utils import notify_admins
             notify_admins(
                 school=student.school,
@@ -413,6 +417,10 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
                     recorded_by=None,
                     description='Fee checkout',
                 )
+                selected_items = get_selected_items(student, term, selected_keys)
+                self._create_payment_line_items(
+                    [first_payment, second_payment], selected_items,
+                )
 
             # Reuse the first row's reference so Paystack refreshes it with an
             # authorization URL; the second row stays PENDING without one for
@@ -455,7 +463,35 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
         if 'error' in result_init:
             messages.error(request, result_init['error'])
             return redirect(back_url)
+        payment = Payment.objects.filter(
+            reference=result_init['reference'], school=student.school,
+        ).first()
+        if payment is not None:
+            selected_items = get_selected_items(student, term, selected_keys)
+            self._create_payment_line_items([payment], selected_items)
         return redirect(result_init['authorization_url'])
+
+    def _create_payment_line_items(self, payments, selected_items):
+        """Create PaymentLineItems for the given payments from selected checkout items."""
+        by_invoice = {p.invoice_id: p for p in payments if p.invoice_id}
+        for item in selected_items:
+            invoice = item.get('invoice')
+            payment = by_invoice.get(invoice.pk if invoice else None)
+            if payment is None:
+                continue
+            PaymentLineItem.objects.get_or_create(
+                payment=payment,
+                source_key=item['source_key'],
+                defaults={
+                    'kind': item['kind'],
+                    'label': item['label'],
+                    'amount': item['amount'],
+                    'category': item.get('category'),
+                    'term': item.get('term'),
+                    'session': item.get('session'),
+                    'invoice': invoice,
+                },
+            )
 
 
 class CheckoutContinueView(RoleRequiredMixin, View):
