@@ -362,6 +362,36 @@ class FlowReproTest(TestCase):
         self.assertEqual(primary.count(), 1)
         self.assertEqual(primary.first().guardian.first_name, 'Mama')
 
+    def test_student_create_with_multiple_guardians(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'Multi', 'last_name': 'Kid',
+            'date_of_birth': '2013-05-05', 'gender': 'FEMALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+            'guardian_0_name': 'Papa One',
+            'guardian_0_email': 'papa1@test.com',
+            'guardian_0_phone': '0801',
+            'guardian_0_relationship': 'FATHER',
+            'guardian_0_occupation': 'Engineer',
+            'guardian_0_address': '1 Main St',
+            'guardian_0_authorized_pickup_person': 'Driver A',
+            'guardian_1_name': 'Mama Two',
+            'guardian_1_email': 'mama2@test.com',
+            'guardian_1_phone': '0802',
+            'guardian_1_relationship': 'MOTHER',
+            'guardian_1_occupation': 'Doctor',
+            'guardian_1_address': '2 Main St',
+            'guardian_1_authorized_pickup_person': 'Driver B',
+        })
+        self.assertEqual(resp.status_code, 302)
+        student = Student.objects.get(user__first_name='Multi')
+        links = StudentGuardianLink.objects.filter(student=student)
+        self.assertEqual(links.count(), 2)
+        names = sorted([link.guardian.get_full_name() for link in links])
+        self.assertEqual(names, ['Mama Two', 'Papa One'])
+
     def test_edit_guardian_updates_details(self):
         link = StudentGuardianLink.objects.create(
             school=self.school, student=self.student, guardian=self.parent2,
