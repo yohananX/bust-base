@@ -362,6 +362,47 @@ class FlowReproTest(TestCase):
         self.assertEqual(primary.count(), 1)
         self.assertEqual(primary.first().guardian.first_name, 'Mama')
 
+    def test_edit_guardian_updates_details(self):
+        link = StudentGuardianLink.objects.create(
+            school=self.school, student=self.student, guardian=self.parent2,
+            relationship='MOTHER', is_primary_contact=False,
+            occupation='Nurse', address='12 Main St', authorized_pickup_person='',
+        )
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(
+            reverse('school_admin:student_edit_guardian', args=[link.pk]),
+            {
+                'guardian_first_name': 'Mama',
+                'guardian_last_name': 'Two',
+                'guardian_email': 'mama2@test.com',
+                'guardian_phone_number': '0802',
+                'relationship': 'MOTHER',
+                'guardian_occupation': 'Doctor',
+                'guardian_address': '45 Broad St',
+                'guardian_authorized_pickup_person': 'Uncle Emeka',
+                'is_primary_contact': 'on',
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        link.refresh_from_db()
+        self.parent2.refresh_from_db()
+        self.assertEqual(self.parent2.phone_number, '0802')
+        self.assertEqual(link.occupation, 'Doctor')
+        self.assertEqual(link.address, '45 Broad St')
+        self.assertEqual(link.authorized_pickup_person, 'Uncle Emeka')
+        self.assertTrue(link.is_primary_contact)
+
+    def test_edit_guardian_detail_page_renders_edit_button(self):
+        link = StudentGuardianLink.objects.create(
+            school=self.school, student=self.student, guardian=self.parent2,
+            relationship='MOTHER', is_primary_contact=False,
+        )
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.get(reverse('school_admin:student_detail', args=[self.student.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'edit-guardian-btn')
+        self.assertContains(resp, str(link.pk))
+
     def test_staff_create_redirects_to_assignments(self):
         self.client.login(username='adminx', password='pass123')
         resp = self.client.post(reverse('school_admin:staff_create'), {
@@ -1046,6 +1087,122 @@ class StudentMiddleNameTests(TestCase):
             'name="user_middle_name" value="Ade"',
             html=False,
         )
+
+
+class StudentOriginAndGuardianDetailsTests(TestCase):
+    """New student origin and guardian detail fields."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Test School', short_code='test')
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school, session=self.session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+        self.admin_user = User.objects.create_user(
+            username='adminx', email='admin@test.com', password='pass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', level='JSS1',
+        )
+        self.client.login(username='adminx', password='pass123')
+
+    def test_student_create_saves_origin_fields(self):
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'New', 'last_name': 'Kid',
+            'date_of_birth': '2013-05-05', 'gender': 'FEMALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'state_of_origin': 'Lagos',
+            'local_government_area': 'Ikeja',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+        })
+        self.assertEqual(resp.status_code, 302)
+        student = Student.objects.get(user__first_name='New')
+        self.assertEqual(student.state_of_origin, 'Lagos')
+        self.assertEqual(student.local_government_area, 'Ikeja')
+
+    def test_student_edit_updates_origin_fields(self):
+        student_user = User.objects.create_user(
+            username='stud1', email='s@test.com', password='pass123',
+            school=self.school, role=Roles.STUDENT, first_name='Kid', last_name='One',
+        )
+        student = Student.objects.create(
+            school=self.school, user=student_user, admission_number='S001',
+            date_of_birth=date(2012, 1, 1), gender='MALE',
+            admission_date=date(2026, 9, 1), status='ACTIVE',
+            state_of_origin='', local_government_area='',
+        )
+        resp = self.client.post(
+            reverse('school_admin:student_edit', args=[student.pk]), {
+                'admission_number': 'S001',
+                'date_of_birth': '2012-01-01', 'gender': 'MALE',
+                'admission_date': '2026-09-01', 'status': 'ACTIVE',
+                'state_of_origin': 'Rivers',
+                'local_government_area': 'PH',
+            }
+        )
+        self.assertEqual(resp.status_code, 302)
+        student.refresh_from_db()
+        self.assertEqual(student.state_of_origin, 'Rivers')
+        self.assertEqual(student.local_government_area, 'PH')
+
+    def test_add_guardian_saves_detail_fields(self):
+        student_user = User.objects.create_user(
+            username='stud1', email='s@test.com', password='pass123',
+            school=self.school, role=Roles.STUDENT, first_name='Kid', last_name='One',
+        )
+        student = Student.objects.create(
+            school=self.school, user=student_user, admission_number='S001',
+            date_of_birth=date(2012, 1, 1), gender='MALE',
+            admission_date=date(2026, 9, 1), status='ACTIVE',
+        )
+        resp = self.client.post(
+            reverse('school_admin:student_add_guardian', args=[student.pk]), {
+                'guardian_first_name': 'Mama',
+                'guardian_last_name': 'Two',
+                'guardian_email': 'mama2@test.com',
+                'guardian_phone_number': '0802',
+                'relationship': 'MOTHER',
+                'guardian_occupation': 'Doctor',
+                'guardian_address': '123 Main St',
+                'guardian_authorized_pickup_person': 'Uncle Emeka',
+                'is_primary_contact': 'on',
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        link = StudentGuardianLink.objects.get(student=student)
+        self.assertEqual(link.occupation, 'Doctor')
+        self.assertEqual(link.address, '123 Main St')
+        self.assertEqual(link.authorized_pickup_person, 'Uncle Emeka')
+
+    def test_student_create_guardian_block_saves_detail_fields(self):
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'New', 'last_name': 'Kid',
+            'date_of_birth': '2013-05-05', 'gender': 'FEMALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+            'guardian_0_name': 'Mama New',
+            'guardian_0_email': 'mama.new@test.com',
+            'guardian_0_phone': '08000000000',
+            'guardian_0_relationship': 'MOTHER',
+            'guardian_0_occupation': 'Nurse',
+            'guardian_0_address': '45 Broad St',
+            'guardian_0_authorized_pickup_person': 'Aunty Ngozi',
+        })
+        self.assertEqual(resp.status_code, 302)
+        student = Student.objects.get(user__first_name='New')
+        link = StudentGuardianLink.objects.get(student=student)
+        self.assertEqual(link.occupation, 'Nurse')
+        self.assertEqual(link.address, '45 Broad St')
+        self.assertEqual(link.authorized_pickup_person, 'Aunty Ngozi')
 
 
 class DashboardCollectedThisTermTest(TestCase):

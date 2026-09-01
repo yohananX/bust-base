@@ -44,7 +44,7 @@ class SchoolClassAdmin(admin.ModelAdmin):
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ['user', 'admission_number', 'gender', 'status', 'school']
+    list_display = ['user', 'admission_number', 'gender', 'status', 'state_of_origin', 'local_government_area', 'school']
     list_filter = ['status', 'gender', 'school']
     search_fields = [
         'user__username', 'user__first_name', 'user__last_name',
@@ -142,7 +142,7 @@ class StudentAdmin(admin.ModelAdmin):
 
 @admin.register(StudentGuardianLink)
 class StudentGuardianLinkAdmin(admin.ModelAdmin):
-    list_display = ['student', 'guardian', 'relationship', 'is_primary_contact']
+    list_display = ['student', 'guardian', 'relationship', 'occupation', 'address', 'authorized_pickup_person', 'is_primary_contact']
     list_filter = ['relationship', 'is_primary_contact']
     search_fields = [
         'student__user__username', 'student__user__first_name',

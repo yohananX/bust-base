@@ -672,6 +672,8 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
                     gender=gender,
                     admission_date=parse_date(admission_date),
                     status=status,
+                    state_of_origin=request.POST.get('state_of_origin', '').strip(),
+                    local_government_area=request.POST.get('local_government_area', '').strip(),
                 )
                 student.full_clean()
                 student.save()
@@ -696,6 +698,9 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
                     g_email = request.POST.get(f'guardian_{guardian_index}_email', '').strip()
                     g_phone = request.POST.get(f'guardian_{guardian_index}_phone', '').strip()
                     g_relationship = request.POST.get(f'guardian_{guardian_index}_relationship', 'GUARDIAN')
+                    g_occupation = request.POST.get(f'guardian_{guardian_index}_occupation', '').strip()
+                    g_address = request.POST.get(f'guardian_{guardian_index}_address', '').strip()
+                    g_authorized_pickup_person = request.POST.get(f'guardian_{guardian_index}_authorized_pickup_person', '').strip()
 
                     if not g_name and not g_email and not g_phone:
                         break
@@ -710,6 +715,9 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
                             guardian=parent_user,
                             relationship=g_relationship,
                             is_primary_contact=(guardian_index == 0),
+                            occupation=g_occupation,
+                            address=g_address,
+                            authorized_pickup_person=g_authorized_pickup_person,
                         )
 
                     guardian_index += 1

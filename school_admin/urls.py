@@ -9,7 +9,7 @@ from school_admin.views import (
     StudentListView, StudentCreateView, StudentDetailView,
     StudentEditView, StudentDeleteView, StudentChangeClassView,
     StudentPasswordChangeView,
-    StudentGuardianCreateView, StudentGuardianLinkDeleteView,
+    StudentGuardianCreateView, StudentGuardianLinkDeleteView, StudentGuardianUpdateView,
     StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView,
     ParentListView,
     ClassListView, ClassCreateView, ClassEditView, ClassDeleteView,
@@ -65,6 +65,7 @@ urlpatterns = [
     path('students/<int:pk>/change-password/', StudentPasswordChangeView.as_view(), name='student_password_change'),
     path('students/<int:pk>/change-class/', StudentChangeClassView.as_view(), name='student_change_class'),
     path('students/<int:pk>/add-guardian/', StudentGuardianCreateView.as_view(), name='student_add_guardian'),
+    path('students/guardian/<int:pk>/edit/', StudentGuardianUpdateView.as_view(), name='student_edit_guardian'),
     path('students/guardian/<int:pk>/delete/', StudentGuardianLinkDeleteView.as_view(), name='student_delete_guardian'),
 
     # Staff

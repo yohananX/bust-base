@@ -49,6 +49,14 @@
         {% elif student.status == 'GRADUATED' %}{% include "components/badge.html" with status="info" text=student.get_status_display %}
         {% else %}{% include "components/badge.html" with status="warning" text=student.get_status_display %}{% endif %}
       </div>
+      <div>
+        <span class="text-xs text-gray-500 block">State of Origin</span>
+        <span class="font-medium text-gray-900">{{ student.state_of_origin|default:"—" }}</span>
+      </div>
+      <div>
+        <span class="text-xs text-gray-500 block">Local Government Area</span>
+        <span class="font-medium text-gray-900">{{ student.local_government_area|default:"—" }}</span>
+      </div>
     </div>
   </div>
 
@@ -123,6 +131,9 @@
             <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
               <th class="px-4 py-2.5 font-medium">Name</th>
               <th class="px-4 py-2.5 font-medium">Relationship</th>
+              <th class="px-4 py-2.5 font-medium">Occupation</th>
+              <th class="px-4 py-2.5 font-medium">Address</th>
+              <th class="px-4 py-2.5 font-medium">Pick-up Person</th>
               <th class="px-4 py-2.5 font-medium">Primary</th>
               <th class="px-4 py-2.5 font-medium text-right">Actions</th>
             </tr>
@@ -132,11 +143,17 @@
             <tr class="hover:bg-gray-50/50">
               <td class="px-4 py-3 text-gray-900">{{ g.guardian.get_full_name|default:g.guardian.username }}</td>
               <td class="px-4 py-3 text-gray-600">{{ g.get_relationship_display }}</td>
+              <td class="px-4 py-3 text-gray-600">{{ g.occupation|default:"—" }}</td>
+              <td class="px-4 py-3 text-gray-600">{{ g.address|default:"—" }}</td>
+              <td class="px-4 py-3 text-gray-600">{{ g.authorized_pickup_person|default:"—" }}</td>
               <td class="px-4 py-3">
                 {% if g.is_primary_contact %}{% include "components/badge.html" with status="success" text="Yes" %}
-                {% else %}<span class="text-gray-400">No</span>{% endif %}
+                {% else %}<span class="text-gray-400">No</span> {% endif %}
               </td>
               <td class="px-4 py-3 text-right">
+                <button type="button" class="edit-guardian-btn p-1.5 text-gray-400 hover:text-primary transition-colors mr-1" title="Edit" data-guardian-pk="{{ g.pk }}" data-guardian-name="{{ g.guardian.get_full_name|default:g.guardian.username }}" data-relationship="{{ g.relationship }}" data-occupation="{{ g.occupation|default:'' }}" data-address="{{ g.address|default:'' }}" data-authorized-pickup-person="{{ g.authorized_pickup_person|default:'' }}" data-email="{{ g.guardian.email|default:'' }}" data-phone="{{ g.guardian.phone_number|default:'' }}" data-is-primary="{% if g.is_primary_contact %}true{% else %}false{% endif %}">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                </button>
                 <form method="post" action="{% url 'school_admin:student_delete_guardian' g.pk %}" onsubmit="return confirm('Remove this guardian link?')" class="inline">
                   {% csrf_token %}
                   <button type="submit" class="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="Remove"><i data-lucide="user-x" class="w-4 h-4"></i></button>
@@ -180,6 +197,16 @@
                      class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
             </div>
             <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Occupation</label>
+              <input type="text" name="guardian_occupation"
+                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
+              <input type="text" name="guardian_address"
+                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </div>
+            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Relationship</label>
               <select name="relationship"
                       class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
@@ -188,6 +215,11 @@
                 <option value="GUARDIAN" selected>Guardian</option>
                 <option value="OTHER">Other</option>
               </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Authorized Person for After-School Pick-up</label>
+              <input type="text" name="guardian_authorized_pickup_person"
+                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Passport Photo <span class="text-gray-400 font-normal">(Optional)</span></label>
@@ -205,6 +237,68 @@
               <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i>Save Guardian
             </button>
             <button type="button" id="cancel-guardian-form" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</button>
+          </div>
+        </form>
+
+        <form method="post" action="{% url 'school_admin:student_edit_guardian' 0 %}" enctype="multipart/form-data" id="edit-guardian-form" class="hidden mt-4 p-5 bg-gray-50 rounded-xl border border-gray-100 space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="guardian_link_pk" id="edit-guardian-link-pk">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">First Name <span class="text-red-500">*</span></label>
+              <input type="text" name="guardian_first_name" id="edit-guardian-first-name" required
+                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Last Name <span class="text-red-500">*</span></label>
+              <input type="text" name="guardian_last_name" id="edit-guardian-last-name" required
+                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Email <span class="text-gray-400 font-normal">(Optional)</span></label>
+              <input type="email" name="guardian_email" id="edit-guardian-email"
+                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Phone Number <span class="text-gray-400 font-normal">(Optional)</span></label>
+              <input type="text" name="guardian_phone_number" id="edit-guardian-phone"
+                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Occupation</label>
+              <input type="text" name="guardian_occupation" id="edit-guardian-occupation"
+                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
+              <input type="text" name="guardian_address" id="edit-guardian-address"
+                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Relationship</label>
+              <select name="relationship" id="edit-guardian-relationship"
+                      class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                <option value="FATHER">Father</option>
+                <option value="MOTHER">Mother</option>
+                <option value="GUARDIAN">Guardian</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Authorized Person for After-School Pick-up</label>
+              <input type="text" name="guardian_authorized_pickup_person" id="edit-guardian-authorized-pickup-person"
+                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input type="checkbox" name="is_primary_contact" id="edit-is-primary-guardian" value="on" class="rounded border-gray-300 text-primary focus:ring-primary">
+            <label for="edit-is-primary-guardian" class="text-sm text-gray-600">Set as primary contact</label>
+          </div>
+          <div class="flex items-center gap-3 pt-1">
+            <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+              <i data-lucide="save" class="w-4 h-4 mr-2"></i>Update Guardian
+            </button>
+            <button type="button" id="cancel-edit-guardian-form" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</button>
           </div>
         </form>
       </div>
@@ -368,10 +462,36 @@
     const form = document.getElementById('add-guardian-form');
     form.classList.remove('hidden');
     this.classList.add('hidden');
+    document.getElementById('edit-guardian-form').classList.add('hidden');
   });
   document.getElementById('cancel-guardian-form').addEventListener('click', function () {
     const form = document.getElementById('add-guardian-form');
     form.classList.add('hidden');
+    document.getElementById('toggle-guardian-form').classList.remove('hidden');
+    document.getElementById('edit-guardian-form').classList.add('hidden');
+  });
+
+  document.querySelectorAll('.edit-guardian-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const form = document.getElementById('edit-guardian-form');
+      document.getElementById('edit-guardian-link-pk').value = this.dataset.guardianPk;
+      document.getElementById('edit-guardian-first-name').value = this.dataset.guardianName.split(' ')[0] || '';
+      document.getElementById('edit-guardian-last-name').value = this.dataset.guardianName.split(' ').slice(1).join(' ') || '';
+      document.getElementById('edit-guardian-email').value = this.dataset.email || '';
+      document.getElementById('edit-guardian-phone').value = this.dataset.phone || '';
+      document.getElementById('edit-guardian-relationship').value = this.dataset.relationship || 'GUARDIAN';
+      document.getElementById('edit-guardian-occupation').value = this.dataset.occupation || '';
+      document.getElementById('edit-guardian-address').value = this.dataset.address || '';
+      document.getElementById('edit-guardian-authorized-pickup-person').value = this.dataset.authorizedPickupPerson || '';
+      document.getElementById('edit-is-primary-guardian').checked = this.dataset.isPrimary === 'true';
+      form.action = form.action.replace(/\/\d+\/$/, '/' + this.dataset.guardianPk + '/');
+      form.classList.remove('hidden');
+      document.getElementById('add-guardian-form').classList.add('hidden');
+      document.getElementById('toggle-guardian-form').classList.add('hidden');
+    });
+  });
+  document.getElementById('cancel-edit-guardian-form').addEventListener('click', function() {
+    document.getElementById('edit-guardian-form').classList.add('hidden');
     document.getElementById('toggle-guardian-form').classList.remove('hidden');
   });
 </script>

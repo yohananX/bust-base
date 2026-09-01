@@ -74,6 +74,16 @@ class Student(TenantScopedModel):
         blank=True,
         verbose_name=_('passport'),
     )
+    state_of_origin = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_('state of origin'),
+    )
+    local_government_area = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_('local government area (L.G.A.)'),
+    )
     updated_at = models.DateTimeField(
         auto_now=True,
         db_index=True,
@@ -194,6 +204,21 @@ class StudentGuardianLink(TenantScopedModel):
         verbose_name=_('relationship'),
     )
     is_primary_contact = models.BooleanField(default=False, verbose_name=_('primary contact'))
+    occupation = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_('guardian occupation'),
+    )
+    address = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_('guardian address'),
+    )
+    authorized_pickup_person = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_('authorized person for after-school pick-up'),
+    )
     other_phones = models.JSONField(
         default=list,
         blank=True,

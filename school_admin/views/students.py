@@ -219,6 +219,8 @@ class StudentCreateView(RoleRequiredMixin, View):
                     gender=gender,
                     admission_date=parse_date(admission_date),
                     status=status,
+                    state_of_origin=request.POST.get('state_of_origin', '').strip(),
+                    local_government_area=request.POST.get('local_government_area', '').strip(),
                 )
                 student.full_clean()
                 student.save()
@@ -253,6 +255,9 @@ class StudentCreateView(RoleRequiredMixin, View):
                     email = request.POST.get(f'guardian_{guardian_index}_email', '').strip()
                     phone = request.POST.get(f'guardian_{guardian_index}_phone', '').strip()
                     relationship = request.POST.get(f'guardian_{guardian_index}_relationship', 'GUARDIAN')
+                    occupation = request.POST.get(f'guardian_{guardian_index}_occupation', '').strip()
+                    address = request.POST.get(f'guardian_{guardian_index}_address', '').strip()
+                    authorized_pickup_person = request.POST.get(f'guardian_{guardian_index}_authorized_pickup_person', '').strip()
 
                     if not name and not email and not phone:
                         break
@@ -267,6 +272,9 @@ class StudentCreateView(RoleRequiredMixin, View):
                             guardian=parent_user,
                             relationship=relationship,
                             is_primary_contact=(guardian_index == 0),
+                            occupation=occupation,
+                            address=address,
+                            authorized_pickup_person=authorized_pickup_person,
                         )
 
                     guardian_index += 1
@@ -341,6 +349,8 @@ class StudentEditView(RoleRequiredMixin, View):
                 student.gender = gender
                 student.admission_date = parse_date(admission_date)
                 student.status = status
+                student.state_of_origin = request.POST.get('state_of_origin', '').strip()
+                student.local_government_area = request.POST.get('local_government_area', '').strip()
                 student.save()
 
                 # Attach uploaded passport to student and user
@@ -508,6 +518,9 @@ class StudentGuardianCreateView(RoleRequiredMixin, View):
         email = request.POST.get('guardian_email', '').strip()
         phone_number = request.POST.get('guardian_phone_number', '').strip()
         relationship = request.POST.get('relationship', 'GUARDIAN')
+        occupation = request.POST.get('guardian_occupation', '').strip()
+        address = request.POST.get('guardian_address', '').strip()
+        authorized_pickup_person = request.POST.get('guardian_authorized_pickup_person', '').strip()
         is_primary_contact = request.POST.get('is_primary_contact') == 'on'
 
         if not first_name or not last_name:
@@ -544,6 +557,9 @@ class StudentGuardianCreateView(RoleRequiredMixin, View):
                     guardian=guardian,
                     relationship=relationship,
                     is_primary_contact=is_primary_contact,
+                    occupation=occupation,
+                    address=address,
+                    authorized_pickup_person=authorized_pickup_person,
                     school=school,
                 )
                 link.full_clean()
@@ -608,3 +624,34 @@ class StudentGuardianLinkDeleteView(RoleRequiredMixin, View):
         link.delete()
         messages.success(request, 'Guardian link removed.')
         return redirect('school_admin:student_detail', pk=student_id)
+
+
+class StudentGuardianUpdateView(RoleRequiredMixin, View):
+    """Edit an existing guardian link and its parent user details."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk):
+        school = request.school
+        link = get_object_or_404(StudentGuardianLink, pk=pk, student__school=school)
+        student = link.student
+        guardian = link.guardian
+
+        guardian.first_name = request.POST.get('guardian_first_name', '').strip()
+        guardian.last_name = request.POST.get('guardian_last_name', '').strip()
+        guardian.email = request.POST.get('guardian_email', '').strip()
+        guardian.phone_number = request.POST.get('guardian_phone_number', '').strip()
+        guardian.save(update_fields=['first_name', 'last_name', 'email', 'phone_number'])
+
+        link.relationship = request.POST.get('relationship', link.relationship)
+        link.occupation = request.POST.get('guardian_occupation', '').strip()
+        link.address = request.POST.get('guardian_address', '').strip()
+        link.authorized_pickup_person = request.POST.get('guardian_authorized_pickup_person', '').strip()
+        link.is_primary_contact = request.POST.get('is_primary_contact') == 'on'
+
+        if link.is_primary_contact:
+            StudentGuardianLink.objects.filter(student=student).exclude(pk=link.pk).update(is_primary_contact=False)
+
+        link.save()
+        messages.success(request, 'Guardian updated successfully.')
+        return redirect('school_admin:student_detail', pk=student.pk)

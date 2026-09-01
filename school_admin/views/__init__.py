@@ -3,7 +3,7 @@ from .students import (
     StudentListView, StudentCreateView, StudentDetailView,
     StudentEditView, StudentDeleteView, StudentChangeClassView,
     StudentPasswordChangeView,
-    StudentGuardianCreateView, StudentGuardianLinkDeleteView,
+    StudentGuardianCreateView, StudentGuardianLinkDeleteView, StudentGuardianUpdateView,
 )
 from .staff import StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView
 from .parents import ParentListView
