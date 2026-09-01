@@ -239,50 +239,57 @@
       <script>
         let guardianIndex = 1;
         function addGuardian() {
-          const container = document.getElementById('guardians-container');
-          const entry = document.createElement('div');
-          entry.className = 'guardian-entry bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100';
-          entry.innerHTML = `
-            <div class="mb-3">
-              <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Name</label>
-              <input type="text" name="guardian_${guardianIndex}_name" class="guardian-name w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="e.g. Jane Doe">
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-              <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Email <span class="text-gray-400 font-normal">(Optional)</span></label>
-                <input type="email" name="guardian_${guardianIndex}_email" class="guardian-email w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+          try {
+            const container = document.getElementById('guardians-container');
+            if (!container) return;
+            const entry = document.createElement('div');
+            entry.className = 'guardian-entry bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100';
+            entry.innerHTML = `
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Name</label>
+                <input type="text" name="guardian_${guardianIndex}_name" class="guardian-name w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="e.g. Jane Doe">
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Phone <span class="text-gray-400 font-normal">(Optional)</span></label>
-                <input type="text" name="guardian_${guardianIndex}_phone" class="guardian-phone w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                <div>
+                  <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Email <span class="text-gray-400 font-normal">(Optional)</span></label>
+                  <input type="email" name="guardian_${guardianIndex}_email" class="guardian-email w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Phone <span class="text-gray-400 font-normal">(Optional)</span></label>
+                  <input type="text" name="guardian_${guardianIndex}_phone" class="guardian-phone w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                </div>
               </div>
-            </div>
-            <div class="mb-1">
-              <label class="block text-sm font-medium text-gray-600 mb-1.5">Relationship</label>
-              <select name="guardian_${guardianIndex}_relationship" class="guardian-relationship w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
-                <option value="FATHER">Father</option>
-                <option value="MOTHER">Mother</option>
-                <option value="GUARDIAN" selected>Guardian</option>
-                <option value="OTHER">Other</option>
-              </select>
-            </div>
-            <div class="mb-1">
-              <label class="block text-sm font-medium text-gray-600 mb-1.5">Guardian Occupation</label>
-              <input type="text" name="guardian_${guardianIndex}_occupation" class="guardian-occupation w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
-            </div>
-            <div class="mb-1">
-              <label class="block text-sm font-medium text-gray-600 mb-1.5">Guardian Address</label>
-              <input type="text" name="guardian_${guardianIndex}_address" class="guardian-address w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
-            </div>
-            <div class="mb-1">
-              <label class="block text-sm font-medium text-gray-600 mb-1.5">Authorized Person for After-School Pick-up</label>
-              <input type="text" name="guardian_${guardianIndex}_authorized_pickup_person" class="guardian-authorized-pickup-person w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
-            </div>
-            <button type="button" onclick="removeGuardian(this)" class="text-xs text-red-500 hover:text-red-700 mt-2">Remove</button>
-          `;
-          container.appendChild(entry);
-          guardianIndex++;
-          lucide.createIcons();
+              <div class="mb-1">
+                <label class="block text-sm font-medium text-gray-600 mb-1.5">Relationship</label>
+                <select name="guardian_${guardianIndex}_relationship" class="guardian-relationship w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                  <option value="FATHER">Father</option>
+                  <option value="MOTHER">Mother</option>
+                  <option value="GUARDIAN" selected>Guardian</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div class="mb-1">
+                <label class="block text-sm font-medium text-gray-600 mb-1.5">Guardian Occupation</label>
+                <input type="text" name="guardian_${guardianIndex}_occupation" class="guardian-occupation w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+              </div>
+              <div class="mb-1">
+                <label class="block text-sm font-medium text-gray-600 mb-1.5">Guardian Address</label>
+                <input type="text" name="guardian_${guardianIndex}_address" class="guardian-address w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+              </div>
+              <div class="mb-1">
+                <label class="block text-sm font-medium text-gray-600 mb-1.5">Authorized Person for After-School Pick-up</label>
+                <input type="text" name="guardian_${guardianIndex}_authorized_pickup_person" class="guardian-authorized-pickup-person w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+              </div>
+              <button type="button" onclick="removeGuardian(this)" class="text-xs text-red-500 hover:text-red-700 mt-2">Remove</button>
+            `;
+            container.appendChild(entry);
+            guardianIndex += 1;
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+              window.lucide.createIcons();
+            }
+          } catch (e) {
+            console.error('addGuardian failed:', e);
+          }
         }
         function removeGuardian(btn) {
           const entry = btn.closest('.guardian-entry');
