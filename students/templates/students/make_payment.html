@@ -108,18 +108,37 @@
               {% for cid, co in checkouts_by_child.items %}
                 {% if cid == child.pk %}
 
+                  {# ---- Outstanding balance (always pre-selected when present) ---- #}
+                  {% if co.outstanding %}
+                  <label class="fee-row flex items-start gap-3 p-4 rounded-xl border border-primary/30 bg-primary-tint/40 hover:border-primary hover:bg-primary-tint/60 cursor-pointer transition-all mb-2 has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
+                    <input type="checkbox" name="item" value="{{ co.outstanding.key }}" data-amount="{{ co.outstanding.amount }}"
+                           data-role="fee-checkbox" data-group="outstanding"
+                           class="mt-1 accent-primary" checked>
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-bold text-gray-900">{{ co.outstanding.term_name }} — Outstanding School Fees</span>
+                        <span class="text-xs font-medium text-gray-500">{{ co.outstanding.term_name }}</span>
+                      </span>
+                      <span class="block text-xs text-gray-500 mt-0.5">Current balance on the term invoice. Check to include in this payment.</span>
+                    </span>
+                    <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ co.outstanding.amount|floatformat:2 }}</span>
+                  </label>
+                  {% endif %}
+
                   {# ---- Full-term bundle (new vs returning) ---- #}
                   {% if co.bundle and not co.bundle.billed %}
-                  <label class="bundle-option flex items-start gap-3 p-4 rounded-xl border border-primary/30 bg-primary-tint/40 hover:border-primary hover:bg-primary-tint/60 cursor-pointer transition-all mb-3">
-                    <input type="radio" name="item" value="{{ co.bundle.key }}" data-amount="{{ co.bundle.amount }}"
-                           class="mt-1 accent-primary" checked>
+                  <label class="bundle-option flex items-start gap-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50 hover:border-emerald-400 cursor-pointer transition-all mb-2 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-100/70"
+                         data-role="bundle-row">
+                    <input type="radio" name="item-bundle" value="{{ co.bundle.key }}" data-amount="{{ co.bundle.amount }}"
+                           data-role="bundle-radio"
+                           class="mt-1 accent-emerald-600">
                     <span class="flex-1 min-w-0">
                       <span class="flex items-center justify-between gap-2">
                         <span class="text-sm font-bold text-gray-900">{{ co.bundle.label }}</span>
                         <span class="text-xs font-medium text-gray-500">{{ co.bundle.term_name }}</span>
                       </span>
-                      <span class="block text-xs text-gray-500 mt-0.5">Full fees for {{ co.bundle.term_name }} — includes all applicable categories below.</span>
-                      <button type="button" class="text-xs font-semibold text-primary hover:underline mt-1" onclick="this.nextElementSibling.classList.toggle('hidden')">View breakdown</button>
+                      <span class="block text-xs text-gray-500 mt-0.5">Full fees for {{ co.bundle.term_name }} — pay all categories at once.</span>
+                      <button type="button" class="text-xs font-semibold text-emerald-700 hover:underline mt-1" onclick="this.nextElementSibling.classList.toggle('hidden')">View breakdown</button>
                       <div class="hidden mt-2 space-y-1">
                         {% for bi in co.bundle.bundle_items %}
                         <div class="flex items-center justify-between text-xs text-gray-600">
@@ -133,42 +152,99 @@
                         </div>
                       </div>
                     </span>
+                    <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ co.bundle.amount|floatformat:2 }}</span>
                   </label>
                   {% endif %}
 
-                  {# ---- Multi-select dropdown of payable options ---- #}
-                  <select name="item" data-role="item-select" multiple
-                          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-                    {% if co.outstanding %}
-                    <option value="{{ co.outstanding.key }}" data-amount="{{ co.outstanding.amount }}" selected>
-                      {{ co.outstanding.term_name }} &mdash; School Fees (&#8358;{{ co.outstanding.amount|floatformat:2 }})
-                    </option>
-                    {% endif %}
-                    {% for opt in co.extras %}
-                      {% if not opt.billed %}
-                      <option value="{{ opt.key }}" data-amount="{{ opt.amount }}">{{ opt.label }}</option>
+                  {# ---- Select-all + checklist of payable options ---- #}
+                  {% if co.extras or co.next_term %}
+                  <div class="mt-1 mb-1 flex items-center justify-between px-1">
+                    <label class="flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer select-none">
+                      <input type="checkbox" data-role="select-all-fees"
+                             class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
+                      <span>Select all payable items</span>
+                    </label>
+                    <span class="text-[11px] text-gray-500" data-role="select-summary">0 selected</span>
+                  </div>
+
+                  {% if co.grouped_extras %}
+                    {% for group_name, opts in co.grouped_extras.items %}
+                      {% if opts %}
+                      <div class="mb-3">
+                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 px-1">{{ group_name }}</p>
+                        <div class="space-y-2">
+                          {% for opt in opts %}
+                            {% if not opt.billed %}
+                            <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
+                              <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
+                                     data-role="fee-checkbox" data-group="extras"
+                                     class="mt-1 accent-primary">
+                              <span class="flex-1 min-w-0">
+                                <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
+                                <span class="block text-xs text-gray-500 mt-0.5">{{ opt.term_name }}</span>
+                              </span>
+                              <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                            </label>
+                            {% endif %}
+                          {% endfor %}
+                        </div>
+                      </div>
                       {% endif %}
                     {% endfor %}
-                    {% if co.next_term %}
-                      {% for opt in co.next_term.options %}
+                  {% else %}
+                    <div class="space-y-2">
+                      {% for opt in co.extras %}
                         {% if not opt.billed %}
-                        <option value="{{ opt.key }}" data-amount="{{ opt.amount }}">{{ co.next_term.term_name }} &mdash; {{ opt.label }}</option>
+                        <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
+                          <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
+                                 data-role="fee-checkbox" data-group="extras"
+                                 class="mt-1 accent-primary">
+                          <span class="flex-1 min-w-0">
+                            <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">{{ opt.term_name }}</span>
+                          </span>
+                          <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                        </label>
                         {% endif %}
                       {% endfor %}
-                    {% endif %}
-                  </select>
-                  <p class="text-[10px] text-gray-400 mt-1">Hold Ctrl or Cmd to select multiple items.</p>
+                    </div>
+                  {% endif %}
+
+                  {% if co.next_term and co.next_term.options %}
+                  <div class="mt-4">
+                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 px-1">{{ co.next_term.term_name }} — Pre-pay</p>
+                    <div class="space-y-2">
+                      {% for opt in co.next_term.options %}
+                        {% if not opt.billed %}
+                        <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
+                          <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
+                                 data-role="fee-checkbox" data-group="next"
+                                 class="mt-1 accent-primary">
+                          <span class="flex-1 min-w-0">
+                            <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">{{ co.next_term.term_name }}</span>
+                          </span>
+                          <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                        </label>
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                  </div>
+                  {% endif %}
+
+                  <p class="text-[10px] text-gray-400 mt-1">Check or uncheck the items you want to pay for.</p>
+                  {% endif %}
 
                   {# ---- Negotiable amount for this child ---- #}
-                  <div class="pt-1">
-                    <label for="child-amount-{{ child.pk }}" class="text-xs font-medium text-gray-600">Enter amount to pay</label>
+                  <div class="pt-3 mt-1 border-t border-gray-100">
+                    <label for="child-amount-{{ child.pk }}" class="text-xs font-medium text-gray-600">Amount to pay</label>
                     <div class="relative mt-1.5 max-w-[220px]">
                       <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-xs">&#8358;</span>
                       <input type="number" id="child-amount-{{ child.pk }}" data-role="child-amount"
                              step="0.01" min="0"
                              class="w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm tabular-nums font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
                     </div>
-
+                    <p class="text-xs text-gray-400 mt-1">Defaults to the full selected total — lower it to pay a partial amount.</p>
                   </div>
 
                 {% endif %}
@@ -216,18 +292,37 @@
               {% for cid, co in checkouts_by_child.items %}
                 {% if cid == student.pk %}
 
+                  {# ---- Outstanding balance (always pre-selected when present) ---- #}
+                  {% if co.outstanding %}
+                  <label class="fee-row flex items-start gap-3 p-4 rounded-xl border border-primary/30 bg-primary-tint/40 hover:border-primary hover:bg-primary-tint/60 cursor-pointer transition-all mb-2 has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
+                    <input type="checkbox" name="item" value="{{ co.outstanding.key }}" data-amount="{{ co.outstanding.amount }}"
+                           data-role="fee-checkbox" data-group="outstanding"
+                           class="mt-1 accent-primary" checked>
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-bold text-gray-900">{{ co.outstanding.term_name }} — Outstanding School Fees</span>
+                        <span class="text-xs font-medium text-gray-500">{{ co.outstanding.term_name }}</span>
+                      </span>
+                      <span class="block text-xs text-gray-500 mt-0.5">Current balance on the term invoice. Check to include in this payment.</span>
+                    </span>
+                    <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ co.outstanding.amount|floatformat:2 }}</span>
+                  </label>
+                  {% endif %}
+
                   {# ---- Full-term bundle (new vs returning) ---- #}
                   {% if co.bundle and not co.bundle.billed %}
-                  <label class="bundle-option flex items-start gap-3 p-4 rounded-xl border border-primary/30 bg-primary-tint/40 hover:border-primary hover:bg-primary-tint/60 cursor-pointer transition-all mb-3">
-                    <input type="radio" name="item" value="{{ co.bundle.key }}" data-amount="{{ co.bundle.amount }}"
-                           class="mt-1 accent-primary" checked>
+                  <label class="bundle-option flex items-start gap-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50 hover:border-emerald-400 cursor-pointer transition-all mb-2 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-100/70"
+                         data-role="bundle-row">
+                    <input type="radio" name="item-bundle" value="{{ co.bundle.key }}" data-amount="{{ co.bundle.amount }}"
+                           data-role="bundle-radio"
+                           class="mt-1 accent-emerald-600">
                     <span class="flex-1 min-w-0">
                       <span class="flex items-center justify-between gap-2">
                         <span class="text-sm font-bold text-gray-900">{{ co.bundle.label }}</span>
                         <span class="text-xs font-medium text-gray-500">{{ co.bundle.term_name }}</span>
                       </span>
-                      <span class="block text-xs text-gray-500 mt-0.5">Full fees for {{ co.bundle.term_name }} — includes all applicable categories below.</span>
-                      <button type="button" class="text-xs font-semibold text-primary hover:underline mt-1" onclick="this.nextElementSibling.classList.toggle('hidden')">View breakdown</button>
+                      <span class="block text-xs text-gray-500 mt-0.5">Full fees for {{ co.bundle.term_name }} — pay all categories at once.</span>
+                      <button type="button" class="text-xs font-semibold text-emerald-700 hover:underline mt-1" onclick="this.nextElementSibling.classList.toggle('hidden')">View breakdown</button>
                       <div class="hidden mt-2 space-y-1">
                         {% for bi in co.bundle.bundle_items %}
                         <div class="flex items-center justify-between text-xs text-gray-600">
@@ -241,42 +336,99 @@
                         </div>
                       </div>
                     </span>
+                    <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ co.bundle.amount|floatformat:2 }}</span>
                   </label>
                   {% endif %}
 
-                  {# ---- Multi-select dropdown of payable options ---- #}
-                  <select name="item" data-role="item-select" multiple
-                          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-                    {% if co.outstanding %}
-                    <option value="{{ co.outstanding.key }}" data-amount="{{ co.outstanding.amount }}" selected>
-                      {{ co.outstanding.term_name }} &mdash; School Fees (&#8358;{{ co.outstanding.amount|floatformat:2 }})
-                    </option>
-                    {% endif %}
-                    {% for opt in co.extras %}
-                      {% if not opt.billed %}
-                      <option value="{{ opt.key }}" data-amount="{{ opt.amount }}">{{ opt.label }}</option>
+                  {# ---- Select-all + checklist of payable options ---- #}
+                  {% if co.extras or co.next_term %}
+                  <div class="mt-1 mb-1 flex items-center justify-between px-1">
+                    <label class="flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer select-none">
+                      <input type="checkbox" data-role="select-all-fees"
+                             class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
+                      <span>Select all payable items</span>
+                    </label>
+                    <span class="text-[11px] text-gray-500" data-role="select-summary">0 selected</span>
+                  </div>
+
+                  {% if co.grouped_extras %}
+                    {% for group_name, opts in co.grouped_extras.items %}
+                      {% if opts %}
+                      <div class="mb-3">
+                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 px-1">{{ group_name }}</p>
+                        <div class="space-y-2">
+                          {% for opt in opts %}
+                            {% if not opt.billed %}
+                            <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
+                              <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
+                                     data-role="fee-checkbox" data-group="extras"
+                                     class="mt-1 accent-primary">
+                              <span class="flex-1 min-w-0">
+                                <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
+                                <span class="block text-xs text-gray-500 mt-0.5">{{ opt.term_name }}</span>
+                              </span>
+                              <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                            </label>
+                            {% endif %}
+                          {% endfor %}
+                        </div>
+                      </div>
                       {% endif %}
                     {% endfor %}
-                    {% if co.next_term %}
-                      {% for opt in co.next_term.options %}
+                  {% else %}
+                    <div class="space-y-2">
+                      {% for opt in co.extras %}
                         {% if not opt.billed %}
-                        <option value="{{ opt.key }}" data-amount="{{ opt.amount }}">{{ co.next_term.term_name }} &mdash; {{ opt.label }}</option>
+                        <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
+                          <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
+                                 data-role="fee-checkbox" data-group="extras"
+                                 class="mt-1 accent-primary">
+                          <span class="flex-1 min-w-0">
+                            <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">{{ opt.term_name }}</span>
+                          </span>
+                          <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                        </label>
                         {% endif %}
                       {% endfor %}
-                    {% endif %}
-                  </select>
-                  <p class="text-[10px] text-gray-400 mt-1">Hold Ctrl or Cmd to select multiple items.</p>
+                    </div>
+                  {% endif %}
+
+                  {% if co.next_term and co.next_term.options %}
+                  <div class="mt-4">
+                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 px-1">{{ co.next_term.term_name }} — Pre-pay</p>
+                    <div class="space-y-2">
+                      {% for opt in co.next_term.options %}
+                        {% if not opt.billed %}
+                        <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
+                          <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
+                                 data-role="fee-checkbox" data-group="next"
+                                 class="mt-1 accent-primary">
+                          <span class="flex-1 min-w-0">
+                            <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">{{ co.next_term.term_name }}</span>
+                          </span>
+                          <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
+                        </label>
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                  </div>
+                  {% endif %}
+
+                  <p class="text-[10px] text-gray-400 mt-1">Check or uncheck the items you want to pay for.</p>
+                  {% endif %}
 
                   {# ---- Negotiable amount for this student ---- #}
-                  <div class="pt-1">
-                    <label for="child-amount-{{ student.pk }}" class="text-xs font-medium text-gray-600">Enter amount to pay</label>
+                  <div class="pt-3 mt-1 border-t border-gray-100">
+                    <label for="child-amount-{{ student.pk }}" class="text-xs font-medium text-gray-600">Amount to pay</label>
                     <div class="relative mt-1.5 max-w-[220px]">
                       <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-xs">&#8358;</span>
                       <input type="number" id="child-amount-{{ student.pk }}" data-role="child-amount"
                              step="0.01" min="0"
                              class="w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm tabular-nums font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
                     </div>
-                    <p class="text-xs text-gray-400 mt-1">Enter Amount.</p>
+                    <p class="text-xs text-gray-400 mt-1">Defaults to the full selected total — lower it to pay a partial amount.</p>
                   </div>
 
                 {% endif %}
@@ -480,13 +632,14 @@
     return null;
   }
 
-  /* Full amount for the active block: sum of selected dropdown options' amounts
-     (checkout mode) or the checked invoice balance (fallback mode). */
+  /* Full amount for the active block.
+     - bundle radio checked → bundle amount (and bundle is mutually exclusive with items)
+     - else → sum of checked item checkboxes */
   function blockFull(block) {
     if (!block) return 0;
-    var radio = block.querySelector('input[name="item"]:checked');
-    if (radio && radio.getAttribute('data-amount') && radio.closest('.bundle-option')) {
-      var b = parseFloat(radio.getAttribute('data-amount'));
+    var bundleRadio = block.querySelector('input[name="item-bundle"]:checked');
+    if (bundleRadio) {
+      var b = parseFloat(bundleRadio.getAttribute('data-amount'));
       return isNaN(b) ? 0 : b;
     }
     var invRadio = block.querySelector('input[name="invoice_id"]:checked');
@@ -494,20 +647,16 @@
       var b = parseFloat(invRadio.getAttribute('data-balance'));
       return isNaN(b) ? 0 : b;
     }
-    var sel = block.querySelector('select[name="item"]');
-    if (!sel) return 0;
+    var boxes = block.querySelectorAll('input[name="item"]:checked');
     var total = 0;
-    for (var i = 0; i < sel.options.length; i++) {
-      var opt = sel.options[i];
-      if (opt.selected) {
-        var n = parseFloat(opt.getAttribute('data-amount'));
-        if (!isNaN(n)) total += n;
-      }
+    for (var i = 0; i < boxes.length; i++) {
+      var n = parseFloat(boxes[i].getAttribute('data-amount'));
+      if (!isNaN(n)) total += n;
     }
     return total;
   }
 
-  /* Set the amount field to the sum of selected options' full amount. */
+  /* Set the amount field to the sum of selected items (defaults to selected total). */
   function setAmountFromSelection(block) {
     var amountField = block ? block.querySelector('input[data-role="child-amount"]') : null;
     var full = blockFull(block);
@@ -515,15 +664,14 @@
     return full;
   }
 
-  /* Recompute the running total from the editable amount field (defaults to
-     the selected option's full amount; the user may lower it to pay partial). */
+  /* Update the visible cart-total and the hidden amount input. */
   function recalc() {
     var block = activeBlock();
     var full = blockFull(block);
     var amountField = block ? block.querySelector('input[data-role="child-amount"]') : null;
     var total = full;
     if (amountField) {
-      if (amountField.value === '' || amountField.value === '0.00') {
+      if (amountField.value === '' || amountField.value === '0.00' || amountField.value === '0') {
         amountField.value = full.toFixed(2);
       } else {
         var v = parseFloat(amountField.value);
@@ -532,6 +680,23 @@
     }
     if (amountInput) amountInput.value = total.toFixed(2);
     if (totalValue) totalValue.textContent = fmt(total);
+    syncSelectAll(block);
+  }
+
+  /* Sync the per-block "Select all" checkbox to the current item state. */
+  function syncSelectAll(block) {
+    if (!block) return;
+    var selectAll = block.querySelector('input[data-role="select-all-fees"]');
+    var summary = block.querySelector('[data-role="select-summary"]');
+    var boxes = Array.prototype.slice.call(
+      block.querySelectorAll('input[data-role="fee-checkbox"]')
+    );
+    var checkedCount = boxes.filter(function (b) { return b.checked; }).length;
+    if (selectAll) {
+      selectAll.checked = boxes.length > 0 && checkedCount === boxes.length;
+      selectAll.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+    }
+    if (summary) summary.textContent = checkedCount + ' of ' + boxes.length + ' selected';
   }
 
   /* Show only the selected child's cart; disable inactive blocks so only the
@@ -553,23 +718,19 @@
     recalc();
   }
 
-  /* Sync bundle radio with multi-select: when bundle is checked, disable the
-     multi-select so the user knows the bundle is the authoritative selection. */
+  /* Sync bundle radio with item checkboxes. When the bundle is checked, we
+     uncheck + disable the item boxes; when the user unchecks the bundle, the
+     previous per-item state is restored from the prior session. */
   function syncBundleUI(block) {
     if (!block) return;
-    var bundleRadio = block.querySelector('.bundle-option input[type="radio"]');
-    var multiSelect = block.querySelector('select[name="item"]');
-    if (bundleRadio && multiSelect) {
-      multiSelect.disabled = bundleRadio.checked;
-      if (bundleRadio.checked) {
-        multiSelect.selectedIndex = -1;
-        for (var i = 0; i < multiSelect.options.length; i++) {
-          multiSelect.options[i].selected = false;
-        }
-      } else {
-        multiSelect.disabled = false;
-      }
+    var bundleRadio = block.querySelector('input[name="item-bundle"]:checked');
+    var itemBoxes = block.querySelectorAll('input[name="item"]');
+    for (var i = 0; i < itemBoxes.length; i++) {
+      itemBoxes[i].disabled = !!bundleRadio;
+      if (bundleRadio) itemBoxes[i].checked = false;
     }
+    var selectAll = block.querySelector('input[data-role="select-all-fees"]');
+    if (selectAll) selectAll.disabled = !!bundleRadio;
   }
 
   /* Swap the bank/paystack panels to match the selected method. */
@@ -589,16 +750,32 @@
   if (form) {
     form.addEventListener('change', function (e) {
       var t = e.target;
-      if (t && t.name === 'item') {
-        var block = t.closest('.child-cart');
-        if (t.type === 'radio' && t.closest('.bundle-option')) {
-          syncBundleUI(block);
+      if (!t) return;
+      var block = t.closest('.child-cart');
+      if (!block) {
+        if (t.name === 'method') syncMethodPanels();
+        return;
+      }
+      if (t.name === 'item-bundle') {
+        syncBundleUI(block);
+        setAmountFromSelection(block);
+        recalc();
+      } else if (t.dataset && t.dataset.role === 'select-all-fees') {
+        var boxes = block.querySelectorAll('input[data-role="fee-checkbox"]');
+        for (var i = 0; i < boxes.length; i++) {
+          if (!boxes[i].disabled) boxes[i].checked = t.checked;
         }
         setAmountFromSelection(block);
         recalc();
+      } else if (t.dataset && t.dataset.role === 'fee-checkbox') {
+        setAmountFromSelection(block);
+        recalc();
+      } else if (t.name === 'invoice_id') {
+        setAmountFromSelection(block);
+        recalc();
+      } else if (t.name === 'method') {
+        syncMethodPanels();
       }
-      if (t && t.name === 'invoice_id') recalc();
-      if (t && t.name === 'method') syncMethodPanels();
     });
     form.addEventListener('input', function (e) {
       var t = e.target;
@@ -611,19 +788,15 @@
       var block = activeBlock();
       var any = false;
       if (block) {
-        var sel = block.querySelector('select[name="item"]:not(:disabled)');
-        if (sel) {
-          for (var i = 0; i < sel.options.length; i++) {
-            if (sel.options[i].selected) { any = true; break; }
-          }
+        var bundleRadio = block.querySelector('input[name="item-bundle"]:checked');
+        if (bundleRadio) any = true;
+        if (!any) {
+          var boxes = block.querySelectorAll('input[name="item"]:checked:not(:disabled)');
+          if (boxes.length > 0) any = true;
         }
         if (!any) {
           var radio = block.querySelector('input[name="invoice_id"]:checked');
           if (radio) any = true;
-        }
-        if (!any) {
-          var bundleRadio = block.querySelector('.bundle-option input[type="radio"]:checked');
-          if (bundleRadio) any = true;
         }
       }
       if (!any) {

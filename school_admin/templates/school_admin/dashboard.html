@@ -149,24 +149,9 @@
       <div class="w-10 h-10 rounded-lg bg-success-tint flex items-center justify-center text-success">
         <i data-lucide="banknote" class="w-5 h-5"></i>
       </div>
-      <p class="text-2xl font-bold text-ink mt-4">&#8358;{{ outstanding_fees|floatformat:0 }}</p>
-      <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mt-1">Fees Due</p>
-      {% if owing_students %}
-      <p class="text-xs text-ink-muted mt-1.5">across {{ owing_students }} students</p>
-      {% endif %}
+      <p class="text-2xl font-bold text-ink mt-4">{{ owing_students|default:"0"|floatformat:0 }}</p>
+      <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mt-1">Owing Students</p>
     </a>
-
-    {# Collected this term #}
-    <div class="h-full bg-white rounded-2xl p-5 border border-line">
-      <div class="w-10 h-10 rounded-lg bg-warning-tint flex items-center justify-center text-warning">
-        <i data-lucide="wallet" class="w-5 h-5"></i>
-      </div>
-      <p class="text-2xl font-bold text-ink mt-4">&#8358;{{ collected_this_term|floatformat:0 }}</p>
-      <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mt-1">Collected This Term</p>
-      {% if current_term_name %}
-      <p class="text-xs text-ink-muted mt-1.5">{{ current_term_name }}</p>
-      {% endif %}
-    </div>
   </div>
 
   {# ── QUICK ACTIONS + PENDING ACTIONS ── #}
