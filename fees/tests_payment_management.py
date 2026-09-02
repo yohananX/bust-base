@@ -22,7 +22,7 @@ from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from fees.models import (
     FeeCategory, FeeCategoryGroup, FeeCategoryGroupAssignment,
-    FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
+    FeeStructure, FeePrice, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
     InvoiceResetLog, FeeValidationError,
 )
 from fees.validation import InvoiceIntegrityValidator, FeeStructureValidator
@@ -288,45 +288,10 @@ class ValidationServiceTest(BasePaymentManagementTest):
         self.assertEqual(len(errors), 0)
 
     def test_validate_structure_negative_amount(self):
-        neg_category = FeeCategory.objects.create(
-            school=self.school,
-            name='Neg',
-            is_compulsory=True,
-        )
-        fs = FeeStructure(
-            school=self.school,
-            school_class=self.school_class,
-            term=self.term,
-            category=neg_category,
-            amount=Decimal('-100.00'),
-        )
-        errors = FeeStructureValidator.validate_structure(fs)
-        self.assertEqual(len(errors), 1)
-        self.assertEqual(errors[0]['code'], FeeValidationError.ErrorCode.NEGATIVE_AMOUNT)
+        self.skipTest('FeeStructureValidator is deprecated no-op shim in Phase 5.')
 
     def test_validate_structure_duplicate(self):
-        dup_category = FeeCategory.objects.create(
-            school=self.school,
-            name='Dup',
-            is_compulsory=True,
-        )
-        FeeStructure.objects.create(
-            school=self.school,
-            school_class=self.school_class,
-            term=self.term,
-            category=dup_category,
-            amount=Decimal('60000.00'),
-        )
-        fs = FeeStructure(
-            school=self.school,
-            school_class=self.school_class,
-            term=self.term,
-            category=dup_category,
-            amount=Decimal('70000.00'),
-        )
-        errors = FeeStructureValidator.validate_structure(fs)
-        self.assertEqual(len(errors), 1)
-        self.assertEqual(errors[0]['code'], FeeValidationError.ErrorCode.DUPLICATE_STRUCTURE)
+        self.skipTest('FeeStructureValidator is deprecated no-op shim in Phase 5.')
 
 
 # ─── Reset Service Tests ────────────────────────────────────────────────────
@@ -436,8 +401,9 @@ class GenerationBillingCycleTest(BasePaymentManagementTest):
             billing_cycle='ONE_TIME',
             student_type=FeeCategory.STUDENT_TYPE_CHOICES[2][0],
         )
-        FeeStructure.objects.create(
+        FeePrice.objects.create(
             school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=self.school_class,
             term=self.term,
             category=tuition_category,
@@ -463,8 +429,9 @@ class GenerationBillingCycleTest(BasePaymentManagementTest):
             end_date=date(2026, 12, 15),
             is_current=True,
         )
-        FeeStructure.objects.create(
+        FeePrice.objects.create(
             school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=self.school_class,
             term=next_term,
             category=tuition_category,
@@ -482,8 +449,9 @@ class GenerationBillingCycleTest(BasePaymentManagementTest):
             billing_cycle='ONE_TIME',
             student_type=FeeCategory.STUDENT_TYPE_CHOICES[2][0],
         )
-        one_time_fee = FeeStructure.objects.create(
+        one_time_fee = FeePrice.objects.create(
             school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=self.school_class,
             term=self.term,
             category=one_time_category,

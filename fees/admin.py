@@ -7,7 +7,7 @@ from django.http import HttpResponseRedirect
 
 from .models import (
     FeeCategory, FeeCategoryGroup, FeeCategoryGroupAssignment,
-    FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
+    FeeStructure, FeePrice, FeePriceOverride, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
     InvoiceResetLog, FeeValidationError,
 )
 
@@ -101,20 +101,52 @@ class FeeCategoryAdmin(admin.ModelAdmin):
         return format_html('<span style="color: #2563eb; font-weight: bold;">Optional</span>')
 
 
-# ─── FeeStructure Admin ──────────────────────────────────────────────────────
+# ─── FeeStructure Admin (DEPRECATED — kept readable for one release) ─────────
 
 
 @admin.register(FeeStructure)
 class FeeStructureAdmin(admin.ModelAdmin):
-    list_display = ['school_class', 'term', 'category', 'amount', 'student_type', 'is_recurring_override', 'school']
-    list_filter = ['school_class', 'term', 'category', 'student_type', 'school']
+    list_display = ['scope', 'school_class', 'term', 'category', 'amount', 'student_type', 'is_recurring_override', 'deprecated', 'school']
+    list_filter = ['scope', 'school_class', 'term', 'category', 'student_type', 'deprecated', 'school']
     search_fields = ['school_class__name', 'category__name']
+    readonly_fields = ['deprecated', 'scope', 'school_class', 'term', 'category', 'amount', 'student_type', 'is_recurring_override', 'school']
 
-    def save_model(self, request, obj, form, change):
-        from .validation import FeeStructureValidator
-        super().save_model(request, obj, form, change)
-        if not change:
-            FeeStructureValidator.validate_and_log(obj)
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_queryset(self, request):
+        from django.contrib import messages
+        if not request.session.get('feestructure_deprecation_warned'):
+            messages.warning(
+                request,
+                'FeeStructure is deprecated. Use FeePrice for new pricing.',
+            )
+            request.session['feestructure_deprecation_warned'] = True
+        return super().get_queryset(request)
+
+
+@admin.register(FeePrice)
+class FeePriceAdmin(admin.ModelAdmin):
+    list_display = ['scope', 'school_class', 'level', 'term', 'category', 'amount', 'student_type', 'is_active', 'effective_from', 'effective_to', 'school']
+    list_filter = ['scope', 'school_class', 'level', 'term', 'category', 'student_type', 'is_active', 'school']
+    search_fields = ['school_class__name', 'level', 'category__name']
+    readonly_fields = ['school']
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj and obj.pk:
+            return self.readonly_fields + ['scope']
+        return self.readonly_fields
+
+
+@admin.register(FeePriceOverride)
+class FeePriceOverrideAdmin(admin.ModelAdmin):
+    list_display = ['student', 'category', 'amount', 'valid_from', 'valid_to', 'is_active', 'school']
+    list_filter = ['category', 'is_active', 'school']
+    search_fields = ['student__user__username', 'student__user__first_name', 'student__user__last_name', 'category__name']
+    readonly_fields = ['school']
 
 
 # ─── Invoice Admin ───────────────────────────────────────────────────────────

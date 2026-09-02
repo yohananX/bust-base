@@ -1,0 +1,55 @@
+{% extends 'school_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Bulk Copy Pricing — School Admin{% endblock %}
+{% block page_header %}Bulk Copy Pricing{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <div class="flex items-start gap-3 mb-6">
+      <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+        <i data-lucide="copy" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h3 class="text-lg font-display font-semibold text-gray-900">Copy prices from one term to another</h3>
+        <p class="text-sm text-gray-500 mt-1">This copies all active FeePrice rows from the source term to the target term. Existing prices are skipped.</p>
+      </div>
+    </div>
+
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">From Term</label>
+          <select name="from_term_id" required
+                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            <option value="">— Select term —</option>
+            {% for t in terms %}
+              <option value="{{ t.id }}">{{ t.name }} ({{ t.session.name }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">To Term</label>
+          <select name="to_term_id" required
+                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            <option value="">— Select term —</option>
+            {% for t in terms %}
+              <option value="{{ t.id }}">{{ t.name }} ({{ t.session.name }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4 pt-2">
+        <button type="submit"
+                class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+          <i data-lucide="copy" class="w-4 h-4 mr-2"></i>Copy Prices
+        </button>
+        <a href="{% url 'school_admin:fee_pricing_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

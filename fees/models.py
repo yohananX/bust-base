@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 from core.models import TenantScopedModel
 from fees.validators import validate_proof_file
 
@@ -129,11 +130,33 @@ class FeeCategory(TenantScopedModel):
         return self.name
 
 
-class FeeStructure(TenantScopedModel):
-    school_class = models.ForeignKey(
-        'students.SchoolClass',
+class FeePrice(TenantScopedModel):
+    SCOPE_SCHOOL_WIDE = 'SCHOOL_WIDE'
+    SCOPE_LEVEL = 'LEVEL'
+    SCOPE_CLASS = 'CLASS'
+    SCOPE_CHOICES = [
+        (SCOPE_SCHOOL_WIDE, _('School-wide')),
+        (SCOPE_LEVEL, _('Level/Grade')),
+        (SCOPE_CLASS, _('Class-specific')),
+    ]
+    SCOPE_SCHOOL_WIDE = 'SCHOOL_WIDE'
+    SCOPE_LEVEL = 'LEVEL'
+    SCOPE_CLASS = 'CLASS'
+    SCOPE_CHOICES = [
+        (SCOPE_SCHOOL_WIDE, _('School-wide')),
+        (SCOPE_LEVEL, _('Level/Grade')),
+        (SCOPE_CLASS, _('Class-specific')),
+    ]
+
+    category = models.ForeignKey(
+        FeeCategory,
         on_delete=models.CASCADE,
-        verbose_name=_('school class'),
+        verbose_name=_('category'),
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name=_('amount'),
     )
     term = models.ForeignKey(
         'core.Term',
@@ -142,6 +165,174 @@ class FeeStructure(TenantScopedModel):
         blank=True,
         verbose_name=_('term'),
         help_text=_('Leave blank for one-time fees.'),
+    )
+    student_type = models.CharField(
+        max_length=20,
+        choices=FeeCategory.STUDENT_TYPE_CHOICES,
+        default='ALL',
+        verbose_name=_('student type'),
+        help_text=_('Which students this price applies to.'),
+    )
+    scope = models.CharField(
+        max_length=20,
+        choices=SCOPE_CHOICES,
+        default=SCOPE_CLASS,
+        verbose_name=_('scope'),
+    )
+    school_class = models.ForeignKey(
+        'students.SchoolClass',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name=_('school class'),
+    )
+    level = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_('level'),
+        help_text=_('Level code for LEVEL-scoped prices, e.g. JSS, PRIMARY.'),
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_('active'),
+        help_text=_('Inactive prices are ignored during resolution.'),
+    )
+    effective_from = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name=_('effective from'),
+        help_text=_('Leave blank to apply immediately.'),
+    )
+    effective_to = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name=_('effective to'),
+        help_text=_('Leave blank for no expiry.'),
+    )
+
+    class Meta:
+        verbose_name = _('fee price')
+        verbose_name_plural = _('fee prices')
+        unique_together = ('school', 'scope', 'school_class', 'level', 'term', 'category', 'student_type')
+        ordering = ['scope', 'school_class', 'level', 'category']
+
+    def __str__(self):
+        if self.scope == self.SCOPE_SCHOOL_WIDE:
+            scope_label = 'School-wide'
+        elif self.scope == self.SCOPE_LEVEL:
+            scope_label = f'Level {self.level}'
+        else:
+            scope_label = str(self.school_class)
+        return f'{scope_label} - {self.term or "One-time"} - {self.category}: {self.amount}'
+
+    def clean(self):
+        if self.scope == self.SCOPE_CLASS and not self.school_class_id:
+            raise ValidationError({'school_class': _('Class-specific prices require a class.')})
+        if self.scope == self.SCOPE_LEVEL and not self.level:
+            raise ValidationError({'level': _('Level-scoped prices require a level.')})
+        if self.scope == self.SCOPE_SCHOOL_WIDE and (self.school_class_id or self.level):
+            raise ValidationError(_('School-wide prices must not have a class or level.'))
+
+        category = self.category
+        if category.billing_cycle == 'PER_TERM' and not self.term_id:
+            raise ValidationError({'term': _('Per-term categories require a term.')})
+        if category.billing_cycle == 'ONE_TIME' and self.term_id:
+            raise ValidationError({'term': _('One-time categories must not have a term.')})
+
+        if self.amount <= Decimal('0.00'):
+            raise ValidationError({'amount': _('Amount must be greater than 0.')})
+
+        today = timezone.now().date()
+        if self.effective_from and self.effective_to and self.effective_from > self.effective_to:
+            raise ValidationError({'effective_from': _('Effective from must be before effective to.')})
+
+        qs = FeePrice.objects.filter(
+            school=self.school,
+            scope=self.scope,
+            school_class=self.school_class,
+            level=self.level,
+            term=self.term,
+            category=category,
+            student_type=self.student_type,
+        )
+        if self.pk:
+            qs = qs.exclude(pk=self.pk)
+        if qs.exists():
+            raise ValidationError(
+                _('A fee price already exists for this school, scope, class/level, term, category, and student type.')
+            )
+
+
+class FeeStructure(TenantScopedModel):
+    """DEPRECATED compatibility shim. Use FeePrice for new code.
+
+    Phase 5: FeeStructure is kept as a thin wrapper around FeePrice for
+    backward compatibility with existing tests, fixtures, and admin
+    registrations. New code should use FeePrice directly. This model is
+    not actively written to; the migration that copies data into FeePrice
+    ran in phase 2 and the table is now effectively read-only legacy.
+    """
+    SCOPE_CLASS = 'CLASS'
+    SCOPE_SCHOOL_WIDE = 'SCHOOL_WIDE'
+    SCOPE_CHOICES = [
+        (SCOPE_CLASS, _('Class-specific')),
+        (SCOPE_SCHOOL_WIDE, _('School-wide (all classes)')),
+    ]
+
+    scope = models.CharField(
+        max_length=20,
+        choices=SCOPE_CHOICES,
+        default=SCOPE_CLASS,
+    )
+    school_class = models.ForeignKey(
+        'students.SchoolClass',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    term = models.ForeignKey(
+        'core.Term',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    category = models.ForeignKey(
+        FeeCategory,
+        on_delete=models.CASCADE,
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    student_type = models.CharField(
+        max_length=20,
+        choices=FeeCategory.STUDENT_TYPE_CHOICES,
+        default='ALL',
+    )
+    is_recurring_override = models.BooleanField(null=True, blank=True)
+    deprecated = models.BooleanField(
+        default=True,
+        help_text='Always true: this model is the legacy compatibility shim for FeePrice.',
+    )
+
+    class Meta:
+        verbose_name = 'fee structure (legacy)'
+        verbose_name_plural = 'fee structures (legacy)'
+        unique_together = ('school', 'scope', 'school_class', 'term', 'category', 'student_type')
+        ordering = ['school_class', 'category']
+
+    def __str__(self):
+        scope_label = 'School-wide' if self.scope == self.SCOPE_SCHOOL_WIDE else str(self.school_class)
+        return f'{scope_label} - {self.term or "One-time"} - {self.category}: {self.amount}'
+
+    def save(self, *args, **kwargs):
+        self.deprecated = True
+        super().save(*args, **kwargs)
+
+
+class FeePriceOverride(TenantScopedModel):
+    student = models.ForeignKey(
+        'students.Student',
+        on_delete=models.CASCADE,
+        related_name='fee_price_overrides',
+        verbose_name=_('student'),
     )
     category = models.ForeignKey(
         FeeCategory,
@@ -153,35 +344,40 @@ class FeeStructure(TenantScopedModel):
         decimal_places=2,
         verbose_name=_('amount'),
     )
-    student_type = models.CharField(
-        max_length=20,
-        choices=FeeCategory.STUDENT_TYPE_CHOICES,
-        default='ALL',
-        verbose_name=_('student type'),
-        help_text=_('Which students this price applies to.'),
-    )
-    is_recurring_override = models.BooleanField(
-        null=True,
+    reason = models.CharField(
+        max_length=255,
         blank=True,
-        verbose_name=_('recurring override'),
-        help_text=_(
-            'Override billing_cycle for this specific class/term. '
-            'None = use category default.'
-        ),
+        verbose_name=_('reason'),
+        help_text=_('Optional reason for the override.'),
+    )
+    valid_from = models.DateField(
+        verbose_name=_('valid from'),
+        help_text=_('Override applies from this date.'),
+    )
+    valid_to = models.DateField(
+        verbose_name=_('valid to'),
+        help_text=_('Override applies until this date. Leave far future for permanent.'),
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_('active'),
+        help_text=_('Inactive overrides are ignored.'),
     )
 
     class Meta:
-        verbose_name = _('fee structure')
-        verbose_name_plural = _('fee structures')
-        unique_together = ('school', 'school_class', 'term', 'category', 'student_type')
-        ordering = ['school_class', 'category']
+        verbose_name = _('fee price override')
+        verbose_name_plural = _('fee price overrides')
+        ordering = ['-valid_from', 'category__name']
+        unique_together = ('school', 'student', 'category', 'valid_from', 'valid_to')
 
     def __str__(self):
-        return f'{self.school_class} - {self.term or "One-time"} - {self.category}: {self.amount}'
+        return f'{self.student} - {self.category}: {self.amount} ({self.valid_from} to {self.valid_to})'
 
     def clean(self):
         if self.amount <= Decimal('0.00'):
             raise ValidationError({'amount': _('Amount must be greater than 0.')})
+        if self.valid_to < self.valid_from:
+            raise ValidationError({'valid_to': _('Valid to must be after valid from.')})
 
 
 class Invoice(TenantScopedModel):

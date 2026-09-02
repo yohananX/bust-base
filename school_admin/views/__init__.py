@@ -16,7 +16,7 @@ from .academics import (
 from .fees import (
     FeeCategoryListView, FeeCategoryCreateView, FeeCategoryEditView,
     FeeCategoryDeleteView, FeePricingListView, FeePricingCreateView,
-    FeePricingEditView, FeePricingDeleteView,
+    FeePricingEditView, FeePricingDeleteView, FeePricingBulkCopyView, FeePricingPromoteView,
     InvoiceListView, InvoiceDetailView, GenerateInvoicesView,
     OutstandingFeesReportView,
     PendingTransfersView, PendingTransferConfirmView, PendingTransferRejectView,

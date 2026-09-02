@@ -36,7 +36,7 @@ from django.contrib.messages import get_messages
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
-from fees.models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem
+from fees.models import FeeCategory, FeePrice, Invoice, InvoiceLineItem, Payment, PaymentLineItem
 from fees.checkout import get_checkout_options, reconcile_checkout
 try:
     from fees.views import CheckoutSubmitView
@@ -153,22 +153,25 @@ class FeeCheckoutTest(TestCase):
             school=cls.school,
             name='Books',
         )
-        cls.tuition_fee = FeeStructure.objects.create(
+        cls.tuition_fee = FeePrice.objects.create(
             school=cls.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=cls.school_class,
             term=cls.term,
             category=cls.tuition_category,
             amount=TUITION_AMOUNT,
         )
-        cls.books_fee = FeeStructure.objects.create(
+        cls.books_fee = FeePrice.objects.create(
             school=cls.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=cls.school_class,
             term=cls.term,
             category=cls.books_category,
             amount=BOOKS_AMOUNT,
         )
-        cls.next_books_fee = FeeStructure.objects.create(
+        cls.next_books_fee = FeePrice.objects.create(
             school=cls.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=cls.school_class,
             term=cls.next_term,
             category=cls.books_category,

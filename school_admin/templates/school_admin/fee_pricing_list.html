@@ -11,6 +11,10 @@
   <div class="flex justify-between items-center">
     <h2 class="text-lg font-display font-semibold text-gray-900">Fee Pricing</h2>
     <div class="flex gap-2">
+      <a href="{% url 'school_admin:fee_pricing_bulk_copy' %}"
+         class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 text-sm font-medium text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
+        <i data-lucide="copy" class="w-4 h-4 mr-1.5"></i>Bulk Copy
+      </a>
       <a href="{% url 'school_admin:fee_category_list' %}"
          class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 text-sm font-medium text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
         <i data-lucide="tags" class="w-4 h-4 mr-1.5"></i>Categories
@@ -22,9 +26,35 @@
     </div>
   </div>
 
+  {# ── Warnings ── #}
+  {% if warnings %}
+  <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+    <div class="flex items-start gap-3">
+      <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0"></i>
+      <div>
+        <p class="text-sm font-medium text-amber-800">Pricing warnings</p>
+        <ul class="mt-2 list-disc list-inside text-sm text-amber-700 space-y-1">
+          {% for w in warnings %}
+            <li>{{ w }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {# ── Filter card ── #}
   <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
     <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1.5">Scope</label>
+        <select name="scope" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="">All Scopes</option>
+          {% for s, label in scopes %}
+            <option value="{{ s }}" {% if filter_scope == s %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <div>
         <label class="block text-xs font-medium text-gray-500 mb-1.5">Class</label>
         <select name="class_id" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
@@ -57,7 +87,8 @@
       <table class="w-full">
         <thead>
           <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
-            <th class="px-6 py-3 font-medium">Class</th>
+            <th class="px-6 py-3 font-medium">Scope</th>
+            <th class="px-6 py-3 font-medium">Class / Level</th>
             <th class="px-6 py-3 font-medium">Term</th>
             <th class="px-6 py-3 font-medium">Category</th>
             <th class="px-6 py-3 font-medium">Type</th>
@@ -68,7 +99,10 @@
         <tbody class="divide-y divide-gray-50">
           {% for p in pricing %}
           <tr class="hover:bg-gray-50/50 transition-colors">
-            <td class="px-6 py-3.5 text-sm font-medium text-gray-900">{{ p.school_class.name }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ p.get_scope_display }}</td>
+            <td class="px-6 py-3.5 text-sm font-medium text-gray-900">
+              {% if p.school_class %}{{ p.school_class.name }}{% elif p.level %}{{ p.level }}{% else %}All Classes{% endif %}
+            </td>
             <td class="px-6 py-3.5 text-sm text-gray-600">{{ p.term.name|default:'One-time' }}</td>
             <td class="px-6 py-3.5">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">{{ p.category.name }}</span>
@@ -77,6 +111,26 @@
             <td class="px-6 py-3.5 text-sm font-semibold text-gray-900 text-right">NGN {{ p.amount|floatformat:2 }}</td>
             <td class="px-6 py-3.5">
               <div class="flex items-center justify-end gap-1">
+                {% if p.scope == 'SCHOOL_WIDE' %}
+                <form method="post" action="{% url 'school_admin:fee_pricing_promote' %}" class="inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="price_id" value="{{ p.pk }}">
+                  <select name="target_scope" onchange="this.form.submit()" class="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white">
+                    <option value="">Promote to...</option>
+                    <option value="LEVEL">Level</option>
+                    <option value="CLASS">Class</option>
+                  </select>
+                  {% if p.scope == 'SCHOOL_WIDE' %}
+                    <input type="text" name="target_level" placeholder="Level" class="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white hidden">
+                    <select name="target_class_id" class="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white hidden">
+                      <option value="">Class</option>
+                      {% for c in classes %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                      {% endfor %}
+                    </select>
+                  {% endif %}
+                </form>
+                {% endif %}
                 <a href="{% url 'school_admin:fee_pricing_edit' p.pk %}"
                    title="Edit"
                    class="p-2 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors">
@@ -102,7 +156,7 @@
       <i data-lucide="receipt" class="w-5 h-5 text-gray-400"></i>
     </div>
     <h3 class="text-base font-display font-semibold text-gray-900">No pricing set yet</h3>
-    <p class="text-sm text-gray-500 mt-1">Add a price for a category, class and term to get started.</p>
+    <p class="text-sm text-gray-500 mt-1">Add a price for a category, scope, class/level, term and student type to get started.</p>
     <a href="{% url 'school_admin:fee_pricing_create' %}"
        class="inline-flex items-center mt-4 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
       <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Pricing

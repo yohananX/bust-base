@@ -12,7 +12,7 @@
         <i data-lucide="alert-triangle" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-lg font-display font-semibold text-gray-900">Delete Pricing: {{ structure.school_class.name }} — {{ structure.category.name }}</h3>
+        <h3 class="text-lg font-display font-semibold text-gray-900">Delete Pricing: {{ price.category.name }}</h3>
         <p class="text-sm text-gray-500 mt-1">This action cannot be undone.</p>
       </div>
     </div>
@@ -21,20 +21,26 @@
       <table class="w-full text-sm">
         <tbody>
           <tr class="border-b border-gray-100">
-            <td class="px-5 py-3.5 font-medium text-gray-500 w-32">Class</td>
-            <td class="px-5 py-3.5 text-gray-900 font-medium">{{ structure.school_class.name }}</td>
+            <td class="px-5 py-3.5 font-medium text-gray-500 w-32">Scope</td>
+            <td class="px-5 py-3.5 text-gray-900 font-medium">{{ price.get_scope_display }}</td>
+          </tr>
+          <tr class="border-b border-gray-100">
+            <td class="px-5 py-3.5 font-medium text-gray-500 w-32">Class / Level</td>
+            <td class="px-5 py-3.5 text-gray-900 font-medium">
+              {% if price.school_class %}{{ price.school_class.name }}{% elif price.level %}{{ price.level }}{% else %}All Classes{% endif %}
+            </td>
           </tr>
           <tr class="border-b border-gray-100">
             <td class="px-5 py-3.5 font-medium text-gray-500 w-32">Term</td>
-            <td class="px-5 py-3.5 text-gray-900 font-medium">{{ structure.term.name }}</td>
+            <td class="px-5 py-3.5 text-gray-900 font-medium">{{ price.term.name|default:'One-time' }}</td>
           </tr>
           <tr class="border-b border-gray-100">
             <td class="px-5 py-3.5 font-medium text-gray-500 w-32">Category</td>
-            <td class="px-5 py-3.5 text-gray-900 font-medium">{{ structure.category.name }}</td>
+            <td class="px-5 py-3.5 text-gray-900 font-medium">{{ price.category.name }}</td>
           </tr>
           <tr>
             <td class="px-5 py-3.5 font-medium text-gray-500 w-32">Amount</td>
-            <td class="px-5 py-3.5 text-gray-900 font-semibold">NGN {{ structure.amount|floatformat:2 }}</td>
+            <td class="px-5 py-3.5 text-gray-900 font-semibold">NGN {{ price.amount|floatformat:2 }}</td>
           </tr>
         </tbody>
       </table>
@@ -45,7 +51,7 @@
         <i data-lucide="info" class="w-4.5 h-4.5 mt-0.5 flex-shrink-0"></i>
         <div>
           <p class="font-medium">Warning</p>
-          <p class="mt-1">This will remove the amount for {{ structure.school_class.name }} — {{ structure.category.name }} in {{ structure.term.name }}. Existing invoices are not changed.</p>
+          <p class="mt-1">This will remove the price for {{ price.category.name }} at {{ price.get_scope_display }} scope. Existing invoices are not changed.</p>
         </div>
       </div>
     </div>

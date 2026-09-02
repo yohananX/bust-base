@@ -38,6 +38,14 @@ You are a senior Django engineer working on a multi-tenant school management pla
 - Queries must always be scoped by `school=request.school`.
 - Use `select_related('school')` and `filter(school=request.school)` consistently.
 
+### Fee Pricing
+- **`FeePrice`** is the canonical pricing model. Replaces legacy `FeeStructure` (kept as deprecated read-only shim).
+- **Scopes:** `SCHOOL_WIDE` (all classes) ? `LEVEL` (grade band) ? `CLASS` (one class). Most specific wins.
+- **Resolution:** Always use `fees.pricing.resolve_prices(school, school_class, term)`. Falls back to `effective_fee_structures()` which is a compat shim.
+- **Student overrides:** `FeePriceOverride` for scholarships/discounts. `fees.pricing.resolve_price_for_student(school, student, school_class, category, term)` checks override first, then resolved price.
+- **Effective dating:** `effective_from` / `effective_to` on `FeePrice`. Resolver filters by current date.
+- **one-time guard:** `category.billing_cycle == ONE_TIME` and not yet billed in prior session.
+
 ### Role-based access
 - Use `RoleRequiredMixin` on all views: `allowed_roles = [Roles.ADMIN]`
 - Roles: ADMIN, TEACHER, STUDENT, PARENT

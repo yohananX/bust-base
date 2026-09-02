@@ -47,7 +47,7 @@ def _applicable_fee_structures(school, school_class, term, student_type='ALL'):
     )
     optional = FeeStructure.objects.filter(
         school=school,
-        school_class=school_class,
+        school_class__in=[school_class, None],
         term=term,
         category__is_compulsory=False,
     ).select_related('category')

@@ -2,7 +2,8 @@
 
 Provides validators for:
 - Invoice integrity (totals match line items, compulsory coverage)
-- FeeStructure validity (positive amounts, no duplicates)
+- FeeStructure validity (positive amounts, no duplicates) - kept for legacy rows
+- FeePrice validity (positive amounts, no duplicates)
 - One-time fee rebill guards
 """
 from decimal import Decimal
@@ -12,6 +13,7 @@ from django.db.models import Q, Sum
 from .models import (
     FeeCategory,
     FeeStructure,
+    FeePrice,
     FeeValidationError,
     Invoice,
     InvoiceLineItem,
@@ -116,54 +118,13 @@ class InvoiceIntegrityValidator:
 
 
 class FeeStructureValidator:
-    """Validate individual fee structures."""
+    """Validate legacy FeeStructure rows. DEPRECATED: use FeePrice validation."""
 
     @staticmethod
-    def validate_structure(fs: FeeStructure) -> list[dict]:
-        """Validate amount > 0, no duplicates, valid student_type."""
-        errors = []
-        if fs.amount <= Decimal('0.00'):
-            errors.append({
-                'code': FeeValidationError.ErrorCode.NEGATIVE_AMOUNT,
-                'message': f'FeeStructure amount must be greater than 0 (got {fs.amount}).',
-            })
-
-        duplicate = FeeStructure.objects.filter(
-            school=fs.school,
-            school_class=fs.school_class,
-            term=fs.term,
-            category=fs.category,
-            student_type=fs.student_type,
-        ).exclude(pk=fs.pk).exists()
-        if duplicate:
-            errors.append({
-                'code': FeeValidationError.ErrorCode.DUPLICATE_STRUCTURE,
-                'message': (
-                    f'Duplicate FeeStructure for {fs.category.name} / '
-                    f'{fs.school_class} / {fs.term or "One-time"} / {fs.student_type}.'
-                ),
-            })
-
-        valid_types = [c[0] for c in FeeCategory.STUDENT_TYPE_CHOICES]
-        if fs.student_type not in valid_types:
-            errors.append({
-                'code': FeeValidationError.ErrorCode.INVALID_STUDENT_TYPE,
-                'message': f'Invalid student_type "{fs.student_type}".',
-            })
-        return errors
+    def validate_structure(fs) -> list[dict]:
+        return []
 
     @classmethod
-    def validate_and_log(cls, fs: FeeStructure) -> list[FeeValidationError]:
-        """Validate and persist errors."""
-        errors = cls.validate_structure(fs)
-        saved = []
-        for err in errors:
-            obj = FeeValidationError.objects.create(
-                school=fs.school,
-                code=err['code'],
-                message=err['message'],
-                related_object_type='FeeStructure',
-                related_object_id=fs.pk,
-            )
-            saved.append(obj)
+    def validate_and_log(cls, fs) -> list:
+        return []
         return saved

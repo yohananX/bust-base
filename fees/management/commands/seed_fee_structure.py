@@ -1,4 +1,4 @@
-"""Seed fee categories and fee structures from the Grace House prospectus."""
+"""Seed fee categories and fee prices from the Grace House prospectus."""
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
@@ -6,7 +6,7 @@ from django.db import transaction
 
 from core.models import AcademicSession, Term
 from students.models import SchoolClass
-from fees.models import FeeCategory, FeeStructure
+from fees.models import FeeCategory, FeePrice
 
 
 class Command(BaseCommand):
@@ -25,39 +25,25 @@ class Command(BaseCommand):
     ]
 
     PROSPECTUS_STRUCTURES = [
-        # One-time new-intake package
-        {'category': 'Registration Form', 'amount': 2000, 'term': None, 'type': 'NEW',
-         'classes': ['Reception', 'Nursery 1', 'Nursery 2', 'Basic 1', 'Basic 2', 'Basic 3', 'Basic 4', 'Basic 5',
-                     'JSS1', 'JSS2', 'JSS3', 'SS1', 'SS2', 'SS3']},
-        {'category': 'Uniforms', 'amount': 40000, 'term': None, 'type': 'NEW',
-         'classes': ['Reception', 'Nursery 1', 'Nursery 2', 'Basic 1', 'Basic 2', 'Basic 3', 'Basic 4', 'Basic 5',
-                     'JSS1', 'JSS2', 'JSS3', 'SS1', 'SS2', 'SS3']},
-        {'category': 'PTA', 'amount': 1000, 'term': None, 'type': 'NEW',
-         'classes': ['Reception', 'Nursery 1', 'Nursery 2', 'Basic 1', 'Basic 2', 'Basic 3', 'Basic 4', 'Basic 5',
-                     'JSS1', 'JSS2', 'JSS3', 'SS1', 'SS2', 'SS3']},
-        {'category': 'File Jacket', 'amount': 500, 'term': None, 'type': 'NEW',
-         'classes': ['Reception', 'Nursery 1', 'Nursery 2', 'Basic 1', 'Basic 2', 'Basic 3', 'Basic 4', 'Basic 5',
-                     'JSS1', 'JSS2', 'JSS3', 'SS1', 'SS2', 'SS3']},
-        {'category': 'Maintenance', 'amount': 1000, 'term': None, 'type': 'NEW',
-         'classes': ['Reception', 'Nursery 1', 'Nursery 2', 'Basic 1', 'Basic 2', 'Basic 3', 'Basic 4', 'Basic 5',
-                     'JSS1', 'JSS2', 'JSS3', 'SS1', 'SS2', 'SS3']},
-        {'category': 'Examination Fee', 'amount': 2500, 'term': None, 'type': 'NEW',
-         'classes': ['Reception', 'Nursery 1', 'Nursery 2', 'Basic 1', 'Basic 2', 'Basic 3', 'Basic 4', 'Basic 5',
-                     'JSS1', 'JSS2', 'JSS3', 'SS1', 'SS2', 'SS3']},
-        # Termly tuition
-        {'category': 'Tuition Fee', 'amount': 25000, 'term': 'First', 'type': 'ALL',
+        # One-time new-intake package (school-wide)
+        {'category': 'Registration Form', 'amount': 2000, 'term': None, 'type': 'NEW', 'scope': 'SCHOOL_WIDE'},
+        {'category': 'Uniforms', 'amount': 40000, 'term': None, 'type': 'NEW', 'scope': 'SCHOOL_WIDE'},
+        {'category': 'PTA', 'amount': 1000, 'term': None, 'type': 'NEW', 'scope': 'SCHOOL_WIDE'},
+        {'category': 'File Jacket', 'amount': 500, 'term': None, 'type': 'NEW', 'scope': 'SCHOOL_WIDE'},
+        {'category': 'Maintenance', 'amount': 1000, 'term': None, 'type': 'NEW', 'scope': 'SCHOOL_WIDE'},
+        {'category': 'Examination Fee', 'amount': 2500, 'term': None, 'type': 'NEW', 'scope': 'SCHOOL_WIDE'},
+        # Termly tuition (class-specific)
+        {'category': 'Tuition Fee', 'amount': 25000, 'term': 'First', 'type': 'ALL', 'scope': 'CLASS',
          'classes': ['Reception', 'Nursery 1']},
-        {'category': 'Tuition Fee', 'amount': 28000, 'term': 'First', 'type': 'ALL',
+        {'category': 'Tuition Fee', 'amount': 28000, 'term': 'First', 'type': 'ALL', 'scope': 'CLASS',
          'classes': ['Nursery 2', 'Basic 1', 'Basic 2', 'Basic 3', 'Basic 4', 'Basic 5']},
-        {'category': 'Tuition Fee', 'amount': 33000, 'term': 'First', 'type': 'ALL',
+        {'category': 'Tuition Fee', 'amount': 33000, 'term': 'First', 'type': 'ALL', 'scope': 'CLASS',
          'classes': ['JSS1', 'JSS2', 'JSS3']},
-        {'category': 'Tuition Fee', 'amount': 34000, 'term': 'First', 'type': 'ALL',
+        {'category': 'Tuition Fee', 'amount': 34000, 'term': 'First', 'type': 'ALL', 'scope': 'CLASS',
          'classes': ['SS1', 'SS2', 'SS3']},
-        # Termly extras
-        {'category': 'Christmas/End of Term Party Fee', 'amount': 5000, 'term': 'First', 'type': 'ALL',
-         'classes': ['Reception', 'Nursery 1', 'Nursery 2', 'Basic 1', 'Basic 2', 'Basic 3', 'Basic 4', 'Basic 5',
-                     'JSS1', 'JSS2', 'JSS3', 'SS1', 'SS2', 'SS3']},
-        {'category': 'Extension Class Fee', 'amount': 10000, 'term': 'First', 'type': 'ALL',
+        # Termly extras (school-wide)
+        {'category': 'Christmas/End of Term Party Fee', 'amount': 5000, 'term': 'First', 'type': 'ALL', 'scope': 'SCHOOL_WIDE'},
+        {'category': 'Extension Class Fee', 'amount': 10000, 'term': 'First', 'type': 'ALL', 'scope': 'CLASS',
          'classes': ['SS3']},
     ]
 
@@ -74,6 +60,8 @@ class Command(BaseCommand):
         if session:
             for term in Term.objects.filter(school=school, session=session):
                 term_map[term.name] = term
+                short = term.name.replace(' Term', '').replace(' term', '').strip()
+                term_map[short] = term
         else:
             self.stdout.write(self.style.WARNING('No current academic session found. Skipping term structures.'))
 
@@ -108,21 +96,40 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING(f"Category '{struct['category']}' not found, skipping"))
                     continue
 
-                for class_name in struct['classes']:
-                    school_class = SchoolClass.objects.filter(school=school, name=class_name).first()
-                    if not school_class:
-                        self.stdout.write(self.style.WARNING(f"Class '{class_name}' not found, skipping"))
-                        continue
+                scope = struct.get('scope', 'CLASS')
+                classes = struct.get('classes', [])
 
-                    _, created = FeeStructure.objects.get_or_create(
+                if scope == 'SCHOOL_WIDE':
+                    _, created = FeePrice.objects.get_or_create(
                         school=school,
-                        school_class=school_class,
+                        scope=FeePrice.SCOPE_SCHOOL_WIDE,
+                        school_class=None,
+                        level='',
                         term=term,
                         category=category,
                         student_type=struct['type'],
                         defaults={'amount': struct['amount']},
                     )
                     if created:
-                        self.stdout.write(f'Created structure: {category.name} — {school_class.name} ({term.name if term else "One-time"}) {struct["type"]}')
+                        self.stdout.write(f'Created school-wide price: {category.name} ({term.name if term else "One-time"}) {struct["type"]}')
+                else:
+                    for class_name in classes:
+                        school_class = SchoolClass.objects.filter(school=school, name=class_name).first()
+                        if not school_class:
+                            self.stdout.write(self.style.WARNING(f"Class '{class_name}' not found, skipping"))
+                            continue
+
+                        _, created = FeePrice.objects.get_or_create(
+                            school=school,
+                            scope=FeePrice.SCOPE_CLASS,
+                            school_class=school_class,
+                            level='',
+                            term=term,
+                            category=category,
+                            student_type=struct['type'],
+                            defaults={'amount': struct['amount']},
+                        )
+                        if created:
+                            self.stdout.write(f'Created price: {category.name} — {school_class.name} ({term.name if term else "One-time"}) {struct["type"]}')
 
         self.stdout.write(self.style.SUCCESS('Fee structure seeding complete.'))

@@ -1,11 +1,9 @@
 """Reusable invoice-generation logic shared by bulk actions and enrollment flows."""
 from decimal import Decimal
 
-from django.db.models import Q
-
 from core.models import Term
 from students.models import ClassEnrollment
-from .models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem
+from .models import FeeCategory, FeePrice, Invoice, InvoiceLineItem
 from .utils import resolve_student_type
 
 
@@ -24,59 +22,20 @@ def _is_one_time_already_billed(student, category, session):
 def effective_fee_structures(school, school_class, term, student_type='ALL', student=None, session=None):
     """Resolve compulsory pricing for a class + term, with inheritance.
 
-    Terms with explicit pricing use it. Any category missing for this term
-    (or every category, when the term has no pricing at all) falls back to
-    the most recent price set for that class and category — so fees stay
-    the same across sessions until the admin explicitly changes them.
-
-    ``student_type`` filters to ``NEW`` or ``RETURNING``. Pass ``'ALL'``
-    to include both.
-
-    ``student`` and ``session`` are used to guard ONE_TIME categories from
-    being rebilled if the student already had them in a prior session.
+    Backward-compat shim that delegates to pricing.resolve_prices.
+    Kept for callers that still import this name. The actual resolution
+    logic lives in fees.pricing and supports FeePrice + FeePriceOverride
+    with school-wide, level, and class scopes.
     """
-    qs = FeeStructure.objects.filter(
+    from .pricing import resolve_prices
+    return resolve_prices(
         school=school,
         school_class=school_class,
-        category__is_compulsory=True,
-    ).select_related('category')
-
-    if term is not None:
-        explicit = list(qs.filter(term=term))
-        explicit_cats = {fs.category_id for fs in explicit}
-        fallback_candidates = qs.exclude(term=term).order_by('-term__start_date', 'category__name')
-    else:
-        explicit = list(qs.filter(term__isnull=True))
-        explicit_cats = {fs.category_id for fs in explicit}
-        fallback_candidates = qs.exclude(term__isnull=True).order_by('-term__start_date', 'category__name')
-
-    if student_type != 'ALL':
-        explicit = [fs for fs in explicit if fs.student_type in ('ALL', student_type)]
-        fallback_candidates = fallback_candidates.filter(
-            Q(student_type='ALL') | Q(student_type=student_type)
-        )
-
-    fallbacks = []
-    seen = set(explicit_cats)
-    for fs in fallback_candidates:
-        if fs.category_id in seen:
-            continue
-        seen.add(fs.category_id)
-        fallbacks.append(fs)
-
-    combined = explicit + fallbacks
-
-    if student is not None and session is not None:
-        filtered = []
-        for fs in combined:
-            category = fs.category
-            if category.billing_cycle == 'ONE_TIME':
-                if _is_one_time_already_billed(student, category, session):
-                    continue
-            filtered.append(fs)
-        combined = filtered
-
-    return combined
+        term=term,
+        student_type=student_type,
+        student=student,
+        session=session,
+    )
 
 
 def generate_invoice_for_student(student, term):
