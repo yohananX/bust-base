@@ -81,6 +81,9 @@ def _resolve_from_feeprice(school, school_class, term, student_type='ALL', stude
     def matches_school_wide(price):
         return price.scope == FeePrice.SCOPE_SCHOOL_WIDE and not price.school_class_id and not price.level
 
+    def is_applicable(price):
+        return matches_class(price) or matches_level(price) or matches_school_wide(price)
+
     def effective(price):
         return _is_fee_price_active(price)
 
@@ -91,8 +94,9 @@ def _resolve_from_feeprice(school, school_class, term, student_type='ALL', stude
             return 1
         if matches_school_wide(price):
             return 2
-        return 3
+        return 99
 
+    explicit = [fp for fp in explicit if is_applicable(fp)]
     explicit.sort(key=lambda p: (precedence(p), p.category_id))
     deduped_explicit = []
     seen_cats = set()
@@ -110,6 +114,8 @@ def _resolve_from_feeprice(school, school_class, term, student_type='ALL', stude
         if fp.category_id in seen:
             continue
         if not effective(fp):
+            continue
+        if not is_applicable(fp):
             continue
         seen.add(fp.category_id)
         fallbacks.append(fp)

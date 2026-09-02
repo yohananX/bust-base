@@ -284,6 +284,58 @@ class FeePriceTest(BasePricingTest):
         result = resolve_prices(self.school, self.school_class, self.term)
         self.assertEqual(len(result), 0)
 
+    def test_resolve_prices_does_not_include_other_classes(self):
+        """Regression test: resolver must not return class-specific prices
+        from other classes when resolving for a specific class.
+        """
+        jss2 = SchoolClass.objects.create(
+            school=self.school, name='JSS2', level='JSS',
+        )
+        cat = FeeCategory.objects.create(
+            school=self.school, name='Tuition', billing_cycle='PER_TERM', student_type='ALL'
+        )
+        FeePrice.objects.create(
+            school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
+            school_class=jss2,
+            term=self.term,
+            category=cat,
+            amount=Decimal('40000.00'),
+            student_type='ALL',
+        )
+        result = resolve_prices(self.school, self.school_class, self.term)
+        self.assertEqual(len(result), 0)
+
+    def test_resolve_prices_dedupes_school_wide_with_class(self):
+        """When a category has both school-wide and class-specific rows,
+        the class-specific one wins (no duplicate from school-wide).
+        """
+        cat = FeeCategory.objects.create(
+            school=self.school, name='PTA', billing_cycle='ONE_TIME', student_type='NEW'
+        )
+        FeePrice.objects.create(
+            school=self.school,
+            scope=FeePrice.SCOPE_SCHOOL_WIDE,
+            school_class=None,
+            term=None,
+            category=cat,
+            amount=Decimal('1000.00'),
+            student_type='NEW',
+        )
+        FeePrice.objects.create(
+            school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
+            school_class=self.school_class,
+            term=None,
+            category=cat,
+            amount=Decimal('2000.00'),
+            student_type='NEW',
+        )
+        result = resolve_prices(self.school, self.school_class, None, student_type='NEW')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].scope, FeePrice.SCOPE_CLASS)
+        self.assertEqual(result[0].amount, Decimal('2000.00'))
+
     def test_resolve_prices_level_scope(self):
         jss2 = SchoolClass.objects.create(
             school=self.school, name='JSS2A', level='JSS',
