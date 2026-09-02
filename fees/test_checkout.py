@@ -270,16 +270,26 @@ class FeeCheckoutTest(TestCase):
         self.assertIsNone(options.next_term)
 
     def test_get_checkout_options_next_term_present(self):
-        """A later term with fee structures surfaces as a fixed next-term option."""
+        """A later term surfaces compulsory fees (with fallback) and explicit next-term fees."""
         options = get_checkout_options(self.student, self.term)
 
         self.assertIsNotNone(options.next_term)
         self.assertEqual(options.next_term.term_id, self.next_term.pk)
-        self.assertEqual(len(options.next_term.options), 1)
-        next_option = options.next_term.options[0]
-        self.assertEqual(next_option.key, f'next:{self.books_category.pk}')
-        self.assertFalse(next_option.flexible)
-        self.assertEqual(next_option.amount, NEXT_BOOKS_AMOUNT)
+        self.assertEqual(len(options.next_term.options), 2)
+
+        next_options = {opt.category_id: opt for opt in options.next_term.options}
+        self.assertIn(self.tuition_category.pk, next_options)
+        self.assertIn(self.books_category.pk, next_options)
+
+        tuition_opt = next_options[self.tuition_category.pk]
+        self.assertEqual(tuition_opt.key, f'next:{self.tuition_category.pk}')
+        self.assertFalse(tuition_opt.flexible)
+        self.assertEqual(tuition_opt.amount, TUITION_AMOUNT)
+
+        books_opt = next_options[self.books_category.pk]
+        self.assertEqual(books_opt.key, f'next:{self.books_category.pk}')
+        self.assertFalse(books_opt.flexible)
+        self.assertEqual(books_opt.amount, NEXT_BOOKS_AMOUNT)
 
     # ─── reconcile_checkout ──────────────────────────────────────────────
 

@@ -5,7 +5,11 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from django.http import HttpResponseRedirect
 
-from .models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem
+from .models import (
+    FeeCategory, FeeCategoryGroup, FeeCategoryGroupAssignment,
+    FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
+    InvoiceResetLog, FeeValidationError,
+)
 
 
 # ─── Inlines ─────────────────────────────────────────────────────────────────
@@ -14,7 +18,7 @@ from .models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment
 class InvoiceLineItemInline(admin.TabularInline):
     model = InvoiceLineItem
     extra = 0
-    readonly_fields = ['category', 'amount']
+    readonly_fields = ['category', 'amount', 'term', 'session', 'billing_cycle']
     can_delete = False
     max_num = 0
 
@@ -64,13 +68,30 @@ class InvoiceStatusListFilter(admin.SimpleListFilter):
         return queryset
 
 
+# ─── FeeCategoryGroup Admin ──────────────────────────────────────────────────
+
+
+@admin.register(FeeCategoryGroup)
+class FeeCategoryGroupAdmin(admin.ModelAdmin):
+    list_display = ['name', 'group_type', 'school', 'is_active', 'parent']
+    list_filter = ['group_type', 'is_active', 'school']
+    search_fields = ['name']
+
+
+@admin.register(FeeCategoryGroupAssignment)
+class FeeCategoryGroupAssignmentAdmin(admin.ModelAdmin):
+    list_display = ['group', 'category', 'school']
+    list_filter = ['group', 'school']
+    search_fields = ['category__name', 'group__name']
+
+
 # ─── FeeCategory Admin ───────────────────────────────────────────────────────
 
 
 @admin.register(FeeCategory)
 class FeeCategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'compulsory_badge', 'school']
-    list_filter = ['is_compulsory', 'school']
+    list_display = ['name', 'compulsory_badge', 'billing_cycle', 'student_type', 'group', 'school']
+    list_filter = ['is_compulsory', 'billing_cycle', 'student_type', 'group', 'school']
     search_fields = ['name']
 
     @admin.display(description=_('Compulsory'))
@@ -85,9 +106,15 @@ class FeeCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(FeeStructure)
 class FeeStructureAdmin(admin.ModelAdmin):
-    list_display = ['school_class', 'term', 'category', 'amount', 'school']
-    list_filter = ['school_class', 'term', 'category', 'school']
+    list_display = ['school_class', 'term', 'category', 'amount', 'student_type', 'is_recurring_override', 'school']
+    list_filter = ['school_class', 'term', 'category', 'student_type', 'school']
     search_fields = ['school_class__name', 'category__name']
+
+    def save_model(self, request, obj, form, change):
+        from .validation import FeeStructureValidator
+        super().save_model(request, obj, form, change)
+        if not change:
+            FeeStructureValidator.validate_and_log(obj)
 
 
 # ─── Invoice Admin ───────────────────────────────────────────────────────────
@@ -100,7 +127,13 @@ class InvoiceAdmin(admin.ModelAdmin):
     search_fields = ['student__user__username', 'student__user__first_name', 'student__user__last_name']
     readonly_fields = ['total_amount', 'generated_on']
     inlines = [InvoiceLineItemInline, PaymentInline]
-    actions = ['generate_invoices_for_term']
+    actions = [
+        'generate_invoices_for_term',
+        'reset_invoices_for_term',
+        'reset_invoices_for_class',
+        'reset_invoices_for_student',
+        'validate_invoices',
+    ]
 
     @admin.display(description=_('Status'))
     def invoice_status(self, obj):
@@ -166,6 +199,149 @@ class InvoiceAdmin(admin.ModelAdmin):
         }
         return render(request, 'admin/fees/generate_invoices.html', context)
 
+    @admin.action(description=_('Reset invoices for term'))
+    def reset_invoices_for_term(self, request, queryset):
+        from .reset import InvoiceResetService
+        from core.models import Term
+
+        if 'apply' not in request.POST:
+            terms = Term.objects.filter(school=request.user.school, is_current=True)
+            context = {
+                'title': _('Reset invoices for term'),
+                'queryset': queryset,
+                'terms': terms,
+                'action_checkbox_name': request.POST.get('action_checkbox_name', ''),
+                'opts': self.model._meta,
+            }
+            return render(request, 'admin/fees/reset_invoices_term.html', context)
+
+        term_id = request.POST.get('term')
+        reason = request.POST.get('reason', '')
+        force = request.POST.get('force') == 'on'
+
+        try:
+            term = Term.objects.get(pk=term_id)
+        except Term.DoesNotExist:
+            self.message_user(request, _('Term not found.'), level=messages.ERROR)
+            return HttpResponseRedirect(request.get_full_path())
+
+        if not request.user.is_superuser:
+            self.message_user(request, _('Only superadmins can reset invoices.'), level=messages.ERROR)
+            return HttpResponseRedirect(request.get_full_path())
+
+        try:
+            log = InvoiceResetService.reset_term(term.school, term, user=request.user, reason=reason)
+            self.message_user(
+                request,
+                _(f'Reset {log.scope_name}: deleted {log.invoices_deleted} invoices, '
+                  f'{log.payments_deleted} payments, {log.line_items_deleted} line items.'),
+                level=messages.SUCCESS,
+            )
+        except ValueError as e:
+            self.message_user(request, str(e), level=messages.ERROR)
+
+        return HttpResponseRedirect(request.get_full_path())
+
+    @admin.action(description=_('Reset invoices for class'))
+    def reset_invoices_for_class(self, request, queryset):
+        from .reset import InvoiceResetService
+        from students.models import SchoolClass
+        from core.models import Term
+
+        if 'apply' not in request.POST:
+            classes = SchoolClass.objects.filter(school=request.user.school)
+            terms = Term.objects.filter(school=request.user.school, is_current=True)
+            context = {
+                'title': _('Reset invoices for class'),
+                'queryset': queryset,
+                'classes': classes,
+                'terms': terms,
+                'action_checkbox_name': request.POST.get('action_checkbox_name', ''),
+                'opts': self.model._meta,
+            }
+            return render(request, 'admin/fees/reset_invoices_class.html', context)
+
+        class_id = request.POST.get('school_class')
+        term_id = request.POST.get('term')
+        reason = request.POST.get('reason', '')
+
+        try:
+            school_class = SchoolClass.objects.get(pk=class_id)
+            term = Term.objects.get(pk=term_id)
+        except (SchoolClass.DoesNotExist, Term.DoesNotExist):
+            self.message_user(request, _('Invalid selection.'), level=messages.ERROR)
+            return HttpResponseRedirect(request.get_full_path())
+
+        if not request.user.is_superuser:
+            self.message_user(request, _('Only superadmins can reset invoices.'), level=messages.ERROR)
+            return HttpResponseRedirect(request.get_full_path())
+
+        try:
+            log = InvoiceResetService.reset_class(school_class.school, school_class, term, user=request.user, reason=reason)
+            self.message_user(
+                request,
+                _(f'Reset {log.scope_name}: deleted {log.invoices_deleted} invoices.'),
+                level=messages.SUCCESS,
+            )
+        except ValueError as e:
+            self.message_user(request, str(e), level=messages.ERROR)
+
+        return HttpResponseRedirect(request.get_full_path())
+
+    @admin.action(description=_('Reset invoices for student'))
+    def reset_invoices_for_student(self, request, queryset):
+        from .reset import InvoiceResetService
+        from core.models import Term
+
+        if 'apply' not in request.POST:
+            terms = Term.objects.filter(school=request.user.school, is_current=True)
+            context = {
+                'title': _('Reset invoices for student'),
+                'queryset': queryset,
+                'terms': terms,
+                'action_checkbox_name': request.POST.get('action_checkbox_name', ''),
+                'opts': self.model._meta,
+            }
+            return render(request, 'admin/fees/reset_invoices_student.html', context)
+
+        term_id = request.POST.get('term')
+        reason = request.POST.get('reason', '')
+
+        try:
+            term = Term.objects.get(pk=term_id)
+        except Term.DoesNotExist:
+            self.message_user(request, _('Term not found.'), level=messages.ERROR)
+            return HttpResponseRedirect(request.get_full_path())
+
+        if not request.user.is_superuser:
+            self.message_user(request, _('Only superadmins can reset invoices.'), level=messages.ERROR)
+            return HttpResponseRedirect(request.get_full_path())
+
+        total_deleted = 0
+        for invoice in queryset:
+            log = InvoiceResetService.reset_student(invoice.school, invoice.student, term, user=request.user, reason=reason)
+            total_deleted += log.invoices_deleted
+
+        self.message_user(
+            request,
+            _(f'Reset {total_deleted} student invoice(s) for {term.name}.'),
+            level=messages.SUCCESS,
+        )
+        return HttpResponseRedirect(request.get_full_path())
+
+    @admin.action(description=_('Validate selected invoices'))
+    def validate_invoices(self, request, queryset):
+        from .validation import InvoiceIntegrityValidator
+        total_errors = 0
+        for invoice in queryset:
+            errors = InvoiceIntegrityValidator.validate_invoice(invoice)
+            total_errors += len(errors)
+        self.message_user(
+            request,
+            _(f'Validation complete: {total_errors} errors found across {queryset.count()} invoices.'),
+            level=messages.SUCCESS if total_errors == 0 else messages.WARNING,
+        )
+
 
 @admin.register(PaymentLineItem)
 class PaymentLineItemAdmin(admin.ModelAdmin):
@@ -173,3 +349,31 @@ class PaymentLineItemAdmin(admin.ModelAdmin):
     list_filter = ['kind', 'term', 'session', 'category']
     search_fields = ['label', 'source_key', 'payment__reference']
     readonly_fields = ['payment', 'kind', 'label', 'amount', 'source_key', 'category', 'term', 'session', 'invoice']
+
+
+@admin.register(InvoiceResetLog)
+class InvoiceResetLogAdmin(admin.ModelAdmin):
+    list_display = ['scope_type', 'scope_name', 'invoices_deleted', 'payments_deleted', 'reset_by', 'performed_at']
+    list_filter = ['scope_type', 'performed_at', 'school']
+    search_fields = ['scope_name', 'reason']
+    readonly_fields = ['scope_type', 'scope_id', 'scope_name', 'reset_by', 'reason',
+                       'invoices_deleted', 'payments_deleted', 'line_items_deleted',
+                       'receipts_deleted', 'performed_at']
+
+
+@admin.register(FeeValidationError)
+class FeeValidationErrorAdmin(admin.ModelAdmin):
+    list_display = ['code', 'message_short', 'is_resolved', 'resolved_by', 'created_at']
+    list_filter = ['code', 'is_resolved', 'created_at', 'school']
+    search_fields = ['message', 'related_object_type']
+    readonly_fields = ['code', 'message', 'related_object_type', 'related_object_id', 'created_at']
+    actions = ['mark_resolved']
+
+    @admin.display(description=_('Message'))
+    def message_short(self, obj):
+        return obj.message[:80]
+
+    @admin.action(description=_('Mark selected errors as resolved'))
+    def mark_resolved(self, request, queryset):
+        updated = queryset.update(is_resolved=True, resolved_by=request.user)
+        self.message_user(request, _(f'Marked {updated} errors as resolved.'), level=messages.SUCCESS)

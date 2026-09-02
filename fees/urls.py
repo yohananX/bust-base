@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/invoice/<int:invoice_id>/', views.invoice_detail, name='invoice-detail'),
     path('api/invoice/<int:invoice_id>/pay/', views.make_payment, name='make-payment'),
     path('api/invoice/<int:invoice_id>/status/', views.invoice_status_partial, name='invoice-status-partial'),
+    path('api/student/<int:student_id>/line-items/', views.student_line_items_api, name='api-student-line-items'),
     path('pay/', views.InitiatePaymentView.as_view(), name='initiate-payment'),
     path('pay/<int:invoice_id>/', views.InitiatePaymentView.as_view(), name='initiate-payment'),
     path('return/', views.PaymentReturnView.as_view(), name='payment-return'),

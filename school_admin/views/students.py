@@ -1,5 +1,7 @@
 """Student management views for school admin portal."""
 
+from decimal import Decimal
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.views.generic.base import View
@@ -14,7 +16,7 @@ from accounts.models import Roles, User
 from accounts.utils import generate_password, generate_username, unique_username
 from students.models import Student, SchoolClass, ClassEnrollment, StudentGuardianLink
 from students.utils import generate_admission_number, find_or_create_parent
-from core.models import AcademicSession
+from core.models import AcademicSession, Term
 from fees.models import Invoice, Payment
 
 
@@ -99,6 +101,27 @@ class StudentDetailView(RoleRequiredMixin, View):
         from fees.selectors import invoices_with_balance
         invoices = invoices_with_balance(invoices)
 
+        current_enrollment = ClassEnrollment.objects.filter(
+            student=student, is_current=True
+        ).select_related('school_class').first()
+
+        class_total_amount = Decimal('0.00')
+        if current_enrollment:
+            from fees.models import FeeCategory, FeeStructure
+            from django.db.models import Sum
+            from fees.generation import effective_fee_structures
+            from core.models import Term
+            from fees.utils import resolve_student_type
+
+            current_term = Term.objects.filter(school=school, is_current=True).first()
+            if current_term:
+                student_type = resolve_student_type(student, current_term.session)
+                structures = effective_fee_structures(
+                    school, current_enrollment.school_class, current_term,
+                    student_type=student_type, student=student, session=current_term.session
+                )
+                class_total_amount = sum((fs.amount for fs in structures), Decimal('0.00'))
+
         invoice_less_payments = Payment.objects.filter(
             student=student, invoice__isnull=True,
         ).order_by('-paid_on')
@@ -112,6 +135,8 @@ class StudentDetailView(RoleRequiredMixin, View):
             'parents': User.objects.filter(school=school, role=Roles.PARENT, is_active=True),
             'classes': SchoolClass.objects.filter(school=school, is_active=True),
             'sessions': AcademicSession.objects.filter(school=school),
+            'current_enrollment': current_enrollment,
+            'class_total_amount': class_total_amount,
         }
         return render(request, 'school_admin/student_detail.html', context)
 

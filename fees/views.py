@@ -14,11 +14,12 @@ from django.db import transaction
 from django.views.generic.base import View
 
 from .checkout import reconcile_checkout, current_term, get_selected_items
-from .models import Invoice, Payment, PaymentLineItem
+from .models import Invoice, Payment, PaymentLineItem, InvoiceLineItem, FeeCategory
 from .paystack import initiate_payment as paystack_initiate
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
-from students.models import Student, StudentGuardianLink
+from students.models import Student, StudentGuardianLink, ClassEnrollment
+from core.models import Term
 
 # process-local guard so the htmx poll hits Paystack's verify endpoint at most
 # once per payment instead of every 2 seconds.
@@ -835,9 +836,14 @@ class PaymentReceiptView(RoleRequiredMixin, View):
             if enrollment and enrollment.school_class:
                 display_class = enrollment.school_class.name
 
+        invoice = payment.invoice
+        receipt_line_items = []
+        if invoice is not None:
+            receipt_line_items = invoice.line_items.all().select_related('category')
+
         return render(request, 'fees/receipt_view.html', {
             'payment': payment,
-            'invoice': payment.invoice,
+            'invoice': invoice,
             'receipt': receipt,
             'student': student,
             'term': term,
@@ -845,6 +851,8 @@ class PaymentReceiptView(RoleRequiredMixin, View):
             'lesson_enrollment': lesson_enrollment,
             'display_student_name': display_student_name,
             'display_class': display_class,
+            'receipt_line_items': receipt_line_items,
+            'payment_line_items': payment.line_items.all(),
         })
 
 
@@ -857,3 +865,96 @@ class PaymentTimeoutHelpView(RoleRequiredMixin, View):
             '<p class="text-amber-600 text-sm mt-4">Still processing? '
             'If this persists, contact the school office.</p>'
         )
+
+
+@login_required
+@require_GET
+def student_line_items_api(request, student_id):
+    """Return payable line items for a student's current class.
+
+    Query params:
+    - scope: 'total' | 'invoice:<id>' | None
+
+    Returns JSON with items list and totals.
+    """
+    student = get_object_or_404(Student, pk=student_id, school=request.school)
+
+    # Permission check
+    user = request.user
+    if user.role == 'STUDENT':
+        if student.user != user:
+            return JsonResponse({'error': 'Forbidden'}, status=403)
+    elif user.role == 'PARENT':
+        if not student.guardian_links.filter(guardian=user).exists():
+            return JsonResponse({'error': 'Forbidden'}, status=403)
+    elif user.role != 'ADMIN':
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+
+    scope = request.GET.get('scope', '')
+
+    # Get student's current class
+    enrollment = ClassEnrollment.objects.filter(
+        student=student, is_current=True
+    ).select_related('school_class').first()
+
+    class_name = enrollment.school_class.name if enrollment else None
+
+    # Build base queryset
+    line_items_qs = InvoiceLineItem.objects.filter(
+        invoice__school=student.school,
+        invoice__student=student,
+        invoice__balance__gt=0,
+    ).select_related(
+        'invoice__term__session', 'category'
+    ).order_by('invoice__term__start_date', 'category__name')
+
+    # Filter by scope
+    if scope.startswith('invoice:'):
+        try:
+            invoice_id = int(scope.split(':')[1])
+            line_items_qs = line_items_qs.filter(invoice_id=invoice_id)
+        except (ValueError, TypeError):
+            pass
+
+    # Track one-time fees already paid across ALL sessions
+    paid_one_time_category_ids = set(
+        InvoiceLineItem.objects.filter(
+            invoice__student=student,
+            billing_cycle=FeeCategory.ONE_TIME,
+        ).values_list('category_id', flat=True).distinct()
+    )
+
+    items = []
+    selectable_total = Decimal('0.00')
+
+    for li in line_items_qs:
+        is_one_time = li.billing_cycle == FeeCategory.ONE_TIME
+        disabled = False
+        disabled_reason = None
+
+        if is_one_time and li.category_id in paid_one_time_category_ids:
+            disabled = True
+            disabled_reason = 'Already paid (one-time fee)'
+
+        items.append({
+            'id': li.pk,
+            'category_name': li.category.name,
+            'amount': str(li.amount),
+            'term_name': str(li.invoice.term),
+            'invoice_id': li.invoice_id,
+            'billing_cycle': li.billing_cycle,
+            'is_one_time': is_one_time,
+            'disabled': disabled,
+            'disabled_reason': disabled_reason,
+        })
+
+        if not disabled:
+            selectable_total += li.amount
+
+    return JsonResponse({
+        'student_name': str(student),
+        'class_name': class_name,
+        'items': items,
+        'selectable_total': str(selectable_total),
+        'scope': scope,
+    })

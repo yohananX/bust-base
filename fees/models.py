@@ -6,7 +6,87 @@ from core.models import TenantScopedModel
 from fees.validators import validate_proof_file
 
 
+class FeeCategoryGroup(TenantScopedModel):
+    GROUP_TYPES = [
+        ('RECURRING', _('Recurring (per-term)')),
+        ('ONE_OFF', _('One-off')),
+    ]
+
+    name = models.CharField(max_length=200, verbose_name=_('name'))
+    group_type = models.CharField(
+        max_length=20,
+        choices=GROUP_TYPES,
+        default='RECURRING',
+        verbose_name=_('group type'),
+    )
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='children',
+        verbose_name=_('parent group'),
+    )
+    sort_order = models.PositiveIntegerField(default=0, verbose_name=_('sort order'))
+    is_active = models.BooleanField(default=True, verbose_name=_('active'))
+
+    class Meta:
+        verbose_name = _('fee category group')
+        verbose_name_plural = _('fee category groups')
+        ordering = ['sort_order', 'name']
+        unique_together = ('school', 'name')
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        if self.parent and self.parent.school_id != self.school_id:
+            raise ValidationError(_('Parent group must belong to the same school.'))
+        depth = 0
+        parent = self.parent
+        while parent:
+            depth += 1
+            if depth > 1:
+                raise ValidationError(_('Groups may be nested at most 2 levels deep.'))
+            parent = parent.parent
+
+
+class FeeCategoryGroupAssignment(TenantScopedModel):
+    group = models.ForeignKey(
+        FeeCategoryGroup,
+        on_delete=models.CASCADE,
+        related_name='assignments',
+        verbose_name=_('group'),
+    )
+    category = models.ForeignKey(
+        'FeeCategory',
+        on_delete=models.CASCADE,
+        related_name='group_assignments',
+        verbose_name=_('category'),
+    )
+    sort_order = models.PositiveIntegerField(default=0, verbose_name=_('sort order'))
+
+    class Meta:
+        verbose_name = _('fee category group assignment')
+        verbose_name_plural = _('fee category group assignments')
+        ordering = ['sort_order', 'category__name']
+        unique_together = ('school', 'group', 'category')
+
+    def __str__(self):
+        return f'{self.category.name} → {self.group.name}'
+
+
 class FeeCategory(TenantScopedModel):
+    BILLING_CYCLE_CHOICES = [
+        ('ONE_TIME', _('One-time')),
+        ('PER_TERM', _('Per term')),
+    ]
+    STUDENT_TYPE_CHOICES = [
+        ('NEW', _('New intake only')),
+        ('RETURNING', _('Returning pupils only')),
+        ('ALL', _('All students')),
+    ]
+
     name = models.CharField(max_length=200, verbose_name=_('name'))
     is_compulsory = models.BooleanField(
         default=True,
@@ -16,6 +96,28 @@ class FeeCategory(TenantScopedModel):
             'term invoice. Optional categories (e.g. uniform) only appear as payable '
             'extras a parent chooses to pay.'
         ),
+    )
+    billing_cycle = models.CharField(
+        max_length=20,
+        choices=BILLING_CYCLE_CHOICES,
+        default='PER_TERM',
+        verbose_name=_('billing cycle'),
+        help_text=_('One-time fees apply only once (e.g. registration). Per-term fees recur each term.'),
+    )
+    student_type = models.CharField(
+        max_length=20,
+        choices=STUDENT_TYPE_CHOICES,
+        default='ALL',
+        verbose_name=_('student type'),
+        help_text=_('Which students this category applies to.'),
+    )
+    group = models.ForeignKey(
+        FeeCategoryGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='categories',
+        verbose_name=_('group'),
     )
 
     class Meta:
@@ -36,7 +138,10 @@ class FeeStructure(TenantScopedModel):
     term = models.ForeignKey(
         'core.Term',
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         verbose_name=_('term'),
+        help_text=_('Leave blank for one-time fees.'),
     )
     category = models.ForeignKey(
         FeeCategory,
@@ -48,15 +153,35 @@ class FeeStructure(TenantScopedModel):
         decimal_places=2,
         verbose_name=_('amount'),
     )
+    student_type = models.CharField(
+        max_length=20,
+        choices=FeeCategory.STUDENT_TYPE_CHOICES,
+        default='ALL',
+        verbose_name=_('student type'),
+        help_text=_('Which students this price applies to.'),
+    )
+    is_recurring_override = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name=_('recurring override'),
+        help_text=_(
+            'Override billing_cycle for this specific class/term. '
+            'None = use category default.'
+        ),
+    )
 
     class Meta:
         verbose_name = _('fee structure')
         verbose_name_plural = _('fee structures')
-        unique_together = ('school', 'school_class', 'term', 'category')
+        unique_together = ('school', 'school_class', 'term', 'category', 'student_type')
         ordering = ['school_class', 'category']
 
     def __str__(self):
-        return f'{self.school_class} - {self.term} - {self.category}: {self.amount}'
+        return f'{self.school_class} - {self.term or "One-time"} - {self.category}: {self.amount}'
+
+    def clean(self):
+        if self.amount <= Decimal('0.00'):
+            raise ValidationError({'amount': _('Amount must be greater than 0.')})
 
 
 class Invoice(TenantScopedModel):
@@ -123,6 +248,13 @@ class Invoice(TenantScopedModel):
 
 
 class InvoiceLineItem(models.Model):
+    school = models.ForeignKey(
+        'core.School',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name=_('school'),
+    )
     invoice = models.ForeignKey(
         Invoice,
         on_delete=models.CASCADE,
@@ -139,13 +271,38 @@ class InvoiceLineItem(models.Model):
         decimal_places=2,
         verbose_name=_('amount'),
     )
+    term = models.ForeignKey(
+        'core.Term',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name=_('term'),
+    )
+    session = models.ForeignKey(
+        'core.AcademicSession',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name=_('session'),
+    )
+    billing_cycle = models.CharField(
+        max_length=20,
+        choices=FeeCategory.BILLING_CYCLE_CHOICES,
+        default='PER_TERM',
+        verbose_name=_('billing cycle'),
+    )
 
     class Meta:
         verbose_name = _('invoice line item')
         verbose_name_plural = _('invoice line items')
+        ordering = ['id']
 
     def __str__(self):
         return f'{self.category}: {self.amount}'
+
+    def clean(self):
+        if self.amount <= Decimal('0.00'):
+            raise ValidationError({'amount': _('Amount must be greater than 0.')})
 
 
 class Payment(TenantScopedModel):
@@ -188,9 +345,7 @@ class Payment(TenantScopedModel):
         related_name='payments',
         verbose_name=_('lesson enrollment'),
     )
-    description = models.CharField(
-        max_length=255, blank=True, default='', verbose_name=_('description')
-    )
+    description = models.CharField(max_length=255, blank=True, default='', verbose_name=_('description'))
     amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -221,36 +376,20 @@ class Payment(TenantScopedModel):
         blank=True,
         verbose_name=_('recorded by'),
     )
-    authorization_url = models.URLField(
-        blank=True, max_length=500, verbose_name=_('authorization url')
-    )
-    access_code = models.CharField(
-        max_length=100, blank=True, default='', verbose_name=_('access code')
-    )
+    authorization_url = models.URLField(blank=True, max_length=500, verbose_name=_('authorization url'))
+    access_code = models.CharField(max_length=100, blank=True, default='', verbose_name=_('access code'))
     fees_charged = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=Decimal('0.00'),
         verbose_name=_('fees charged'),
     )
-    channel = models.CharField(
-        max_length=30, blank=True, default='', verbose_name=_('channel')
-    )
-    currency = models.CharField(
-        max_length=3, default='NGN', verbose_name=_('currency')
-    )
-    paid_by_email = models.EmailField(
-        blank=True, default='', verbose_name=_('paid by email')
-    )
-    paid_by_name = models.CharField(
-        max_length=200, blank=True, default='', verbose_name=_('paid by name')
-    )
-    paid_by_relation = models.CharField(
-        max_length=100, blank=True, default='', verbose_name=_('paid by relation')
-    )
-    paid_by_phone = models.CharField(
-        max_length=20, blank=True, default='', verbose_name=_('paid by phone')
-    )
+    channel = models.CharField(max_length=30, blank=True, default='', verbose_name=_('channel'))
+    currency = models.CharField(max_length=3, default='NGN', verbose_name=_('currency'))
+    paid_by_email = models.EmailField(blank=True, default='', verbose_name=_('paid by email'))
+    paid_by_name = models.CharField(max_length=200, blank=True, default='', verbose_name=_('paid by name'))
+    paid_by_relation = models.CharField(max_length=100, blank=True, default='', verbose_name=_('paid by relation'))
+    paid_by_phone = models.CharField(max_length=20, blank=True, default='', verbose_name=_('paid by phone'))
     proof_image = models.FileField(
         upload_to='fees/proofs/%Y/%m/',
         blank=True,
@@ -259,27 +398,13 @@ class Payment(TenantScopedModel):
         help_text=_('Screenshot or receipt image proving a bank transfer.'),
         validators=[validate_proof_file],
     )
-    card_last4 = models.CharField(
-        max_length=4, blank=True, default='', verbose_name=_('card last 4')
-    )
-    card_brand = models.CharField(
-        max_length=50, blank=True, default='', verbose_name=_('card brand')
-    )
-    bank_name = models.CharField(
-        max_length=100, blank=True, default='', verbose_name=_('bank name')
-    )
-    initiated_at = models.DateTimeField(
-        null=True, blank=True, verbose_name=_('initiated at')
-    )
-    verified_at = models.DateTimeField(
-        null=True, blank=True, verbose_name=_('verified at')
-    )
-    webhook_processed = models.BooleanField(
-        default=False, verbose_name=_('webhook processed')
-    )
-    webhook_payload = models.JSONField(
-        default=dict, blank=True, verbose_name=_('webhook payload')
-    )
+    card_last4 = models.CharField(max_length=4, blank=True, default='', verbose_name=_('card last 4'))
+    card_brand = models.CharField(max_length=50, blank=True, default='', verbose_name=_('card brand'))
+    bank_name = models.CharField(max_length=100, blank=True, default='', verbose_name=_('bank name'))
+    initiated_at = models.DateTimeField(null=True, blank=True, verbose_name=_('initiated at'))
+    verified_at = models.DateTimeField(null=True, blank=True, verbose_name=_('verified at'))
+    webhook_processed = models.BooleanField(default=False, verbose_name=_('webhook processed'))
+    webhook_payload = models.JSONField(default=dict, blank=True, verbose_name=_('webhook payload'))
     confirmed_by = models.ForeignKey(
         'accounts.User',
         on_delete=models.SET_NULL,
@@ -288,9 +413,7 @@ class Payment(TenantScopedModel):
         related_name='+',
         verbose_name=_('confirmed by'),
     )
-    confirmed_at = models.DateTimeField(
-        null=True, blank=True, verbose_name=_('confirmed at')
-    )
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name=_('confirmed at'))
 
     class Meta:
         verbose_name = _('payment')
@@ -337,9 +460,7 @@ class Payment(TenantScopedModel):
 class WebhookLog(TenantScopedModel):
     event = models.CharField(max_length=50, verbose_name=_('event'))
     payload = models.JSONField(verbose_name=_('payload'))
-    ip_address = models.GenericIPAddressField(
-        null=True, blank=True, verbose_name=_('ip address')
-    )
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name=_('ip address'))
     processed = models.BooleanField(default=False, verbose_name=_('processed'))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('created at'))
 
@@ -372,6 +493,72 @@ class FeeReceipt(TenantScopedModel):
         return self.receipt_number
 
 
+class InvoiceResetLog(TenantScopedModel):
+    class ResetScope(models.TextChoices):
+        TERM = 'TERM', _('Term')
+        CLASS = 'CLASS', _('Class')
+        STUDENT = 'STUDENT', _('Student')
+        SCHOOL = 'SCHOOL', _('School-wide')
+
+    scope_type = models.CharField(max_length=20, choices=ResetScope.choices, verbose_name=_('scope type'))
+    scope_id = models.PositiveIntegerField(verbose_name=_('scope id'))
+    scope_name = models.CharField(max_length=200, verbose_name=_('scope name'))
+    reset_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_('reset by'),
+    )
+    reason = models.TextField(blank=True, verbose_name=_('reason'))
+    invoices_deleted = models.PositiveIntegerField(default=0, verbose_name=_('invoices deleted'))
+    payments_deleted = models.PositiveIntegerField(default=0, verbose_name=_('payments deleted'))
+    line_items_deleted = models.PositiveIntegerField(default=0, verbose_name=_('line items deleted'))
+    receipts_deleted = models.PositiveIntegerField(default=0, verbose_name=_('receipts deleted'))
+    performed_at = models.DateTimeField(auto_now_add=True, verbose_name=_('performed at'))
+
+    class Meta:
+        verbose_name = _('invoice reset log')
+        verbose_name_plural = _('invoice reset logs')
+        ordering = ['-performed_at']
+
+    def __str__(self):
+        return f'{self.get_scope_type_display()} reset: {self.scope_name} ({self.performed_at:%Y-%m-%d %H:%M})'
+
+
+class FeeValidationError(TenantScopedModel):
+    class ErrorCode(models.TextChoices):
+        NEGATIVE_AMOUNT = 'NEGATIVE_AMOUNT', _('Negative amount')
+        DUPLICATE_STRUCTURE = 'DUPLICATE_STRUCTURE', _('Duplicate fee structure')
+        MISMATCHED_TOTAL = 'MISMATCHED_TOTAL', _('Invoice total != sum of line items')
+        MISSING_COMPULSORY = 'MISSING_COMPULSORY', _('Missing compulsory category')
+        ONE_TIME_REBILL = 'ONE_TIME_REBILL', _('One-time fee rebilled to same student')
+        INVALID_STUDENT_TYPE = 'INVALID_STUDENT_TYPE', _('Invalid student type for category')
+
+    code = models.CharField(max_length=50, choices=ErrorCode.choices, verbose_name=_('code'))
+    message = models.TextField(verbose_name=_('message'))
+    related_object_type = models.CharField(max_length=50, blank=True, verbose_name=_('related object type'))
+    related_object_id = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('related object id'))
+    is_resolved = models.BooleanField(default=False, verbose_name=_('resolved'))
+    resolved_at = models.DateTimeField(null=True, blank=True, verbose_name=_('resolved at'))
+    resolved_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_('resolved by'),
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('created at'))
+
+    class Meta:
+        verbose_name = _('fee validation error')
+        verbose_name_plural = _('fee validation errors')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.code}: {self.message[:80]}'
+
+
 class PaymentLineItem(models.Model):
     KIND_OUTSTANDING = 'outstanding'
     KIND_EXTRA = 'extra'
@@ -387,6 +574,13 @@ class PaymentLineItem(models.Model):
         on_delete=models.CASCADE,
         related_name='line_items',
         verbose_name=_('payment'),
+    )
+    school = models.ForeignKey(
+        'core.School',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name=_('school'),
     )
     kind = models.CharField(max_length=20, choices=KIND_CHOICES, verbose_name=_('kind'))
     label = models.CharField(max_length=255, verbose_name=_('label'))

@@ -359,12 +359,30 @@
         {% endif %}
       </div>
 
-      {% if payment.line_items.all %}
+      {% if receipt_line_items %}
+      <div class="receipt-items">
+        <div class="receipt-item full">
+          <span class="receipt-label">Fee Breakdown</span>
+        </div>
+        {% for item in receipt_line_items %}
+        <div class="receipt-item">
+          <span class="receipt-value">{{ item.category.name }}</span>
+          <span class="receipt-value mono">&#8358;{{ item.amount|floatformat:2|intcomma }}</span>
+        </div>
+        {% endfor %}
+        {% if invoice and invoice.balance > 0 %}
+        <div class="receipt-item" style="border-top:1px solid var(--line-strong);padding-top:0.25rem;margin-top:0.15rem;">
+          <span class="receipt-value" style="font-weight:700;">Balance After Payment</span>
+          <span class="receipt-value mono" style="font-weight:700;">&#8358;{{ invoice.balance|floatformat:2|intcomma }}</span>
+        </div>
+        {% endif %}
+      </div>
+      {% elif payment_line_items %}
       <div class="receipt-items">
         <div class="receipt-item full">
           <span class="receipt-label">Items Paid For</span>
         </div>
-        {% for item in payment.line_items.all %}
+        {% for item in payment_line_items %}
         <div class="receipt-item">
           <span class="receipt-value">{{ item.label }}</span>
           <span class="receipt-value mono">&#8358;{{ item.amount|floatformat:2|intcomma }}</span>

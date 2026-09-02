@@ -2421,3 +2421,218 @@ class ReceiptUniquenessTest(BaseFeesTest):
         r2 = issue_receipt(payment)
         self.assertEqual(r1.pk, r2.pk)
         self.assertEqual(FeeReceipt.objects.count(), 1)
+
+
+# ─── Student Type & Prospectus Fee Tests ───────────────────────────────────
+
+class StudentTypeResolutionTest(BaseFeesTest):
+    def test_new_student_without_prior_enrollment(self):
+        """Student with no prior enrollment is NEW."""
+        from fees.utils import resolve_student_type
+        self.assertEqual(resolve_student_type(self.student, self.session), 'NEW')
+
+    def test_returning_student_with_prior_enrollment(self):
+        """Student with a prior enrollment in an earlier session is RETURNING."""
+        from fees.utils import resolve_student_type
+        from datetime import date
+        prior_session = AcademicSession.objects.create(
+            school=self.school,
+            name='2024/2025',
+            start_date=date(2024, 9, 1),
+            end_date=date(2025, 8, 31),
+            is_current=False,
+        )
+        prior_class = SchoolClass.objects.create(
+            school=self.school, name='PRE1A', level='Nursery 1',
+        )
+        ClassEnrollment.objects.create(
+            school=self.school,
+            student=self.student,
+            school_class=prior_class,
+            session=prior_session,
+            is_current=False,
+        )
+        self.assertEqual(resolve_student_type(self.student, self.session), 'RETURNING')
+
+    def test_student_type_for_term_wrapper(self):
+        from fees.utils import student_type_for_term
+        self.assertEqual(student_type_for_term(self.student, self.term), 'NEW')
+
+
+class ProspectusFeeGenerationTest(BaseFeesTest):
+    def setUp(self):
+        super().setUp()
+        from fees.utils import resolve_student_type
+        from datetime import date
+
+        self.tuition_category.is_compulsory = False
+        self.tuition_category.save()
+        self.sports_category.is_compulsory = False
+        self.sports_category.save()
+
+        self.new_intake_category = FeeCategory.objects.create(
+            school=self.school,
+            name='Registration Form',
+            billing_cycle='ONE_TIME',
+            student_type='NEW',
+            is_compulsory=True,
+        )
+        self.uniforms_category = FeeCategory.objects.create(
+            school=self.school,
+            name='Uniforms',
+            billing_cycle='ONE_TIME',
+            student_type='NEW',
+            is_compulsory=False,
+        )
+        self.tuition_category2 = FeeCategory.objects.create(
+            school=self.school,
+            name='Tuition Fee',
+            billing_cycle='PER_TERM',
+            student_type='ALL',
+            is_compulsory=True,
+        )
+        self.party_category = FeeCategory.objects.create(
+            school=self.school,
+            name='Christmas/End of Term Party Fee',
+            billing_cycle='PER_TERM',
+            student_type='ALL',
+            is_compulsory=True,
+        )
+
+        self.one_time_fs = FeeStructure.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            term=None,
+            category=self.new_intake_category,
+            amount=Decimal('2000.00'),
+            student_type='NEW',
+        )
+        self.tuition_fs = FeeStructure.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            term=self.term,
+            category=self.tuition_category2,
+            amount=Decimal('25000.00'),
+            student_type='ALL',
+        )
+        self.party_fs = FeeStructure.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            term=self.term,
+            category=self.party_category,
+            amount=Decimal('5000.00'),
+            student_type='ALL',
+        )
+
+    def test_new_student_receives_one_time_and_per_term_fees(self):
+        from fees.generation import generate_invoice_for_student
+        invoice = generate_invoice_for_student(self.student, self.term)
+        self.assertIsNotNone(invoice)
+        self.assertEqual(invoice.total_amount, Decimal('32000.00'))  # 2000 + 25000 + 5000
+        self.assertEqual(invoice.line_items.count(), 3)
+
+    def test_returning_student_excludes_new_only_fees(self):
+        from fees.generation import generate_invoice_for_student
+        from datetime import date
+        prior_session = AcademicSession.objects.create(
+            school=self.school,
+            name='2024/2025',
+            start_date=date(2024, 9, 1),
+            end_date=date(2025, 8, 31),
+            is_current=False,
+        )
+        prior_class = SchoolClass.objects.create(
+            school=self.school, name='PRE1A', level='Nursery 1',
+        )
+        ClassEnrollment.objects.create(
+            school=self.school,
+            student=self.student,
+            school_class=prior_class,
+            session=prior_session,
+            is_current=False,
+        )
+        invoice = generate_invoice_for_student(self.student, self.term)
+        self.assertIsNotNone(invoice)
+        self.assertEqual(invoice.total_amount, Decimal('30000.00'))  # 25000 + 5000
+        self.assertEqual(invoice.line_items.count(), 2)
+        categories = set(invoice.line_items.values_list('category__name', flat=True))
+        self.assertIn('Tuition Fee', categories)
+        self.assertIn('Christmas/End of Term Party Fee', categories)
+        self.assertNotIn('Registration Form', categories)
+
+    def test_one_time_fee_has_null_term(self):
+        self.assertIsNone(self.one_time_fs.term)
+        self.assertEqual(self.one_time_fs.category.billing_cycle, 'ONE_TIME')
+
+    def test_per_term_fee_has_term(self):
+        self.assertEqual(self.tuition_fs.term, self.term)
+        self.assertEqual(self.tuition_fs.category.billing_cycle, 'PER_TERM')
+
+
+class ReceiptLineItemBreakdownTest(BaseFeesTest):
+    def setUp(self):
+        super().setUp()
+        from fees.generation import generate_invoice_for_student
+
+        self.sports_category.is_compulsory = False
+        self.sports_category.save()
+
+        FeeStructure.objects.filter(
+            school=self.school,
+            school_class=self.school_class,
+            term=self.term,
+            category=self.tuition_category,
+        ).delete()
+
+        self.party_category = FeeCategory.objects.create(
+            school=self.school,
+            name='Christmas/End of Term Party Fee',
+            billing_cycle='PER_TERM',
+            student_type='ALL',
+            is_compulsory=True,
+        )
+        FeeStructure.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            term=self.term,
+            category=self.tuition_category,
+            amount=Decimal('25000.00'),
+            student_type='ALL',
+        )
+        FeeStructure.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            term=self.term,
+            category=self.party_category,
+            amount=Decimal('5000.00'),
+            student_type='ALL',
+        )
+
+        self.invoice = generate_invoice_for_student(self.student, self.term)
+
+    def test_receipt_shows_invoice_line_items(self):
+        from fees.paystack import issue_receipt
+
+        self.assertIsNotNone(self.invoice)
+
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=self.invoice.total_amount,
+            method=Payment.Method.PAYSTACK,
+            reference='TEST-RECEIPT-BREAKDOWN',
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+        )
+        receipt = issue_receipt(payment)
+        self.assertIsNotNone(receipt)
+
+        self.client.force_login(self.parent_user)
+        resp = self.client.get(
+            reverse('fees:payment-receipt', kwargs={'payment_id': payment.pk})
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Fee Breakdown')
+        self.assertContains(resp, self.tuition_category.name)
+        self.assertContains(resp, self.party_category.name)

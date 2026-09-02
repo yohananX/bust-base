@@ -1,0 +1,61 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{% trans 'Reset invoices for class' %}{% endblock %}
+
+{% block content %}
+<h1>{% trans 'Reset invoices for class' %}</h1>
+
+<p class="errornote">
+{% trans "This will permanently delete ALL invoices, payments, line items, and receipts for the selected class and term. This action cannot be undone." %}
+</p>
+
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="reset_invoices_for_class" />
+    {{ action_checkbox_name }}
+    <fieldset>
+        <legend>{% trans 'Select class and term' %}</legend>
+        <div class="form-row">
+            <div>
+                <label for="school_class">{% trans 'Class' %}:</label>
+                <select name="school_class" id="school_class" required>
+                    <option value="">{% trans 'Select a class' %}</option>
+                    {% for school_class in classes %}
+                    <option value="{{ school_class.pk }}">{{ school_class }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div>
+                <label for="term">{% trans 'Term' %}:</label>
+                <select name="term" id="term" required>
+                    <option value="">{% trans 'Select a term' %}</option>
+                    {% for term in terms %}
+                    <option value="{{ term.pk }}">{{ term }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div>
+                <label for="reason">{% trans 'Reason' %}:</label>
+                <textarea name="reason" id="reason" rows="3" placeholder="{% trans 'Required: explain why you are resetting these invoices' %}"></textarea>
+            </div>
+        </div>
+        <div class="form-row">
+            <div>
+                <label for="force">
+                    <input type="checkbox" name="force" id="force" required />
+                    {% trans 'I understand this will permanently delete all payment records for the selected class and term and this cannot be undone.' %}
+                </label>
+            </div>
+        </div>
+    </fieldset>
+    <div class="submit-row">
+        <input type="submit" value="{% trans 'Reset invoices' %}" class="default" />
+        <a href="javascript:history.back()">{% trans 'Cancel' %}</a>
+    </div>
+</form>
+{% endblock %}

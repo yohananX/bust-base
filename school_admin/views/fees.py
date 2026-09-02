@@ -14,7 +14,7 @@ from django.utils import timezone
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from core.models import Term
-from fees.models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment
+from fees.models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem
 from fees.selectors import invoices_with_balance
 from students.models import Student, SchoolClass, ClassEnrollment
 
@@ -46,6 +46,13 @@ class FeeCategoryCreateView(RoleRequiredMixin, View):
         school = request.school
         name = request.POST.get('name', '').strip()
         is_compulsory = request.POST.get('is_compulsory') == 'on'
+        billing_cycle = request.POST.get('billing_cycle', 'PER_TERM')
+        student_type = request.POST.get('student_type', 'ALL')
+
+        if billing_cycle not in FeeCategory.BILLING_CYCLE_CHOICES:
+            billing_cycle = 'PER_TERM'
+        if student_type not in FeeCategory.STUDENT_TYPE_CHOICES:
+            student_type = 'ALL'
 
         if not name:
             messages.error(request, 'Category name is required.')
@@ -61,6 +68,7 @@ class FeeCategoryCreateView(RoleRequiredMixin, View):
 
         FeeCategory.objects.create(
             school=school, name=name, is_compulsory=is_compulsory,
+            billing_cycle=billing_cycle, student_type=student_type,
         )
         messages.success(request, f'Category "{name}" created successfully.')
         return redirect('school_admin:fee_category_list')
@@ -84,6 +92,13 @@ class FeeCategoryEditView(RoleRequiredMixin, View):
         category = get_object_or_404(FeeCategory, school=school, pk=pk)
         name = request.POST.get('name', '').strip()
         is_compulsory = request.POST.get('is_compulsory') == 'on'
+        billing_cycle = request.POST.get('billing_cycle', category.billing_cycle)
+        student_type = request.POST.get('student_type', category.student_type)
+
+        if billing_cycle not in FeeCategory.BILLING_CYCLE_CHOICES:
+            billing_cycle = category.billing_cycle
+        if student_type not in FeeCategory.STUDENT_TYPE_CHOICES:
+            student_type = category.student_type
 
         if not name:
             messages.error(request, 'Category name is required.')
@@ -103,6 +118,8 @@ class FeeCategoryEditView(RoleRequiredMixin, View):
 
         category.name = name
         category.is_compulsory = is_compulsory
+        category.billing_cycle = billing_cycle
+        category.student_type = student_type
         category.save()
         messages.success(request, f'Category "{name}" updated successfully.')
         return redirect('school_admin:fee_category_list')
@@ -191,6 +208,10 @@ class FeePricingCreateView(RoleRequiredMixin, View):
         class_id = request.POST.get('class_id', '')
         term_id = request.POST.get('term_id', '')
         raw_amount = request.POST.get('amount', '').strip()
+        student_type = request.POST.get('student_type', 'ALL')
+
+        if student_type not in FeeCategory.STUDENT_TYPE_CHOICES:
+            student_type = 'ALL'
 
         categories = FeeCategory.objects.filter(school=school)
         classes = SchoolClass.objects.filter(school=school, is_active=True)
@@ -205,16 +226,19 @@ class FeePricingCreateView(RoleRequiredMixin, View):
                 'selected_category_id': category_id,
                 'selected_class_id': class_id,
                 'selected_term_id': term_id,
+                'selected_student_type': student_type,
                 'entered_amount': raw_amount,
             })
 
-        if not category_id or not class_id or not term_id or not raw_amount:
-            messages.error(request, 'All fields are required.')
+        if not category_id or not class_id or not raw_amount:
+            messages.error(request, 'Category, class and amount are required.')
             return re_render()
 
         category = get_object_or_404(FeeCategory, school=school, pk=category_id)
         school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
-        term = get_object_or_404(Term, school=school, pk=term_id)
+        term = None
+        if term_id:
+            term = get_object_or_404(Term, school=school, pk=term_id)
 
         try:
             amount = Decimal(raw_amount)
@@ -229,11 +253,12 @@ class FeePricingCreateView(RoleRequiredMixin, View):
         if FeeStructure.objects.filter(
             school=school,
             school_class_id=class_id,
-            term_id=term_id,
+            term=term,
             category_id=category_id,
+            student_type=student_type,
         ).exists():
             messages.error(
-                request, 'Pricing already exists for that category, class and term.'
+                request, 'Pricing already exists for that category, class, term and student type.'
             )
             return re_render()
 
@@ -243,14 +268,21 @@ class FeePricingCreateView(RoleRequiredMixin, View):
             term=term,
             category=category,
             amount=amount,
+            student_type=student_type,
         )
-        from fees.generation import generate_invoices_for_class
-        generated = generate_invoices_for_class(school_class, term)
-        messages.success(
-            request,
-            f'Pricing added: {category.name} — {school_class.name} ({term.name}). '
-            f'{generated} invoice(s) generated for students without one.',
-        )
+        if term:
+            from fees.generation import generate_invoices_for_class
+            generated = generate_invoices_for_class(school_class, term)
+            messages.success(
+                request,
+                f'Pricing added: {category.name} — {school_class.name} ({term.name}, {student_type}). '
+                f'{generated} invoice(s) generated for students without one.',
+            )
+        else:
+            messages.success(
+                request,
+                f'One-time pricing added: {category.name} — {school_class.name} ({student_type}).',
+            )
         return redirect('school_admin:fee_pricing_list')
 
 
@@ -272,6 +304,7 @@ class FeePricingEditView(RoleRequiredMixin, View):
             'selected_category_id': structure.category_id,
             'selected_class_id': structure.school_class_id,
             'selected_term_id': structure.term_id,
+            'selected_student_type': structure.student_type,
         })
 
     def post(self, request, pk):
@@ -283,6 +316,10 @@ class FeePricingEditView(RoleRequiredMixin, View):
         class_id = request.POST.get('class_id', '')
         term_id = request.POST.get('term_id', '')
         raw_amount = request.POST.get('amount', '').strip()
+        student_type = request.POST.get('student_type', structure.student_type)
+
+        if student_type not in FeeCategory.STUDENT_TYPE_CHOICES:
+            student_type = structure.student_type
 
         categories = FeeCategory.objects.filter(school=school)
         classes = SchoolClass.objects.filter(school=school, is_active=True)
@@ -298,16 +335,19 @@ class FeePricingEditView(RoleRequiredMixin, View):
                 'selected_category_id': category_id,
                 'selected_class_id': class_id,
                 'selected_term_id': term_id,
+                'selected_student_type': student_type,
                 'entered_amount': raw_amount,
             })
 
-        if not category_id or not class_id or not term_id or not raw_amount:
-            messages.error(request, 'All fields are required.')
+        if not category_id or not class_id or not raw_amount:
+            messages.error(request, 'Category, class and amount are required.')
             return re_render()
 
         category = get_object_or_404(FeeCategory, school=school, pk=category_id)
         school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
-        term = get_object_or_404(Term, school=school, pk=term_id)
+        term = None
+        if term_id:
+            term = get_object_or_404(Term, school=school, pk=term_id)
 
         try:
             amount = Decimal(raw_amount)
@@ -322,11 +362,12 @@ class FeePricingEditView(RoleRequiredMixin, View):
         if FeeStructure.objects.filter(
             school=school,
             school_class_id=class_id,
-            term_id=term_id,
+            term=term,
             category_id=category_id,
+            student_type=student_type,
         ).exclude(pk=pk).exists():
             messages.error(
-                request, 'Pricing already exists for that category, class and term.'
+                request, 'Pricing already exists for that category, class, term and student type.'
             )
             return re_render()
 
@@ -334,18 +375,25 @@ class FeePricingEditView(RoleRequiredMixin, View):
         structure.term = term
         structure.category = category
         structure.amount = amount
+        structure.student_type = student_type
         structure.save()
-        from fees.generation import (
-            generate_invoices_for_class,
-            sync_class_invoices,
-        )
-        generated = generate_invoices_for_class(school_class, term)
-        re_priced = sync_class_invoices(school_class, term)
-        messages.success(
-            request,
-            f'Pricing updated: {category.name} — {school_class.name} ({term.name}). '
-            f'{generated} invoice(s) generated, {re_priced} unpaid invoice(s) re-priced.',
-        )
+        if term:
+            from fees.generation import (
+                generate_invoices_for_class,
+                sync_class_invoices,
+            )
+            generated = generate_invoices_for_class(school_class, term)
+            re_priced = sync_class_invoices(school_class, term)
+            messages.success(
+                request,
+                f'Pricing updated: {category.name} — {school_class.name} ({term.name}, {student_type}). '
+                f'{generated} invoice(s) generated, {re_priced} unpaid invoice(s) re-priced.',
+            )
+        else:
+            messages.success(
+                request,
+                f'One-time pricing updated: {category.name} — {school_class.name} ({student_type}).',
+            )
         return redirect('school_admin:fee_pricing_list')
 
 
@@ -903,33 +951,72 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
             messages.error(request, 'Invalid payment method.')
             return redirect('school_admin:student_detail', pk=student.pk)
 
-        invoice_id = request.POST.get('invoice_id', '')
-        invoice = None
-        if invoice_id:
-            invoice = get_object_or_404(Invoice, school=school, pk=invoice_id)
-            if invoice.student_id != student.pk:
-                messages.error(request, 'That invoice belongs to a different student.')
-                return redirect('school_admin:student_detail', pk=student.pk)
-        else:
-            candidate = invoices_with_balance(
-                Invoice.objects.filter(school=school, student=student)
-            ).filter(balance_annotated__gt=0).order_by('term__start_date').first()
-            invoice = candidate
+        selected_line_item_ids = request.POST.getlist('selected_line_items')
 
-        payment = Payment.objects.create(
-            school=school,
-            invoice=invoice,
-            student=student,
-            amount=amount,
-            method=method,
-            reference=request.POST.get('reference', '').strip() or None,
-            status=Payment.Status.CONFIRMED,
-            paid_on=timezone.now(),
-            recorded_by=request.user,
-            description=request.POST.get('description', '').strip(),
-            paid_by_name=request.POST.get('paid_by_name', '').strip(),
-            paid_by_relation=request.POST.get('paid_by_relation', '').strip(),
-        )
+        invoice = None
+        if selected_line_item_ids:
+            from collections import defaultdict
+            items_by_invoice = defaultdict(list)
+            for li_id in selected_line_item_ids:
+                try:
+                    li = InvoiceLineItem.objects.get(pk=li_id, invoice__student=student)
+                    items_by_invoice[li.invoice_id].append(li)
+                except (InvoiceLineItem.DoesNotExist, ValueError):
+                    continue
+
+            if not items_by_invoice:
+                messages.error(request, 'No valid line items selected.')
+                return redirect('school_admin:student_detail', pk=student.pk)
+
+            invoice = Invoice.objects.filter(pk=list(items_by_invoice.keys())[0]).first()
+        else:
+            invoice_id = request.POST.get('invoice_id', '')
+            if invoice_id:
+                invoice = get_object_or_404(Invoice, school=school, pk=invoice_id)
+                if invoice.student_id != student.pk:
+                    messages.error(request, 'That invoice belongs to a different student.')
+                    return redirect('school_admin:student_detail', pk=student.pk)
+            else:
+                candidate = invoices_with_balance(
+                    Invoice.objects.filter(school=school, student=student)
+                ).filter(balance_annotated__gt=0).order_by('term__start_date').first()
+                invoice = candidate
+
+        with transaction.atomic():
+            payment = Payment.objects.create(
+                school=school,
+                invoice=invoice,
+                student=student,
+                amount=amount,
+                method=method,
+                reference=request.POST.get('reference', '').strip() or None,
+                status=Payment.Status.CONFIRMED,
+                paid_on=timezone.now(),
+                recorded_by=request.user,
+                description=request.POST.get('description', '').strip(),
+                paid_by_name=request.POST.get('paid_by_name', '').strip(),
+                paid_by_relation=request.POST.get('paid_by_relation', '').strip(),
+            )
+
+            if selected_line_item_ids:
+                for li_id in selected_line_item_ids:
+                    try:
+                        li = InvoiceLineItem.objects.get(pk=li_id, invoice__student=student)
+                        PaymentLineItem.objects.create(
+                            school=school,
+                            payment=payment,
+                            kind=PaymentLineItem.KIND_EXTRA,
+                            label=li.category.name,
+                            amount=li.amount,
+                            source_key=f'manual:{li.pk}',
+                            category=li.category,
+                            term=li.invoice.term,
+                            session=li.invoice.term.session if li.invoice.term else None,
+                            invoice=li.invoice,
+                        )
+                    except InvoiceLineItem.DoesNotExist:
+                        continue
+
         from fees.paystack import issue_receipt
         issue_receipt(payment)
         from notifications.utils import notify_many

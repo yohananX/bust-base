@@ -1,48 +1,82 @@
 """Reusable invoice-generation logic shared by bulk actions and enrollment flows."""
 from decimal import Decimal
 
+from django.db.models import Q
+
 from core.models import Term
 from students.models import ClassEnrollment
-from .models import FeeStructure, Invoice, InvoiceLineItem
+from .models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem
+from .utils import resolve_student_type
 
 
-def effective_fee_structures(school, school_class, term):
+def _is_one_time_already_billed(student, category, session):
+    """Return True if a ONE_TIME category was already billed to this student in a prior session."""
+    if category.billing_cycle != 'ONE_TIME':
+        return False
+    return InvoiceLineItem.objects.filter(
+        invoice__student=student,
+        category=category,
+        billing_cycle='ONE_TIME',
+        invoice__term__session__start_date__lt=session.start_date,
+    ).exists()
+
+
+def effective_fee_structures(school, school_class, term, student_type='ALL', student=None, session=None):
     """Resolve compulsory pricing for a class + term, with inheritance.
 
     Terms with explicit pricing use it. Any category missing for this term
     (or every category, when the term has no pricing at all) falls back to
     the most recent price set for that class and category — so fees stay
     the same across sessions until the admin explicitly changes them.
+
+    ``student_type`` filters to ``NEW`` or ``RETURNING``. Pass ``'ALL'``
+    to include both.
+
+    ``student`` and ``session`` are used to guard ONE_TIME categories from
+    being rebilled if the student already had them in a prior session.
     """
-    explicit = list(
-        FeeStructure.objects.filter(
-            school=school,
-            school_class=school_class,
-            term=term,
-            category__is_compulsory=True,
-        ).select_related('category')
-    )
-    explicit_cats = {fs.category_id for fs in explicit}
+    qs = FeeStructure.objects.filter(
+        school=school,
+        school_class=school_class,
+        category__is_compulsory=True,
+    ).select_related('category')
+
+    if term is not None:
+        explicit = list(qs.filter(term=term))
+        explicit_cats = {fs.category_id for fs in explicit}
+        fallback_candidates = qs.exclude(term=term).order_by('-term__start_date', 'category__name')
+    else:
+        explicit = list(qs.filter(term__isnull=True))
+        explicit_cats = {fs.category_id for fs in explicit}
+        fallback_candidates = qs.exclude(term__isnull=True).order_by('-term__start_date', 'category__name')
+
+    if student_type != 'ALL':
+        explicit = [fs for fs in explicit if fs.student_type in ('ALL', student_type)]
+        fallback_candidates = fallback_candidates.filter(
+            Q(student_type='ALL') | Q(student_type=student_type)
+        )
 
     fallbacks = []
-    candidates = list(
-        FeeStructure.objects.filter(
-            school=school,
-            school_class=school_class,
-            category__is_compulsory=True,
-        )
-        .exclude(term=term)
-        .select_related('category', 'term')
-        .order_by('-term__start_date', 'category__name')
-    )
     seen = set(explicit_cats)
-    for fs in candidates:
+    for fs in fallback_candidates:
         if fs.category_id in seen:
             continue
         seen.add(fs.category_id)
         fallbacks.append(fs)
 
-    return explicit + fallbacks
+    combined = explicit + fallbacks
+
+    if student is not None and session is not None:
+        filtered = []
+        for fs in combined:
+            category = fs.category
+            if category.billing_cycle == 'ONE_TIME':
+                if _is_one_time_already_billed(student, category, session):
+                    continue
+            filtered.append(fs)
+        combined = filtered
+
+    return combined
 
 
 def generate_invoice_for_student(student, term):
@@ -64,14 +98,17 @@ def generate_invoice_for_student(student, term):
     if not enrollment:
         return None
 
-    fee_structures = effective_fee_structures(school, enrollment.school_class, term)
+    student_type = resolve_student_type(student, term.session)
+    fee_structures = effective_fee_structures(
+        school, enrollment.school_class, term, student_type=student_type, student=student, session=term.session
+    )
     if not fee_structures:
         return None
 
     line_items = []
     total = Decimal('0.00')
     for fs in fee_structures:
-        line_items.append((fs.category, fs.amount))
+        line_items.append((fs.category, fs.amount, fs.category.billing_cycle))
         total += fs.amount
 
     invoice = Invoice.objects.create(
@@ -80,11 +117,14 @@ def generate_invoice_for_student(student, term):
         term=term,
         total_amount=total,
     )
-    for category, amount in line_items:
+    for category, amount, billing_cycle in line_items:
         InvoiceLineItem.objects.create(
             invoice=invoice,
             category=category,
             amount=amount,
+            term=term,
+            session=term.session,
+            billing_cycle=billing_cycle,
         )
 
     _notify_primary_guardian(student, term, invoice)
@@ -163,10 +203,6 @@ def sync_class_invoices(school_class, term):
 
     from .models import InvoiceLineItem
 
-    structures = effective_fee_structures(school_class.school, school_class, term)
-    if not structures:
-        return 0
-
     invoices = Invoice.objects.filter(
         school=school_class.school,
         term=term,
@@ -177,6 +213,14 @@ def sync_class_invoices(school_class, term):
 
     updated = 0
     for invoice in invoices.distinct():
+        student = invoice.student
+        student_type = resolve_student_type(student, term.session)
+        structures = effective_fee_structures(
+            school_class.school, school_class, term, student_type=student_type, student=student, session=term.session
+        )
+        if not structures:
+            continue
+
         invoice.line_items.all().delete()
         total = Decimal('0.00')
         for fs in structures:
@@ -184,6 +228,9 @@ def sync_class_invoices(school_class, term):
                 invoice=invoice,
                 category=fs.category,
                 amount=fs.amount,
+                term=term,
+                session=term.session,
+                billing_cycle=fs.category.billing_cycle,
             )
             total += fs.amount
         invoice.total_amount = total

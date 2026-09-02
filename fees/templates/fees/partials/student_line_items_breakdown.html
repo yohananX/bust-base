@@ -1,0 +1,113 @@
+{% load i18n %}
+<div class="border border-gray-200 rounded-xl overflow-hidden mt-4">
+  <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+    <div class="flex items-center justify-between">
+      <div>
+        <h4 class="text-sm font-semibold text-gray-800">
+          {% if class_name %}{{ class_name }} Fee Breakdown{% else %}Fee Breakdown{% endif %}
+        </h4>
+        <p class="text-xs text-gray-500 mt-0.5">
+          {% if scope == 'total' %}
+            Full class aggregate — all items selected
+          {% elif scope.startswith('invoice:') %}
+            Items for selected invoice
+          {% else %}
+            Outstanding items
+          {% endif %}
+        </p>
+      </div>
+      <div class="text-right">
+        <p class="text-xs text-gray-500">Selectable Total</p>
+        <p class="text-lg font-bold text-gray-900">NGN {{ selectable_total|floatformat:2 }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divide-y divide-gray-100">
+    {% for item in items %}
+    <div class="px-4 py-3 flex items-center justify-between
+                {% if item.disabled %}bg-gray-50 opacity-60{% else %}bg-white hover:bg-gray-50{% endif %}">
+      <div class="flex items-center gap-3">
+        <input type="checkbox"
+               name="selected_line_items"
+               value="{{ item.id }}"
+               class="fee-item-checkbox w-4 h-4 text-emerald-600 rounded border-gray-300
+                      focus:ring-emerald-500"
+               data-amount="{{ item.amount }}"
+               data-name="{{ item.category_name }}"
+               {% if item.disabled %}disabled{% endif %}
+               {% if scope == 'total' and not item.disabled %}checked disabled{% endif %}>
+        <div>
+          <p class="text-sm font-medium text-gray-900">{{ item.category_name }}</p>
+          <p class="text-xs text-gray-500">
+            {{ item.term_name }}
+            {% if item.is_one_time %}
+              <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                           bg-amber-100 text-amber-800">One-time</span>
+            {% endif %}
+            {% if item.disabled %}
+              <span class="ml-2 text-xs text-gray-400 italic">{{ item.disabled_reason }}</span>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+      <div class="text-sm font-medium text-gray-900">
+        NGN {{ item.amount|floatformat:2 }}
+      </div>
+    </div>
+    {% empty %}
+    <div class="px-4 py-8 text-center text-sm text-gray-500">
+      No outstanding fee items found for this selection.
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if items %}
+  <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+    <div class="text-sm text-gray-600">
+      <span id="selected-count">0</span> of {{ items|length }} items selected
+    </div>
+    <div class="text-sm font-semibold text-gray-900">
+      Selected: NGN <span id="selected-total">0.00</span>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+(function() {
+  const checkboxes = document.querySelectorAll('.fee-item-checkbox');
+  const scope = '{{ scope|default:"" }}';
+
+  checkboxes.forEach(cb => {
+    if (scope === 'total' && !cb.disabled) {
+      cb.checked = true;
+      cb.disabled = true;
+    }
+  });
+
+  updateBreakdownTotals();
+
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', updateBreakdownTotals);
+  });
+
+  function updateBreakdownTotals() {
+    const checked = document.querySelectorAll('.fee-item-checkbox:checked:not(:disabled)');
+    const countEl = document.getElementById('selected-count');
+    const totalEl = document.getElementById('selected-total');
+    const amountInput = document.getElementById('payment-amount');
+    const submitBtn = document.getElementById('submit-payment');
+
+    let total = 0;
+    checked.forEach(cb => {
+      total += parseFloat(cb.dataset.amount) || 0;
+    });
+
+    if (countEl) countEl.textContent = checked.length;
+    if (totalEl) totalEl.textContent = total.toFixed(2);
+    if (amountInput) amountInput.value = total.toFixed(2);
+    if (submitBtn) submitBtn.disabled = total <= 0;
+  }
+})();
+</script>

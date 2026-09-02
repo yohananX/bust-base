@@ -60,6 +60,7 @@
             <th class="px-6 py-3 font-medium">Class</th>
             <th class="px-6 py-3 font-medium">Term</th>
             <th class="px-6 py-3 font-medium">Category</th>
+            <th class="px-6 py-3 font-medium">Type</th>
             <th class="px-6 py-3 font-medium text-right">Amount</th>
             <th class="px-6 py-3 font-medium text-right">Actions</th>
           </tr>
@@ -68,10 +69,11 @@
           {% for p in pricing %}
           <tr class="hover:bg-gray-50/50 transition-colors">
             <td class="px-6 py-3.5 text-sm font-medium text-gray-900">{{ p.school_class.name }}</td>
-            <td class="px-6 py-3.5 text-sm text-gray-600">{{ p.term.name }}</td>
+            <td class="px-6 py-3.5 text-sm text-gray-600">{{ p.term.name|default:'One-time' }}</td>
             <td class="px-6 py-3.5">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">{{ p.category.name }}</span>
             </td>
+            <td class="px-6 py-3.5 text-xs text-gray-500">{{ p.get_student_type_display }}</td>
             <td class="px-6 py-3.5 text-sm font-semibold text-gray-900 text-right">NGN {{ p.amount|floatformat:2 }}</td>
             <td class="px-6 py-3.5">
               <div class="flex items-center justify-end gap-1">

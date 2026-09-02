@@ -22,6 +22,28 @@
                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
       </div>
 
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Billing Cycle <span class="text-red-500">*</span></label>
+          <select name="billing_cycle" required
+                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            <option value="PER_TERM" {% if category.billing_cycle|default:'PER_TERM' == 'PER_TERM' %}selected{% endif %}>Per term</option>
+            <option value="ONE_TIME" {% if category.billing_cycle|default:'' == 'ONE_TIME' %}selected{% endif %}>One-time</option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1">One-time fees apply only once (e.g. registration). Per-term fees recur each term.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Student Type <span class="text-red-500">*</span></label>
+          <select name="student_type" required
+                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+            <option value="ALL" {% if category.student_type|default:'ALL' == 'ALL' %}selected{% endif %}>All students</option>
+            <option value="NEW" {% if category.student_type|default:'' == 'NEW' %}selected{% endif %}>New intake only</option>
+            <option value="RETURNING" {% if category.student_type|default:'' == 'RETURNING' %}selected{% endif %}>Returning pupils only</option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1">Which students this category applies to.</p>
+        </div>
+      </div>
+
       <div class="flex items-start gap-3 bg-gray-50 rounded-xl p-4">
         <input type="checkbox" id="is_compulsory" name="is_compulsory" {% if category.is_compulsory|default_if_none:True %}checked{% endif %}
                class="mt-0.5 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary/20">

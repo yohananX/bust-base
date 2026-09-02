@@ -108,6 +108,34 @@
               {% for cid, co in checkouts_by_child.items %}
                 {% if cid == child.pk %}
 
+                  {# ---- Full-term bundle (new vs returning) ---- #}
+                  {% if co.bundle and not co.bundle.billed %}
+                  <label class="bundle-option flex items-start gap-3 p-4 rounded-xl border border-primary/30 bg-primary-tint/40 hover:border-primary hover:bg-primary-tint/60 cursor-pointer transition-all mb-3">
+                    <input type="radio" name="item" value="{{ co.bundle.key }}" data-amount="{{ co.bundle.amount }}"
+                           class="mt-1 accent-primary" checked>
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-bold text-gray-900">{{ co.bundle.label }}</span>
+                        <span class="text-xs font-medium text-gray-500">{{ co.bundle.term_name }}</span>
+                      </span>
+                      <span class="block text-xs text-gray-500 mt-0.5">Full fees for {{ co.bundle.term_name }} — includes all applicable categories below.</span>
+                      <button type="button" class="text-xs font-semibold text-primary hover:underline mt-1" onclick="this.nextElementSibling.classList.toggle('hidden')">View breakdown</button>
+                      <div class="hidden mt-2 space-y-1">
+                        {% for bi in co.bundle.bundle_items %}
+                        <div class="flex items-center justify-between text-xs text-gray-600">
+                          <span>{{ bi.category_name }}</span>
+                          <span class="tabular-nums">₦{{ bi.amount|floatformat:2 }}</span>
+                        </div>
+                        {% endfor %}
+                        <div class="flex items-center justify-between text-xs font-bold text-gray-900 border-t border-gray-200 pt-1 mt-1">
+                          <span>Total</span>
+                          <span class="tabular-nums">₦{{ co.bundle.amount|floatformat:2 }}</span>
+                        </div>
+                      </div>
+                    </span>
+                  </label>
+                  {% endif %}
+
                   {# ---- Multi-select dropdown of payable options ---- #}
                   <select name="item" data-role="item-select" multiple
                           class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
@@ -187,6 +215,34 @@
             {% if checkouts_by_child and student.pk in checkouts_by_child %}
               {% for cid, co in checkouts_by_child.items %}
                 {% if cid == student.pk %}
+
+                  {# ---- Full-term bundle (new vs returning) ---- #}
+                  {% if co.bundle and not co.bundle.billed %}
+                  <label class="bundle-option flex items-start gap-3 p-4 rounded-xl border border-primary/30 bg-primary-tint/40 hover:border-primary hover:bg-primary-tint/60 cursor-pointer transition-all mb-3">
+                    <input type="radio" name="item" value="{{ co.bundle.key }}" data-amount="{{ co.bundle.amount }}"
+                           class="mt-1 accent-primary" checked>
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-bold text-gray-900">{{ co.bundle.label }}</span>
+                        <span class="text-xs font-medium text-gray-500">{{ co.bundle.term_name }}</span>
+                      </span>
+                      <span class="block text-xs text-gray-500 mt-0.5">Full fees for {{ co.bundle.term_name }} — includes all applicable categories below.</span>
+                      <button type="button" class="text-xs font-semibold text-primary hover:underline mt-1" onclick="this.nextElementSibling.classList.toggle('hidden')">View breakdown</button>
+                      <div class="hidden mt-2 space-y-1">
+                        {% for bi in co.bundle.bundle_items %}
+                        <div class="flex items-center justify-between text-xs text-gray-600">
+                          <span>{{ bi.category_name }}</span>
+                          <span class="tabular-nums">₦{{ bi.amount|floatformat:2 }}</span>
+                        </div>
+                        {% endfor %}
+                        <div class="flex items-center justify-between text-xs font-bold text-gray-900 border-t border-gray-200 pt-1 mt-1">
+                          <span>Total</span>
+                          <span class="tabular-nums">₦{{ co.bundle.amount|floatformat:2 }}</span>
+                        </div>
+                      </div>
+                    </span>
+                  </label>
+                  {% endif %}
 
                   {# ---- Multi-select dropdown of payable options ---- #}
                   <select name="item" data-role="item-select" multiple
@@ -428,9 +484,14 @@
      (checkout mode) or the checked invoice balance (fallback mode). */
   function blockFull(block) {
     if (!block) return 0;
-    var radio = block.querySelector('input[name="invoice_id"]:checked');
-    if (radio) {
-      var b = parseFloat(radio.getAttribute('data-balance'));
+    var radio = block.querySelector('input[name="item"]:checked');
+    if (radio && radio.getAttribute('data-amount') && radio.closest('.bundle-option')) {
+      var b = parseFloat(radio.getAttribute('data-amount'));
+      return isNaN(b) ? 0 : b;
+    }
+    var invRadio = block.querySelector('input[name="invoice_id"]:checked');
+    if (invRadio) {
+      var b = parseFloat(invRadio.getAttribute('data-balance'));
       return isNaN(b) ? 0 : b;
     }
     var sel = block.querySelector('select[name="item"]');
@@ -492,6 +553,25 @@
     recalc();
   }
 
+  /* Sync bundle radio with multi-select: when bundle is checked, disable the
+     multi-select so the user knows the bundle is the authoritative selection. */
+  function syncBundleUI(block) {
+    if (!block) return;
+    var bundleRadio = block.querySelector('.bundle-option input[type="radio"]');
+    var multiSelect = block.querySelector('select[name="item"]');
+    if (bundleRadio && multiSelect) {
+      multiSelect.disabled = bundleRadio.checked;
+      if (bundleRadio.checked) {
+        multiSelect.selectedIndex = -1;
+        for (var i = 0; i < multiSelect.options.length; i++) {
+          multiSelect.options[i].selected = false;
+        }
+      } else {
+        multiSelect.disabled = false;
+      }
+    }
+  }
+
   /* Swap the bank/paystack panels to match the selected method. */
   function syncMethodPanels() {
     var checked = form ? form.querySelector('input[name="method"]:checked') : null;
@@ -500,13 +580,20 @@
     if (paystackPanel) paystackPanel.classList.toggle('hidden', isBank);
   }
 
-  if (childSelect) childSelect.addEventListener('change', updateVisibility);
+  if (childSelect) childSelect.addEventListener('change', function () {
+    updateVisibility();
+    var block = activeBlock();
+    syncBundleUI(block);
+  });
 
   if (form) {
     form.addEventListener('change', function (e) {
       var t = e.target;
       if (t && t.name === 'item') {
         var block = t.closest('.child-cart');
+        if (t.type === 'radio' && t.closest('.bundle-option')) {
+          syncBundleUI(block);
+        }
         setAmountFromSelection(block);
         recalc();
       }
@@ -534,6 +621,10 @@
           var radio = block.querySelector('input[name="invoice_id"]:checked');
           if (radio) any = true;
         }
+        if (!any) {
+          var bundleRadio = block.querySelector('.bundle-option input[type="radio"]:checked');
+          if (bundleRadio) any = true;
+        }
       }
       if (!any) {
         if (cartHint) {
@@ -556,6 +647,7 @@
      first child's block. */
   blocks.forEach(function (block) {
     setAmountFromSelection(block);
+    syncBundleUI(block);
   });
   updateVisibility();
   syncMethodPanels();

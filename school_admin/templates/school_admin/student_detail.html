@@ -399,100 +399,155 @@
   {# ── Record Payment (invoice-less or attached) ── #}
   <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
     <h3 class="text-sm font-semibold text-gray-800 mb-1">Record Payment</h3>
-    <p class="text-xs text-gray-400 mb-4">For payments made outside the portal (POS, cheque, cash, sponsor). Attach to an invoice or record against the student directly.</p>
-    <form method="POST" action="{% url 'school_admin:student_record_payment' student.pk %}" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <p class="text-xs text-gray-400 mb-4">For payments made outside the portal (POS, cheque, cash, sponsor). Select an invoice or class total, then choose specific fee components to record.</p>
+
+    <form method="POST" action="{% url 'school_admin:student_record_payment' student.pk %}" id="record-payment-form" class="space-y-4">
       {% csrf_token %}
+
+      {# Scope Selector #}
       <div>
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">Amount (NGN)</label>
-        <input type="number" name="amount" step="0.01" required
-               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">Method</label>
-        <select name="method" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-          <option value="CASH">Cash</option>
-          <option value="POS">POS / Card at school</option>
-          <option value="CHEQUE">Cheque</option>
-          <option value="BANK_TRANSFER">Bank Transfer</option>
-          <option value="OTHER">Other</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">Invoice <span class="text-gray-400">(optional — auto-links to oldest outstanding if blank)</span></label>
-        <select name="invoice_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-          <option value="">— None (record against student) —</option>
-          {% for inv in invoices %}
-          {% if inv.balance_annotated > 0 %}
-          <option value="{{ inv.pk }}">{{ inv.term.name }} &mdash; balance NGN {{ inv.balance_annotated|floatformat:2 }}</option>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Invoice / Class Total</label>
+        <select name="scope_select" id="scope-select"
+                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
+                       text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary
+                       focus:bg-white outline-none transition-all"
+                hx-get="{% url 'fees:api-student-line-items' student.pk %}"
+                hx-target="#fee-breakdown"
+                hx-swap="innerHTML"
+                hx-include="[name='csrfmiddlewaretoken']"
+                hx-trigger="change">
+          <option value="">— Select invoice or class total —</option>
+          {% if current_enrollment and class_total_amount > 0 %}
+          <option value="total">
+            {{ current_enrollment.school_class.name }} Aggregate Total — NGN {{ class_total_amount|floatformat:2 }}
+          </option>
           {% endif %}
+          {% for inv in invoices %}
+            {% if inv.balance_annotated > 0 %}
+            <option value="invoice:{{ inv.pk }}">
+              {{ inv.term.name }} — balance NGN {{ inv.balance_annotated|floatformat:2 }}
+            </option>
+            {% endif %}
           {% endfor %}
+          <option value="none">— None (record against student) —</option>
         </select>
       </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">Paid by (optional)</label>
-        <input type="text" name="paid_by_name" placeholder="Who paid?"
-               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+
+      {# Fee Breakdown Container (HTMX-loaded) #}
+      <div id="fee-breakdown" class="hidden"></div>
+
+      {# Payment Details #}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Amount (NGN)</label>
+          <input type="number" name="amount" id="payment-amount" step="0.01" required
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
+                        text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20
+                        focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Method</label>
+          <select name="method" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl
+                 text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary
+                 focus:bg-white outline-none transition-all">
+            <option value="CASH">Cash</option>
+            <option value="POS">POS / Card at school</option>
+            <option value="CHEQUE">Cheque</option>
+            <option value="BANK_TRANSFER">Bank Transfer</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Paid by (optional)</label>
+          <input type="text" name="paid_by_name" placeholder="Who paid?"
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
+                        text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20
+                        focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Relation to student</label>
+          <input type="text" name="paid_by_relation" placeholder="e.g. father, sponsor"
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
+                        text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20
+                        focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Reference (optional)</label>
+          <input type="text" name="reference" placeholder="Receipt / reference #"
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
+                        text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20
+                        focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-600 mb-1.5">Description (optional)</label>
+          <input type="text" name="description" placeholder="e.g. Books, uniform, 2025/2026 fees"
+                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
+                        text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20
+                        focus:border-primary focus:bg-white outline-none transition-all">
+        </div>
+        <div class="md:col-span-2">
+          <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-emerald-600
+                  hover:bg-emerald-700 text-white text-sm font-medium rounded-xl
+                  transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  id="submit-payment" disabled>
+            <i data-lucide="check" class="w-4 h-4 mr-2"></i>Record Payment
+          </button>
+        </div>
       </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">Relation to student (optional)</label>
-        <input type="text" name="paid_by_relation" placeholder="e.g. father, sponsor"
-               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">Reference (optional)</label>
-        <input type="text" name="reference" placeholder="Receipt / reference #"
-               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-      </div>
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">Description (optional)</label>
-        <input type="text" name="description" placeholder="e.g. Books, uniform, 2025/2026 fees"
-               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-      </div>
-      <div class="md:col-span-2">
-        <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
-          <i data-lucide="check" class="w-4 h-4 mr-2"></i>Record Payment
-        </button>
-      </div>
+
+      {# Hidden field for selected line items #}
+      <input type="hidden" name="selected_line_items" id="selected-line-items" value="">
     </form>
   </div>
 </div>
 
 <script>
-  document.getElementById('toggle-guardian-form').addEventListener('click', function () {
-    const form = document.getElementById('add-guardian-form');
-    form.classList.remove('hidden');
-    this.classList.add('hidden');
-    document.getElementById('edit-guardian-form').classList.add('hidden');
-  });
-  document.getElementById('cancel-guardian-form').addEventListener('click', function () {
-    const form = document.getElementById('add-guardian-form');
-    form.classList.add('hidden');
-    document.getElementById('toggle-guardian-form').classList.remove('hidden');
-    document.getElementById('edit-guardian-form').classList.add('hidden');
+  document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.target.id === 'fee-breakdown') {
+      initFeeBreakdown();
+    }
   });
 
-  document.querySelectorAll('.edit-guardian-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      const form = document.getElementById('edit-guardian-form');
-      document.getElementById('edit-guardian-link-pk').value = this.dataset.guardianPk;
-      document.getElementById('edit-guardian-first-name').value = this.dataset.guardianName.split(' ')[0] || '';
-      document.getElementById('edit-guardian-last-name').value = this.dataset.guardianName.split(' ').slice(1).join(' ') || '';
-      document.getElementById('edit-guardian-email').value = this.dataset.email || '';
-      document.getElementById('edit-guardian-phone').value = this.dataset.phone || '';
-      document.getElementById('edit-guardian-relationship').value = this.dataset.relationship || 'GUARDIAN';
-      document.getElementById('edit-guardian-occupation').value = this.dataset.occupation || '';
-      document.getElementById('edit-guardian-address').value = this.dataset.address || '';
-      document.getElementById('edit-guardian-authorized-pickup-person').value = this.dataset.authorizedPickupPerson || '';
-      document.getElementById('edit-is-primary-guardian').checked = this.dataset.isPrimary === 'true';
-      form.action = form.action.replace(/\/\d+\/$/, '/' + this.dataset.guardianPk + '/');
-      form.classList.remove('hidden');
-      document.getElementById('add-guardian-form').classList.add('hidden');
-      document.getElementById('toggle-guardian-form').classList.add('hidden');
+  function initFeeBreakdown() {
+    const checkboxes = document.querySelectorAll('.fee-item-checkbox');
+    const amountInput = document.getElementById('payment-amount');
+    const submitBtn = document.getElementById('submit-payment');
+    const scopeSelect = document.getElementById('scope-select');
+    const selectedInput = document.getElementById('selected-line-items');
+
+    const isTotalSelected = scopeSelect.value === 'total';
+
+    checkboxes.forEach(cb => {
+      cb.addEventListener('change', function() {
+        updateAmount();
+      });
+
+      if (isTotalSelected && !cb.disabled) {
+        cb.checked = true;
+        cb.disabled = true;
+      }
     });
-  });
-  document.getElementById('cancel-edit-guardian-form').addEventListener('click', function() {
-    document.getElementById('edit-guardian-form').classList.add('hidden');
-    document.getElementById('toggle-guardian-form').classList.remove('hidden');
-  });
+
+    updateAmount();
+  }
+
+  function updateAmount() {
+    const checkboxes = document.querySelectorAll('.fee-item-checkbox:checked:not(:disabled)');
+    const amountInput = document.getElementById('payment-amount');
+    const submitBtn = document.getElementById('submit-payment');
+    const selectedInput = document.getElementById('selected-line-items');
+
+    let total = 0;
+    const selectedIds = [];
+
+    checkboxes.forEach(cb => {
+      total += parseFloat(cb.dataset.amount) || 0;
+      selectedIds.push(cb.value);
+    });
+
+    amountInput.value = total.toFixed(2);
+    selectedInput.value = JSON.stringify(selectedIds);
+    submitBtn.disabled = total <= 0;
+  }
 </script>
 {% endblock %}

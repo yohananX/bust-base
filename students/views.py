@@ -453,14 +453,15 @@ class MakePaymentView(RoleRequiredMixin, View):
             checkouts_by_child[child.pk] = get_checkout_options(child, term)
 
         # A child has something to pay for when they carry an outstanding balance
-        # OR have a selectable (unbilled, unpaid) category in their cart. When no
-        # child has anything payable, the payment section is greyed out.
+        # OR have a selectable (unbilled, unpaid) category or bundle in their cart.
         can_pay_by_child = {}
         for child in checkout_students:
             co = checkouts_by_child.get(child.pk)
             can_pay = False
             if co is not None:
                 if co.outstanding is not None:
+                    can_pay = True
+                elif co.bundle is not None and not co.bundle.billed:
                     can_pay = True
                 else:
                     payable = [

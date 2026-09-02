@@ -9,57 +9,69 @@
   <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
 
     {# ── Model note banner ── #}
-    <div class="bg-violet-50 border border-violet-100 rounded-xl p-4 mb-6 text-sm text-violet-700">
-      <div class="flex items-start gap-3">
-        <i data-lucide="info" class="w-4.5 h-4.5 mt-0.5 flex-shrink-0"></i>
-        <div>
-          <p class="font-medium">How pricing works</p>
-          <p class="mt-1">One price per category, class and term. Add School Fees for JSS1 First Term, then add Textbooks for JSS1 First Term — parents see the combined term total with a breakdown.</p>
-        </div>
-      </div>
-    </div>
-
-    <form method="post" class="space-y-5">
-      {% csrf_token %}
-
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Category <span class="text-red-500">*</span></label>
-          <select name="category_id" required
-                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            <option value="">— Select category —</option>
-            {% for cat in categories %}
-              <option value="{{ cat.id }}" {% if selected_category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Class <span class="text-red-500">*</span></label>
-          <select name="class_id" required
-                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            <option value="">— Select class —</option>
-            {% for c in classes %}
-              <option value="{{ c.id }}" {% if selected_class_id == c.id %}selected{% endif %}>{{ c.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Term <span class="text-red-500">*</span></label>
-          <select name="term_id" required
-                  class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            <option value="">— Select term —</option>
-            {% for t in terms %}
-              <option value="{{ t.id }}" {% if selected_term_id == t.id %}selected{% endif %}>{{ t.name }}</option>
-            {% endfor %}
-          </select>
+      <div class="bg-violet-50 border border-violet-100 rounded-xl p-4 mb-6 text-sm text-violet-700">
+        <div class="flex items-start gap-3">
+          <i data-lucide="info" class="w-4.5 h-4.5 mt-0.5 flex-shrink-0"></i>
+          <div>
+            <p class="font-medium">How pricing works</p>
+            <p class="mt-1">One price per category, class, term and student type. Leave term blank for one-time fees (e.g. registration package). New-intake categories apply only to first-time enrolments; returning pupils see only their applicable categories.</p>
+          </div>
         </div>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">Amount (NGN) <span class="text-red-500">*</span></label>
-        <input type="number" name="amount" step="0.01" min="0" value="{{ entered_amount|default_if_none:'' }}" required
-               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-      </div>
+      <form method="post" class="space-y-5">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Category <span class="text-red-500">*</span></label>
+            <select name="category_id" required
+                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+              <option value="">— Select category —</option>
+              {% for cat in categories %}
+                <option value="{{ cat.id }}" {% if selected_category_id == cat.id %}selected{% endif %}>{{ cat.name }} ({{ cat.get_billing_cycle_display }}, {{ cat.get_student_type_display }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Class <span class="text-red-500">*</span></label>
+            <select name="class_id" required
+                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+              <option value="">— Select class —</option>
+              {% for c in classes %}
+                <option value="{{ c.id }}" {% if selected_class_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Term</label>
+            <select name="term_id"
+                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+              <option value="">— One-time (no term) —</option>
+              {% for t in terms %}
+                <option value="{{ t.id }}" {% if selected_term_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+              {% endfor %}
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Leave blank for one-time fees.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Amount (NGN) <span class="text-red-500">*</span></label>
+            <input type="number" name="amount" step="0.01" min="0" value="{{ entered_amount|default_if_none:'' }}" required
+                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Student Type <span class="text-red-500">*</span></label>
+            <select name="student_type" required
+                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+              <option value="ALL" {% if selected_student_type|default:'ALL' == 'ALL' %}selected{% endif %}>All students</option>
+              <option value="NEW" {% if selected_student_type|default:'' == 'NEW' %}selected{% endif %}>New intake only</option>
+              <option value="RETURNING" {% if selected_student_type|default:'' == 'RETURNING' %}selected{% endif %}>Returning pupils only</option>
+            </select>
+          </div>
+        </div>
 
       <div class="flex items-center gap-4 pt-2">
         <button type="submit"
