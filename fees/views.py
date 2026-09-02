@@ -14,7 +14,8 @@ from django.db import transaction
 from django.views.generic.base import View
 
 from .checkout import reconcile_checkout, current_term, get_selected_items
-from .models import Invoice, Payment, PaymentLineItem, InvoiceLineItem, FeeCategory
+from .models import Invoice, Payment, PaymentLineItem, InvoiceLineItem, FeePrice
+from .pricing import resolve_prices, resolve_price_for_student
 from .paystack import initiate_payment as paystack_initiate
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
@@ -870,16 +871,25 @@ class PaymentTimeoutHelpView(RoleRequiredMixin, View):
 @login_required
 @require_GET
 def student_line_items_api(request, student_id):
-    """Return payable line items for a student's current class.
+    """Return payable fees for a student based on selected scope.
 
     Query params:
-    - scope: 'total' | 'invoice:<id>' | None
+    - scope: 'total' | 'invoice:<id>' | 'none' | '' (defaults to class total)
 
-    Returns JSON with items list and totals.
+    For HTMX requests (HX-Request header set), returns rendered HTML partial.
+    For regular requests, returns JSON.
+
+    Items include:
+    - For 'invoice:<id>': line items on that specific invoice with balance
+    - For 'total' or empty: all compulsory fees for the student's current class+term
+      (from FeePrice resolution), plus any unpaid invoice line items
+    - For 'none': empty list (free-form payment)
+
+    Each item has: id, category_id, category_name, amount, term_id, term_name,
+    billing_cycle, is_one_time, is_paid, source ('invoice' or 'price')
     """
     student = get_object_or_404(Student, pk=student_id, school=request.school)
 
-    # Permission check
     user = request.user
     if user.role == 'STUDENT':
         if student.user != user:
@@ -891,70 +901,198 @@ def student_line_items_api(request, student_id):
         return JsonResponse({'error': 'Forbidden'}, status=403)
 
     scope = request.GET.get('scope', '')
+    is_htmx = request.headers.get('HX-Request') == 'true'
 
-    # Get student's current class
     enrollment = ClassEnrollment.objects.filter(
         student=student, is_current=True
-    ).select_related('school_class').first()
-
+    ).select_related('school_class', 'session').first()
     class_name = enrollment.school_class.name if enrollment else None
+    current_term = Term.objects.filter(school=student.school, is_current=True).first()
 
-    # Build base queryset
-    line_items_qs = InvoiceLineItem.objects.filter(
-        invoice__school=student.school,
-        invoice__student=student,
-        invoice__balance__gt=0,
-    ).select_related(
-        'invoice__term__session', 'category'
-    ).order_by('invoice__term__start_date', 'category__name')
+    if scope == 'none':
+        payload = {
+            'student_name': str(student),
+            'class_name': class_name,
+            'items': [],
+            'selectable_total': '0.00',
+            'scope': scope,
+            'mode': 'freeform',
+        }
+        if is_htmx:
+            return render(request, 'fees/partials/student_line_items_breakdown.html', payload)
+        return JsonResponse(payload)
 
-    # Filter by scope
     if scope.startswith('invoice:'):
         try:
-            invoice_id = int(scope.split(':')[1])
-            line_items_qs = line_items_qs.filter(invoice_id=invoice_id)
+            invoice_id = int(scope.split(':', 1)[1])
         except (ValueError, TypeError):
-            pass
+            return JsonResponse({'error': 'Invalid invoice id'}, status=400)
 
-    # Track one-time fees already paid across ALL sessions
-    paid_one_time_category_ids = set(
+        invoice = get_object_or_404(Invoice, pk=invoice_id, school=student.school, student=student)
+        line_items = InvoiceLineItem.objects.filter(
+            invoice=invoice,
+        ).select_related('category', 'invoice__term').order_by('category__name')
+
+        paid_one_time_ids = set(
+            InvoiceLineItem.objects.filter(
+                invoice__student=student,
+                billing_cycle='ONE_TIME',
+            ).values_list('category_id', flat=True).distinct()
+        )
+
+        items = []
+        selectable_total = Decimal('0.00')
+        for li in line_items:
+            is_one_time = li.billing_cycle == 'ONE_TIME'
+            already_paid = li.category_id in paid_one_time_ids and is_one_time
+            items.append({
+                'id': f'invoice:{li.pk}',
+                'category_id': li.category_id,
+                'category_name': li.category.name,
+                'amount': str(li.amount),
+                'term_id': li.invoice.term_id,
+                'term_name': li.invoice.term.name,
+                'billing_cycle': li.billing_cycle,
+                'is_one_time': is_one_time,
+                'is_paid': already_paid,
+                'disabled': already_paid,
+                'disabled_reason': 'Already paid (one-time fee)' if already_paid else None,
+                'source': 'invoice',
+                'invoice_id': li.invoice_id,
+            })
+            if not already_paid:
+                selectable_total += li.amount
+
+        payload = {
+            'student_name': str(student),
+            'class_name': class_name,
+            'items': items,
+            'selectable_total': str(selectable_total),
+            'scope': scope,
+            'mode': 'invoice',
+            'invoice_id': invoice_id,
+            'invoice_term': invoice.term.name,
+        }
+        if is_htmx:
+            return render(request, 'fees/partials/student_line_items_breakdown.html', payload)
+        return JsonResponse(payload)
+
+    from students.models import SchoolClass
+    if not enrollment or not current_term:
+        payload = {
+            'student_name': str(student),
+            'class_name': class_name,
+            'items': [],
+            'selectable_total': '0.00',
+            'scope': scope or 'total',
+            'mode': 'class',
+            'error': 'Student has no current enrollment or no current term.',
+        }
+        if is_htmx:
+            return render(request, 'fees/partials/student_line_items_breakdown.html', payload)
+        return JsonResponse(payload)
+
+    school_class = enrollment.school_class
+    term = current_term
+    session = term.session
+
+    from fees.utils import resolve_student_type
+    student_type = resolve_student_type(student, session)
+
+    prices = resolve_prices(
+        school=student.school,
+        school_class=school_class,
+        term=term,
+        student_type=student_type,
+        student=student,
+        session=session,
+    )
+
+    paid_one_time_ids = set(
         InvoiceLineItem.objects.filter(
             invoice__student=student,
-            billing_cycle=FeeCategory.ONE_TIME,
+            billing_cycle='ONE_TIME',
         ).values_list('category_id', flat=True).distinct()
     )
 
     items = []
     selectable_total = Decimal('0.00')
+    seen_category_ids = set()
 
-    for li in line_items_qs:
-        is_one_time = li.billing_cycle == FeeCategory.ONE_TIME
-        disabled = False
-        disabled_reason = None
+    for price in prices:
+        cat = price.category
+        is_one_time = cat.billing_cycle == 'ONE_TIME'
+        already_paid = cat.id in paid_one_time_ids and is_one_time
 
-        if is_one_time and li.category_id in paid_one_time_category_ids:
-            disabled = True
-            disabled_reason = 'Already paid (one-time fee)'
+        try:
+            amount = resolve_price_for_student(
+                school=student.school,
+                student=student,
+                school_class=school_class,
+                category=cat,
+                term=term,
+            ) or price.amount
+        except Exception:
+            amount = price.amount
 
         items.append({
-            'id': li.pk,
+            'id': f'price:{price.pk}',
+            'category_id': cat.id,
+            'category_name': cat.name,
+            'amount': str(amount),
+            'term_id': term.id,
+            'term_name': term.name,
+            'billing_cycle': cat.billing_cycle,
+            'is_one_time': is_one_time,
+            'is_paid': already_paid,
+            'disabled': already_paid,
+            'disabled_reason': 'Already paid (one-time fee)' if already_paid else None,
+            'source': 'price',
+            'price_id': price.pk,
+        })
+        seen_category_ids.add(cat.id)
+        if not already_paid:
+            selectable_total += amount
+
+    unpaid_invoice_items = InvoiceLineItem.objects.filter(
+        invoice__school=student.school,
+        invoice__student=student,
+        invoice__term=term,
+        billing_cycle='PER_TERM',
+    ).exclude(
+        category_id__in=seen_category_ids
+    ).select_related('category', 'invoice__term').order_by('category__name')
+
+    for li in unpaid_invoice_items:
+        items.append({
+            'id': f'invoice:{li.pk}',
+            'category_id': li.category_id,
             'category_name': li.category.name,
             'amount': str(li.amount),
-            'term_name': str(li.invoice.term),
-            'invoice_id': li.invoice_id,
+            'term_id': li.invoice.term_id,
+            'term_name': li.invoice.term.name,
             'billing_cycle': li.billing_cycle,
-            'is_one_time': is_one_time,
-            'disabled': disabled,
-            'disabled_reason': disabled_reason,
+            'is_one_time': False,
+            'is_paid': False,
+            'disabled': False,
+            'disabled_reason': None,
+            'source': 'invoice',
+            'invoice_id': li.invoice_id,
         })
+        selectable_total += li.amount
 
-        if not disabled:
-            selectable_total += li.amount
-
-    return JsonResponse({
+    payload = {
         'student_name': str(student),
         'class_name': class_name,
         'items': items,
         'selectable_total': str(selectable_total),
-        'scope': scope,
-    })
+        'scope': scope or 'total',
+        'mode': 'class',
+        'term_id': term.id,
+        'term_name': term.name,
+        'school_class_id': school_class.id,
+        'school_class_name': school_class.name,
+    }
+    if is_htmx:
+        return render(request, 'fees/partials/student_line_items_breakdown.html', payload)
+    return JsonResponse(payload)

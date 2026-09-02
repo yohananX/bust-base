@@ -15,6 +15,7 @@ from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from core.models import Term
 from fees.models import FeeCategory, FeeStructure, FeePrice, Invoice, InvoiceLineItem, Payment, PaymentLineItem
+from fees.pricing import resolve_price_for_student
 from fees.selectors import invoices_with_balance
 from students.models import Student, SchoolClass, ClassEnrollment
 
@@ -1136,7 +1137,16 @@ class PaymentDeleteView(RoleRequiredMixin, View):
 
 
 class StudentRecordPaymentView(RoleRequiredMixin, View):
-    """Record a payment against a student, optionally linked to an invoice."""
+    """Record a payment against a student, optionally linked to an invoice.
+
+    Supports three selection modes:
+    1. Invoice — selected line items belong to a specific invoice
+    2. Class Total — selected items are from FeePrice resolution (no invoice yet)
+    3. None — free-form payment against the student only
+
+    Selected items are tracked as PaymentLineItem rows so receipts
+    and statements can show exactly what was paid for.
+    """
 
     allowed_roles = [Roles.ADMIN]
 
@@ -1158,24 +1168,75 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
             messages.error(request, 'Invalid payment method.')
             return redirect('school_admin:student_detail', pk=student.pk)
 
+        scope = request.POST.get('scope_select', '')
         selected_line_item_ids = request.POST.getlist('selected_line_items')
 
         invoice = None
+        payment_items = []
+
         if selected_line_item_ids:
             from collections import defaultdict
             items_by_invoice = defaultdict(list)
-            for li_id in selected_line_item_ids:
+
+            for raw_id in selected_line_item_ids:
+                if not raw_id or ':' not in raw_id:
+                    continue
+                source, _, id_str = raw_id.partition(':')
                 try:
-                    li = InvoiceLineItem.objects.get(pk=li_id, invoice__student=student)
-                    items_by_invoice[li.invoice_id].append(li)
-                except (InvoiceLineItem.DoesNotExist, ValueError):
+                    pk_value = int(id_str)
+                except (ValueError, TypeError):
                     continue
 
-            if not items_by_invoice:
+                if source == 'invoice':
+                    li = InvoiceLineItem.objects.filter(
+                        pk=pk_value, invoice__student=student
+                    ).select_related('category', 'invoice__term').first()
+                    if not li:
+                        continue
+                    items_by_invoice[li.invoice_id].append(li)
+                    payment_items.append({
+                        'kind': 'invoice_line',
+                        'label': li.category.name,
+                        'amount': li.amount,
+                        'category': li.category,
+                        'term': li.invoice.term,
+                        'session': li.invoice.term.session if li.invoice.term else None,
+                        'invoice': li.invoice,
+                        'source_key': f'manual:invoice:{li.pk}',
+                    })
+                elif source == 'price':
+                    fp = FeePrice.objects.filter(pk=pk_value).select_related('category', 'term').first()
+                    if not fp:
+                        continue
+                    try:
+                        resolved_amount = resolve_price_for_student(
+                            school=school,
+                            student=student,
+                            school_class=fp.school_class,
+                            category=fp.category,
+                            term=fp.term,
+                        ) or fp.amount
+                    except Exception:
+                        resolved_amount = fp.amount
+                    payment_items.append({
+                        'kind': 'fee_price',
+                        'label': fp.category.name,
+                        'amount': resolved_amount,
+                        'category': fp.category,
+                        'term': fp.term,
+                        'session': fp.term.session if fp.term else None,
+                        'invoice': None,
+                        'source_key': f'manual:price:{fp.pk}',
+                    })
+
+            if items_by_invoice:
+                invoice = Invoice.objects.filter(
+                    pk=list(items_by_invoice.keys())[0],
+                    school=school,
+                ).first()
+            elif not payment_items:
                 messages.error(request, 'No valid line items selected.')
                 return redirect('school_admin:student_detail', pk=student.pk)
-
-            invoice = Invoice.objects.filter(pk=list(items_by_invoice.keys())[0]).first()
         else:
             invoice_id = request.POST.get('invoice_id', '')
             if invoice_id:
@@ -1183,11 +1244,6 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
                 if invoice.student_id != student.pk:
                     messages.error(request, 'That invoice belongs to a different student.')
                     return redirect('school_admin:student_detail', pk=student.pk)
-            else:
-                candidate = invoices_with_balance(
-                    Invoice.objects.filter(school=school, student=student)
-                ).filter(balance_annotated__gt=0).order_by('term__start_date').first()
-                invoice = candidate
 
         with transaction.atomic():
             payment = Payment.objects.create(
@@ -1205,24 +1261,19 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
                 paid_by_relation=request.POST.get('paid_by_relation', '').strip(),
             )
 
-            if selected_line_item_ids:
-                for li_id in selected_line_item_ids:
-                    try:
-                        li = InvoiceLineItem.objects.get(pk=li_id, invoice__student=student)
-                        PaymentLineItem.objects.create(
-                            school=school,
-                            payment=payment,
-                            kind=PaymentLineItem.KIND_EXTRA,
-                            label=li.category.name,
-                            amount=li.amount,
-                            source_key=f'manual:{li.pk}',
-                            category=li.category,
-                            term=li.invoice.term,
-                            session=li.invoice.term.session if li.invoice.term else None,
-                            invoice=li.invoice,
-                        )
-                    except InvoiceLineItem.DoesNotExist:
-                        continue
+            for item in payment_items:
+                PaymentLineItem.objects.create(
+                    school=school,
+                    payment=payment,
+                    kind=PaymentLineItem.KIND_EXTRA,
+                    label=item['label'],
+                    amount=item['amount'],
+                    source_key=item['source_key'],
+                    category=item['category'],
+                    term=item['term'],
+                    session=item['session'],
+                    invoice=item['invoice'],
+                )
 
         from fees.paystack import issue_receipt
         issue_receipt(payment)

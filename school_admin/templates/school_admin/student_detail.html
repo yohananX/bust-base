@@ -399,14 +399,14 @@
   {# ── Record Payment (invoice-less or attached) ── #}
   <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
     <h3 class="text-sm font-semibold text-gray-800 mb-1">Record Payment</h3>
-    <p class="text-xs text-gray-400 mb-4">For payments made outside the portal (POS, cheque, cash, sponsor). Select an invoice or class total, then choose specific fee components to record.</p>
+    <p class="text-xs text-gray-400 mb-4">For payments made outside the portal (POS, cheque, cash, sponsor). Choose how to allocate the payment, then select specific fee components.</p>
 
     <form method="POST" action="{% url 'school_admin:student_record_payment' student.pk %}" id="record-payment-form" class="space-y-4">
       {% csrf_token %}
 
       {# Scope Selector #}
       <div>
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">Invoice / Class Total</label>
+        <label class="block text-sm font-medium text-gray-600 mb-1.5">Apply payment to</label>
         <select name="scope_select" id="scope-select"
                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
                        text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary
@@ -416,10 +416,10 @@
                 hx-swap="innerHTML"
                 hx-include="[name='csrfmiddlewaretoken']"
                 hx-trigger="change">
-          <option value="">— Select invoice or class total —</option>
+          <option value="">— Select how to apply payment —</option>
           {% if current_enrollment and class_total_amount > 0 %}
           <option value="total">
-            {{ current_enrollment.school_class.name }} Aggregate Total — NGN {{ class_total_amount|floatformat:2 }}
+            {{ current_enrollment.school_class.name }} Full Class Total — NGN {{ class_total_amount|floatformat:2 }}
           </option>
           {% endif %}
           {% for inv in invoices %}
@@ -429,12 +429,12 @@
             </option>
             {% endif %}
           {% endfor %}
-          <option value="none">— None (record against student) —</option>
+          <option value="none">None (record against student only)</option>
         </select>
       </div>
 
       {# Fee Breakdown Container (HTMX-loaded) #}
-      <div id="fee-breakdown" class="hidden"></div>
+      <div id="fee-breakdown"></div>
 
       {# Payment Details #}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -494,60 +494,44 @@
           </button>
         </div>
       </div>
-
-      {# Hidden field for selected line items #}
-      <input type="hidden" name="selected_line_items" id="selected-line-items" value="">
     </form>
   </div>
 </div>
 
 <script>
+(function() {
+  const scopeSelect = document.getElementById('scope-select');
+  const breakdown = document.getElementById('fee-breakdown');
+  const amountInput = document.getElementById('payment-amount');
+  const submitBtn = document.getElementById('submit-payment');
+
+  function syncSubmitState() {
+    if (!submitBtn || !amountInput) return;
+    const amt = parseFloat(amountInput.value) || 0;
+    const scope = scopeSelect?.value || '';
+    const checkedCount = document.querySelectorAll('.fee-item-checkbox:checked:not(:disabled)').length;
+    if (scope === 'none') {
+      submitBtn.disabled = amt <= 0;
+    } else if (scope === 'total' || scope.startsWith('invoice:')) {
+      submitBtn.disabled = checkedCount === 0;
+    } else {
+      submitBtn.disabled = true;
+    }
+  }
+
+  amountInput?.addEventListener('input', syncSubmitState);
+
   document.body.addEventListener('htmx:afterSwap', function(evt) {
     if (evt.target.id === 'fee-breakdown') {
-      initFeeBreakdown();
+      syncSubmitState();
     }
   });
 
-  function initFeeBreakdown() {
-    const checkboxes = document.querySelectorAll('.fee-item-checkbox');
-    const amountInput = document.getElementById('payment-amount');
-    const submitBtn = document.getElementById('submit-payment');
-    const scopeSelect = document.getElementById('scope-select');
-    const selectedInput = document.getElementById('selected-line-items');
-
-    const isTotalSelected = scopeSelect.value === 'total';
-
-    checkboxes.forEach(cb => {
-      cb.addEventListener('change', function() {
-        updateAmount();
-      });
-
-      if (isTotalSelected && !cb.disabled) {
-        cb.checked = true;
-        cb.disabled = true;
-      }
-    });
-
-    updateAmount();
-  }
-
-  function updateAmount() {
-    const checkboxes = document.querySelectorAll('.fee-item-checkbox:checked:not(:disabled)');
-    const amountInput = document.getElementById('payment-amount');
-    const submitBtn = document.getElementById('submit-payment');
-    const selectedInput = document.getElementById('selected-line-items');
-
-    let total = 0;
-    const selectedIds = [];
-
-    checkboxes.forEach(cb => {
-      total += parseFloat(cb.dataset.amount) || 0;
-      selectedIds.push(cb.value);
-    });
-
-    amountInput.value = total.toFixed(2);
-    selectedInput.value = JSON.stringify(selectedIds);
-    submitBtn.disabled = total <= 0;
-  }
+  document.body.addEventListener('change', function(evt) {
+    if (evt.target.classList?.contains('fee-item-checkbox')) {
+      syncSubmitState();
+    }
+  });
+})();
 </script>
 {% endblock %}
