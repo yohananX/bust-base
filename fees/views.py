@@ -997,13 +997,21 @@ def student_line_items_api(request, student_id):
     session = term.session
 
     from fees.utils import resolve_student_type
-    student_type = resolve_student_type(student, session)
+    computed_student_type = resolve_student_type(student, session, term)
+
+    override_type = request.GET.get('student_type', '').upper()
+    if override_type in ('NEW', 'RETURNING'):
+        student_type = override_type
+    else:
+        student_type = computed_student_type
+
+    resolver_student_type = 'ALL' if student_type == 'RETURNING' else 'NEW'
 
     prices = resolve_prices(
         school=student.school,
         school_class=school_class,
         term=term,
-        student_type=student_type,
+        student_type=resolver_student_type,
         student=student,
         session=session,
     )
@@ -1015,14 +1023,39 @@ def student_line_items_api(request, student_id):
         ).values_list('category_id', flat=True).distinct()
     )
 
+    ONBOARDING_TOTAL_CATEGORIES = {
+        'Tuition Fee', 'Registration Form', 'Uniforms', 'PTA',
+        'File Jacket', 'Maintenance', 'Examination Fee',
+    }
+    RETURNING_HIDDEN_CATEGORIES = {
+        'Registration Form', 'PTA', 'File Jacket', 'Maintenance', 'Examination Fee',
+    }
+    CHRISTMAS_FEE = 'Christmas/End of Term Party Fee'
+
+    is_first_term_of_session = Term.objects.filter(
+        school=student.school, session=session,
+    ).order_by('start_date').first()
+    christmas_visible = (
+        is_first_term_of_session is not None
+        and is_first_term_of_session.id == term.id
+    )
+
     items = []
     selectable_total = Decimal('0.00')
     seen_category_ids = set()
+    onboarding_item_ids = []
+    christmas_item_id = None
 
     for price in prices:
         cat = price.category
         is_one_time = cat.billing_cycle == 'ONE_TIME'
         already_paid = cat.id in paid_one_time_ids and is_one_time
+
+        if student_type == 'RETURNING' and cat.name in RETURNING_HIDDEN_CATEGORIES:
+            continue
+
+        if cat.name == CHRISTMAS_FEE and not christmas_visible:
+            continue
 
         try:
             amount = resolve_price_for_student(
@@ -1035,8 +1068,17 @@ def student_line_items_api(request, student_id):
         except Exception:
             amount = price.amount
 
+        default_checked = False
+        if student_type == 'NEW':
+            if cat.name in ONBOARDING_TOTAL_CATEGORIES:
+                default_checked = not already_paid
+        else:
+            if cat.name == 'Tuition Fee':
+                default_checked = not already_paid
+
+        item_id = f'price:{price.pk}'
         items.append({
-            'id': f'price:{price.pk}',
+            'id': item_id,
             'category_id': cat.id,
             'category_name': cat.name,
             'amount': str(amount),
@@ -1049,10 +1091,15 @@ def student_line_items_api(request, student_id):
             'disabled_reason': 'Already paid (one-time fee)' if already_paid else None,
             'source': 'price',
             'price_id': price.pk,
+            'default_checked': default_checked,
         })
         seen_category_ids.add(cat.id)
-        if not already_paid:
+        if default_checked and not already_paid:
             selectable_total += amount
+        if cat.name in ONBOARDING_TOTAL_CATEGORIES and not already_paid:
+            onboarding_item_ids.append(item_id)
+        if cat.name == CHRISTMAS_FEE:
+            christmas_item_id = item_id
 
     unpaid_invoice_items = InvoiceLineItem.objects.filter(
         invoice__school=student.school,
@@ -1078,8 +1125,25 @@ def student_line_items_api(request, student_id):
             'disabled_reason': None,
             'source': 'invoice',
             'invoice_id': li.invoice_id,
+            'default_checked': False,
         })
         selectable_total += li.amount
+
+    total_pseudo = None
+    if student_type == 'NEW' and onboarding_item_ids:
+        onboarding_sum = Decimal('0.00')
+        for it in items:
+            if it['id'] in onboarding_item_ids:
+                onboarding_sum += Decimal(str(it['amount']))
+        if onboarding_sum > 0:
+            total_pseudo = {
+                'id': 'total:full_package',
+                'label': f'Total — Full Package (NGN {onboarding_sum:,.2f})',
+                'amount': str(onboarding_sum),
+                'child_ids': [it['id'] for it in items
+                              if it['category_name'] in ONBOARDING_TOTAL_CATEGORIES
+                              and not it.get('disabled')],
+            }
 
     payload = {
         'student_name': str(student),
@@ -1092,6 +1156,9 @@ def student_line_items_api(request, student_id):
         'term_name': term.name,
         'school_class_id': school_class.id,
         'school_class_name': school_class.name,
+        'student_type': student_type,
+        'computed_student_type': computed_student_type,
+        'total_pseudo': total_pseudo,
     }
     if is_htmx:
         return render(request, 'fees/partials/student_line_items_breakdown.html', payload)

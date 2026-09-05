@@ -15,7 +15,7 @@ class Command(BaseCommand):
     PROSPECTUS_CATEGORIES = [
         {'name': 'Registration Form', 'cycle': 'ONE_TIME', 'type': 'NEW', 'compulsory': True},
         {'name': 'Tuition Fee', 'cycle': 'PER_TERM', 'type': 'ALL', 'compulsory': True},
-        {'name': 'Uniforms', 'cycle': 'ONE_TIME', 'type': 'NEW', 'compulsory': False},
+        {'name': 'Uniforms', 'cycle': 'ONE_TIME', 'type': 'NEW', 'compulsory': True},
         {'name': 'PTA', 'cycle': 'ONE_TIME', 'type': 'NEW', 'compulsory': True},
         {'name': 'File Jacket', 'cycle': 'ONE_TIME', 'type': 'NEW', 'compulsory': True},
         {'name': 'Maintenance', 'cycle': 'ONE_TIME', 'type': 'NEW', 'compulsory': True},

@@ -84,6 +84,28 @@ class Student(TenantScopedModel):
         blank=True,
         verbose_name=_('local government area (L.G.A.)'),
     )
+    registration_paid_term = models.ForeignKey(
+        'core.Term',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='registration_paid_students',
+        verbose_name=_('registration paid term'),
+        help_text=_('The term in which the student paid the one-time Registration Form fee. '
+                     'Once set, the student is treated as RETURNING for subsequent terms even '
+                     'if their first ClassEnrollment is in the current session.'),
+    )
+    student_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('NEW', _('New')),
+            ('RETURNING', _('Returning')),
+        ],
+        default='NEW',
+        verbose_name=_('student type'),
+        help_text=_('NEW = first year onboarding applies (Registration, Uniforms, PTA, etc.). '
+                     'Auto-flips to RETURNING after the Registration Form fee is paid.'),
+    )
     updated_at = models.DateTimeField(
         auto_now=True,
         db_index=True,

@@ -12,7 +12,11 @@
           {% elif mode == 'invoice' %}
             Items for invoice: <span class="font-medium text-gray-700">{{ invoice_term|default:"selected invoice" }}</span>
           {% elif scope == 'total' or mode == 'class' %}
-            All compulsory fees for the current term. Select items to include in this payment.
+            {% if student_type == 'NEW' %}
+              New intake — onboarding package (Registration, Uniforms, etc.) pre-selected.
+            {% else %}
+              Returning student — only tuition and any add-ons.
+            {% endif %}
           {% else %}
             Outstanding items
           {% endif %}
@@ -24,6 +28,50 @@
       </div>
     </div>
   </div>
+
+  {% if mode == 'class' and computed_student_type %}
+  <div class="px-4 py-3 bg-white border-b border-gray-100 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-medium text-gray-500">Viewing as:</span>
+      <div class="inline-flex rounded-lg border border-gray-200 overflow-hidden" role="group">
+        <button type="button"
+                data-student-type="NEW"
+                class="student-type-toggle px-3 py-1.5 text-xs font-medium transition-colors
+                       {% if student_type == 'NEW' %}bg-primary text-white{% else %}bg-white text-gray-700 hover:bg-gray-50{% endif %}">
+          New
+        </button>
+        <button type="button"
+                data-student-type="RETURNING"
+                class="student-type-toggle px-3 py-1.5 text-xs font-medium transition-colors
+                       {% if student_type == 'RETURNING' %}bg-primary text-white{% else %}bg-white text-gray-700 hover:bg-gray-50{% endif %}">
+          Returning
+        </button>
+      </div>
+    </div>
+    {% if student_type != computed_student_type %}
+    <span class="text-[11px] text-amber-600 font-medium">
+      Override: stored type is {{ computed_student_type }}
+    </span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if total_pseudo %}
+  <div class="px-4 py-3 bg-emerald-50 border-b border-emerald-100">
+    <label class="flex items-center gap-3 cursor-pointer select-none">
+      <input type="checkbox"
+             id="total-pseudo-checkbox"
+             class="w-4 h-4 text-emerald-600 rounded border-emerald-300 focus:ring-emerald-500"
+             data-child-ids="{{ total_pseudo.child_ids|join:',' }}"
+             data-amount="{{ total_pseudo.amount }}"
+             checked>
+      <div class="flex-1">
+        <p class="text-sm font-semibold text-emerald-900">{{ total_pseudo.label }}</p>
+        <p class="text-xs text-emerald-700">Tick to pay all onboarding items at once. Untick to pick individually.</p>
+      </div>
+    </label>
+  </div>
+  {% endif %}
 
   {% if items %}
   <div class="px-4 py-2 bg-white border-b border-gray-100 flex items-center justify-between">
@@ -53,7 +101,8 @@
                data-invoice-id="{{ item.invoice_id|default:"" }}"
                data-term-id="{{ item.term_id }}"
                data-category-id="{{ item.category_id }}"
-               {% if item.disabled %}disabled{% endif %}>
+               {% if item.disabled %}disabled{% endif %}
+               {% if item.default_checked %}checked{% endif %}>
         <div class="min-w-0">
           <p class="text-sm font-medium text-gray-900 truncate">{{ item.category_name }}</p>
           <p class="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
@@ -107,24 +156,22 @@
 
 <script>
 (function() {
-  const checkboxes = document.querySelectorAll('.fee-item-checkbox');
-  const selectAllBox = document.getElementById('select-all-fees');
-  const summaryEl = document.getElementById('select-all-summary');
-  const countEl = document.getElementById('selected-count');
-  const totalEl = document.getElementById('selected-total');
+  const card = document.getElementById('fee-breakdown-card');
+  if (!card) return;
+
+  const checkboxes = card.querySelectorAll('.fee-item-checkbox');
+  const selectAllBox = card.querySelector('#select-all-fees');
+  const summaryEl = card.querySelector('#select-all-summary');
+  const countEl = card.querySelector('#selected-count');
+  const totalEl = card.querySelector('#selected-total');
+  const totalPseudo = card.querySelector('#total-pseudo-checkbox');
   const amountInput = document.getElementById('payment-amount');
   const submitBtn = document.getElementById('submit-payment');
 
-  if (!checkboxes.length) {
-    if (selectAllBox) selectAllBox.disabled = true;
-    return;
-  }
-
   const payableBoxes = Array.from(checkboxes).filter(cb => !cb.disabled);
-  const totalPayable = payableBoxes.length;
 
   function updateTotals() {
-    const checked = document.querySelectorAll('.fee-item-checkbox:checked:not(:disabled)');
+    const checked = card.querySelectorAll('.fee-item-checkbox:checked:not(:disabled)');
     let total = 0;
     checked.forEach(cb => {
       const amt = parseFloat(cb.dataset.amount);
@@ -133,7 +180,7 @@
 
     if (countEl) countEl.textContent = checked.length;
     if (totalEl) totalEl.textContent = total.toFixed(2);
-    if (summaryEl) summaryEl.textContent = checked.length + ' of ' + totalPayable + ' selected';
+    if (summaryEl) summaryEl.textContent = checked.length + ' of ' + payableBoxes.length + ' selected';
 
     if (amountInput) {
       const isFreeform = document.getElementById('scope-select')?.value === 'none';
@@ -146,12 +193,39 @@
       const amt = parseFloat(amountInput?.value || '0');
       submitBtn.disabled = isFreeform ? amt <= 0 : checked.length === 0;
     }
+
+    if (totalPseudo) {
+      const childIds = (totalPseudo.dataset.childIds || '').split(',').filter(Boolean);
+      const allChecked = childIds.every(id => {
+        const cb = card.querySelector('.fee-item-checkbox[value="' + cssEscape(id) + '"]');
+        return cb && cb.checked;
+      });
+      totalPseudo.checked = allChecked;
+      totalPseudo.indeterminate = !allChecked && childIds.some(id => {
+        const cb = card.querySelector('.fee-item-checkbox[value="' + cssEscape(id) + '"]');
+        return cb && cb.checked;
+      });
+    }
+  }
+
+  function cssEscape(s) {
+    if (window.CSS && CSS.escape) return CSS.escape(s);
+    return String(s).replace(/["\\]/g, '\\$&');
   }
 
   if (selectAllBox) {
     selectAllBox.addEventListener('change', function() {
-      payableBoxes.forEach(cb => {
-        cb.checked = selectAllBox.checked;
+      payableBoxes.forEach(cb => { cb.checked = selectAllBox.checked; });
+      updateTotals();
+    });
+  }
+
+  if (totalPseudo) {
+    totalPseudo.addEventListener('change', function() {
+      const childIds = (totalPseudo.dataset.childIds || '').split(',').filter(Boolean);
+      childIds.forEach(id => {
+        const cb = card.querySelector('.fee-item-checkbox[value="' + cssEscape(id) + '"]');
+        if (cb && !cb.disabled) cb.checked = totalPseudo.checked;
       });
       updateTotals();
     });
@@ -166,6 +240,15 @@
         selectAllBox.indeterminate = !allChecked && !noneChecked;
       }
       updateTotals();
+    });
+  });
+
+  card.querySelectorAll('.student-type-toggle').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const t = btn.dataset.studentType;
+      const url = new URL(window.location.href);
+      url.searchParams.set('student_type', t);
+      window.location.href = url.toString();
     });
   });
 
