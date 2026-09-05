@@ -1,0 +1,195 @@
+{# ── TAB: GUARDIANS ── #}
+<div data-tab-panel="guardians" class="hidden space-y-5">
+  <div class="flex items-center justify-between">
+    <p class="text-sm text-ink-muted">
+      {{ guardian_links|length }} {{ guardian_links|length|pluralize:"person,people" }} linked to this student
+    </p>
+    <button type="button" id="toggle-guardian-form"
+            class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">
+      <i data-lucide="user-plus" class="w-4 h-4"></i>Add Guardian
+    </button>
+  </div>
+
+  {% if guardian_links %}
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    {% for g in guardian_links %}
+    <article class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col">
+      <div class="flex items-start gap-3">
+        {% include "components/avatar.html" with name=g.guardian.get_full_name size="md" %}
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold text-ink truncate">{{ g.guardian.get_full_name|default:g.guardian.username }}</p>
+          <p class="text-xs text-ink-muted">{{ g.get_relationship_display }}</p>
+        </div>
+        <div class="flex gap-1 shrink-0">
+          <button type="button" class="edit-guardian-btn p-1.5 text-ink-muted hover:text-primary rounded-lg hover:bg-primary-tint" title="Edit"
+                  data-guardian-pk="{{ g.pk }}"
+                  data-guardian-name="{{ g.guardian.get_full_name|default:g.guardian.username }}"
+                  data-relationship="{{ g.relationship }}"
+                  data-occupation="{{ g.occupation|default:'' }}"
+                  data-address="{{ g.address|default:'' }}"
+                  data-authorized-pickup-person="{{ g.authorized_pickup_person|default:'' }}"
+                  data-email="{{ g.guardian.email|default:'' }}"
+                  data-phone="{{ g.guardian.phone_number|default:'' }}"
+                  data-is-primary="{% if g.is_primary_contact %}true{% else %}false{% endif %}">
+            <i data-lucide="pencil" class="w-4 h-4"></i>
+          </button>
+          <form method="post" action="{% url 'school_admin:student_delete_guardian' g.pk %}" onsubmit="return confirm('Remove this guardian link?')" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="p-1.5 text-ink-muted hover:text-danger rounded-lg hover:bg-danger-tint" title="Remove">
+              <i data-lucide="user-x" class="w-4 h-4"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+      <dl class="mt-4 space-y-2 text-sm flex-1">
+        <div class="flex justify-between gap-2">
+          <dt class="text-ink-muted">Occupation</dt>
+          <dd class="font-medium text-ink text-right">{{ g.occupation|default:"—" }}</dd>
+        </div>
+        <div>
+          <dt class="text-ink-muted mb-0.5">Address</dt>
+          <dd class="font-medium text-ink text-sm leading-snug">{{ g.address|default:"—" }}</dd>
+        </div>
+        {% if g.authorized_pickup_person %}
+        <div>
+          <dt class="text-ink-muted mb-0.5">Pick-up</dt>
+          <dd class="font-medium text-ink text-sm leading-snug">{{ g.authorized_pickup_person }}</dd>
+        </div>
+        {% endif %}
+        <div class="flex justify-between gap-2">
+          <dt class="text-ink-muted">Primary</dt>
+          <dd>
+            {% if g.is_primary_contact %}{% include "components/badge.html" with status="success" text="Yes" %}
+            {% else %}<span class="text-xs text-ink-faint">No</span>{% endif %}
+          </dd>
+        </div>
+      </dl>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm">
+    <div class="px-5 py-10 text-center">
+      <div class="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="users-round" class="w-5 h-5 text-ink-muted"></i>
+      </div>
+      <p class="text-sm font-semibold text-ink">No guardians linked</p>
+      <p class="text-xs text-ink-muted mt-1">Add a parent or guardian to start receiving notifications.</p>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Add Guardian form #}
+  <form method="post" action="{% url 'school_admin:student_add_guardian' student.pk %}" enctype="multipart/form-data" id="add-guardian-form" class="hidden bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+    {% csrf_token %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">First Name <span class="text-danger">*</span></label>
+        <input type="text" name="guardian_first_name" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Last Name <span class="text-danger">*</span></label>
+        <input type="text" name="guardian_last_name" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Email <span class="text-ink-faint font-normal">(Optional)</span></label>
+        <input type="email" name="guardian_email" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Phone Number <span class="text-ink-faint font-normal">(Optional)</span></label>
+        <input type="text" name="guardian_phone_number" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Occupation</label>
+        <input type="text" name="guardian_occupation" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Address</label>
+        <input type="text" name="guardian_address" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Relationship</label>
+        <select name="relationship" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="FATHER">Father</option>
+          <option value="MOTHER">Mother</option>
+          <option value="GUARDIAN" selected>Guardian</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Authorized Person for Pick-up</label>
+        <input type="text" name="guardian_authorized_pickup_person" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Passport Photo <span class="text-ink-faint font-normal">(Optional)</span></label>
+        <input type="file" name="guardian_passport" accept="image/png,image/jpeg,image/webp" class="block w-full text-sm text-ink-muted file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-gray-100 file:text-sm file:font-medium file:text-ink-muted hover:file:bg-gray-200">
+        <p class="text-xs text-ink-faint mt-1">PNG, JPG or WebP. Max 5MB.</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <input type="checkbox" name="is_primary_contact" id="is_primary_guardian" value="on" class="rounded border-gray-300 text-primary focus:ring-primary">
+      <label for="is_primary_guardian" class="text-sm text-ink-muted">Set as primary contact</label>
+    </div>
+    <div class="flex items-center gap-3 pt-1">
+      <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i>Save Guardian
+      </button>
+      <button type="button" id="cancel-guardian-form" class="text-sm font-medium text-ink-muted hover:text-ink transition-colors">Cancel</button>
+    </div>
+  </form>
+
+  {# Edit Guardian form #}
+  <form method="post" action="{% url 'school_admin:student_edit_guardian' 0 %}" enctype="multipart/form-data" id="edit-guardian-form" class="hidden bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+    {% csrf_token %}
+    <input type="hidden" name="guardian_link_pk" id="edit-guardian-link-pk">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">First Name <span class="text-danger">*</span></label>
+        <input type="text" name="guardian_first_name" id="edit-guardian-first-name" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Last Name <span class="text-danger">*</span></label>
+        <input type="text" name="guardian_last_name" id="edit-guardian-last-name" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Email <span class="text-ink-faint font-normal">(Optional)</span></label>
+        <input type="email" name="guardian_email" id="edit-guardian-email" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Phone Number <span class="text-ink-faint font-normal">(Optional)</span></label>
+        <input type="text" name="guardian_phone_number" id="edit-guardian-phone" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Occupation</label>
+        <input type="text" name="guardian_occupation" id="edit-guardian-occupation" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Address</label>
+        <input type="text" name="guardian_address" id="edit-guardian-address" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Relationship</label>
+        <select name="relationship" id="edit-guardian-relationship" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <option value="FATHER">Father</option>
+          <option value="MOTHER">Mother</option>
+          <option value="GUARDIAN">Guardian</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Authorized Person for Pick-up</label>
+        <input type="text" name="guardian_authorized_pickup_person" id="edit-guardian-authorized-pickup-person" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      </div>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <input type="checkbox" name="is_primary_contact" id="edit-is-primary-guardian" value="on" class="rounded border-gray-300 text-primary focus:ring-primary">
+      <label for="edit-is-primary-guardian" class="text-sm text-ink-muted">Set as primary contact</label>
+    </div>
+    <div class="flex items-center gap-3 pt-1">
+      <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <i data-lucide="save" class="w-4 h-4 mr-2"></i>Update Guardian
+      </button>
+      <button type="button" id="cancel-edit-guardian-form" class="text-sm font-medium text-ink-muted hover:text-ink transition-colors">Cancel</button>
+    </div>
+  </form>
+</div>

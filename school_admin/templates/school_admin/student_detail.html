@@ -1,522 +1,278 @@
 {% extends 'school_admin/base_admin.html' %}
 {% load static %}
 
-{% block title %}{{ student.user.get_full_name }} — Student Detail{% endblock %}
+{% block title %}{{ student.user.get_full_name|default:student.user.username }} — Student Detail{% endblock %}
 {% block page_header %}{{ student.user.get_full_name|default:student.user.username }}{% endblock %}
 
+{% block extra_head %}
+{{ block.super }}
+<style>
+  [data-tab-panel].hidden { display: none !important; }
+  .fee-row:has(input:checked) { background: #F6EFE1; border-color: #D4B56A; }
+  .tab-active { color: #8A6420; border-color: #8A6420; background: #FBF7F0; }
+  .stat-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .stat-card:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(27,36,48,0.08); }
+  .scroll-soft::-webkit-scrollbar { height: 6px; width: 6px; }
+  .scroll-soft::-webkit-scrollbar-thumb { background: #D4CFC4; border-radius: 99px; }
+  .hero-avatar > div { width: 5rem !important; height: 5rem !important; border-radius: 1rem !important; font-size: 1.25rem !important; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-7xl mx-auto space-y-6">
-  {# ── Header actions ── #}
-  <div class="flex justify-end gap-2">
-    <a href="{% url 'school_admin:student_password_change' student.pk %}" class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-      <i data-lucide="key-round" class="w-4 h-4 mr-2 text-gray-400"></i>Change Password
-    </a>
-    <a href="{% url 'school_admin:student_edit' student.pk %}" class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
-      <i data-lucide="pencil" class="w-4 h-4 mr-2"></i>Edit Student
-    </a>
-  </div>
+<div class="max-w-6xl mx-auto space-y-5">
 
-  {# ── Student Info ── #}
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-    <div class="flex items-center gap-4 mb-5">
-      {% if student.passport %}
-      <img src="{{ student.passport.url }}" class="w-16 h-16 rounded-full object-cover border border-gray-200 flex-shrink-0">
-      {% else %}
-      {% include "components/avatar.html" with name=student.user.get_full_name size="lg" %}
-      {% endif %}
-      <div>
-        <h2 class="text-base font-semibold text-gray-900">{{ student.user.get_full_name|default:student.user.username }}</h2>
-        <p class="text-sm text-gray-500">{{ student.user.email|default:'No email on file' }}</p>
-      </div>
-    </div>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div>
-        <span class="text-xs text-gray-500 block">Admission Number</span>
-        <span class="font-medium text-gray-900">{{ student.admission_number }}</span>
-      </div>
-      <div>
-        <span class="text-xs text-gray-500 block">Date of Birth</span>
-        <span class="font-medium text-gray-900">{{ student.date_of_birth|date:'M d, Y' }}</span>
-      </div>
-      <div>
-        <span class="text-xs text-gray-500 block">Gender</span>
-        <span class="font-medium text-gray-900 capitalize">{{ student.get_gender_display }}</span>
-      </div>
-      <div>
-        <span class="text-xs text-gray-500 block">Status</span>
-        {% if student.status == 'ACTIVE' %}{% include "components/badge.html" with status="success" text=student.get_status_display %}
-        {% elif student.status == 'SUSPENDED' %}{% include "components/badge.html" with status="danger" text=student.get_status_display %}
-        {% elif student.status == 'GRADUATED' %}{% include "components/badge.html" with status="info" text=student.get_status_display %}
-        {% else %}{% include "components/badge.html" with status="warning" text=student.get_status_display %}{% endif %}
-      </div>
-      <div>
-        <span class="text-xs text-gray-500 block">State of Origin</span>
-        <span class="font-medium text-gray-900">{{ student.state_of_origin|default:"—" }}</span>
-      </div>
-      <div>
-        <span class="text-xs text-gray-500 block">Local Government Area</span>
-        <span class="font-medium text-gray-900">{{ student.local_government_area|default:"—" }}</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    {# ── Enrollment History ── #}
-    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <h3 class="text-sm font-semibold text-gray-800 mb-4">Enrollment History</h3>
-      {% if enrollments %}
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
-              <th class="px-4 py-2.5 font-medium">Session</th>
-              <th class="px-4 py-2.5 font-medium">Class</th>
-              <th class="px-4 py-2.5 font-medium">Current</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-50">
-            {% for e in enrollments %}
-            <tr class="hover:bg-gray-50/50">
-              <td class="px-4 py-3 text-gray-900">{{ e.session.name }}</td>
-              <td class="px-4 py-3 text-gray-600">{{ e.school_class.name }}</td>
-              <td class="px-4 py-3">
-                {% if e.is_current %}{% include "components/badge.html" with status="success" text="Yes" %}
-                {% else %}<span class="text-gray-400">No</span>{% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <p class="text-gray-400 text-sm">No enrollment history.</p>
-      {% endif %}
-
-      {# ── Change Class Form ── #}
-      <div class="mt-5 pt-5 border-t border-gray-100">
-        <h4 class="text-sm font-semibold text-gray-700 mb-3">Change Current Class</h4>
-        <form method="post" action="{% url 'school_admin:student_change_class' student.pk %}" class="flex flex-wrap items-end gap-3">
-          {% csrf_token %}
-          <input type="hidden" name="student_id" value="{{ student.pk }}">
-          <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">New Class</label>
-            <select name="class_id" required class="text-sm px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all min-w-[180px]">
-              <option value="">— Select —</option>
-              {% for c in classes %}
-                <option value="{{ c.pk }}">{{ c.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Session</label>
-            <select name="session_id" required class="text-sm px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all min-w-[180px]">
-              <option value="">— Select —</option>
-              {% for s in sessions %}
-                <option value="{{ s.pk }}">{{ s.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <button type="submit" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">Change Class</button>
-        </form>
-      </div>
-    </div>
-
-    {# ── Guardian Links ── #}
-    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <h3 class="text-sm font-semibold text-gray-800 mb-4">Guardians</h3>
-      {% if guardian_links %}
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
-              <th class="px-4 py-2.5 font-medium">Name</th>
-              <th class="px-4 py-2.5 font-medium">Relationship</th>
-              <th class="px-4 py-2.5 font-medium">Occupation</th>
-              <th class="px-4 py-2.5 font-medium">Address</th>
-              <th class="px-4 py-2.5 font-medium">Pick-up Person</th>
-              <th class="px-4 py-2.5 font-medium">Primary</th>
-              <th class="px-4 py-2.5 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-50">
-            {% for g in guardian_links %}
-            <tr class="hover:bg-gray-50/50">
-              <td class="px-4 py-3 text-gray-900">{{ g.guardian.get_full_name|default:g.guardian.username }}</td>
-              <td class="px-4 py-3 text-gray-600">{{ g.get_relationship_display }}</td>
-              <td class="px-4 py-3 text-gray-600">{{ g.occupation|default:"—" }}</td>
-              <td class="px-4 py-3 text-gray-600">{{ g.address|default:"—" }}</td>
-              <td class="px-4 py-3 text-gray-600">{{ g.authorized_pickup_person|default:"—" }}</td>
-              <td class="px-4 py-3">
-                {% if g.is_primary_contact %}{% include "components/badge.html" with status="success" text="Yes" %}
-                {% else %}<span class="text-gray-400">No</span> {% endif %}
-              </td>
-              <td class="px-4 py-3 text-right">
-                <button type="button" class="edit-guardian-btn p-1.5 text-gray-400 hover:text-primary transition-colors mr-1" title="Edit" data-guardian-pk="{{ g.pk }}" data-guardian-name="{{ g.guardian.get_full_name|default:g.guardian.username }}" data-relationship="{{ g.relationship }}" data-occupation="{{ g.occupation|default:'' }}" data-address="{{ g.address|default:'' }}" data-authorized-pickup-person="{{ g.authorized_pickup_person|default:'' }}" data-email="{{ g.guardian.email|default:'' }}" data-phone="{{ g.guardian.phone_number|default:'' }}" data-is-primary="{% if g.is_primary_contact %}true{% else %}false{% endif %}">
-                  <i data-lucide="pencil" class="w-4 h-4"></i>
-                </button>
-                <form method="post" action="{% url 'school_admin:student_delete_guardian' g.pk %}" onsubmit="return confirm('Remove this guardian link?')" class="inline">
-                  {% csrf_token %}
-                  <button type="submit" class="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="Remove"><i data-lucide="user-x" class="w-4 h-4"></i></button>
-                </form>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <p class="text-gray-400 text-sm">No guardians linked.</p>
-      {% endif %}
-
-      <div class="mt-5 pt-5 border-t border-gray-100">
-        <button type="button" id="toggle-guardian-form" class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
-          <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i>Add Guardian
-        </button>
-
-        <form method="post" action="{% url 'school_admin:student_add_guardian' student.pk %}" enctype="multipart/form-data" id="add-guardian-form" class="hidden mt-4 p-5 bg-gray-50 rounded-xl border border-gray-100 space-y-4">
-          {% csrf_token %}
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">First Name <span class="text-red-500">*</span></label>
-              <input type="text" name="guardian_first_name" required
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Last Name <span class="text-red-500">*</span></label>
-              <input type="text" name="guardian_last_name" required
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Email <span class="text-gray-400 font-normal">(Optional)</span></label>
-              <input type="email" name="guardian_email"
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Phone Number <span class="text-gray-400 font-normal">(Optional)</span></label>
-              <input type="text" name="guardian_phone_number"
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Occupation</label>
-              <input type="text" name="guardian_occupation"
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
-              <input type="text" name="guardian_address"
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Relationship</label>
-              <select name="relationship"
-                      class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-                <option value="FATHER">Father</option>
-                <option value="MOTHER">Mother</option>
-                <option value="GUARDIAN" selected>Guardian</option>
-                <option value="OTHER">Other</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Authorized Person for After-School Pick-up</label>
-              <input type="text" name="guardian_authorized_pickup_person"
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Passport Photo <span class="text-gray-400 font-normal">(Optional)</span></label>
-              <input type="file" name="guardian_passport" accept="image/png,image/jpeg,image/webp"
-                     class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-gray-100 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200">
-              <p class="text-xs text-gray-400 mt-1">PNG, JPG or WebP. Max 5MB.</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <input type="checkbox" name="is_primary_contact" id="is_primary_guardian" value="on" class="rounded border-gray-300 text-primary focus:ring-primary">
-            <label for="is_primary_guardian" class="text-sm text-gray-600">Set as primary contact</label>
-          </div>
-          <div class="flex items-center gap-3 pt-1">
-            <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
-              <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i>Save Guardian
-            </button>
-            <button type="button" id="cancel-guardian-form" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</button>
-          </div>
-        </form>
-
-        <form method="post" action="{% url 'school_admin:student_edit_guardian' 0 %}" enctype="multipart/form-data" id="edit-guardian-form" class="hidden mt-4 p-5 bg-gray-50 rounded-xl border border-gray-100 space-y-4">
-          {% csrf_token %}
-          <input type="hidden" name="guardian_link_pk" id="edit-guardian-link-pk">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">First Name <span class="text-red-500">*</span></label>
-              <input type="text" name="guardian_first_name" id="edit-guardian-first-name" required
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Last Name <span class="text-red-500">*</span></label>
-              <input type="text" name="guardian_last_name" id="edit-guardian-last-name" required
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Email <span class="text-gray-400 font-normal">(Optional)</span></label>
-              <input type="email" name="guardian_email" id="edit-guardian-email"
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Phone Number <span class="text-gray-400 font-normal">(Optional)</span></label>
-              <input type="text" name="guardian_phone_number" id="edit-guardian-phone"
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Occupation</label>
-              <input type="text" name="guardian_occupation" id="edit-guardian-occupation"
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
-              <input type="text" name="guardian_address" id="edit-guardian-address"
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Relationship</label>
-              <select name="relationship" id="edit-guardian-relationship"
-                      class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-                <option value="FATHER">Father</option>
-                <option value="MOTHER">Mother</option>
-                <option value="GUARDIAN">Guardian</option>
-                <option value="OTHER">Other</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Authorized Person for After-School Pick-up</label>
-              <input type="text" name="guardian_authorized_pickup_person" id="edit-guardian-authorized-pickup-person"
-                     class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-            </div>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <input type="checkbox" name="is_primary_contact" id="edit-is-primary-guardian" value="on" class="rounded border-gray-300 text-primary focus:ring-primary">
-            <label for="edit-is-primary-guardian" class="text-sm text-gray-600">Set as primary contact</label>
-          </div>
-          <div class="flex items-center gap-3 pt-1">
-            <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
-              <i data-lucide="save" class="w-4 h-4 mr-2"></i>Update Guardian
-            </button>
-            <button type="button" id="cancel-edit-guardian-form" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  {# ── Invoice History ── #}
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-    <h3 class="text-sm font-semibold text-gray-800 mb-4">Invoice History</h3>
-    {% if invoices %}
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
-            <th class="px-4 py-2.5 font-medium">Term</th>
-            <th class="px-4 py-2.5 font-medium">Total</th>
-            <th class="px-4 py-2.5 font-medium">Paid</th>
-            <th class="px-4 py-2.5 font-medium">Balance</th>
-            <th class="px-4 py-2.5 font-medium">Status</th>
-            <th class="px-4 py-2.5 font-medium">Receipts</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-          {% for inv in invoices %}
-          <tr class="hover:bg-gray-50/50">
-            <td class="px-4 py-3 text-gray-900">{{ inv.term.name }}</td>
-            <td class="px-4 py-3 text-gray-600">NGN {{ inv.total_amount|floatformat:2 }}</td>
-            <td class="px-4 py-3 text-gray-600">NGN {{ inv.amount_paid_annotated|floatformat:2 }}</td>
-            <td class="px-4 py-3 text-gray-900 font-medium">NGN {{ inv.balance_annotated|floatformat:2 }}</td>
-            <td class="px-4 py-3">
-              {% if inv.balance_annotated <= 0 %}{% include "components/badge.html" with status="success" text="PAID" %}
-              {% elif inv.amount_paid_annotated > 0 %}{% include "components/badge.html" with status="warning" text="PARTIAL" %}
-              {% else %}{% include "components/badge.html" with status="danger" text="UNPAID" %}{% endif %}
-            </td>
-            <td class="px-4 py-3">
-              {% for payment in inv.payments.all %}
-                {% if payment.status == 'CONFIRMED' %}
-                <a href="{% url 'fees:payment-receipt' payment.pk %}" target="_blank"
-                   class="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-hover mb-1 mr-2 whitespace-nowrap">
-                  <i data-lucide="receipt" class="w-3.5 h-3.5"></i>
-                  {{ payment.reference|default:payment.pk }}
-                </a>
-                {% endif %}
-              {% empty %}
-                <span class="text-gray-300">—</span>
-              {% endfor %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p class="text-gray-400 text-sm">No invoices found.</p>
-    {% endif %}
-  </div>
-
-  {# ── Payments (no invoice) ── #}
-  {% if invoice_less_payments %}
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-    <h3 class="text-sm font-semibold text-gray-800 mb-4">Payments (no invoice)</h3>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
-            <th class="px-4 py-2.5 font-medium">Date</th>
-            <th class="px-4 py-2.5 font-medium">Method</th>
-            <th class="px-4 py-2.5 font-medium">Amount</th>
-            <th class="px-4 py-2.5 font-medium">Reference</th>
-            <th class="px-4 py-2.5 font-medium">Receipt</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-          {% for payment in invoice_less_payments %}
-          <tr class="hover:bg-gray-50/50">
-            <td class="px-4 py-3 text-gray-900">{{ payment.paid_on|date:"d M Y" }}</td>
-            <td class="px-4 py-3 text-gray-600">{{ payment.get_method_display }}</td>
-            <td class="px-4 py-3 text-gray-900 font-medium">NGN {{ payment.amount|floatformat:2 }}</td>
-            <td class="px-4 py-3 text-gray-500">{{ payment.reference|default:"—" }}</td>
-            <td class="px-4 py-3">
-              {% if payment.status == 'CONFIRMED' %}
-              <a href="{% url 'fees:payment-receipt' payment.pk %}" target="_blank"
-                 class="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-hover">
-                <i data-lucide="receipt" class="w-3.5 h-3.5"></i>View Receipt
-              </a>
-              {% else %}
-              <span class="text-xs text-gray-400">{{ payment.get_status_display }}</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  {% endif %}
-
-  {# ── Record Payment (invoice-less or attached) ── #}
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-    <h3 class="text-sm font-semibold text-gray-800 mb-1">Record Payment</h3>
-    <p class="text-xs text-gray-400 mb-4">For payments made outside the portal (POS, cheque, cash, sponsor). Choose how to allocate the payment, then select specific fee components.</p>
-
-    <form method="POST" action="{% url 'school_admin:student_record_payment' student.pk %}" id="record-payment-form" class="space-y-4">
-      {% csrf_token %}
-
-      {# Scope Selector #}
-      <div>
-        <label class="block text-sm font-medium text-gray-600 mb-1.5">Apply payment to</label>
-        <select name="scope_select" id="scope-select"
-                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
-                       text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary
-                       focus:bg-white outline-none transition-all"
-                hx-get="{% url 'fees:api-student-line-items' student.pk %}"
-                hx-target="#fee-breakdown"
-                hx-swap="innerHTML"
-                hx-include="[name='csrfmiddlewaretoken']"
-                hx-trigger="change">
-          <option value="">— Select how to apply payment —</option>
-          {% if current_enrollment and class_total_amount > 0 %}
-          <option value="total">
-            {{ current_enrollment.school_class.name }} Full Class Total — NGN {{ class_total_amount|floatformat:2 }}
-          </option>
+  {# ── PROFILE HERO ── #}
+  <section class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="bg-gradient-to-r from-[#FBF7F0] via-white to-primary-tint/40 px-5 sm:px-6 pt-5 pb-4">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div class="relative shrink-0 hero-avatar">
+          {% if student.passport %}
+          <img src="{{ student.passport.url }}" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-white shadow-sm">
+          {% else %}
+          {% include "components/avatar.html" with name=student.user.get_full_name size="lg" %}
           {% endif %}
-          {% for inv in invoices %}
-            {% if inv.balance_annotated > 0 %}
-            <option value="invoice:{{ inv.pk }}">
-              {{ inv.term.name }} — balance NGN {{ inv.balance_annotated|floatformat:2 }}
-            </option>
+          {% if student.status == 'ACTIVE' %}
+          <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white" title="Active"></span>
+          {% endif %}
+        </div>
+
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2 mb-1">
+            <h2 class="text-xl sm:text-2xl font-bold text-ink tracking-tight">{{ student.user.get_full_name|default:student.user.username }}</h2>
+            {% if student.status == 'ACTIVE' %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+              </span>
+            {% elif student.status == 'SUSPENDED' %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-danger-tint text-danger border border-line">
+                <span class="w-1.5 h-1.5 rounded-full bg-danger"></span> Suspended
+              </span>
+            {% elif student.status == 'GRADUATED' %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-info-tint text-info border border-line">
+                <span class="w-1.5 h-1.5 rounded-full bg-info"></span> Graduated
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-warning-tint text-warning border border-line">
+                <span class="w-1.5 h-1.5 rounded-full bg-warning"></span> {{ student.get_status_display }}
+              </span>
             {% endif %}
-          {% endfor %}
-          <option value="none">None (record against student only)</option>
-        </select>
-      </div>
+          </div>
+          <p class="text-sm text-ink-muted">{{ student.user.email|default:'No email on file' }}</p>
+          <div class="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            <span class="text-ink-muted"><span class="text-[11px] uppercase tracking-wider text-ink-faint">Adm. No</span> <strong class="text-ink font-semibold ml-1">{{ student.admission_number }}</strong></span>
+            {% if current_enrollment %}
+            <span class="text-ink-muted"><span class="text-[11px] uppercase tracking-wider text-ink-faint">Class</span> <strong class="text-ink font-semibold ml-1">{{ current_enrollment.school_class.name }}</strong></span>
+            {% endif %}
+            {% if current_term %}
+            <span class="text-ink-muted"><span class="text-[11px] uppercase tracking-wider text-ink-faint">Session</span> <strong class="text-ink font-semibold ml-1">{{ current_term.session.name }}</strong></span>
+            {% endif %}
+          </div>
+        </div>
 
-      {# Fee Breakdown Container (HTMX-loaded) #}
-      <div id="fee-breakdown"></div>
-
-      {# Payment Details #}
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Amount (NGN)</label>
-          <input type="number" name="amount" id="payment-amount" step="0.01" required
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
-                        text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20
-                        focus:border-primary focus:bg-white outline-none transition-all">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Method</label>
-          <select name="method" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl
-                 text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary
-                 focus:bg-white outline-none transition-all">
-            <option value="CASH">Cash</option>
-            <option value="POS">POS / Card at school</option>
-            <option value="CHEQUE">Cheque</option>
-            <option value="BANK_TRANSFER">Bank Transfer</option>
-            <option value="OTHER">Other</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Paid by (optional)</label>
-          <input type="text" name="paid_by_name" placeholder="Who paid?"
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
-                        text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20
-                        focus:border-primary focus:bg-white outline-none transition-all">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Relation to student</label>
-          <input type="text" name="paid_by_relation" placeholder="e.g. father, sponsor"
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
-                        text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20
-                        focus:border-primary focus:bg-white outline-none transition-all">
-        </div>
-        <div class="md:col-span-2">
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Reference (optional)</label>
-          <input type="text" name="reference" placeholder="Receipt / reference #"
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
-                        text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20
-                        focus:border-primary focus:bg-white outline-none transition-all">
-        </div>
-        <div class="md:col-span-2">
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Description (optional)</label>
-          <input type="text" name="description" placeholder="e.g. Books, uniform, 2025/2026 fees"
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
-                        text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20
-                        focus:border-primary focus:bg-white outline-none transition-all">
-        </div>
-        <div class="md:col-span-2">
-          <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-emerald-600
-                  hover:bg-emerald-700 text-white text-sm font-medium rounded-xl
-                  transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  id="submit-payment" disabled>
-            <i data-lucide="check" class="w-4 h-4 mr-2"></i>Record Payment
+        <div class="sm:text-right shrink-0 flex flex-col sm:items-end gap-2">
+          <div class="flex flex-wrap gap-2 justify-end">
+            <a href="{% url 'school_admin:student_password_change' student.pk %}" class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-ink-muted bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+              <i data-lucide="key-round" class="w-4 h-4"></i>Password
+            </a>
+            <a href="{% url 'school_admin:student_edit' student.pk %}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-xl shadow-sm transition-colors">
+              <i data-lucide="pencil" class="w-4 h-4"></i>Edit
+            </a>
+          </div>
+          <button type="button" data-tab-target="fees"
+                  class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">
+            <i data-lucide="banknote" class="w-4 h-4"></i>Record Payment
           </button>
+          {% if total_outstanding %}
+          <p class="text-xs text-amber-700 font-medium">Balance: &#8358;{{ total_outstanding|floatformat:2 }}</p>
+          {% endif %}
         </div>
       </div>
-    </form>
-  </div>
-</div>
+    </div>
 
+    <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-100 border-t border-gray-100">
+      <div class="px-4 py-3.5">
+        <p class="text-[11px] uppercase tracking-wider text-ink-muted mb-0.5">Outstanding</p>
+        <p class="text-lg font-bold text-amber-700 tabular-nums">&#8358;{{ total_outstanding|floatformat:0 }}</p>
+      </div>
+      <div class="px-4 py-3.5">
+        <p class="text-[11px] uppercase tracking-wider text-ink-muted mb-0.5">Paid this term</p>
+        <p class="text-lg font-bold text-ink tabular-nums">&#8358;{{ total_paid_current_term|floatformat:0 }}</p>
+      </div>
+      <div class="px-4 py-3.5">
+        <p class="text-[11px] uppercase tracking-wider text-ink-muted mb-0.5">Date of Birth</p>
+        <p class="text-sm font-semibold text-ink">{{ student.date_of_birth|date:'d M Y' }}</p>
+      </div>
+      <div class="px-4 py-3.5">
+        <p class="text-[11px] uppercase tracking-wider text-ink-muted mb-0.5">Gender</p>
+        <p class="text-sm font-semibold text-ink capitalize">{{ student.get_gender_display }}</p>
+      </div>
+    </div>
+  </section>
+
+  {# ── TABS ── #}
+  <div class="flex gap-1 p-1 bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto scroll-soft" role="tablist">
+    <button type="button" data-tab="overview" class="tab-btn tab-active flex-1 min-w-[100px] px-4 py-2.5 text-sm font-semibold rounded-lg border border-transparent transition-colors">
+      Overview
+    </button>
+    <button type="button" data-tab="fees" class="tab-btn flex-1 min-w-[100px] px-4 py-2.5 text-sm font-medium text-ink-muted rounded-lg border border-transparent hover:bg-gray-50 transition-colors">
+      Fees &amp; Payments
+    </button>
+    <button type="button" data-tab="guardians" class="tab-btn flex-1 min-w-[100px] px-4 py-2.5 text-sm font-medium text-ink-muted rounded-lg border border-transparent hover:bg-gray-50 transition-colors">
+      Guardians <span class="ml-1 text-xs text-ink-faint">({{ guardian_links|length }})</span>
+    </button>
+    <button type="button" data-tab="history" class="tab-btn flex-1 min-w-[100px] px-4 py-2.5 text-sm font-medium text-ink-muted rounded-lg border border-transparent hover:bg-gray-50 transition-colors">
+      Class History
+    </button>
+  </div>
+
+  {# ── TAB: OVERVIEW ── #}
+  <div data-tab-panel="overview" class="space-y-5">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+        <h3 class="text-sm font-semibold text-ink mb-4 flex items-center gap-2">
+          <span class="w-7 h-7 rounded-lg bg-primary-tint flex items-center justify-center">
+            <i data-lucide="user-round" class="w-3.5 h-3.5 text-primary"></i>
+          </span>
+          Student details
+        </h3>
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+          <div>
+            <dt class="text-[11px] uppercase tracking-wider text-ink-muted">Admission Number</dt>
+            <dd class="mt-0.5 text-sm font-semibold text-ink">{{ student.admission_number }}</dd>
+          </div>
+          <div>
+            <dt class="text-[11px] uppercase tracking-wider text-ink-muted">Date of Birth</dt>
+            <dd class="mt-0.5 text-sm font-semibold text-ink">{{ student.date_of_birth|date:'d F Y' }}</dd>
+          </div>
+          <div>
+            <dt class="text-[11px] uppercase tracking-wider text-ink-muted">Gender</dt>
+            <dd class="mt-0.5 text-sm font-semibold text-ink capitalize">{{ student.get_gender_display }}</dd>
+          </div>
+          <div>
+            <dt class="text-[11px] uppercase tracking-wider text-ink-muted">Status</dt>
+            <dd class="mt-0.5">
+              {% if student.status == 'ACTIVE' %}{% include "components/badge.html" with status="success" text=student.get_status_display %}
+              {% elif student.status == 'SUSPENDED' %}{% include "components/badge.html" with status="danger" text=student.get_status_display %}
+              {% elif student.status == 'GRADUATED' %}{% include "components/badge.html" with status="info" text=student.get_status_display %}
+              {% else %}{% include "components/badge.html" with status="warning" text=student.get_status_display %}{% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-[11px] uppercase tracking-wider text-ink-muted">State of Origin</dt>
+            <dd class="mt-0.5 text-sm font-semibold text-ink">{{ student.state_of_origin|default:"—" }}</dd>
+          </div>
+          <div>
+            <dt class="text-[11px] uppercase tracking-wider text-ink-muted">Local Government Area</dt>
+            <dd class="mt-0.5 text-sm font-semibold text-ink">{{ student.local_government_area|default:"—" }}</dd>
+          </div>
+          <div>
+            <dt class="text-[11px] uppercase tracking-wider text-ink-muted">Phone</dt>
+            <dd class="mt-0.5 text-sm font-semibold text-ink">{{ student.user.phone_number|default:"—" }}</dd>
+          </div>
+          <div>
+            <dt class="text-[11px] uppercase tracking-wider text-ink-muted">Email</dt>
+            <dd class="mt-0.5 text-sm font-semibold text-ink truncate">{{ student.user.email|default:"—" }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+        <h3 class="text-sm font-semibold text-ink mb-4">Summary</h3>
+        <ul class="space-y-3">
+          {% if total_outstanding > 0 %}
+          <li class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-xl bg-warning-tint flex items-center justify-center shrink-0">
+              <i data-lucide="banknote" class="w-4 h-4 text-warning"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-ink">
+                {% if current_term %}{{ current_term.name }}{% endif %} outstanding
+              </p>
+              <p class="text-xs text-ink-muted">&#8358;{{ total_outstanding|floatformat:2 }} due</p>
+            </div>
+          </li>
+          {% endif %}
+          <li class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-xl bg-primary-tint flex items-center justify-center shrink-0">
+              <i data-lucide="users-round" class="w-4 h-4 text-primary"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-ink">{{ guardian_links|length }} guardian{{ guardian_links|length|pluralize:"s" }} linked</p>
+              <p class="text-xs text-ink-muted">
+                {% if guardian_links %}On file{% else %}None on file{% endif %}
+              </p>
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-xl bg-info-tint flex items-center justify-center shrink-0">
+              <i data-lucide="calendar" class="w-4 h-4 text-info"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-ink">Current: {% if current_enrollment %}{{ current_enrollment.school_class.name }}{% else %}—{% endif %}</p>
+              <p class="text-xs text-ink-muted">{% if current_term %}{{ current_term.session.name }}{% endif %}</p>
+            </div>
+          </li>
+        </ul>
+        <button type="button" data-tab-target="fees"
+                class="mt-5 w-full py-2.5 text-sm font-semibold text-primary bg-primary-tint hover:bg-primary/10 rounded-xl transition-colors">
+          Go to Fees &amp; Payments →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {% include 'school_admin/_student_detail_fees_tab.html' %}
+
+  {% include 'school_admin/_student_detail_guardians_tab.html' %}
+
+  {% include 'school_admin/_student_detail_history_tab.html' %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
 <script>
 (function() {
-  const scopeSelect = document.getElementById('scope-select');
-  const breakdown = document.getElementById('fee-breakdown');
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('[data-tab-panel]');
+
+  function activateTab(id) {
+    tabs.forEach(t => {
+      const isActive = t.getAttribute('data-tab') === id;
+      t.classList.toggle('tab-active', isActive);
+      t.classList.toggle('font-semibold', isActive);
+      t.classList.toggle('font-medium', !isActive);
+      t.classList.toggle('text-ink-muted', !isActive);
+    });
+    panels.forEach(p => p.classList.toggle('hidden', p.getAttribute('data-tab-panel') !== id));
+    try { window.localStorage.setItem('studentDetail.activeTab', id); } catch (e) {}
+  }
+
+  tabs.forEach(btn => btn.addEventListener('click', () => activateTab(btn.getAttribute('data-tab'))));
+
+  document.querySelectorAll('[data-tab-target]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      activateTab(el.getAttribute('data-tab-target'));
+      const panel = document.querySelector('[data-tab-panel="' + el.getAttribute('data-tab-target') + '"]');
+      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  try {
+    const stored = window.localStorage.getItem('studentDetail.activeTab');
+    if (stored && document.querySelector('[data-tab-panel="' + stored + '"]')) {
+      activateTab(stored);
+    }
+  } catch (e) {}
+
+  const typeInput = document.getElementById('record-payment-type');
   const amountInput = document.getElementById('payment-amount');
-  const submitBtn = document.getElementById('submit-payment');
 
   function syncSubmitState() {
+    const submitBtn = document.getElementById('submit-payment');
     if (!submitBtn || !amountInput) return;
-    const amt = parseFloat(amountInput.value) || 0;
-    const scope = scopeSelect?.value || '';
-    const checkedCount = document.querySelectorAll('.fee-item-checkbox:checked:not(:disabled)').length;
-    if (scope === 'none') {
-      submitBtn.disabled = amt <= 0;
-    } else if (scope === 'total' || scope.startsWith('invoice:')) {
-      submitBtn.disabled = checkedCount === 0;
-    } else {
-      submitBtn.disabled = true;
-    }
+    submitBtn.disabled = (parseFloat(amountInput.value) || 0) <= 0;
   }
 
   amountInput?.addEventListener('input', syncSubmitState);
@@ -524,14 +280,178 @@
   document.body.addEventListener('htmx:afterSwap', function(evt) {
     if (evt.target.id === 'fee-breakdown') {
       syncSubmitState();
+      recalcPaymentForm();
+      if (window.lucide) window.lucide.createIcons({}, evt.target);
     }
   });
 
   document.body.addEventListener('change', function(evt) {
-    if (evt.target.classList?.contains('fee-item-checkbox')) {
-      syncSubmitState();
+    if (evt.target.classList?.contains('fee-item-checkbox') || evt.target.classList?.contains('custom-enable')) {
+      recalcPaymentForm();
     }
   });
+
+  function setRecordPaymentType(t) {
+    if (typeInput) typeInput.value = t;
+    window.__recordPaymentType = t;
+    document.querySelectorAll('.record-payment-type-toggle').forEach(btn => {
+      const isActive = btn.dataset.studentType === t;
+      btn.classList.toggle('bg-primary', isActive);
+      btn.classList.toggle('text-white', isActive);
+      btn.classList.toggle('bg-white', !isActive);
+      btn.classList.toggle('text-ink-muted', !isActive);
+      btn.classList.toggle('hover:bg-gray-50', !isActive);
+    });
+    const breakdown = document.getElementById('fee-breakdown');
+    if (breakdown && breakdown.getAttribute('hx-get')) {
+      htmx.ajax('GET', breakdown.getAttribute('hx-get'), {target: '#fee-breakdown', swap: 'innerHTML'});
+    }
+  }
+
+  document.querySelectorAll('.record-payment-type-toggle').forEach(btn => {
+    btn.addEventListener('click', function() {
+      setRecordPaymentType(btn.dataset.studentType);
+    });
+  });
+
+  // —— Payment form intelligence (ticked items + custom lines) ——
+  function formatNaira(n) {
+    return '&#8358;' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function recalcPaymentForm() {
+    let total = 0, count = 0;
+    let hasInvoiceItem = false, hasPriceItem = false, hasCustom = false;
+    let firstInvoiceId = '';
+
+    document.querySelectorAll('#fee-breakdown .fee-item-checkbox:checked:not(:disabled)').forEach(cb => {
+      total += parseFloat(cb.dataset.amount) || 0;
+      count++;
+      const src = cb.dataset.source;
+      if (src === 'invoice') hasInvoiceItem = true;
+      else if (src === 'price') hasPriceItem = true;
+      if (!firstInvoiceId && cb.dataset.invoiceId) firstInvoiceId = cb.dataset.invoiceId;
+    });
+
+    document.querySelectorAll('.custom-row').forEach(row => {
+      const enabled = row.querySelector('.custom-enable');
+      const amtInput = row.querySelector('.custom-amt');
+      const labelInput = row.querySelector('.custom-label');
+      if (enabled && enabled.checked) {
+        total += parseFloat(amtInput.value) || 0;
+        count++;
+        hasCustom = true;
+        if (labelInput && !labelInput.value.trim()) {
+          labelInput.classList.add('ring-1', 'ring-amber-400');
+        } else if (labelInput) {
+          labelInput.classList.remove('ring-1', 'ring-amber-400');
+        }
+      }
+    });
+
+    const selCount = document.getElementById('sel-count');
+    const selTotal = document.getElementById('sel-total');
+    const scope = document.getElementById('scope-select');
+    if (selCount) selCount.textContent = count;
+    if (selTotal) selTotal.textContent = formatNaira(total);
+    if (amountInput && total > 0) amountInput.value = total.toFixed(2);
+
+    if (scope) {
+      if (hasInvoiceItem && firstInvoiceId) scope.value = 'invoice:' + firstInvoiceId;
+      else if (hasPriceItem || hasInvoiceItem) scope.value = 'total';
+      else scope.value = 'none';
+    }
+
+    const submitBtn = document.getElementById('submit-payment');
+    if (submitBtn) submitBtn.disabled = total <= 0;
+
+    const hint = document.getElementById('allocation-hint');
+    if (!hint) return;
+    if (total <= 0) {
+      hint.classList.add('hidden');
+      return;
+    }
+    hint.classList.remove('hidden');
+    if (hasInvoiceItem && (hasPriceItem || hasCustom)) {
+      hint.className = 'rounded-xl px-3.5 py-2.5 text-xs border border-sky-200 bg-sky-50 text-sky-800';
+      hint.innerHTML = '<strong>Mixed payment.</strong> Known invoice lines reduce the term balance; other items appear as extra lines on the same receipt.';
+    } else if (hasInvoiceItem) {
+      hint.className = 'rounded-xl px-3.5 py-2.5 text-xs border border-emerald-200 bg-emerald-50 text-emerald-800';
+      hint.innerHTML = '<strong>Invoice payment.</strong> This will reduce the term balance and issue a receipt.';
+    } else if (hasPriceItem) {
+      hint.className = 'rounded-xl px-3.5 py-2.5 text-xs border border-emerald-200 bg-emerald-50 text-emerald-800';
+      hint.innerHTML = '<strong>Fee payment.</strong> Lines are recorded against this term; a receipt is issued.';
+    } else {
+      hint.className = 'rounded-xl px-3.5 py-2.5 text-xs border border-amber-200 bg-amber-50 text-amber-900';
+      hint.innerHTML = '<strong>Custom payment only.</strong> No invoice line will change — a receipt is still issued against this student.';
+    }
+  }
+
+  function addCustomRow(prefillLabel = '', prefillAmt = '') {
+    const wrap = document.getElementById('custom-items');
+    if (!wrap) return;
+    const row = document.createElement('div');
+    row.className = 'custom-row flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-primary/40 bg-[#FBF7F0]/40';
+    row.innerHTML = `
+      <input type="checkbox" name="custom_enabled" class="custom-enable rounded border-gray-300 text-primary focus:ring-primary" checked />
+      <input type="text" name="custom_labels" class="custom-label flex-1 min-w-0 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-ink placeholder-ink-faint outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+             placeholder="What was this for? e.g. Exercise books, Bus fee" value="${(prefillLabel || '').replace(/"/g, '&quot;')}" />
+      <div class="relative w-28 shrink-0">
+        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-muted font-medium">&#8358;</span>
+        <input type="number" name="custom_amounts" class="custom-amt w-full pl-6 pr-2 py-2 bg-white border border-gray-200 rounded-lg text-sm tabular-nums font-semibold text-ink placeholder-ink-faint outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+               step="0.01" min="0" placeholder="0.00" value="${prefillAmt || ''}" />
+      </div>
+      <button type="button" class="remove-custom p-1.5 text-ink-muted hover:text-danger rounded-lg hover:bg-danger-tint" title="Remove">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    `;
+    wrap.appendChild(row);
+    row.querySelector('.custom-enable').addEventListener('change', recalcPaymentForm);
+    row.querySelector('.custom-amt').addEventListener('input', recalcPaymentForm);
+    row.querySelector('.custom-label').addEventListener('input', recalcPaymentForm);
+    row.querySelector('.remove-custom').addEventListener('click', () => {
+      row.remove();
+      recalcPaymentForm();
+    });
+    row.querySelector('.custom-label').focus();
+    if (window.lucide) window.lucide.createIcons({}, row);
+    recalcPaymentForm();
+  }
+
+  document.getElementById('add-custom-btn')?.addEventListener('click', () => addCustomRow());
+
+  syncSubmitState();
+
+  const toggleBtn = document.getElementById('toggle-guardian-form');
+  const addForm = document.getElementById('add-guardian-form');
+  const cancelBtn = document.getElementById('cancel-guardian-form');
+  const editForm = document.getElementById('edit-guardian-form');
+  const cancelEditBtn = document.getElementById('cancel-edit-guardian-form');
+  toggleBtn?.addEventListener('click', () => addForm?.classList.toggle('hidden'));
+  cancelBtn?.addEventListener('click', () => addForm?.classList.add('hidden'));
+  cancelEditBtn?.addEventListener('click', () => editForm?.classList.add('hidden'));
+
+  document.querySelectorAll('.edit-guardian-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!editForm) return;
+      editForm.classList.remove('hidden');
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+      set('edit-guardian-link-pk', btn.dataset.guardianPk);
+      set('edit-guardian-first-name', btn.dataset.guardianName?.split(' ')[0]);
+      set('edit-guardian-last-name', btn.dataset.guardianName?.split(' ').slice(1).join(' '));
+      set('edit-guardian-email', btn.dataset.email);
+      set('edit-guardian-phone', btn.dataset.phone);
+      set('edit-guardian-occupation', btn.dataset.occupation);
+      set('edit-guardian-address', btn.dataset.address);
+      set('edit-guardian-relationship', btn.dataset.relationship);
+      set('edit-guardian-authorized-pickup-person', btn.dataset.authorizedPickupPerson);
+      const prim = document.getElementById('edit-is-primary-guardian');
+      if (prim) prim.checked = btn.dataset.isPrimary === 'true';
+      editForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  if (window.lucide) window.lucide.createIcons();
 })();
 </script>
 {% endblock %}

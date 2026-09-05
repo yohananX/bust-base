@@ -219,9 +219,17 @@ class FeePricingListView(RoleRequiredMixin, View):
                 ).exists()
             if not has_price:
                 if category.billing_cycle == 'ONE_TIME':
-                    warnings.append(f'Compulsory one-time category "{category.name}" has no price set.')
+                    warnings.append({
+                        'message': f'Compulsory one-time category "{category.name}" has no price set.',
+                        'category_id': category.id,
+                        'term_id': None,
+                    })
                 else:
-                    warnings.append(f'Compulsory category "{category.name}" has no price for {current_term.name}.')
+                    warnings.append({
+                        'message': f'Compulsory category "{category.name}" has no price for {current_term.name}.',
+                        'category_id': category.id,
+                        'term_id': current_term.id,
+                    })
 
         return warnings
 
@@ -362,12 +370,17 @@ class FeePricingCreateView(RoleRequiredMixin, View):
 
     def get(self, request):
         school = request.school
+        preselect_category_id = request.GET.get('category_id')
+        preselect_term_id = request.GET.get('term_id')
         return render(request, 'school_admin/fee_pricing_form.html', {
             'is_edit': False,
             'categories': FeeCategory.objects.filter(school=school),
             'classes': SchoolClass.objects.filter(school=school, is_active=True),
             'terms': Term.for_current_session(school),
             'scopes': FeePrice.SCOPE_CHOICES,
+            'selected_category_id': int(preselect_category_id) if preselect_category_id and preselect_category_id.isdigit() else None,
+            'selected_term_id': int(preselect_term_id) if preselect_term_id and preselect_term_id.isdigit() else None,
+            'selected_scope': 'SCHOOL_WIDE',
         })
 
     def post(self, request):
@@ -1150,6 +1163,33 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
 
     allowed_roles = [Roles.ADMIN]
 
+    @staticmethod
+    def _auto_flip_student_type(student, payment_items, payment):
+        """If the payment covers the Registration Form fee, mark the student
+        as RETURNING for subsequent terms and stamp registration_paid_term.
+        """
+        if student.student_type == 'RETURNING':
+            return
+        if student.registration_paid_term_id:
+            return
+        registration_paid = any(
+            (it.get('category') and it['category'].name == 'Registration Form')
+            for it in payment_items
+        )
+        if not registration_paid:
+            return
+        from core.models import Term
+        term = None
+        if payment.invoice_id and payment.invoice.term_id:
+            term = payment.invoice.term
+        else:
+            term = Term.objects.filter(
+                school=student.school, is_current=True
+            ).first()
+        student.registration_paid_term = term
+        student.student_type = 'RETURNING'
+        student.save(update_fields=['registration_paid_term', 'student_type'])
+
     def post(self, request, pk):
         school = request.school
         student = get_object_or_404(Student, school=school, pk=pk)
@@ -1170,9 +1210,14 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
 
         scope = request.POST.get('scope_select', '')
         selected_line_item_ids = request.POST.getlist('selected_line_items')
+        custom_labels = request.POST.getlist('custom_labels')
+        custom_amounts = request.POST.getlist('custom_amounts')
+        custom_enabled = request.POST.getlist('custom_enabled')
 
         invoice = None
         payment_items = []
+        custom_lines_summary = []
+        merged_description = request.POST.get('description', '').strip()
 
         if selected_line_item_ids:
             from collections import defaultdict
@@ -1237,6 +1282,36 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
             elif not payment_items:
                 messages.error(request, 'No valid line items selected.')
                 return redirect('school_admin:student_detail', pk=student.pk)
+
+        # Custom "something else" rows — add as KIND_EXTRA line items with no invoice link.
+        custom_lines_summary = []
+        for i, label in enumerate(custom_labels):
+            if not custom_enabled or i >= len(custom_enabled):
+                continue
+            label_clean = (label or '').strip()
+            try:
+                amt_clean = Decimal(custom_amounts[i]) if i < len(custom_amounts) else Decimal('0')
+            except (ValueError, ArithmeticError, IndexError):
+                amt_clean = Decimal('0')
+            if amt_clean <= 0 or not label_clean:
+                continue
+            custom_lines_summary.append(f'{label_clean}: \u20a6{amt_clean:,.2f}')
+            payment_items.append({
+                'kind': 'custom',
+                'label': label_clean,
+                'amount': amt_clean,
+                'category': None,
+                'term': None,
+                'session': None,
+                'invoice': None,
+                'source_key': f'manual:custom:{student.pk}:{i}',
+            })
+        if custom_lines_summary:
+            existing_desc = request.POST.get('description', '').strip()
+            merged_description = (
+                existing_desc + ' | ' + '; '.join(custom_lines_summary)
+                if existing_desc else '; '.join(custom_lines_summary)
+            )
         else:
             invoice_id = request.POST.get('invoice_id', '')
             if invoice_id:
@@ -1256,7 +1331,7 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
                 status=Payment.Status.CONFIRMED,
                 paid_on=timezone.now(),
                 recorded_by=request.user,
-                description=request.POST.get('description', '').strip(),
+                description=merged_description,
                 paid_by_name=request.POST.get('paid_by_name', '').strip(),
                 paid_by_relation=request.POST.get('paid_by_relation', '').strip(),
             )
@@ -1274,6 +1349,8 @@ class StudentRecordPaymentView(RoleRequiredMixin, View):
                     session=item['session'],
                     invoice=item['invoice'],
                 )
+
+            self._auto_flip_student_type(student, payment_items, payment)
 
         from fees.paystack import issue_receipt
         issue_receipt(payment)

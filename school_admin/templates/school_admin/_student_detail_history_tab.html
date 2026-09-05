@@ -1,0 +1,62 @@
+{# ── TAB: CLASS HISTORY ── #}
+<div data-tab-panel="history" class="hidden space-y-5">
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-ink">Enrollment history</h3>
+      <span class="text-xs text-ink-muted">{{ enrollments|length }} enrollment{{ enrollments|length|pluralize }}</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-[11px] uppercase tracking-wider text-ink-muted bg-surface-muted/50 border-b border-gray-100">
+            <th class="px-5 py-3 font-semibold">Session</th>
+            <th class="px-5 py-3 font-semibold">Class</th>
+            <th class="px-5 py-3 font-semibold">Current</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line/70">
+          {% for e in enrollments %}
+          <tr class="hover:bg-[#FBF7F0]/40">
+            <td class="px-5 py-3.5 font-medium text-ink">{{ e.session.name }}</td>
+            <td class="px-5 py-3.5 text-ink">{{ e.school_class.name }}</td>
+            <td class="px-5 py-3.5">
+              {% if e.is_current %}
+                {% include "components/badge.html" with status="success" text="Yes" %}
+              {% else %}
+                <span class="text-ink-faint text-xs">No</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="px-5 py-8 text-center text-sm text-ink-muted">No enrollment history.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="px-5 py-5 border-t border-gray-100 bg-surface-muted/30">
+      <h4 class="text-sm font-semibold text-ink mb-3">Change current class</h4>
+      <form method="post" action="{% url 'school_admin:student_change_class' student.pk %}" class="flex flex-wrap items-end gap-3">
+        {% csrf_token %}
+        <input type="hidden" name="student_id" value="{{ student.pk }}">
+        <div>
+          <label class="block text-[11px] font-medium text-ink-muted mb-1">New class</label>
+          <select name="class_id" required class="text-sm px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all min-w-[160px]">
+            <option value="">— Select —</option>
+            {% for c in classes %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-ink-muted mb-1">Session</label>
+          <select name="session_id" required class="text-sm px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all min-w-[160px]">
+            <option value="">— Select —</option>
+            {% for s in sessions %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">
+          Change Class
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

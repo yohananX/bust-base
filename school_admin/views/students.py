@@ -106,25 +106,83 @@ class StudentDetailView(RoleRequiredMixin, View):
         ).select_related('school_class').first()
 
         class_total_amount = Decimal('0.00')
+        class_total_new_amount = Decimal('0.00')
+        class_total_returning_amount = Decimal('0.00')
+        student_type = 'NEW'
         if current_enrollment:
-            from fees.models import FeeCategory, FeeStructure
-            from django.db.models import Sum
-            from fees.generation import effective_fee_structures
-            from core.models import Term
+            from fees.models import FeeCategory, FeePrice
+            from fees.pricing import resolve_prices
             from fees.utils import resolve_student_type
 
             current_term = Term.objects.filter(school=school, is_current=True).first()
             if current_term:
-                student_type = resolve_student_type(student, current_term.session)
-                structures = effective_fee_structures(
+                student_type = resolve_student_type(student, current_term.session, current_term)
+
+                ONBOARDING = {
+                    'Tuition Fee', 'Registration Form', 'Uniforms', 'PTA',
+                    'File Jacket', 'Maintenance', 'Examination Fee',
+                }
+                new_prices = resolve_prices(
                     school, current_enrollment.school_class, current_term,
-                    student_type=student_type, student=student, session=current_term.session
+                    student_type='NEW', student=student, session=current_term.session,
                 )
-                class_total_amount = sum((fs.amount for fs in structures), Decimal('0.00'))
+                class_total_new_amount = sum(
+                    (Decimal(str(p.amount)) for p in new_prices
+                     if p.category.name in ONBOARDING and p.category.is_compulsory),
+                    Decimal('0.00'),
+                )
+
+                all_prices = resolve_prices(
+                    school, current_enrollment.school_class, current_term,
+                    student_type='ALL', student=student, session=current_term.session,
+                )
+                class_total_returning_amount = sum(
+                    (Decimal(str(p.amount)) for p in all_prices
+                     if p.category.name == 'Tuition Fee'),
+                    Decimal('0.00'),
+                )
+                per_term_for_class = sum(
+                    (Decimal(str(p.amount)) for p in all_prices
+                     if p.category.billing_cycle == 'PER_TERM'
+                     and p.category.name != 'Extension Class Fee'),
+                    Decimal('0.00'),
+                )
+                class_total_amount = class_total_new_amount if student_type == 'NEW' else per_term_for_class
 
         invoice_less_payments = Payment.objects.filter(
             student=student, invoice__isnull=True,
-        ).order_by('-paid_on')
+        ).order_by('-paid_on').select_related('student__user')
+
+        from django.db.models import Sum
+        total_outstanding = invoices.aggregate(
+            total=Sum('balance_annotated')
+        )['total'] or Decimal('0.00')
+        total_billed = invoices.aggregate(
+            total=Sum('total_amount')
+        )['total'] or Decimal('0.00')
+        total_paid = invoices.aggregate(
+            total=Sum('amount_paid_annotated')
+        )['total'] or Decimal('0.00')
+
+        current_term = Term.objects.filter(
+            school=school, is_current=True
+        ).select_related('session').first()
+
+        total_billed_current_term = Decimal('0.00')
+        if current_term:
+            total_billed_current_term = (
+                invoices.filter(term=current_term).aggregate(
+                    total=Sum('total_amount')
+                )['total'] or Decimal('0.00')
+            )
+
+        total_paid_current_term = Decimal('0.00')
+        if current_term:
+            total_paid_current_term = (
+                invoices.filter(term=current_term).aggregate(
+                    total=Sum('amount_paid_annotated')
+                )['total'] or Decimal('0.00')
+            )
 
         context = {
             'student': student,
@@ -137,6 +195,15 @@ class StudentDetailView(RoleRequiredMixin, View):
             'sessions': AcademicSession.objects.filter(school=school),
             'current_enrollment': current_enrollment,
             'class_total_amount': class_total_amount,
+            'class_total_new_amount': class_total_new_amount,
+            'class_total_returning_amount': class_total_returning_amount,
+            'student_type': student_type,
+            'total_outstanding': total_outstanding,
+            'total_billed': total_billed,
+            'total_paid': total_paid,
+            'total_paid_current_term': total_paid_current_term,
+            'total_billed_current_term': total_billed_current_term,
+            'current_term': current_term,
         }
         return render(request, 'school_admin/student_detail.html', context)
 
