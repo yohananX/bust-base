@@ -6,6 +6,7 @@ from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 
 from core.models import TenantScopedModel
+from core.utils import money_status
 from accounts.models import Roles
 
 
@@ -343,12 +344,7 @@ class Payslip(TenantScopedModel):
         Returns UNPAID if no CONFIRMED disbursements, PARTIAL if
         partially paid, PAID if fully paid.
         """
-        paid = self.amount_disbursed
-        if paid <= 0:
-            return 'UNPAID'
-        elif paid < self.net_pay:
-            return 'PARTIAL'
-        return 'PAID'
+        return money_status(self.amount_disbursed, self.net_pay)
 
 
 class PayslipLineItem(models.Model):

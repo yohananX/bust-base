@@ -1,0 +1,9 @@
+{% load score_extras %}
+{% include 'academics/partials/_score_input.html' with field_name=field_name max_value=max_value display_value=display_value update_url=update_url input_classes=input_classes %}
+<div id="total-{{ score.pk }}" hx-swap-oob="innerHTML">
+  {% include 'academics/partials/_score_total.html' with total=total %}
+</div>
+<div id="status-{{ score.pk }}" hx-swap-oob="innerHTML">
+  {% include 'academics/partials/_score_status_badge.html' with score=score %}
+</div>
+{% include 'academics/partials/_score_row_script.html' with score=score row_class=row_class %}

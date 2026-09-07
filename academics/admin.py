@@ -13,14 +13,15 @@ from .models import ClassSubject, GradeScale, Score, Subject, TeacherAssignment,
 
 @admin.register(ClassSubject)
 class ClassSubjectAdmin(admin.ModelAdmin):
-    list_display = ['subject', 'school_class', 'school']
+    list_display = ['subject', 'school_class', 'pass_mark', 'school']
     list_filter = ['school', 'school_class', 'subject']
     search_fields = ['subject__name', 'subject__code', 'school_class__name']
+    list_editable = ['pass_mark']
 
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ['name', 'code', 'pass_mark', 'school']
+    list_display = ['name', 'code', 'school']
     list_filter = ['school']
     search_fields = ['name', 'code']
     raw_id_fields = ['school_classes']

@@ -79,6 +79,11 @@
           </td>
           <td class="px-5 py-3.5">
             <div class="flex items-center justify-end gap-1">
+              <a href="{% url 'school_admin:class_detail' c.pk %}"
+                 title="View subjects"
+                 class="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-violet-50 transition-colors">
+                <i data-lucide="book-open" class="w-4 h-4"></i>
+              </a>
               <a href="{% url 'school_admin:student_list' %}?class_id={{ c.pk }}"
                  title="View students"
                  class="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-violet-50 transition-colors">

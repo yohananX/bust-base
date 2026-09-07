@@ -49,7 +49,7 @@ class SubjectCreateView(RoleRequiredMixin, View):
     def get(self, request):
         school = request.school
         classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
-        context = {'is_edit': False, 'classes': classes}
+        context = {'is_edit': False, 'classes': classes, 'subject_class_ids': []}
         return render(request, 'school_admin/subject_form.html', context)
 
     def post(self, request):
@@ -89,6 +89,7 @@ class SubjectCreateView(RoleRequiredMixin, View):
                     school=school,
                     subject=subject,
                     school_class=school_class,
+                    pass_mark=pass_mark,
                 )
 
         messages.success(request, f'Subject "{name}" created successfully.')
@@ -104,11 +105,13 @@ class SubjectEditView(RoleRequiredMixin, View):
         school = request.school
         subject_obj = get_object_or_404(Subject, pk=pk, school=school)
         classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
+        subject_class_ids = list(subject_obj.school_classes.values_list('id', flat=True))
 
         context = {
             'is_edit': True,
             'subject': subject_obj,
             'classes': classes,
+            'subject_class_ids': subject_class_ids,
         }
         return render(request, 'school_admin/subject_form.html', context)
 
@@ -151,6 +154,7 @@ class SubjectEditView(RoleRequiredMixin, View):
                     school=school,
                     subject=subject_obj,
                     school_class=school_class,
+                    pass_mark=pass_mark,
                 )
 
         messages.success(request, f'Subject "{name}" updated successfully.')

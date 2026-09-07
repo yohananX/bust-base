@@ -37,7 +37,7 @@ def notify_results_published(term, student_ids):
 
     notified = set(
         NotificationLog.objects.filter(
-            reference__startswith='term-results:{}'.format(term.id),
+            reference__startswith=f'term-results:{term.id}',
             recipient_id__in=(
                 list(student_users.values())
                 + list(links.values_list('guardian', flat=True))
@@ -45,35 +45,40 @@ def notify_results_published(term, student_ids):
         ).values_list('recipient_id', 'reference')
     )
 
-    for link in links:
-        ref = 'term-results:{}:g:{}'.format(term.id, link.student_id)
-        if (link.guardian_id, ref) in notified:
-            continue
+    def _notify_one(recipient, ref_suffix, subject, message, url_kwargs):
+        ref = f'term-results:{term.id}:{ref_suffix}'
+        if (recipient.pk, ref) in notified:
+            return
         notify(
-            recipient=link.guardian,
+            recipient=recipient,
             channel='IN_APP',
-            subject='Results available for {}'.format(term.name),
-            message=(
-                "{child}'s results for {term} are now available."
-            ).format(child=link.student.user.get_full_name(), term=term.name),
+            subject=subject,
+            message=message,
             reference=ref,
-            url=url_reverse('parent-child-result-booklet', kwargs={
+            url=url_reverse('parent-child-result-booklet', kwargs=url_kwargs),
+        )
+
+    for link in links:
+        _notify_one(
+            recipient=link.guardian,
+            ref_suffix=f'g:{link.student_id}',
+            subject=f'Results available for {term.name}',
+            message=(
+                f"{link.student.user.get_full_name()}'s results for {term.name} are now available."
+            ),
+            url_kwargs={
                 'child_pk': link.student_id,
                 'term_id': term.id,
-            }),
+            },
         )
 
     for student_id, user_id in student_users.items():
-        ref = 'term-results:{}:s:{}'.format(term.id, student_id)
-        if (user_id, ref) in notified:
-            continue
-        notify(
+        _notify_one(
             recipient=users_by_id[user_id],
-            channel='IN_APP',
-            subject='Results available for {}'.format(term.name),
-            message='Your results for {} are now available.'.format(term.name),
-            reference=ref,
-            url=url_reverse('student-result-booklet', kwargs={
+            ref_suffix=f's:{student_id}',
+            subject=f'Results available for {term.name}',
+            message=f'Your results for {term.name} are now available.',
+            url_kwargs={
                 'term_id': term.id,
-            }),
+            },
         )

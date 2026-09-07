@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
-from fees.models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem
+from fees.models import FeeCategory, FeePrice, FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem
 from fees.selectors import invoices_with_balance
 from notifications.models import NotificationLog
 
@@ -2499,7 +2499,7 @@ class ProspectusFeeGenerationTest(BaseFeesTest):
             is_compulsory=True,
         )
 
-        self.one_time_fs = FeeStructure.objects.create(
+        self.one_time_fs = FeePrice.objects.create(
             school=self.school,
             school_class=self.school_class,
             term=None,
@@ -2507,7 +2507,7 @@ class ProspectusFeeGenerationTest(BaseFeesTest):
             amount=Decimal('2000.00'),
             student_type='NEW',
         )
-        self.tuition_fs = FeeStructure.objects.create(
+        self.tuition_fs = FeePrice.objects.create(
             school=self.school,
             school_class=self.school_class,
             term=self.term,
@@ -2515,7 +2515,7 @@ class ProspectusFeeGenerationTest(BaseFeesTest):
             amount=Decimal('25000.00'),
             student_type='ALL',
         )
-        self.party_fs = FeeStructure.objects.create(
+        self.party_fs = FeePrice.objects.create(
             school=self.school,
             school_class=self.school_class,
             term=self.term,
@@ -2591,7 +2591,7 @@ class ReceiptLineItemBreakdownTest(BaseFeesTest):
             student_type='ALL',
             is_compulsory=True,
         )
-        FeeStructure.objects.create(
+        FeePrice.objects.create(
             school=self.school,
             school_class=self.school_class,
             term=self.term,
@@ -2599,7 +2599,7 @@ class ReceiptLineItemBreakdownTest(BaseFeesTest):
             amount=Decimal('25000.00'),
             student_type='ALL',
         )
-        FeeStructure.objects.create(
+        FeePrice.objects.create(
             school=self.school,
             school_class=self.school_class,
             term=self.term,
@@ -2636,3 +2636,217 @@ class ReceiptLineItemBreakdownTest(BaseFeesTest):
         self.assertContains(resp, 'Fee Breakdown')
         self.assertContains(resp, self.tuition_category.name)
         self.assertContains(resp, self.party_category.name)
+
+
+class InitiatePaymentRetryTest(BaseFeesTest):
+    """Tests for the Paystack init retry path (existing reference rejected)."""
+
+    def setUp(self):
+        super().setUp()
+        from fees.models import Invoice
+
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def _initiate(self, existing_reference=None, initialize_side_effect=None):
+        from unittest.mock import patch, MagicMock
+        from fees.paystack import initiate_payment
+
+        fake_success = {
+            'status': True,
+            'data': {
+                'authorization_url': 'https://paystack.com/authorize/ABC',
+                'access_code': 'ACCESS123',
+                'reference': 'NEW_REF_XYZ',
+            },
+        }
+
+        with patch('fees.paystack.http_requests.post') as mock_post:
+            def make_response(data):
+                resp = MagicMock()
+                resp.json.return_value = data
+                resp.raise_for_status.return_value = None
+                return resp
+
+            mock_post.return_value = make_response(fake_success)
+            if initialize_side_effect is not None:
+                mock_post.side_effect = initialize_side_effect
+
+            return initiate_payment(
+                invoice=self.invoice,
+                parent_email='parent@test.com',
+                callback_url='https://example.com/callback',
+                existing_reference=existing_reference,
+            )
+
+    def test_retry_after_reused_reference_failure(self):
+        """When Paystack rejects a reused reference, a fresh one is created."""
+        from fees.models import Payment
+        from unittest.mock import MagicMock
+
+        existing_payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference='OLD_REUSE_REF',
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+
+        call_count = 0
+        fresh_response = MagicMock()
+        fresh_response.json.return_value = {
+            'status': True,
+            'data': {
+                'authorization_url': 'https://paystack.com/authorize/NEW',
+                'access_code': 'NEW_ACCESS',
+                'reference': 'NEW_REF',
+            },
+        }
+        fresh_response.raise_for_status.return_value = None
+
+        def side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise Exception('duplicate reference')
+            return fresh_response
+
+        result = self._initiate(
+            existing_reference='OLD_REUSE_REF',
+            initialize_side_effect=side_effect,
+        )
+
+        self.assertIn('authorization_url', result)
+        self.assertEqual(call_count, 2)
+        existing_payment.refresh_from_db()
+        self.assertEqual(existing_payment.status, Payment.Status.PENDING)
+
+    def test_retry_creates_new_pending_payment(self):
+        """Retry path creates a new PENDING payment with a fresh reference."""
+        from fees.models import Payment
+        from unittest.mock import MagicMock
+
+        call_count = 0
+        fresh_response = MagicMock()
+        fresh_response.json.return_value = {
+            'status': True,
+            'data': {
+                'authorization_url': 'https://paystack.com/authorize/FRESH',
+                'access_code': 'FRESH_ACCESS',
+                'reference': 'FRESH_REF',
+            },
+        }
+        fresh_response.raise_for_status.return_value = None
+
+        def side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise Exception('duplicate reference')
+            return fresh_response
+
+        result = self._initiate(
+            existing_reference='REUSED_REF',
+            initialize_side_effect=side_effect,
+        )
+
+        self.assertIn('authorization_url', result)
+        self.assertTrue(result['reference'].startswith('GH-'))
+        new_payment = Payment.objects.filter(reference=result['reference']).first()
+        self.assertIsNotNone(new_payment)
+        self.assertEqual(new_payment.status, Payment.Status.PENDING)
+
+
+class ChargeFailureEdgeCaseTest(BaseFeesTest):
+    """Tests for charge.failed / charge.error webhook edge cases."""
+
+    def setUp(self):
+        super().setUp()
+        from fees.models import Invoice
+        from fees.paystack import handle_webhook as webhook_view
+
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+        self.payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference='FAIL_REF_001',
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        self.webhook_view = webhook_view
+
+    def _simulate_webhook(self, event_name, reference=None):
+        from unittest.mock import patch
+        from django.test import RequestFactory
+
+        reference = reference or self.payment.reference
+        payload = {
+            'event': event_name,
+            'data': {'reference': reference},
+        }
+        factory = RequestFactory()
+        request = factory.post(
+            '/fees/api/paystack-webhook/',
+            data=payload,
+            content_type='application/json',
+            HTTP_X_PAYSTACK_SIGNATURE='test_signature',
+        )
+
+        with patch('fees.paystack.verify_webhook_signature', return_value=True):
+            response = self.webhook_view(request)
+
+        return response
+
+    def test_charge_error_marks_pending_failed(self):
+        """charge.error event flips a PENDING payment to FAILED."""
+        response = self._simulate_webhook('charge.error')
+        self.assertEqual(response.status_code, 200)
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, Payment.Status.FAILED)
+        self.assertTrue(self.payment.webhook_processed)
+
+    def test_charge_failed_without_reference_is_ignored(self):
+        """charge.failed without reference returns 400 and leaves payment unchanged."""
+        from unittest.mock import patch
+        from django.test import RequestFactory
+
+        payload = {'event': 'charge.failed', 'data': {}}
+        factory = RequestFactory()
+        request = factory.post(
+            '/fees/api/paystack-webhook/',
+            data=payload,
+            content_type='application/json',
+            HTTP_X_PAYSTACK_SIGNATURE='test_signature',
+        )
+
+        with patch('fees.paystack.verify_webhook_signature', return_value=True):
+            response = self.webhook_view(request)
+
+        self.assertEqual(response.status_code, 400)
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, Payment.Status.PENDING)
+
+    def test_charge_failure_on_confirmed_payment_is_idempotent(self):
+        """charge.failed on an already CONFIRMED payment is a no-op."""
+        self.payment.status = Payment.Status.CONFIRMED
+        self.payment.save(update_fields=['status'])
+
+        response = self._simulate_webhook('charge.failed')
+        self.assertEqual(response.status_code, 200)
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, Payment.Status.CONFIRMED)

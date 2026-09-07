@@ -5,18 +5,23 @@ from .students import (
     StudentPasswordChangeView,
     StudentGuardianCreateView, StudentGuardianLinkDeleteView, StudentGuardianUpdateView,
 )
-from .staff import StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView
+from .staff import StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView, StaffDeleteView
 from .parents import ParentListView
-from .classes import ClassListView, ClassCreateView, ClassEditView, ClassDeleteView
+from .classes import ClassListView, ClassCreateView, ClassEditView, ClassDeleteView, ClassDetailView, ClassSubjectAddView, ClassSubjectCreateView, ClassSubjectRemoveView, ClassSubjectBulkAddView
 from .academics import (
-    SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView,
+    SubjectListView,
     TeacherAssignmentListView, AssignmentDeleteView, AssignmentAddView, AssignmentSubjectsPartialView,
     ScoreAdminView,
 )
-from .fees import (
+from .fee_categories import (
     FeeCategoryListView, FeeCategoryCreateView, FeeCategoryEditView,
-    FeeCategoryDeleteView, FeePricingListView, FeePricingCreateView,
+    FeeCategoryDeleteView,
+)
+from .fee_pricing import (
+    FeePricingListView, FeePricingCreateView,
     FeePricingEditView, FeePricingDeleteView, FeePricingBulkCopyView, FeePricingPromoteView,
+)
+from .invoices import (
     InvoiceListView, InvoiceDetailView, GenerateInvoicesView,
     OutstandingFeesReportView,
     PendingTransfersView, PendingTransferConfirmView, PendingTransferRejectView,
@@ -40,5 +45,5 @@ from .credentials import (
 from .search import (
     StudentSearchAPIView, StaffSearchAPIView, MemberSearchAPIView,
     InvoiceSearchAPIView, ClassSearchAPIView, SubjectSearchAPIView,
-    NotificationSearchAPIView, EnrollmentSearchAPIView,
+    NotificationSearchAPIView, EnrollmentSearchAPIView, GuardianSearchAPIView,
 )

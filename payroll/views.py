@@ -33,7 +33,7 @@ def payslip_detail(request, payslip_id):
     payslip = get_object_or_404(Payslip, pk=payslip_id)
 
     user = request.user
-    if user.role != 'ADMIN':
+    if user.role != Roles.ADMIN:
         staff_profile = getattr(user, 'staff_profile', None)
         if not staff_profile or payslip.staff != staff_profile:
             raise PermissionDenied('You do not have access to this payslip.')

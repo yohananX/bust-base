@@ -192,11 +192,11 @@
         {% endif %}
       {% else %}
       <div id="guardians-container">
-        <div class="guardian-entry bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100">
+        <div class="guardian-entry relative bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100">
           <p class="text-xs text-gray-500 mb-3">Optionally create parent/guardian accounts and link them to this student.</p>
-          <div class="mb-3">
+          <div class="mb-3 relative">
             <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Name</label>
-            <input type="text" name="guardian_0_name" class="guardian-name w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="e.g. Jane Doe">
+            <input type="text" name="guardian_0_name" class="guardian-name w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="e.g. Jane Doe" autocomplete="off">
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
             <div>
@@ -243,11 +243,11 @@
             const container = document.getElementById('guardians-container');
             if (!container) return;
             const entry = document.createElement('div');
-            entry.className = 'guardian-entry bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100';
+            entry.className = 'guardian-entry relative bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100';
             entry.innerHTML = `
-              <div class="mb-3">
+              <div class="mb-3 relative">
                 <label class="block text-sm font-medium text-gray-600 mb-1.5">Parent Name</label>
-                <input type="text" name="guardian_${guardianIndex}_name" class="guardian-name w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="e.g. Jane Doe">
+                <input type="text" name="guardian_${guardianIndex}_name" class="guardian-name w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="e.g. Jane Doe" autocomplete="off">
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                 <div>
@@ -297,6 +297,140 @@
             entry.remove();
           }
         }
+
+        (function () {
+          const API_URL = '{% url "school_admin:guardian_search_api" %}';
+          const DEBOUNCE_MS = 250;
+          let activeDropdown = null;
+          let activeIndex = -1;
+          let currentResults = [];
+
+          function escapeHtml(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+          }
+
+          function closeDropdown() {
+            if (activeDropdown) {
+              activeDropdown.remove();
+              activeDropdown = null;
+            }
+            activeIndex = -1;
+            currentResults = [];
+            document.querySelectorAll('.guardian-entry').forEach(function (el) {
+              el.classList.remove('ring-2', 'ring-primary/30');
+            });
+          }
+
+          function renderDropdown(entry, results) {
+            closeDropdown();
+            if (!results.length) return;
+            currentResults = results;
+            activeIndex = -1;
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-100 z-50 max-h-64 overflow-y-auto';
+            entry.appendChild(dropdown);
+            activeDropdown = dropdown;
+
+            results.forEach(function (r, i) {
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.setAttribute('data-index', i);
+              btn.className = 'w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-violet-50/70 transition-colors';
+              btn.innerHTML =
+                '<div class="w-8 h-8 rounded-full bg-violet-100 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">' +
+                  escapeHtml((r.name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0].toUpperCase(); }).join('') || '?') +
+                '</div>' +
+                '<div class="min-w-0 flex-1">' +
+                  '<p class="text-sm text-gray-900 truncate">' + escapeHtml(r.name) + '</p>' +
+                  '<p class="text-xs text-gray-400 truncate">' + escapeHtml([r.email, r.phone, r.relationship].filter(Boolean).join(' · ')) + '</p>' +
+                  (r.occupation || r.address ? '<p class="text-xs text-gray-400 truncate">' + escapeHtml([r.occupation, r.address].filter(Boolean).join(' · ')) + '</p>' : '') +
+                '</div>';
+              btn.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                selectResult(entry, r);
+              });
+              dropdown.appendChild(btn);
+            });
+          }
+
+          function selectResult(entry, result) {
+            const guardianEntry = entry.closest('.guardian-entry');
+            const nameInput = entry.querySelector('.guardian-name');
+            const emailInput = guardianEntry ? guardianEntry.querySelector('.guardian-email') : null;
+            const phoneInput = guardianEntry ? guardianEntry.querySelector('.guardian-phone') : null;
+            const relationshipSelect = guardianEntry ? guardianEntry.querySelector('.guardian-relationship') : null;
+            const occupationInput = guardianEntry ? guardianEntry.querySelector('.guardian-occupation') : null;
+            const addressInput = guardianEntry ? guardianEntry.querySelector('.guardian-address') : null;
+            const pickupInput = guardianEntry ? guardianEntry.querySelector('.guardian-authorized-pickup-person') : null;
+            if (nameInput) nameInput.value = result.name || '';
+            if (emailInput) emailInput.value = result.email || '';
+            if (phoneInput) phoneInput.value = result.phone || '';
+            if (relationshipSelect && result.relationship) relationshipSelect.value = result.relationship;
+            if (occupationInput) occupationInput.value = result.occupation || '';
+            if (addressInput) addressInput.value = result.address || '';
+            if (pickupInput) pickupInput.value = result.authorized_pickup_person || '';
+            if (guardianEntry) guardianEntry.classList.add('ring-2', 'ring-primary/30');
+            closeDropdown();
+          }
+
+          function setActive() {
+            if (!activeDropdown) return;
+            const buttons = activeDropdown.querySelectorAll('button[data-index]');
+            if (!buttons.length) return;
+            activeIndex = (activeIndex + buttons.length) % buttons.length;
+            buttons.forEach(function (b, idx) {
+              b.classList.toggle('bg-violet-50', idx === activeIndex);
+              b.classList.toggle('bg-white', idx !== activeIndex);
+            });
+            buttons[activeIndex].scrollIntoView({ block: 'nearest' });
+          }
+
+          function activate() {
+            if (activeIndex >= 0 && currentResults[activeIndex]) {
+              const entry = activeDropdown.closest('.guardian-entry');
+              selectResult(entry, currentResults[activeIndex]);
+            }
+          }
+
+          document.addEventListener('input', function (e) {
+            const nameInput = e.target.closest('.guardian-name');
+            if (!nameInput) return;
+            const entry = nameInput.parentElement;
+            if (!entry) return;
+
+            closeDropdown();
+
+            const q = nameInput.value.trim();
+            if (q.length < 2) return;
+
+            clearTimeout(entry._guardianSearchTimer);
+            entry._guardianSearchTimer = setTimeout(function () {
+              fetch(API_URL + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+                .then(function (res) { return res.ok ? res.json() : []; })
+                .then(function (results) {
+                  if (results.length) {
+                    renderDropdown(entry, results);
+                  }
+                })
+                .catch(function () {});
+            }, DEBOUNCE_MS);
+          });
+
+          document.addEventListener('keydown', function (e) {
+            if (!activeDropdown) return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); activeIndex = activeIndex < 0 ? 0 : activeIndex + 1; setActive(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); activeIndex = activeIndex > 0 ? activeIndex - 1 : currentResults.length - 1; setActive(); }
+            else if (e.key === 'Enter') { e.preventDefault(); activate(); }
+            else if (e.key === 'Escape') { closeDropdown(); }
+          });
+
+          document.addEventListener('mousedown', function (e) {
+            if (activeDropdown && !activeDropdown.contains(e.target)) {
+              closeDropdown();
+            }
+          });
+        })();
       </script>
       {% endif %}
 

@@ -1,12 +1,12 @@
 """School admin views for the Extra Lessons / Summer School module."""
 
+from datetime import date
 from decimal import Decimal
 
-from django.contrib import messages as dj_messages
+from django.contrib import messages
 from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.utils import timezone
 from django.views.generic.base import View
 
@@ -14,7 +14,7 @@ from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
 from accounts.utils import generate_password, generate_username, unique_username, parse_full_name
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
-from students.utils import generate_admission_number, find_or_create_parent
+from students.utils import generate_admission_number, create_guardians_from_form
 from core.models import AcademicSession
 
 from .models import (
@@ -23,14 +23,7 @@ from .models import (
     LessonPeriod,
     LessonTeacherAssignment,
 )
-
-
-def messages_error(request, text):
-    dj_messages.error(request, text)
-
-
-def messages_success(request, text):
-    dj_messages.success(request, text)
+from .services import record_enrollment_payment
 
 
 class PeriodListView(RoleRequiredMixin, View):
@@ -74,14 +67,14 @@ class PeriodFormView(RoleRequiredMixin, View):
         description = request.POST.get('description', '').strip()
 
         if not name or not start_date or not end_date:
-            messages_error(request, 'Name, start date and end date are required.')
+            messages.error(request, 'Name, start date and end date are required.')
             return redirect('lessons:period_form', pk) if pk else redirect('lessons:period_new')
 
         qs = LessonPeriod.objects.filter(school=school, name=name)
         if pk:
             qs = qs.exclude(pk=pk)
         if qs.exists():
-            messages_error(request, f'A period named "{name}" already exists.')
+            messages.error(request, f'A period named "{name}" already exists.')
             return redirect('lessons:period_form', pk) if pk else redirect('lessons:period_new')
 
         defaults = {
@@ -93,10 +86,10 @@ class PeriodFormView(RoleRequiredMixin, View):
         }
         if period:
             LessonPeriod.objects.filter(pk=period.pk).update(**defaults)
-            messages_success(request, f'Period "{name}" updated.')
+            messages.success(request, f'Period "{name}" updated.')
         else:
             LessonPeriod.objects.create(school=school, **defaults)
-            messages_success(request, f'Period "{name}" created.')
+            messages.success(request, f'Period "{name}" created.')
         return redirect('lessons:period_list')
 
 
@@ -107,7 +100,7 @@ class PeriodCloseView(RoleRequiredMixin, View):
         period = get_object_or_404(LessonPeriod, school=request.school, pk=pk)
         period.status = LessonPeriod.Status.CLOSED
         period.save()
-        messages_success(request, f'Period "{period.name}" closed.')
+        messages.success(request, f'Period "{period.name}" closed.')
         return redirect('lessons:period_list')
 
 
@@ -175,20 +168,20 @@ class ClassFormView(RoleRequiredMixin, View):
 
         period = get_object_or_404(LessonPeriod, school=school, pk=period_id) if period_id else None
         if not period or not name:
-            messages_error(request, 'Period and class name are required.')
+            messages.error(request, 'Period and class name are required.')
             return redirect('lessons:class_form', pk) if pk else redirect('lessons:class_new')
 
         try:
             fee = Decimal(fee_amount) if fee_amount else None
         except (ValueError, ArithmeticError):
-            messages_error(request, 'Invalid fee amount.')
+            messages.error(request, 'Invalid fee amount.')
             return redirect('lessons:class_form', pk) if pk else redirect('lessons:class_new')
 
         qs = LessonClass.objects.filter(school=school, period=period, name=name)
         if pk:
             qs = qs.exclude(pk=pk)
         if qs.exists():
-            messages_error(request, f'A class named "{name}" already exists in this period.')
+            messages.error(request, f'A class named "{name}" already exists in this period.')
             return redirect('lessons:class_form', pk) if pk else redirect('lessons:class_new')
 
         school_class = None
@@ -209,10 +202,10 @@ class ClassFormView(RoleRequiredMixin, View):
         }
         if lesson_class:
             LessonClass.objects.filter(pk=lesson_class.pk).update(**defaults)
-            messages_success(request, f'Class "{name}" updated.')
+            messages.success(request, f'Class "{name}" updated.')
         else:
             LessonClass.objects.create(school=school, **defaults)
-            messages_success(request, f'Class "{name}" created.')
+            messages.success(request, f'Class "{name}" created.')
         return redirect('lessons:class_list')
 
 
@@ -224,10 +217,10 @@ class ClassDeleteView(RoleRequiredMixin, View):
         name = str(lesson_class)
         count = lesson_class.enrollments.count()
         if count:
-            messages_error(request, f'Cannot delete "{name}" — {count} enrollment(s) exist.')
+            messages.error(request, f'Cannot delete "{name}" — {count} enrollment(s) exist.')
             return redirect('lessons:class_list')
         lesson_class.delete()
-        messages_success(request, f'Class "{name}" deleted.')
+        messages.success(request, f'Class "{name}" deleted.')
         return redirect('lessons:class_list')
 
 
@@ -254,12 +247,12 @@ class ClassTeachersView(RoleRequiredMixin, View):
             LessonTeacherAssignment.objects.get_or_create(
                 school=school, lesson_class=lesson_class, teacher=teacher,
             )
-            messages_success(request, f'{teacher.get_full_name()} added.')
+            messages.success(request, f'{teacher.get_full_name()} added.')
         elif action == 'remove':
             LessonTeacherAssignment.objects.filter(
                 school=school, lesson_class=lesson_class, teacher=teacher,
             ).delete()
-            messages_success(request, f'{teacher.get_full_name()} removed.')
+            messages.success(request, f'{teacher.get_full_name()} removed.')
         return redirect('lessons:class_teachers', pk=lesson_class.pk)
 
 
@@ -362,10 +355,10 @@ class EnrollmentFormView(RoleRequiredMixin, View):
         }
 
         if not data['parent_name'] or not data['parent_phones']:
-            messages_error(request, 'Parent name and at least one phone number are required.')
+            messages.error(request, 'Parent name and at least one phone number are required.')
             return redirect('lessons:enrollment_form', pk) if pk else redirect('lessons:enrollment_new')
         if not data['student'] and not data['external_name']:
-            messages_error(request, 'Link an existing student or provide an external child name.')
+            messages.error(request, 'Link an existing student or provide an external child name.')
             return redirect('lessons:enrollment_form', pk) if pk else redirect('lessons:enrollment_new')
 
         if enrollment:
@@ -385,11 +378,11 @@ class EnrollmentFormView(RoleRequiredMixin, View):
                 consent_date=data['consent_date'],
                 status=data['status'],
             )
-            messages_success(request, f'Registration for {enrollment.child_name} updated.')
+            messages.success(request, f'Registration for {enrollment.child_name} updated.')
             return redirect('lessons:enrollment_detail', pk=enrollment.pk)
 
         enrollment = LessonEnrollment.objects.create(school=school, **data)
-        messages_success(request, f'Registration recorded for {enrollment.child_name}.')
+        messages.success(request, f'Registration recorded for {enrollment.child_name}.')
         return redirect('lessons:enrollment_detail', pk=enrollment.pk)
 
     def _students(self, request):
@@ -412,9 +405,7 @@ class EnrollmentDetailView(RoleRequiredMixin, View):
         context = {
             'enrollment': enrollment,
             'payments': payments,
-            'balance': max(
-                enrollment.fee_amount - enrollment.amount_paid, Decimal('0.00'),
-            ),
+            'balance': enrollment.balance,
         }
         return render(request, 'lessons/admin/enrollment_detail.html', context)
 
@@ -434,9 +425,7 @@ class EnrollmentPrintView(RoleRequiredMixin, View):
             'enrollment': enrollment,
             'school': school,
             'today': timezone.localdate(),
-            'balance': max(
-                enrollment.fee_amount - enrollment.amount_paid, Decimal('0.00'),
-            ),
+            'balance': enrollment.balance,
         }
         return render(request, 'lessons/admin/enrollment_print.html', context)
 
@@ -448,7 +437,7 @@ class EnrollmentCancelView(RoleRequiredMixin, View):
         enrollment = get_object_or_404(LessonEnrollment, school=request.school, pk=pk)
         enrollment.status = LessonEnrollment.Status.CANCELLED
         enrollment.save()
-        messages_success(request, f'Registration for {enrollment.child_name} cancelled.')
+        messages.success(request, f'Registration for {enrollment.child_name} cancelled.')
         return redirect('lessons:enrollment_detail', pk=enrollment.pk)
 
 
@@ -463,54 +452,29 @@ class EnrollmentPaymentView(RoleRequiredMixin, View):
         try:
             amount = Decimal(request.POST.get('amount', '0'))
         except (ValueError, ArithmeticError):
-            messages_error(request, 'Invalid amount.')
+            messages.error(request, 'Invalid amount.')
             return redirect('lessons:enrollment_detail', pk=enrollment.pk)
         if amount <= 0:
-            messages_error(request, 'Amount must be positive.')
+            messages.error(request, 'Amount must be positive.')
             return redirect('lessons:enrollment_detail', pk=enrollment.pk)
 
         method = request.POST.get('method', '')
         if method not in Payment.Method.values:
-            messages_error(request, 'Invalid payment method.')
+            messages.error(request, 'Invalid payment method.')
             return redirect('lessons:enrollment_detail', pk=enrollment.pk)
 
-        payment = Payment.objects.create(
-            school=school,
-            lesson_enrollment=enrollment,
-            student=enrollment.student,
+        payment = record_enrollment_payment(
+            enrollment=enrollment,
             amount=amount,
             method=method,
             reference=request.POST.get('reference', '').strip() or None,
-            status=Payment.Status.CONFIRMED,
-            paid_on=timezone.now(),
-            recorded_by=request.user,
             description=request.POST.get(
                 'description', '',
             ).strip() or f'Summer School – {enrollment.lesson_class}',
+            recorded_by=request.user,
         )
 
-        from fees.paystack import issue_receipt
-        issue_receipt(payment)
-
-        from notifications.utils import notify
-        from accounts.models import User
-
-        student_user = User.objects.filter(pk=enrollment.student_id).first()
-        if student_user and student_user.email:
-            notify(
-                recipient=student_user,
-                channel='IN_APP',
-                subject=f'Payment recorded: ₦{amount:,.2f}',
-                message=f'Payment of ₦{amount:,.2f} recorded for {enrollment.child_name} ({enrollment.lesson_class}).',
-                reference=f'lesson-payment:{payment.id}',
-                url=reverse('fees:payment-receipt', kwargs={'payment_id': payment.pk}),
-            )
-
-        if enrollment.status == LessonEnrollment.Status.REGISTERED and enrollment.amount_paid >= enrollment.fee_amount:
-            enrollment.status = LessonEnrollment.Status.PAID
-            enrollment.save()
-
-        messages_success(request, f'Payment of ₦{amount:,.2f} recorded.')
+        messages.success(request, f'Payment of ₦{amount:,.2f} recorded.')
         return redirect('lessons:enrollment_detail', pk=enrollment.pk)
 
 
@@ -578,7 +542,7 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
             school=school, pk=pk,
         )
         if enrollment.student:
-            messages_error(request, 'This participant is already linked to a student.')
+            messages.error(request, 'This participant is already linked to a student.')
             return redirect('lessons:enrollment_detail', pk=enrollment.pk)
 
         external_name = enrollment.external_name or ''
@@ -586,7 +550,6 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
 
         estimated_dob = ''
         if enrollment.age:
-            from datetime import date
             today = date.today()
             estimated_dob = date(today.year - enrollment.age, today.month, today.day).isoformat()
 
@@ -617,7 +580,7 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
             school=school, pk=pk,
         )
         if enrollment.student:
-            messages_error(request, 'This participant is already linked to a student.')
+            messages.error(request, 'This participant is already linked to a student.')
             return redirect('lessons:enrollment_detail', pk=enrollment.pk)
 
         first_name = request.POST.get('first_name', '').strip()
@@ -633,7 +596,14 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
         session_id = request.POST.get('session_id', '').strip()
 
         if not all([first_name, last_name, date_of_birth, gender, admission_date]):
-            messages_error(request, 'Name, date of birth, gender, and admission date are required.')
+            messages.error(request, 'Name, date of birth, gender, and admission date are required.')
+            return redirect('lessons:enrollment_register_student', pk=enrollment.pk)
+
+        from students.utils import validate_guardian_form
+        guardian_errors = validate_guardian_form(request.POST)
+        if guardian_errors:
+            for error in guardian_errors:
+                messages.error(request, error)
             return redirect('lessons:enrollment_register_student', pk=enrollment.pk)
 
         try:
@@ -692,35 +662,9 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
                     from fees.generation import generate_invoice_for_current_term
                     generate_invoice_for_current_term(student)
 
-                guardian_index = 0
-                while True:
-                    g_name = request.POST.get(f'guardian_{guardian_index}_name', '').strip()
-                    g_email = request.POST.get(f'guardian_{guardian_index}_email', '').strip()
-                    g_phone = request.POST.get(f'guardian_{guardian_index}_phone', '').strip()
-                    g_relationship = request.POST.get(f'guardian_{guardian_index}_relationship', 'GUARDIAN')
-                    g_occupation = request.POST.get(f'guardian_{guardian_index}_occupation', '').strip()
-                    g_address = request.POST.get(f'guardian_{guardian_index}_address', '').strip()
-                    g_authorized_pickup_person = request.POST.get(f'guardian_{guardian_index}_authorized_pickup_person', '').strip()
-
-                    if not g_name and not g_email and not g_phone:
-                        break
-
-                    if g_name:
-                        parent_user = find_or_create_parent(
-                            school, g_name, email=g_email, phone=g_phone, relationship=g_relationship
-                        )
-                        StudentGuardianLink.objects.create(
-                            school=school,
-                            student=student,
-                            guardian=parent_user,
-                            relationship=g_relationship,
-                            is_primary_contact=(guardian_index == 0),
-                            occupation=g_occupation,
-                            address=g_address,
-                            authorized_pickup_person=g_authorized_pickup_person,
-                        )
-
-                    guardian_index += 1
+                _, guardian_warnings = create_guardians_from_form(student, school, request.POST)
+                for warning in guardian_warnings:
+                    messages.warning(request, warning)
 
                 enrollment.student = student
                 enrollment.external_name = ''
@@ -728,12 +672,12 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
                 enrollment.current_class_text = ''
                 enrollment.save(update_fields=['student', 'external_name', 'age', 'current_class_text'])
 
-                messages_success(
+                messages.success(
                     request,
                     f'Student "{user.get_full_name()}" registered successfully from extra lesson.',
                 )
                 return redirect('school_admin:student_detail', pk=student.pk)
 
         except Exception as e:
-            messages_error(request, f'Error registering student: {e}')
+            messages.error(request, f'Error registering student: {e}')
             return redirect('lessons:enrollment_register_student', pk=enrollment.pk)

@@ -10,19 +10,13 @@ from school_admin.views import (
     StudentEditView, StudentDeleteView, StudentChangeClassView,
     StudentPasswordChangeView,
     StudentGuardianCreateView, StudentGuardianLinkDeleteView, StudentGuardianUpdateView,
-    StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView,
+    StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView, StaffDeleteView,
     ParentListView,
     ClassListView, ClassCreateView, ClassEditView, ClassDeleteView,
-    SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView,
+    ClassDetailView, ClassSubjectAddView, ClassSubjectCreateView, ClassSubjectRemoveView, ClassSubjectBulkAddView,
+    SubjectListView,
     TeacherAssignmentListView, AssignmentDeleteView, AssignmentAddView, AssignmentSubjectsPartialView,
     ScoreAdminView,
-    FeeCategoryListView, FeeCategoryCreateView, FeeCategoryEditView,
-    FeeCategoryDeleteView, FeePricingListView, FeePricingCreateView,
-    FeePricingEditView, FeePricingDeleteView, FeePricingBulkCopyView, FeePricingPromoteView,
-    InvoiceListView, InvoiceDetailView, GenerateInvoicesView,
-    OutstandingFeesReportView,
-    PendingTransfersView, PendingTransferConfirmView, PendingTransferRejectView,
-    PaymentEditView, PaymentDeleteView, StudentRecordPaymentView,
     PayGradeListView, AllowanceDeductionListView,
     PayrollRunListView, PayrollRunDetailView,
     GeneratePayrollView, RecordDisbursementView,
@@ -33,8 +27,22 @@ from school_admin.views import (
     CredentialSlipView, CredentialBatchView, CredentialBatchPrintView, CredentialSingleResetView,
     CredentialMemberConfirmView,
     StudentSearchAPIView, StaffSearchAPIView, MemberSearchAPIView,
+    GuardianSearchAPIView,
     InvoiceSearchAPIView, ClassSearchAPIView, SubjectSearchAPIView,
     NotificationSearchAPIView, EnrollmentSearchAPIView,
+)
+from school_admin.views.fee_categories import (
+    FeeCategoryListView, FeeCategoryCreateView, FeeCategoryEditView, FeeCategoryDeleteView,
+)
+from school_admin.views.fee_pricing import (
+    FeePricingListView, FeePricingCreateView,
+    FeePricingEditView, FeePricingDeleteView, FeePricingBulkCopyView, FeePricingPromoteView,
+)
+from school_admin.views.invoices import (
+    InvoiceListView, InvoiceDetailView, GenerateInvoicesView,
+    OutstandingFeesReportView,
+    PendingTransfersView, PendingTransferConfirmView, PendingTransferRejectView,
+    PaymentEditView, PaymentDeleteView, StudentRecordPaymentView,
 )
 from inventory.views import (
     AdminItemListView, AdminItemCreateView, AdminItemEditView,
@@ -58,6 +66,7 @@ urlpatterns = [
     path('api/subjects/', SubjectSearchAPIView.as_view(), name='subject_search_api'),
     path('api/notifications/', NotificationSearchAPIView.as_view(), name='notification_search_api'),
     path('api/enrollments/', EnrollmentSearchAPIView.as_view(), name='enrollment_search_api'),
+    path('api/guardians/', GuardianSearchAPIView.as_view(), name='guardian_search_api'),
     path('students/new/', StudentCreateView.as_view(), name='student_create'),
     path('students/<int:pk>/', StudentDetailView.as_view(), name='student_detail'),
     path('students/<int:pk>/edit/', StudentEditView.as_view(), name='student_edit'),
@@ -74,6 +83,7 @@ urlpatterns = [
     path('staff/new/', StaffCreateView.as_view(), name='staff_create'),
     path('staff/<int:pk>/edit/', StaffEditView.as_view(), name='staff_edit'),
     path('staff/<int:pk>/toggle-active/', StaffToggleActiveView.as_view(), name='staff_toggle_active'),
+    path('staff/<int:pk>/delete/', StaffDeleteView.as_view(), name='staff_delete'),
 
     # Academics
     path('subjects/', SubjectListView.as_view(), name='subject_list'),
@@ -88,11 +98,11 @@ urlpatterns = [
     path('classes/new/', ClassCreateView.as_view(), name='class_create'),
     path('classes/<int:pk>/edit/', ClassEditView.as_view(), name='class_edit'),
     path('classes/<int:pk>/delete/', ClassDeleteView.as_view(), name='class_delete'),
-
-    # Subjects
-    path('subjects/new/', SubjectCreateView.as_view(), name='subject_create'),
-    path('subjects/<int:pk>/edit/', SubjectEditView.as_view(), name='subject_edit'),
-    path('subjects/<int:pk>/delete/', SubjectDeleteView.as_view(), name='subject_delete'),
+    path('classes/<int:pk>/', ClassDetailView.as_view(), name='class_detail'),
+    path('classes/<int:pk>/subjects/add/', ClassSubjectAddView.as_view(), name='class_subject_add'),
+    path('classes/<int:pk>/subjects/bulk-add/', ClassSubjectBulkAddView.as_view(), name='class_subject_bulk_add'),
+    path('classes/<int:pk>/subjects/new/', ClassSubjectCreateView.as_view(), name='class_subject_create'),
+    path('classes/<int:pk>/subjects/<int:subject_id>/remove/', ClassSubjectRemoveView.as_view(), name='class_subject_remove'),
 
     # Fees & Invoices
     path('fees/categories/', FeeCategoryListView.as_view(), name='fee_category_list'),

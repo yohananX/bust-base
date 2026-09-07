@@ -7,10 +7,12 @@ from decimal import Decimal
 
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
-from academics.models import Subject, TeacherAssignment, TermResult, Score
+from academics.models import Subject, ClassSubject, TeacherAssignment, TermResult, Score
 from fees.models import Invoice, Payment
 from .models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from lessons.models import LessonPeriod, LessonClass, LessonEnrollment
+
+User = get_user_model()
 
 
 class StudentModelTests(TestCase):
@@ -1420,3 +1422,143 @@ class GenerateAdmissionNumberTest(TestCase):
         adm = generate_admission_number(self.school, self.school_class)
         current_year_2d = str(timezone.now().year)[-2:]
         self.assertIn(current_year_2d, adm)
+
+
+class FindOrCreateParentTests(TestCase):
+    """Tests for the guardian deduplication helper."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Test School', short_code='test')
+        User = get_user_model()
+        self.existing_parent = User.objects.create_user(
+            username='existing_parent',
+            email='existing@test.com',
+            password='pass123',
+            school=self.school,
+            role=Roles.PARENT,
+            first_name='Existing',
+            last_name='Parent',
+            phone_number='08012345678',
+        )
+
+    def test_returns_existing_by_email(self):
+        from students.utils import find_or_create_parent
+        parent, was_created = find_or_create_parent(
+            self.school, 'Existing Parent', email='existing@test.com'
+        )
+        self.assertFalse(was_created)
+        self.assertEqual(parent, self.existing_parent)
+
+    def test_returns_existing_by_phone(self):
+        from students.utils import find_or_create_parent
+        parent, was_created = find_or_create_parent(
+            self.school, 'Existing Parent', phone='08012345678'
+        )
+        self.assertFalse(was_created)
+        self.assertEqual(parent, self.existing_parent)
+
+    def test_returns_existing_by_name(self):
+        from students.utils import find_or_create_parent
+        parent, was_created = find_or_create_parent(
+            self.school, 'Existing Parent'
+        )
+        self.assertFalse(was_created)
+        self.assertEqual(parent, self.existing_parent)
+
+    def test_creates_new_when_no_match(self):
+        from students.utils import find_or_create_parent
+        parent, was_created = find_or_create_parent(
+            self.school, 'New Parent', email='new@test.com', phone='08099999999'
+        )
+        self.assertTrue(was_created)
+        self.assertEqual(parent.email, 'new@test.com')
+        self.assertEqual(parent.role, Roles.PARENT)
+
+    def test_does_not_create_duplicate_for_same_email(self):
+        from students.utils import find_or_create_parent
+        find_or_create_parent(self.school, 'Existing Parent', email='existing@test.com')
+        count = User.objects.filter(school=self.school, role=Roles.PARENT).count()
+        self.assertEqual(count, 1)
+
+
+class ValidateGuardianFormTests(TestCase):
+    """Tests for cross-row duplicate detection in guardian form data."""
+
+    def test_duplicate_names_detected(self):
+        from students.utils import validate_guardian_form
+        post_data = {
+            'guardian_0_name': 'Jane Doe',
+            'guardian_0_email': 'jane@test.com',
+            'guardian_0_phone': '0801',
+            'guardian_1_name': 'Jane Doe',
+            'guardian_1_email': 'jane2@test.com',
+            'guardian_1_phone': '0802',
+        }
+        errors = validate_guardian_form(post_data)
+        self.assertEqual(len(errors), 1)
+        self.assertIn('duplicate guardian', errors[0].lower())
+
+    def test_duplicate_emails_detected(self):
+        from students.utils import validate_guardian_form
+        post_data = {
+            'guardian_0_name': 'Jane Doe',
+            'guardian_0_email': 'jane@test.com',
+            'guardian_0_phone': '0801',
+            'guardian_1_name': 'Jane Smith',
+            'guardian_1_email': 'jane@test.com',
+            'guardian_1_phone': '0802',
+        }
+        errors = validate_guardian_form(post_data)
+        self.assertEqual(len(errors), 1)
+
+    def test_duplicate_phones_detected(self):
+        from students.utils import validate_guardian_form
+        post_data = {
+            'guardian_0_name': 'Jane Doe',
+            'guardian_0_email': 'jane@test.com',
+            'guardian_0_phone': '08011111111',
+            'guardian_1_name': 'Jane Smith',
+            'guardian_1_email': 'jane2@test.com',
+            'guardian_1_phone': '08011111111',
+        }
+        errors = validate_guardian_form(post_data)
+        self.assertEqual(len(errors), 1)
+
+    def test_distinct_guardians_pass(self):
+        from students.utils import validate_guardian_form
+        post_data = {
+            'guardian_0_name': 'Jane Doe',
+            'guardian_0_email': 'jane@test.com',
+            'guardian_0_phone': '0801',
+            'guardian_1_name': 'John Smith',
+            'guardian_1_email': 'john@test.com',
+            'guardian_1_phone': '0802',
+        }
+        errors = validate_guardian_form(post_data)
+        self.assertEqual(len(errors), 0)
+
+    def test_empty_rows_ignored(self):
+        from students.utils import validate_guardian_form
+        post_data = {
+            'guardian_0_name': 'Jane Doe',
+            'guardian_0_email': 'jane@test.com',
+            'guardian_0_phone': '0801',
+            'guardian_1_name': '',
+            'guardian_1_email': '',
+            'guardian_1_phone': '',
+        }
+        errors = validate_guardian_form(post_data)
+        self.assertEqual(len(errors), 0)
+
+    def test_name_match_case_insensitive(self):
+        from students.utils import validate_guardian_form
+        post_data = {
+            'guardian_0_name': 'Jane Doe',
+            'guardian_0_email': 'jane@test.com',
+            'guardian_0_phone': '0801',
+            'guardian_1_name': 'jane doe',
+            'guardian_1_email': 'jane2@test.com',
+            'guardian_1_phone': '0802',
+        }
+        errors = validate_guardian_form(post_data)
+        self.assertEqual(len(errors), 1)

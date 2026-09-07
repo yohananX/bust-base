@@ -115,16 +115,3 @@ class InvoiceIntegrityValidator:
             )
             saved.append(obj)
         return saved
-
-
-class FeeStructureValidator:
-    """Validate legacy FeeStructure rows. DEPRECATED: use FeePrice validation."""
-
-    @staticmethod
-    def validate_structure(fs) -> list[dict]:
-        return []
-
-    @classmethod
-    def validate_and_log(cls, fs) -> list:
-        return []
-        return saved

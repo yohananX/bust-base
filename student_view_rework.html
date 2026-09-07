@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Profile Redesign — Grace House School</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#8A6420', hover: '#7A5A1E', tint: '#F7F0E3', soft: '#FBF7F0' },
+            ink: '#1a1a1a',
+            muted: '#5B6472',
+            line: '#E8E6DF',
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+          },
+          boxShadow: {
+            card: '0 1px 3px rgba(27,36,48,0.06), 0 4px 16px rgba(27,36,48,0.04)',
+            'card-hover': '0 4px 20px rgba(27,36,48,0.08)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [data-tab-panel].hidden { display: none; }
+    .fee-row:has(input:checked) { background: #F7F0E3; border-color: #D4B56A; }
+    .tab-active { color: #8A6420; border-color: #8A6420; background: #FBF7F0; }
+    .stat-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .stat-card:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(27,36,48,0.08); }
+    /* Soft scrollbar for guardians list */
+    .scroll-soft::-webkit-scrollbar { height: 6px; width: 6px; }
+    .scroll-soft::-webkit-scrollbar-thumb { background: #D4CFC4; border-radius: 99px; }
+  </style>
+</head>
+<body class="bg-[#F4F3EF] text-ink font-sans antialiased min-h-screen">
+
+  <!-- ===== APP SHELL (simplified for preview) ===== -->
+  <div class="flex min-h-screen">
+    <!-- Sidebar (collapsed visual only) -->
+    <aside class="hidden lg:flex w-56 flex-col bg-white border-r border-line shrink-0">
+      <div class="px-5 py-5 border-b border-line">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white text-xs font-bold">GH</div>
+          <div>
+            <p class="text-sm font-bold text-ink leading-tight">Grace House</p>
+            <p class="text-[10px] text-muted tracking-wide">SCHOOL</p>
+          </div>
+        </div>
+      </div>
+      <nav class="flex-1 p-3 space-y-0.5 text-sm">
+        <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-muted hover:bg-gray-50">Dashboard</a>
+        <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-primary-tint text-primary font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Students
+        </a>
+        <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-muted hover:bg-gray-50">Classes</a>
+        <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-muted hover:bg-gray-50">Fees</a>
+        <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-muted hover:bg-gray-50">Staff</a>
+      </nav>
+      <div class="p-4 border-t border-line text-xs text-muted">Grace House School · Admin</div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 min-w-0">
+      <!-- Top bar -->
+      <header class="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-line px-4 sm:px-6 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3 min-w-0">
+          <button class="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-muted">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <div class="min-w-0">
+            <p class="text-xs text-muted">Students /</p>
+            <h1 class="text-base sm:text-lg font-semibold text-ink truncate">Favour Mesighe Uwe</h1>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button class="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted bg-white border border-line rounded-xl hover:bg-gray-50">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+            Password
+          </button>
+          <button class="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-xl shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            Edit
+          </button>
+        </div>
+      </header>
+
+      <div class="p-4 sm:p-6 max-w-6xl mx-auto space-y-5">
+
+        <!-- ===== PROFILE HERO ===== -->
+        <section class="bg-white rounded-2xl border border-line shadow-card overflow-hidden">
+          <div class="bg-gradient-to-r from-primary-soft via-white to-primary-tint/40 px-5 sm:px-6 pt-5 pb-4">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+              <!-- Avatar -->
+              <div class="relative shrink-0">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-primary text-white flex items-center justify-center text-xl sm:text-2xl font-bold shadow-sm ring-4 ring-white">
+                  FU
+                </div>
+                <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white" title="Active"></span>
+              </div>
+
+              <!-- Identity -->
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <h2 class="text-xl sm:text-2xl font-bold text-ink tracking-tight">Favour Mesighe Uwe</h2>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                  </span>
+                </div>
+                <p class="text-sm text-muted">No email on file</p>
+                <div class="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                  <span class="text-muted"><span class="text-[11px] uppercase tracking-wider text-muted/80">Adm. No</span> <strong class="text-ink font-semibold ml-1">GHS26B3001</strong></span>
+                  <span class="text-muted"><span class="text-[11px] uppercase tracking-wider text-muted/80">Class</span> <strong class="text-ink font-semibold ml-1">Basic 3</strong></span>
+                  <span class="text-muted"><span class="text-[11px] uppercase tracking-wider text-muted/80">Session</span> <strong class="text-ink font-semibold ml-1">2026/2027</strong></span>
+                </div>
+              </div>
+
+              <!-- Primary CTA -->
+              <div class="sm:text-right shrink-0">
+                <button onclick="document.getElementById('tab-fees').click()" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-sm transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                  Record Payment
+                </button>
+                <p class="mt-1.5 text-xs text-amber-700 font-medium">Balance: NGN 75,000.00</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick stats strip -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-line border-t border-line">
+            <div class="px-4 py-3.5">
+              <p class="text-[11px] uppercase tracking-wider text-muted mb-0.5">Outstanding</p>
+              <p class="text-lg font-bold text-amber-700 tabular-nums">₦75,000</p>
+            </div>
+            <div class="px-4 py-3.5">
+              <p class="text-[11px] uppercase tracking-wider text-muted mb-0.5">Paid this term</p>
+              <p class="text-lg font-bold text-ink tabular-nums">₦0</p>
+            </div>
+            <div class="px-4 py-3.5">
+              <p class="text-[11px] uppercase tracking-wider text-muted mb-0.5">Date of Birth</p>
+              <p class="text-sm font-semibold text-ink">16 Jan 2015</p>
+            </div>
+            <div class="px-4 py-3.5">
+              <p class="text-[11px] uppercase tracking-wider text-muted mb-0.5">Gender</p>
+              <p class="text-sm font-semibold text-ink">Female</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== TABS ===== -->
+        <div class="flex gap-1 p-1 bg-white border border-line rounded-xl shadow-sm overflow-x-auto scroll-soft">
+          <button data-tab="overview" class="tab-btn tab-active flex-1 min-w-[100px] px-4 py-2.5 text-sm font-semibold rounded-lg border border-transparent transition">
+            Overview
+          </button>
+          <button data-tab="fees" id="tab-fees" class="tab-btn flex-1 min-w-[100px] px-4 py-2.5 text-sm font-medium text-muted rounded-lg border border-transparent hover:bg-gray-50 transition">
+            Fees &amp; Payments
+          </button>
+          <button data-tab="guardians" class="tab-btn flex-1 min-w-[100px] px-4 py-2.5 text-sm font-medium text-muted rounded-lg border border-transparent hover:bg-gray-50 transition">
+            Guardians
+          </button>
+          <button data-tab="history" class="tab-btn flex-1 min-w-[100px] px-4 py-2.5 text-sm font-medium text-muted rounded-lg border border-transparent hover:bg-gray-50 transition">
+            Class History
+          </button>
+        </div>
+
+        <!-- ===== TAB: OVERVIEW ===== -->
+        <div data-tab-panel="overview" class="space-y-5">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <!-- Personal details -->
+            <div class="lg:col-span-2 bg-white rounded-2xl border border-line shadow-card p-5 sm:p-6">
+              <h3 class="text-sm font-semibold text-ink mb-4 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-primary-tint flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                </span>
+                Personal details
+              </h3>
+              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                <div>
+                  <dt class="text-[11px] uppercase tracking-wider text-muted">Admission Number</dt>
+                  <dd class="mt-0.5 text-sm font-semibold text-ink">GHS26B3001</dd>
+                </div>
+                <div>
+                  <dt class="text-[11px] uppercase tracking-wider text-muted">Date of Birth</dt>
+                  <dd class="mt-0.5 text-sm font-semibold text-ink">16 January 2015</dd>
+                </div>
+                <div>
+                  <dt class="text-[11px] uppercase tracking-wider text-muted">Gender</dt>
+                  <dd class="mt-0.5 text-sm font-semibold text-ink">Female</dd>
+                </div>
+                <div>
+                  <dt class="text-[11px] uppercase tracking-wider text-muted">Status</dt>
+                  <dd class="mt-0.5">
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Active</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-[11px] uppercase tracking-wider text-muted">State of Origin</dt>
+                  <dd class="mt-0.5 text-sm font-semibold text-ink">Akwa Ibom State</dd>
+                </div>
+                <div>
+                  <dt class="text-[11px] uppercase tracking-wider text-muted">Local Government Area</dt>
+                  <dd class="mt-0.5 text-sm font-semibold text-ink">Oruefon Oruko</dd>
+                </div>
+              </dl>
+            </div>
+
+            <!-- At a glance -->
+            <div class="bg-white rounded-2xl border border-line shadow-card p-5 sm:p-6">
+              <h3 class="text-sm font-semibold text-ink mb-4">At a glance</h3>
+              <ul class="space-y-3">
+                <li class="flex items-start gap-3">
+                  <div class="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-ink">First Term unpaid</p>
+                    <p class="text-xs text-muted">₦75,000.00 outstanding</p>
+                  </div>
+                </li>
+                <li class="flex items-start gap-3">
+                  <div class="w-9 h-9 rounded-xl bg-primary-tint flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-ink">3 guardians linked</p>
+                    <p class="text-xs text-muted">Mother &amp; Father on file</p>
+                  </div>
+                </li>
+                <li class="flex items-start gap-3">
+                  <div class="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-ink">Current: Basic 3</p>
+                    <p class="text-xs text-muted">2026/2027 session</p>
+                  </div>
+                </li>
+              </ul>
+              <button onclick="document.getElementById('tab-fees').click()" class="mt-5 w-full py-2.5 text-sm font-semibold text-primary bg-primary-tint hover:bg-primary/10 rounded-xl transition">
+                Go to Fees &amp; Payments →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== TAB: FEES & PAYMENTS ===== -->
+        <div data-tab-panel="fees" class="hidden space-y-5">
+
+          <!-- Balance summary -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="stat-card bg-white rounded-2xl border border-line shadow-card p-5">
+              <p class="text-[11px] uppercase tracking-wider text-muted">Total billed (term)</p>
+              <p class="mt-1 text-2xl font-bold text-ink tabular-nums">₦75,000</p>
+              <p class="text-xs text-muted mt-1">First Term · 2026/2027</p>
+            </div>
+            <div class="stat-card bg-white rounded-2xl border border-line shadow-card p-5">
+              <p class="text-[11px] uppercase tracking-wider text-muted">Amount paid</p>
+              <p class="mt-1 text-2xl font-bold text-emerald-600 tabular-nums">₦0.00</p>
+              <p class="text-xs text-muted mt-1">No payments recorded yet</p>
+            </div>
+            <div class="stat-card bg-amber-50/80 rounded-2xl border border-amber-100 shadow-card p-5">
+              <p class="text-[11px] uppercase tracking-wider text-amber-700/80">Balance due</p>
+              <p class="mt-1 text-2xl font-bold text-amber-800 tabular-nums">₦75,000</p>
+              <p class="text-xs text-amber-700/70 mt-1">Status: Unpaid</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-5 gap-5">
+            <!-- Invoice list -->
+            <div class="xl:col-span-2 bg-white rounded-2xl border border-line shadow-card overflow-hidden">
+              <div class="px-5 py-4 border-b border-line flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-ink">Invoices</h3>
+                <span class="text-xs font-medium text-muted">1 term</span>
+              </div>
+              <div class="p-3 space-y-2">
+                <div class="p-4 rounded-xl border border-amber-200 bg-amber-50/50">
+                  <div class="flex items-start justify-between gap-2">
+                    <div>
+                      <p class="text-sm font-semibold text-ink">First Term</p>
+                      <p class="text-xs text-muted mt-0.5">2026/2027 session</p>
+                    </div>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-100">UNPAID</span>
+                  </div>
+                  <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p class="text-[10px] text-muted uppercase">Total</p>
+                      <p class="text-sm font-bold tabular-nums">₦75,000</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-muted uppercase">Paid</p>
+                      <p class="text-sm font-bold tabular-nums">₦0</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-muted uppercase">Balance</p>
+                      <p class="text-sm font-bold text-amber-700 tabular-nums">₦75,000</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Record Payment panel (simplified) -->
+            <div class="xl:col-span-3 bg-white rounded-2xl border border-line shadow-card overflow-hidden">
+              <div class="px-5 py-4 border-b border-line bg-primary-soft/60">
+                <h3 class="text-sm font-semibold text-ink">Record a payment</h3>
+                <p class="text-xs text-muted mt-0.5">For cash, POS, cheque or sponsor payments received outside the portal.</p>
+              </div>
+
+              <form class="p-5 space-y-5" onsubmit="event.preventDefault(); alert('Preview only — payment would be recorded and a receipt issued.');">
+
+                <!-- What was paid for? (known items + custom) -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-semibold text-ink">What was paid for?</label>
+                    <span class="text-[11px] text-muted">
+                      <span id="sel-count">0</span> item(s) ·
+                      <span id="sel-total" class="font-semibold text-ink">₦0</span>
+                    </span>
+                  </div>
+
+                  <!-- Known fee items -->
+                  <div class="rounded-xl border border-line overflow-hidden max-h-52 overflow-y-auto scroll-soft">
+                    <label class="fee-row flex items-center gap-3 px-3.5 py-2.5 border-b border-line cursor-pointer hover:bg-gray-50 transition">
+                      <input type="checkbox" class="fee-cb rounded border-gray-300 text-primary focus:ring-primary" data-amt="40000" data-invoice="1" />
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-ink">Uniforms</p>
+                        <p class="text-[11px] text-muted">One-time · Current price</p>
+                      </div>
+                      <span class="text-sm font-semibold tabular-nums shrink-0">₦40,000</span>
+                    </label>
+                    <label class="fee-row flex items-center gap-3 px-3.5 py-2.5 border-b border-line cursor-pointer hover:bg-gray-50 transition">
+                      <input type="checkbox" class="fee-cb rounded border-gray-300 text-primary focus:ring-primary" data-amt="2500" data-invoice="1" />
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-ink">Examination Fee</p>
+                        <p class="text-[11px] text-muted">Per term · Invoiced</p>
+                      </div>
+                      <span class="text-sm font-semibold tabular-nums shrink-0">₦2,500</span>
+                    </label>
+                    <label class="fee-row flex items-center gap-3 px-3.5 py-2.5 border-b border-line cursor-pointer hover:bg-gray-50 transition">
+                      <input type="checkbox" class="fee-cb rounded border-gray-300 text-primary focus:ring-primary" data-amt="500" data-invoice="1" />
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-ink">File Jacket</p>
+                        <p class="text-[11px] text-muted">Per term · Invoiced</p>
+                      </div>
+                      <span class="text-sm font-semibold tabular-nums shrink-0">₦500</span>
+                    </label>
+                    <label class="fee-row flex items-center gap-3 px-3.5 py-2.5 border-b border-line cursor-pointer hover:bg-gray-50 transition">
+                      <input type="checkbox" class="fee-cb rounded border-gray-300 text-primary focus:ring-primary" data-amt="1000" data-invoice="1" />
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-ink">Maintenance</p>
+                        <p class="text-[11px] text-muted">Per term · Invoiced</p>
+                      </div>
+                      <span class="text-sm font-semibold tabular-nums shrink-0">₦1,000</span>
+                    </label>
+                    <label class="fee-row flex items-center gap-3 px-3.5 py-2.5 border-b border-line cursor-pointer hover:bg-gray-50 transition">
+                      <input type="checkbox" class="fee-cb rounded border-gray-300 text-primary focus:ring-primary" data-amt="1000" data-invoice="1" />
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-ink">PTA</p>
+                        <p class="text-[11px] text-muted">Per term · Invoiced</p>
+                      </div>
+                      <span class="text-sm font-semibold tabular-nums shrink-0">₦1,000</span>
+                    </label>
+                    <label class="fee-row flex items-center gap-3 px-3.5 py-2.5 cursor-pointer hover:bg-gray-50 transition">
+                      <input type="checkbox" class="fee-cb rounded border-gray-300 text-primary focus:ring-primary" data-amt="2000" data-invoice="1" />
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-ink">Registration Form</p>
+                        <p class="text-[11px] text-muted">Per term · Invoiced</p>
+                      </div>
+                      <span class="text-sm font-semibold tabular-nums shrink-0">₦2,000</span>
+                    </label>
+                  </div>
+
+                  <!-- Custom / something else -->
+                  <div id="custom-items" class="mt-2 space-y-2"></div>
+
+                  <button type="button" id="add-custom-btn"
+                          class="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium text-primary bg-primary-tint/50 hover:bg-primary-tint border border-dashed border-primary/30 rounded-xl transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    Add something else (books, bus, sponsor gift…)
+                  </button>
+
+                  <p class="mt-2 text-[11px] text-muted leading-relaxed">
+                    Tick known fees <em>or</em> add a custom item. The system attaches the payment to the right invoice when possible; custom-only payments still get a full receipt.
+                  </p>
+                </div>
+
+                <!-- Smart status chip -->
+                <div id="allocation-hint" class="hidden rounded-xl px-3.5 py-2.5 text-xs border">
+                  <!-- filled by JS -->
+                </div>
+
+                <!-- Amount + method -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-semibold text-ink mb-1.5">Amount (NGN)</label>
+                    <input type="number" id="pay-amount" value="0.00" step="0.01" min="0"
+                           class="w-full px-3.5 py-2.5 bg-gray-50 border border-line rounded-xl text-sm font-semibold tabular-nums focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
+                    <p class="mt-1 text-[11px] text-muted">Auto-filled from items — you can still type a partial amount.</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-ink mb-1.5">Payment method</label>
+                    <select class="w-full px-3.5 py-2.5 bg-gray-50 border border-line rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+                      <option>Cash</option>
+                      <option>POS / Card at school</option>
+                      <option>Bank Transfer</option>
+                      <option>Cheque</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Optional details -->
+                <details class="group">
+                  <summary class="text-xs font-semibold text-primary cursor-pointer list-none flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 transition group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    Optional: who paid, reference
+                  </summary>
+                  <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input type="text" placeholder="Paid by (e.g. Mrs Duncan)" class="w-full px-3.5 py-2.5 bg-gray-50 border border-line rounded-xl text-sm outline-none focus:border-primary" />
+                    <input type="text" placeholder="Relation (e.g. mother, sponsor)" class="w-full px-3.5 py-2.5 bg-gray-50 border border-line rounded-xl text-sm outline-none focus:border-primary" />
+                    <input type="text" placeholder="Receipt / reference #" class="w-full px-3.5 py-2.5 bg-gray-50 border border-line rounded-xl text-sm outline-none focus:border-primary sm:col-span-2" />
+                  </div>
+                </details>
+
+                <button type="submit" id="submit-pay" disabled
+                        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-sm transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  Record Payment &amp; Issue Receipt
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Recent activity -->
+          <div class="bg-white rounded-2xl border border-line shadow-card overflow-hidden">
+            <div class="px-5 py-4 border-b border-line">
+              <h3 class="text-sm font-semibold text-ink">Payment history</h3>
+            </div>
+            <div class="px-5 py-10 text-center">
+              <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                <svg class="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+              </div>
+              <p class="text-sm text-muted">No payments recorded for this student yet.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== TAB: GUARDIANS ===== -->
+        <div data-tab-panel="guardians" class="hidden space-y-5">
+          <div class="flex items-center justify-between">
+            <p class="text-sm text-muted">3 people linked to this student</p>
+            <button class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-xl shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Add Guardian
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <!-- Card 1 -->
+            <article class="bg-white rounded-2xl border border-line shadow-card p-5 flex flex-col">
+              <div class="flex items-start gap-3">
+                <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-sm font-bold shrink-0">ND</div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold text-ink truncate">Nsidebe-Abasi Duncan</p>
+                  <p class="text-xs text-muted">Guardian</p>
+                </div>
+                <div class="flex gap-1">
+                  <button class="p-1.5 text-muted hover:text-primary rounded-lg hover:bg-primary-tint" title="Edit">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                  </button>
+                  <button class="p-1.5 text-muted hover:text-red-600 rounded-lg hover:bg-red-50" title="Remove">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              </div>
+              <dl class="mt-4 space-y-2 text-sm flex-1">
+                <div class="flex justify-between gap-2">
+                  <dt class="text-muted">Occupation</dt>
+                  <dd class="font-medium text-ink text-right">—</dd>
+                </div>
+                <div class="flex justify-between gap-2">
+                  <dt class="text-muted">Address</dt>
+                  <dd class="font-medium text-ink text-right">—</dd>
+                </div>
+              </dl>
+            </article>
+
+            <!-- Card 2 -->
+            <article class="bg-white rounded-2xl border border-line shadow-card p-5 flex flex-col">
+              <div class="flex items-start gap-3">
+                <div class="w-11 h-11 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-sm font-bold shrink-0">ED</div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold text-ink truncate">Expensive Duncan</p>
+                  <p class="text-xs text-muted">Mother</p>
+                </div>
+                <div class="flex gap-1">
+                  <button class="p-1.5 text-muted hover:text-primary rounded-lg hover:bg-primary-tint" title="Edit">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                  </button>
+                  <button class="p-1.5 text-muted hover:text-red-600 rounded-lg hover:bg-red-50" title="Remove">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              </div>
+              <dl class="mt-4 space-y-2 text-sm flex-1">
+                <div class="flex justify-between gap-2">
+                  <dt class="text-muted">Occupation</dt>
+                  <dd class="font-medium text-ink text-right">Trading</dd>
+                </div>
+                <div>
+                  <dt class="text-muted mb-0.5">Address</dt>
+                  <dd class="font-medium text-ink text-sm leading-snug">Ataide Street off Etofia Street</dd>
+                </div>
+              </dl>
+            </article>
+
+            <!-- Card 3 -->
+            <article class="bg-white rounded-2xl border border-line shadow-card p-5 flex flex-col">
+              <div class="flex items-start gap-3">
+                <div class="w-11 h-11 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center text-sm font-bold shrink-0">MU</div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold text-ink truncate">Mesigheno Uwe</p>
+                  <p class="text-xs text-muted">Father</p>
+                </div>
+                <div class="flex gap-1">
+                  <button class="p-1.5 text-muted hover:text-primary rounded-lg hover:bg-primary-tint" title="Edit">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                  </button>
+                  <button class="p-1.5 text-muted hover:text-red-600 rounded-lg hover:bg-red-50" title="Remove">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              </div>
+              <dl class="mt-4 space-y-2 text-sm flex-1">
+                <div class="flex justify-between gap-2">
+                  <dt class="text-muted">Occupation</dt>
+                  <dd class="font-medium text-ink text-right">Trading</dd>
+                </div>
+                <div>
+                  <dt class="text-muted mb-0.5">Address</dt>
+                  <dd class="font-medium text-ink text-sm leading-snug">Ataide Street, Off Etofia Street</dd>
+                </div>
+              </dl>
+            </article>
+          </div>
+        </div>
+
+        <!-- ===== TAB: CLASS HISTORY ===== -->
+        <div data-tab-panel="history" class="hidden space-y-5">
+          <div class="bg-white rounded-2xl border border-line shadow-card overflow-hidden">
+            <div class="px-5 py-4 border-b border-line flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-ink">Enrollment history</h3>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-left text-[11px] uppercase tracking-wider text-muted bg-gray-50/80 border-b border-line">
+                    <th class="px-5 py-3 font-semibold">Session</th>
+                    <th class="px-5 py-3 font-semibold">Class</th>
+                    <th class="px-5 py-3 font-semibold">Current</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-b border-line/60 hover:bg-primary-soft/40">
+                    <td class="px-5 py-3.5 font-medium text-ink">2026/2027</td>
+                    <td class="px-5 py-3.5 text-ink">Basic 3</td>
+                    <td class="px-5 py-3.5">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Yes
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="px-5 py-5 border-t border-line bg-gray-50/50">
+              <h4 class="text-sm font-semibold text-ink mb-3">Change current class</h4>
+              <div class="flex flex-wrap items-end gap-3">
+                <div>
+                  <label class="block text-[11px] font-medium text-muted mb-1">New class</label>
+                  <select class="px-3.5 py-2.5 bg-white border border-line rounded-xl text-sm min-w-[160px] outline-none focus:border-primary">
+                    <option>— Select —</option>
+                    <option>Basic 2</option>
+                    <option>Basic 3</option>
+                    <option>Basic 4</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium text-muted mb-1">Session</label>
+                  <select class="px-3.5 py-2.5 bg-white border border-line rounded-xl text-sm min-w-[160px] outline-none focus:border-primary">
+                    <option>— Select —</option>
+                    <option>2026/2027</option>
+                    <option>2025/2026</option>
+                  </select>
+                </div>
+                <button class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl shadow-sm">
+                  Change Class
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Tabs
+    const tabs = document.querySelectorAll('.tab-btn');
+    const panels = document.querySelectorAll('[data-tab-panel]');
+    tabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-tab');
+        tabs.forEach(t => {
+          t.classList.remove('tab-active', 'font-semibold');
+          t.classList.add('font-medium', 'text-muted');
+        });
+        btn.classList.add('tab-active', 'font-semibold');
+        btn.classList.remove('font-medium', 'text-muted');
+        panels.forEach(p => {
+          p.classList.toggle('hidden', p.getAttribute('data-tab-panel') !== id);
+        });
+      });
+    });
+
+    // —— Payment form intelligence ——
+    let customId = 0;
+
+    function formatNaira(n) {
+      return '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
+    function recalcFees() {
+      let total = 0, count = 0, hasInvoiceItem = false, hasCustom = false;
+
+      document.querySelectorAll('.fee-cb').forEach(cb => {
+        if (cb.checked) {
+          total += parseFloat(cb.dataset.amt) || 0;
+          count++;
+          if (cb.dataset.invoice) hasInvoiceItem = true;
+        }
+      });
+
+      document.querySelectorAll('.custom-row').forEach(row => {
+        const enabled = row.querySelector('.custom-enable');
+        const amtInput = row.querySelector('.custom-amt');
+        const labelInput = row.querySelector('.custom-label');
+        if (enabled && enabled.checked) {
+          const v = parseFloat(amtInput.value) || 0;
+          total += v;
+          count++;
+          hasCustom = true;
+          if (labelInput && !labelInput.value.trim()) {
+            labelInput.classList.add('ring-1', 'ring-amber-400');
+          } else if (labelInput) {
+            labelInput.classList.remove('ring-1', 'ring-amber-400');
+          }
+        }
+      });
+
+      document.getElementById('sel-count').textContent = count;
+      document.getElementById('sel-total').textContent = formatNaira(total);
+      document.getElementById('pay-amount').value = total.toFixed(2);
+
+      const submit = document.getElementById('submit-pay');
+      if (submit) submit.disabled = total <= 0;
+
+      // Allocation hint — explains what the backend will do
+      const hint = document.getElementById('allocation-hint');
+      if (!hint) return;
+      if (total <= 0) {
+        hint.classList.add('hidden');
+        return;
+      }
+      hint.classList.remove('hidden');
+      if (hasInvoiceItem && hasCustom) {
+        hint.className = 'rounded-xl px-3.5 py-2.5 text-xs border border-sky-200 bg-sky-50 text-sky-800';
+        hint.innerHTML = '<strong>Mixed payment.</strong> Known fees attach to the term invoice; custom items appear as extra lines on the same receipt.';
+      } else if (hasInvoiceItem) {
+        hint.className = 'rounded-xl px-3.5 py-2.5 text-xs border border-emerald-200 bg-emerald-50 text-emerald-800';
+        hint.innerHTML = '<strong>Invoice payment.</strong> This will reduce the First Term balance and issue a receipt.';
+      } else {
+        hint.className = 'rounded-xl px-3.5 py-2.5 text-xs border border-amber-200 bg-amber-50 text-amber-900';
+        hint.innerHTML = '<strong>Custom payment only.</strong> No invoice line will change — a receipt is still issued against this student.';
+      }
+    }
+
+    function addCustomRow(prefillLabel = '', prefillAmt = '') {
+      customId += 1;
+      const wrap = document.getElementById('custom-items');
+      const row = document.createElement('div');
+      row.className = 'custom-row flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-primary/40 bg-primary-soft/40';
+      row.innerHTML = `
+        <input type="checkbox" class="custom-enable rounded border-gray-300 text-primary focus:ring-primary" checked />
+        <input type="text" class="custom-label flex-1 min-w-0 px-3 py-2 bg-white border border-line rounded-lg text-sm outline-none focus:border-primary"
+               placeholder="What was this for? e.g. Exercise books, Bus fee" value="${prefillLabel.replace(/"/g, '&quot;')}" />
+        <div class="relative w-28 shrink-0">
+          <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted font-medium">₦</span>
+          <input type="number" class="custom-amt w-full pl-6 pr-2 py-2 bg-white border border-line rounded-lg text-sm tabular-nums font-semibold outline-none focus:border-primary"
+                 step="0.01" min="0" placeholder="0.00" value="${prefillAmt}" />
+        </div>
+        <button type="button" class="remove-custom p-1.5 text-muted hover:text-red-600 rounded-lg hover:bg-red-50" title="Remove">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      `;
+      wrap.appendChild(row);
+      row.querySelector('.custom-enable').addEventListener('change', recalcFees);
+      row.querySelector('.custom-amt').addEventListener('input', recalcFees);
+      row.querySelector('.custom-label').addEventListener('input', recalcFees);
+      row.querySelector('.remove-custom').addEventListener('click', () => {
+        row.remove();
+        recalcFees();
+      });
+      row.querySelector('.custom-label').focus();
+      recalcFees();
+    }
+
+    document.getElementById('add-custom-btn')?.addEventListener('click', () => addCustomRow());
+    document.querySelectorAll('.fee-cb').forEach(cb => cb.addEventListener('change', recalcFees));
+    recalcFees();
+  </script>
+</body>
+</html>

@@ -100,7 +100,7 @@ def notify(*, recipient, channel, subject='', message, reference='', url='',
                 'Unknown notification channel %r — log kept QUEUED.', channel
             )
             return log
-    except Exception as exc:
+    except (ConnectionError, OSError, ValueError) as exc:
         log.status = NotificationLog.Status.FAILED
         log.error_message = str(exc)
         log.save(update_fields=['status', 'error_message'])

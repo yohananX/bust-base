@@ -208,13 +208,10 @@ def _notify_primary_guardian(student, term, invoice):
     notify(
         recipient=guardian_link.guardian,
         channel='EMAIL',
-        subject='New invoice for {first} {last}'.format(
-            first=student.user.first_name,
-            last=student.user.last_name,
-        ),
+        subject=f"New invoice for {student.user.first_name} {student.user.last_name}",
         message=(
-            'A new invoice for {term} has been generated. '
-            'Amount: NGN{amount}'
-        ).format(term=term.name, amount=invoice.total_amount),
-        reference='invoice:{}'.format(invoice.id),
+            f'A new invoice for {term.name} has been generated. '
+            f'Amount: NGN{invoice.total_amount}'
+        ),
+        reference=f'invoice:{invoice.id}',
     )

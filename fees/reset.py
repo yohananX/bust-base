@@ -14,128 +14,117 @@ from django.db.models import Count
 from .models import Invoice, InvoiceLineItem, Payment, PaymentLineItem, FeeReceipt, InvoiceResetLog
 
 
+def _delete_with_log(*, school, scope_type, scope_id, scope_name, invoices_qs, payments_qs, user=None, reason=''):
+    """Common delete + audit-log path for invoice resets.
+
+    Counts line items and receipts before deletion, writes an
+    ``InvoiceResetLog``, then deletes in dependency order:
+    ``PaymentLineItem`` → ``Payment`` → ``InvoiceLineItem`` → ``Invoice``.
+    """
+    invoice_ids = list(invoices_qs.values_list('pk', flat=True))
+    payment_ids = list(payments_qs.values_list('pk', flat=True))
+
+    line_items_count = InvoiceLineItem.objects.filter(invoice__in=invoice_ids).count()
+    receipts_count = FeeReceipt.objects.filter(payment__in=payment_ids).count()
+
+    log = InvoiceResetLog.objects.create(
+        school=school,
+        scope_type=scope_type,
+        scope_id=scope_id,
+        scope_name=scope_name,
+        reset_by=user,
+        reason=reason,
+        invoices_deleted=invoices_qs.count(),
+        payments_deleted=payments_qs.count(),
+        line_items_deleted=line_items_count,
+        receipts_deleted=receipts_count,
+    )
+
+    with transaction.atomic():
+        PaymentLineItem.objects.filter(payment__in=payment_ids).delete()
+        payments_qs.delete()
+        InvoiceLineItem.objects.filter(invoice__in=invoice_ids).delete()
+        invoices_qs.delete()
+
+    return log
+
+
 class InvoiceResetService:
     @staticmethod
     def reset_term(school, term, user=None, reason=''):
         """Delete all invoices, payments, line items, receipts for a term."""
-        with transaction.atomic():
-            invoices = Invoice.objects.filter(school=school, term=term)
-            invoice_ids = list(invoices.values_list('pk', flat=True))
-            payments = Payment.objects.filter(school=school, invoice__term=term)
-            payment_ids = list(payments.values_list('pk', flat=True))
-
-            line_items_count = InvoiceLineItem.objects.filter(invoice__in=invoice_ids).count()
-            receipts_count = FeeReceipt.objects.filter(payment__in=payment_ids).count()
-
-            log = InvoiceResetLog.objects.create(
-                school=school,
-                scope_type=InvoiceResetLog.ResetScope.TERM,
-                scope_id=term.pk,
-                scope_name=str(term),
-                reset_by=user,
-                reason=reason,
-                invoices_deleted=invoices.count(),
-                payments_deleted=payments.count(),
-                line_items_deleted=line_items_count,
-                receipts_deleted=receipts_count,
-            )
-
-            PaymentLineItem.objects.filter(payment__in=payment_ids).delete()
-            payments.delete()
-            InvoiceLineItem.objects.filter(invoice__in=invoice_ids).delete()
-            invoices.delete()
-
-            return log
+        invoices = Invoice.objects.filter(school=school, term=term)
+        payments = Payment.objects.filter(school=school, invoice__term=term)
+        return _delete_with_log(
+            school=school,
+            scope_type=InvoiceResetLog.ResetScope.TERM,
+            scope_id=term.pk,
+            scope_name=str(term),
+            invoices_qs=invoices,
+            payments_qs=payments,
+            user=user,
+            reason=reason,
+        )
 
     @staticmethod
     def reset_class(school, school_class, term, user=None, reason=''):
         """Delete invoices for students currently enrolled in a class for a term."""
         from students.models import ClassEnrollment
 
-        with transaction.atomic():
-            enrollments = ClassEnrollment.objects.filter(
-                school=school,
-                session=term.session,
-                school_class=school_class,
-                is_current=True,
-            ).select_related('student')
-            student_ids = [e.student_id for e in enrollments]
+        enrollments = ClassEnrollment.objects.filter(
+            school=school,
+            session=term.session,
+            school_class=school_class,
+            is_current=True,
+        ).select_related('student')
+        student_ids = [e.student_id for e in enrollments]
 
-            invoices = Invoice.objects.filter(
-                school=school,
-                term=term,
-                student_id__in=student_ids,
-            )
-            invoice_ids = list(invoices.values_list('pk', flat=True))
-            payments = Payment.objects.filter(school=school, invoice__term=term, invoice__student_id__in=student_ids)
-            payment_ids = list(payments.values_list('pk', flat=True))
-
-            line_items_count = InvoiceLineItem.objects.filter(invoice__in=invoice_ids).count()
-            receipts_count = FeeReceipt.objects.filter(payment__in=payment_ids).count()
-
-            log = InvoiceResetLog.objects.create(
-                school=school,
-                scope_type=InvoiceResetLog.ResetScope.CLASS,
-                scope_id=school_class.pk,
-                scope_name=str(school_class),
-                reset_by=user,
-                reason=reason,
-                invoices_deleted=invoices.count(),
-                payments_deleted=payments.count(),
-                line_items_deleted=line_items_count,
-                receipts_deleted=receipts_count,
-            )
-
-            PaymentLineItem.objects.filter(payment__in=payment_ids).delete()
-            payments.delete()
-            InvoiceLineItem.objects.filter(invoice__in=invoice_ids).delete()
-            invoices.delete()
-
-            return log
+        invoices = Invoice.objects.filter(
+            school=school,
+            term=term,
+            student_id__in=student_ids,
+        )
+        payments = Payment.objects.filter(school=school, invoice__term=term, invoice__student_id__in=student_ids)
+        return _delete_with_log(
+            school=school,
+            scope_type=InvoiceResetLog.ResetScope.CLASS,
+            scope_id=school_class.pk,
+            scope_name=str(school_class),
+            invoices_qs=invoices,
+            payments_qs=payments,
+            user=user,
+            reason=reason,
+        )
 
     @staticmethod
     def reset_student(school, student, term, user=None, reason=''):
         """Reset a single student's invoice for a term."""
-        with transaction.atomic():
-            invoice = Invoice.objects.filter(school=school, student=student, term=term).first()
-            if invoice is None:
-                return InvoiceResetLog.objects.create(
-                    school=school,
-                    scope_type=InvoiceResetLog.ResetScope.STUDENT,
-                    scope_id=student.pk,
-                    scope_name=str(student),
-                    reset_by=user,
-                    reason=reason,
-                    invoices_deleted=0,
-                    payments_deleted=0,
-                    line_items_deleted=0,
-                    receipts_deleted=0,
-                )
-
-            payments = Payment.objects.filter(school=school, invoice=invoice)
-            payment_ids = list(payments.values_list('pk', flat=True))
-            line_items_count = invoice.line_items.count()
-            receipts_count = FeeReceipt.objects.filter(payment__in=payment_ids).count()
-
-            log = InvoiceResetLog.objects.create(
+        invoice = Invoice.objects.filter(school=school, student=student, term=term).first()
+        if invoice is None:
+            return InvoiceResetLog.objects.create(
                 school=school,
                 scope_type=InvoiceResetLog.ResetScope.STUDENT,
                 scope_id=student.pk,
                 scope_name=str(student),
                 reset_by=user,
                 reason=reason,
-                invoices_deleted=1,
-                payments_deleted=payments.count(),
-                line_items_deleted=line_items_count,
-                receipts_deleted=receipts_count,
+                invoices_deleted=0,
+                payments_deleted=0,
+                line_items_deleted=0,
+                receipts_deleted=0,
             )
 
-            PaymentLineItem.objects.filter(payment__in=payment_ids).delete()
-            payments.delete()
-            invoice.line_items.all().delete()
-            invoice.delete()
-
-            return log
+        payments = Payment.objects.filter(school=school, invoice=invoice)
+        return _delete_with_log(
+            school=school,
+            scope_type=InvoiceResetLog.ResetScope.STUDENT,
+            scope_id=student.pk,
+            scope_name=str(student),
+            invoices_qs=Invoice.objects.filter(pk=invoice.pk),
+            payments_qs=payments,
+            user=user,
+            reason=reason,
+        )
 
     @staticmethod
     def reset_school(school, user=None, reason='', force=False):
@@ -146,31 +135,15 @@ class InvoiceResetService:
         if not force:
             raise ValueError('force=True is required for school-wide resets.')
 
-        with transaction.atomic():
-            invoices = Invoice.objects.filter(school=school)
-            invoice_ids = list(invoices.values_list('pk', flat=True))
-            payments = Payment.objects.filter(school=school)
-            payment_ids = list(payments.values_list('pk', flat=True))
-
-            line_items_count = InvoiceLineItem.objects.filter(invoice__in=invoice_ids).count()
-            receipts_count = FeeReceipt.objects.filter(payment__in=payment_ids).count()
-
-            log = InvoiceResetLog.objects.create(
-                school=school,
-                scope_type=InvoiceResetLog.ResetScope.SCHOOL,
-                scope_id=school.pk,
-                scope_name=school.name,
-                reset_by=user,
-                reason=reason,
-                invoices_deleted=invoices.count(),
-                payments_deleted=payments.count(),
-                line_items_deleted=line_items_count,
-                receipts_deleted=receipts_count,
-            )
-
-            PaymentLineItem.objects.filter(payment__in=payment_ids).delete()
-            payments.delete()
-            InvoiceLineItem.objects.filter(invoice__in=invoice_ids).delete()
-            invoices.delete()
-
-            return log
+        invoices = Invoice.objects.filter(school=school)
+        payments = Payment.objects.filter(school=school)
+        return _delete_with_log(
+            school=school,
+            scope_type=InvoiceResetLog.ResetScope.SCHOOL,
+            scope_id=school.pk,
+            scope_name=school.name,
+            invoices_qs=invoices,
+            payments_qs=payments,
+            user=user,
+            reason=reason,
+        )

@@ -45,6 +45,7 @@ class BaseTest(TestCase):
         )
         ClassSubject.objects.create(
             school=self.school, subject=self.subject, school_class=self.school_class,
+            pass_mark=40,
         )
         self.student_profile = StudentProfile.objects.create(
             school=self.school, user=self.student_user,
@@ -80,7 +81,7 @@ class SubjectModelTests(TestCase):
         )
 
     def test_subject_creation(self):
-        """Subject should be created with correct default pass_mark."""
+        """Subject should be created with name and code."""
         subject = Subject.objects.create(
             school=self.school,
             name="Mathematics",
@@ -91,7 +92,6 @@ class SubjectModelTests(TestCase):
         )
         self.assertEqual(subject.name, "Mathematics")
         self.assertEqual(subject.code, "MTH")
-        self.assertEqual(subject.pass_mark, 40)
 
     def test_subject_unique_code_per_school(self):
         """Same school cannot have two subjects with the same code.
@@ -490,6 +490,44 @@ class ScoreModelTests(BaseTest):
         score_b = Score.objects.for_school(school2).first()
         self.assertNotEqual(score_a.pk, score_b.pk)
         self.assertNotEqual(score_a.total_score, score_b.total_score)
+
+    def test_score_passed_uses_class_specific_pass_mark(self):
+        """Score.passed should use ClassSubject override when set."""
+        self.subject.pass_mark = 40
+        self.subject.save()
+        ClassSubject.objects.filter(
+            subject=self.subject, school_class=self.school_class
+        ).update(pass_mark=50)
+
+        score = Score.objects.create(
+            school=self.school,
+            student=self.student_profile,
+            subject=self.subject,
+            term=self.term,
+            test_1=8, test_2=7, test_3=9, exam_score=60,
+            entered_by=self.teacher_user,
+        )
+        self.assertEqual(score.total_score, 84)
+        self.assertTrue(score.passed)
+
+    def test_score_passed_falls_back_to_subject_default(self):
+        """Score.passed should use Subject default when ClassSubject override is None."""
+        self.subject.pass_mark = 40
+        self.subject.save()
+        ClassSubject.objects.filter(
+            subject=self.subject, school_class=self.school_class
+        ).update(pass_mark=None)
+
+        score = Score.objects.create(
+            school=self.school,
+            student=self.student_profile,
+            subject=self.subject,
+            term=self.term,
+            test_1=8, test_2=7, test_3=9, exam_score=10,
+            entered_by=self.teacher_user,
+        )
+        self.assertEqual(score.total_score, 34)
+        self.assertFalse(score.passed)
 
 
 # ---------------------------------------------------------------------------

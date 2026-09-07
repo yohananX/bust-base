@@ -25,7 +25,7 @@ from fees.models import (
     FeeStructure, FeePrice, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
     InvoiceResetLog, FeeValidationError,
 )
-from fees.validation import InvoiceIntegrityValidator, FeeStructureValidator
+from fees.validation import InvoiceIntegrityValidator
 from fees.reset import InvoiceResetService
 from fees.generation import generate_invoice_for_student, sync_class_invoices, effective_fee_structures
 from fees.checkout import get_checkout_options
@@ -286,12 +286,6 @@ class ValidationServiceTest(BasePaymentManagementTest):
         errors = InvoiceIntegrityValidator.validate_compulsory_coverage(invoice)
         # sports is optional, so no missing compulsory
         self.assertEqual(len(errors), 0)
-
-    def test_validate_structure_negative_amount(self):
-        self.skipTest('FeeStructureValidator is deprecated no-op shim in Phase 5.')
-
-    def test_validate_structure_duplicate(self):
-        self.skipTest('FeeStructureValidator is deprecated no-op shim in Phase 5.')
 
 
 # ─── Reset Service Tests ────────────────────────────────────────────────────

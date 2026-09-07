@@ -82,10 +82,11 @@
   {# Add Guardian form #}
   <form method="post" action="{% url 'school_admin:student_add_guardian' student.pk %}" enctype="multipart/form-data" id="add-guardian-form" class="hidden bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
     {% csrf_token %}
+    <div class="guardian-entry relative space-y-4">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
+      <div class="relative">
         <label class="block text-sm font-medium text-ink-muted mb-1.5">First Name <span class="text-danger">*</span></label>
-        <input type="text" name="guardian_first_name" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+       <input type="text" name="guardian_first_name" required class="guardian-name w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all" autocomplete="off">
       </div>
       <div>
         <label class="block text-sm font-medium text-ink-muted mb-1.5">Last Name <span class="text-danger">*</span></label>
@@ -135,6 +136,7 @@
         <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i>Save Guardian
       </button>
       <button type="button" id="cancel-guardian-form" class="text-sm font-medium text-ink-muted hover:text-ink transition-colors">Cancel</button>
+    </div>
     </div>
   </form>
 

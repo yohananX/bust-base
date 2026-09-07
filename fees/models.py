@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from core.models import TenantScopedModel
+from core.utils import money_status
 from fees.validators import validate_proof_file
 
 
@@ -131,14 +132,6 @@ class FeeCategory(TenantScopedModel):
 
 
 class FeePrice(TenantScopedModel):
-    SCOPE_SCHOOL_WIDE = 'SCHOOL_WIDE'
-    SCOPE_LEVEL = 'LEVEL'
-    SCOPE_CLASS = 'CLASS'
-    SCOPE_CHOICES = [
-        (SCOPE_SCHOOL_WIDE, _('School-wide')),
-        (SCOPE_LEVEL, _('Level/Grade')),
-        (SCOPE_CLASS, _('Class-specific')),
-    ]
     SCOPE_SCHOOL_WIDE = 'SCHOOL_WIDE'
     SCOPE_LEVEL = 'LEVEL'
     SCOPE_CLASS = 'CLASS'
@@ -425,11 +418,7 @@ class Invoice(TenantScopedModel):
     @property
     def status(self) -> str:
         """One of PAID / PARTIAL / UNPAID based on the confirmed balance."""
-        if self.balance <= 0:
-            return 'PAID'
-        elif self.amount_paid > 0:
-            return 'PARTIAL'
-        return 'UNPAID'
+        return money_status(self.amount_paid, self.total_amount)
 
     @classmethod
     def owes_for_term(cls, student, term) -> bool:
@@ -610,6 +599,7 @@ class Payment(TenantScopedModel):
         verbose_name=_('confirmed by'),
     )
     confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name=_('confirmed at'))
+    verify_attempted = models.BooleanField(default=False, verbose_name=_('verify attempted'))
 
     class Meta:
         verbose_name = _('payment')

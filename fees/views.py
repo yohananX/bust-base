@@ -13,10 +13,19 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.views.generic.base import View
 
-from .checkout import reconcile_checkout, current_term, get_selected_items
+from .checkout import reconcile_checkout, current_term
 from .models import Invoice, Payment, PaymentLineItem, InvoiceLineItem, FeePrice
 from .pricing import resolve_prices, resolve_price_for_student
 from .paystack import initiate_payment as paystack_initiate
+from .visibility import (
+    ONBOARDING_TOTAL_CATEGORIES,
+    RETURNING_HIDDEN_CATEGORIES,
+    CHRISTMAS_FEE,
+    is_category_visible,
+    is_default_checked,
+    is_onboarding_total,
+    is_onboarding_total_by_name,
+)
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from students.models import Student, StudentGuardianLink, ClassEnrollment
@@ -24,7 +33,24 @@ from core.models import Term
 
 # process-local guard so the htmx poll hits Paystack's verify endpoint at most
 # once per payment instead of every 2 seconds.
-_verify_attempted_ids = set()
+# _verify_attempted_ids = set()  # Removed: now using Payment.verify_attempted field (F-13)
+
+
+def _check_student_access(user, student, *, default_redirect='parent-pay'):
+    """Return a redirect name when access is denied, or None when allowed.
+
+    ADMIN is always allowed. PARENT must have an active guardian link.
+    STUDENT must be the student themselves.
+    """
+    if user.role == Roles.ADMIN:
+        return None
+    if student is None:
+        return default_redirect
+    if user.role == Roles.STUDENT and student.user_id != user.pk:
+        return 'student-pay'
+    if user.role == Roles.PARENT and not student.guardian_links.filter(guardian=user).exists():
+        return 'parent-pay'
+    return None
 
 
 @login_required
@@ -35,13 +61,8 @@ def invoice_detail(request, invoice_id):
 
     # Permission check
     user = request.user
-    if user.role == 'STUDENT':
-        if invoice.student.user != user:
-            return JsonResponse({'error': 'Forbidden'}, status=403)
-    elif user.role == 'PARENT':
-        if not invoice.student.guardian_links.filter(guardian=user).exists():
-            return JsonResponse({'error': 'Forbidden'}, status=403)
-    elif user.role != 'ADMIN':
+    redirect_name = _check_student_access(user, invoice.student)
+    if redirect_name:
         return JsonResponse({'error': 'Forbidden'}, status=403)
 
     line_items = invoice.line_items.all().values('category__name', 'amount')
@@ -68,13 +89,8 @@ def make_payment(request, invoice_id):
     invoice = get_object_or_404(Invoice, pk=invoice_id)
 
     user = request.user
-    if user.role == 'STUDENT':
-        if invoice.student.user != user:
-            return JsonResponse({'error': 'Forbidden'}, status=403)
-    elif user.role == 'PARENT':
-        if not invoice.student.guardian_links.filter(guardian=user).exists():
-            return JsonResponse({'error': 'Forbidden'}, status=403)
-    elif user.role != 'ADMIN':
+    redirect_name = _check_student_access(user, invoice.student)
+    if redirect_name:
         return JsonResponse({'error': 'Forbidden'}, status=403)
 
     if invoice.balance <= 0:
@@ -102,14 +118,9 @@ def invoice_status_partial(request, invoice_id):
     invoice = get_object_or_404(Invoice, pk=invoice_id, school=request.school)
     user = request.user
 
-    # Permission check — same pattern as invoice_detail
-    if user.role == 'STUDENT':
-        if invoice.student.user != user:
-            return HttpResponseForbidden()
-    elif user.role == 'PARENT':
-        if not invoice.student.guardian_links.filter(guardian=user).exists():
-            return HttpResponseForbidden()
-    elif user.role != 'ADMIN':
+    # Permission check
+    redirect_name = _check_student_access(user, invoice.student)
+    if redirect_name:
         return HttpResponseForbidden()
 
     return render(request, 'fees/partials/invoice_status.html', {
@@ -161,15 +172,10 @@ class InitiatePaymentView(RoleRequiredMixin, View):
         if invoice_id is not None:
             invoice = get_object_or_404(Invoice, pk=invoice_id, school=request.school)
 
-            # Guardian scope check
-            if role == Roles.PARENT:
-                if not invoice.student.guardian_links.filter(guardian=request.user).exists():
-                    messages.error(request, 'You are not authorized to pay this invoice.')
-                    return redirect(back_url)
-            elif role == Roles.STUDENT:
-                if invoice.student.user != request.user:
-                    messages.error(request, 'You are not authorized to pay this invoice.')
-                    return redirect(back_url)
+            redirect_name = _check_student_access(request.user, invoice.student, default_redirect=back_url)
+            if redirect_name:
+                messages.error(request, 'You are not authorized to pay this invoice.')
+                return redirect(redirect_name)
 
             if invoice.balance <= 0:
                 messages.info(request, 'This invoice is already fully paid.')
@@ -204,16 +210,10 @@ class InitiatePaymentView(RoleRequiredMixin, View):
 
             student = get_object_or_404(Student, pk=student_id, school=request.school)
 
-            if role == Roles.PARENT:
-                if not StudentGuardianLink.objects.filter(
-                    guardian=request.user, student=student,
-                ).exists():
-                    messages.error(request, 'You are not authorized to pay for this student.')
-                    return redirect(back_url)
-            elif role == Roles.STUDENT:
-                if student.user != request.user:
-                    messages.error(request, 'You are not authorized to pay for this student.')
-                    return redirect(back_url)
+            redirect_name = _check_student_access(request.user, student, default_redirect=back_url)
+            if redirect_name:
+                messages.error(request, 'You are not authorized to pay for this student.')
+                return redirect(redirect_name)
 
             try:
                 amount = Decimal(str(params.get('amount') or '0'))
@@ -289,16 +289,10 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
 
         student = get_object_or_404(Student, pk=student_id, school=request.school)
 
-        if role == Roles.PARENT:
-            if not StudentGuardianLink.objects.filter(
-                guardian=request.user, student=student,
-            ).exists():
-                messages.error(request, 'You are not authorized to pay for this student.')
-                return redirect(back_url)
-        elif role == Roles.STUDENT:
-            if student.user != request.user:
-                messages.error(request, 'You are not authorized to pay for this student.')
-                return redirect(back_url)
+        redirect_name = _check_student_access(request.user, student, default_redirect=back_url)
+        if redirect_name:
+            messages.error(request, 'You are not authorized to pay for this student.')
+            return redirect(redirect_name)
 
         term = current_term(request.school)
         if term is None:
@@ -361,7 +355,7 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
                         paid_by_relation=paid_by_relation,
                     )
                     payments.append(payment)
-                selected_items = get_selected_items(student, term, selected_keys)
+                selected_items = result.selected_items
                 self._create_payment_line_items(payments, selected_items)
             from notifications.utils import notify_admins
             notify_admins(
@@ -419,7 +413,7 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
                     recorded_by=None,
                     description='Fee checkout',
                 )
-                selected_items = get_selected_items(student, term, selected_keys)
+                selected_items = result.selected_items
                 self._create_payment_line_items(
                     [first_payment, second_payment], selected_items,
                 )
@@ -469,7 +463,7 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
             reference=result_init['reference'], school=student.school,
         ).first()
         if payment is not None:
-            selected_items = get_selected_items(student, term, selected_keys)
+            selected_items = result.selected_items
             self._create_payment_line_items([payment], selected_items)
         return redirect(result_init['authorization_url'])
 
@@ -521,15 +515,9 @@ class CheckoutContinueView(RoleRequiredMixin, View):
         if student is None and payment.invoice is not None:
             student = payment.invoice.student
 
-        role = request.user.role
-        if role == Roles.PARENT:
-            if student is not None and not student.guardian_links.filter(
-                guardian=request.user,
-            ).exists():
-                return redirect(back_url)
-        elif role == Roles.STUDENT:
-            if student is None or student.user != request.user:
-                return redirect(back_url)
+        redirect_name = _check_student_access(request.user, student, default_redirect=back_url)
+        if redirect_name:
+            return redirect(redirect_name)
 
         if (
             payment.status != Payment.Status.PENDING
@@ -571,10 +559,9 @@ class PaymentReturnView(RoleRequiredMixin, View):
         if invoice_id:
             invoice = get_object_or_404(Invoice, pk=invoice_id, school=request.school)
 
-            # Guardian scope check
-            if request.user.role == Roles.PARENT:
-                if not invoice.student.guardian_links.filter(guardian=request.user).exists():
-                    return redirect('parent-pay')
+            redirect_name = _check_student_access(request.user, invoice.student, default_redirect='parent-pay')
+            if redirect_name:
+                return redirect(redirect_name)
 
         payment = None
         if reference:
@@ -624,9 +611,9 @@ class PaymentStatusPartialView(RoleRequiredMixin, View):
             payment.status == Payment.Status.PENDING
             and payment.initiated_at is not None
             and timezone.now() - payment.initiated_at >= timedelta(seconds=5)
-            and payment.id not in _verify_attempted_ids
+            and not payment.verify_attempted
         ):
-            _verify_attempted_ids.add(payment.id)
+            Payment.objects.filter(pk=payment.pk).update(verify_attempted=True)
             from fees.paystack import verify_transaction, confirm_payment_from_verify
             result = verify_transaction(reference)
             if 'error' not in result:
@@ -696,14 +683,10 @@ class VerifyPaymentView(RoleRequiredMixin, View):
         elif payment.student is not None:
             student = payment.student
 
-        # Scope check — same role rules as the receipt resolver
         if student is not None:
-            if request.user.role == Roles.PARENT:
-                if not student.guardian_links.filter(guardian=request.user).exists():
-                    return redirect('parent-pay')
-            elif request.user.role == Roles.STUDENT:
-                if student.user != request.user:
-                    return redirect('student-pay')
+            redirect_name = _check_student_access(request.user, student, default_redirect='parent-pay')
+            if redirect_name:
+                return redirect(redirect_name)
 
         # Split checkout support: surface the latest sibling PENDING Paystack
         # row so the return page can offer to continue paying it.
@@ -775,17 +758,16 @@ def _resolve_receipt_payment(request, payment_id):
         student = payment.invoice.student
 
     role = request.user.role
-    if role == Roles.PARENT:
-        if student is not None and not student.guardian_links.filter(
-            guardian=request.user,
-        ).exists():
-            return None, 'parent-pay'
-    elif role == Roles.STUDENT:
-        if student is not None and student.user != request.user:
-            return None, 'student-pay'
-    # ADMIN passes without extra checks.
+    redirect_name = _check_student_access(request.user, student, default_redirect='parent-pay')
+    if redirect_name:
+        return None, redirect_name
 
     if payment.status != Payment.Status.CONFIRMED:
+        if role == Roles.PARENT:
+            return None, 'parent-pay'
+        if role == Roles.STUDENT:
+            return None, 'student-pay'
+        return None, 'school_admin:invoice_list'
         if role == Roles.PARENT:
             return None, 'parent-pay'
         if role == Roles.STUDENT:
@@ -1023,15 +1005,6 @@ def student_line_items_api(request, student_id):
         ).values_list('category_id', flat=True).distinct()
     )
 
-    ONBOARDING_TOTAL_CATEGORIES = {
-        'Tuition Fee', 'Registration Form', 'Uniforms', 'PTA',
-        'File Jacket', 'Maintenance', 'Examination Fee',
-    }
-    RETURNING_HIDDEN_CATEGORIES = {
-        'Registration Form', 'PTA', 'File Jacket', 'Maintenance', 'Examination Fee',
-    }
-    CHRISTMAS_FEE = 'Christmas/End of Term Party Fee'
-
     is_first_term_of_session = Term.objects.filter(
         school=student.school, session=session,
     ).order_by('start_date').first()
@@ -1051,7 +1024,7 @@ def student_line_items_api(request, student_id):
         is_one_time = cat.billing_cycle == 'ONE_TIME'
         already_paid = cat.id in paid_one_time_ids and is_one_time
 
-        if student_type == 'RETURNING' and cat.name in RETURNING_HIDDEN_CATEGORIES:
+        if not is_category_visible(cat, student_type, term, student.school):
             continue
 
         if cat.name == CHRISTMAS_FEE and not christmas_visible:
@@ -1065,16 +1038,10 @@ def student_line_items_api(request, student_id):
                 category=cat,
                 term=term,
             ) or price.amount
-        except Exception:
+        except (InvoiceLineItem.DoesNotExist, ValueError, InvalidOperation):
             amount = price.amount
 
-        default_checked = False
-        if student_type == 'NEW':
-            if cat.name in ONBOARDING_TOTAL_CATEGORIES:
-                default_checked = not already_paid
-        else:
-            if cat.name == 'Tuition Fee':
-                default_checked = not already_paid
+        default_checked = is_default_checked(cat, student_type, already_paid)
 
         item_id = f'price:{price.pk}'
         items.append({
@@ -1096,7 +1063,7 @@ def student_line_items_api(request, student_id):
         seen_category_ids.add(cat.id)
         if default_checked and not already_paid:
             selectable_total += amount
-        if cat.name in ONBOARDING_TOTAL_CATEGORIES and not already_paid:
+        if is_onboarding_total(cat) and not already_paid:
             onboarding_item_ids.append(item_id)
         if cat.name == CHRISTMAS_FEE:
             christmas_item_id = item_id
@@ -1140,9 +1107,9 @@ def student_line_items_api(request, student_id):
                 'id': 'total:full_package',
                 'label': f'Total — Full Package (NGN {onboarding_sum:,.2f})',
                 'amount': str(onboarding_sum),
-                'child_ids': [it['id'] for it in items
-                              if it['category_name'] in ONBOARDING_TOTAL_CATEGORIES
-                              and not it.get('disabled')],
+                    'child_ids': [it['id'] for it in items
+                                  if is_onboarding_total_by_name(it['category_name'])
+                                  and not it.get('disabled')],
             }
 
     payload = {

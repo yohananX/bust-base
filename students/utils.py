@@ -100,6 +100,8 @@ def find_or_create_parent(school, name, email='', phone='', relationship='GUARDI
     1. email (case-insensitive)
     2. phone (exact)
     3. first_name + last_name (case-insensitive)
+
+    Returns tuple of ``(parent_user, was_created)``.
     """
     from accounts.models import User, Roles
     from students.models import StudentGuardianLink
@@ -108,22 +110,29 @@ def find_or_create_parent(school, name, email='', phone='', relationship='GUARDI
     first, middle, last = parse_full_name(strip_honorific(name))
 
     parent = None
+    matched_by = None
 
     if email:
         parent = User.objects.filter(
             school=school, role=Roles.PARENT, email__iexact=email.strip()
         ).first()
+        if parent:
+            matched_by = 'email'
 
     if parent is None and phone:
         parent = User.objects.filter(
             school=school, role=Roles.PARENT, phone_number__iexact=phone.strip()
         ).first()
+        if parent:
+            matched_by = 'phone'
 
     if parent is None and first:
         parent = User.objects.filter(
             school=school, role=Roles.PARENT,
             first_name__iexact=first, last_name__iexact=last,
         ).first()
+        if parent:
+            matched_by = 'name'
 
     if parent is None:
         from accounts.utils import generate_username
@@ -144,5 +153,99 @@ def find_or_create_parent(school, name, email='', phone='', relationship='GUARDI
             phone_number=phone.strip(),
             must_change_password=True,
         )
+        matched_by = 'created'
 
-    return parent
+    return parent, matched_by == 'created'
+
+
+def validate_guardian_form(post_data):
+    """Check for duplicate guardian entries in form POST data.
+
+    Returns a list of error messages. An empty list means no duplicates.
+    """
+    guardian_rows = []
+    guardian_index = 0
+    while True:
+        name = post_data.get(f'guardian_{guardian_index}_name', '').strip()
+        email = post_data.get(f'guardian_{guardian_index}_email', '').strip()
+        phone = post_data.get(f'guardian_{guardian_index}_phone', '').strip()
+        if not name and not email and not phone:
+            break
+        guardian_rows.append({
+            'name': name,
+            'email': email,
+            'phone': phone,
+            'index': guardian_index,
+        })
+        guardian_index += 1
+
+    form_errors = []
+    for i, row in enumerate(guardian_rows):
+        for j, other in enumerate(guardian_rows[:i]):
+            if (
+                (row['email'] and other['email'] and row['email'] == other['email']) or
+                (row['phone'] and other['phone'] and row['phone'] == other['phone']) or
+                (row['name'] and other['name'] and row['name'].lower() == other['name'].lower())
+            ):
+                form_errors.append(
+                    f"Guardian {row['index'] + 1} appears to duplicate guardian {other['index'] + 1}."
+                )
+
+    return form_errors
+
+
+def create_guardians_from_form(student, school, post_data):
+    """Create guardian links from form POST data.
+
+    Reads guardian_0_name/email/phone/relationship/occupation/address/
+    authorized_pickup_person, guardian_1_*, etc. until a row with all three
+    core fields empty is encountered. The first guardian is marked as
+    primary contact.
+
+    Returns tuple of ``(created_links, warnings)`` where ``warnings`` is a
+    list of human-readable strings describing when an existing guardian was
+    reused instead of creating a new one.
+    """
+    from students.models import StudentGuardianLink
+
+    created = []
+    warnings = []
+    guardian_index = 0
+    while True:
+        name = post_data.get(f'guardian_{guardian_index}_name', '').strip()
+        email = post_data.get(f'guardian_{guardian_index}_email', '').strip()
+        phone = post_data.get(f'guardian_{guardian_index}_phone', '').strip()
+        relationship = post_data.get(f'guardian_{guardian_index}_relationship', 'GUARDIAN')
+        occupation = post_data.get(f'guardian_{guardian_index}_occupation', '').strip()
+        address = post_data.get(f'guardian_{guardian_index}_address', '').strip()
+        authorized_pickup_person = post_data.get(f'guardian_{guardian_index}_authorized_pickup_person', '').strip()
+
+        if not name and not email and not phone:
+            break
+
+        if name:
+            parent_user, was_reused = find_or_create_parent(
+                school, name, email=email, phone=phone, relationship=relationship
+            )
+            if not was_reused:
+                warnings.append(
+                    f"New guardian account created for {parent_user.get_full_name() or parent_user.username}."
+                )
+            else:
+                warnings.append(
+                    f"Reused existing guardian: {parent_user.get_full_name() or parent_user.username} ({email or phone or 'name match'})."
+                )
+            created.append(StudentGuardianLink.objects.create(
+                school=school,
+                student=student,
+                guardian=parent_user,
+                relationship=relationship,
+                is_primary_contact=(guardian_index == 0),
+                occupation=occupation,
+                address=address,
+                authorized_pickup_person=authorized_pickup_person,
+            ))
+
+        guardian_index += 1
+
+    return created, warnings

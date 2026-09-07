@@ -64,41 +64,54 @@ def _mark_active(items, path):
         item['active'] = item is winner
 
 
-def _badge_counts(request, role):
-    """Small per-role live counts for sidebar badges (0 = no badge)."""
-    school = getattr(request, 'school', None)
-    if not school:
-        return {}
-    badges = {}
-
+def _admin_badges(school):
+    """Badge counts for ADMIN role."""
     from core.stats import (
         outstanding_invoices,
         pending_score_review_count,
         pending_transfer_count,
     )
 
-    if role == Roles.ADMIN:
-        badges['/school-admin/results/review/'] = pending_score_review_count(school)
-        invoices = outstanding_invoices(school)
-        badges['/school-admin/invoices/'] = sum(
-            1 for inv in invoices if inv.balance_annotated > 0
-        )
-        badges['/school-admin/fees/pending/'] = pending_transfer_count(school)
-    elif role == Roles.PARENT:
-        from students.models import StudentGuardianLink
-        from fees.models import Invoice
-        from fees.selectors import invoices_with_balance
-        student_ids = StudentGuardianLink.objects.filter(
-            guardian=request.user,
-        ).values_list('student_id', flat=True)
-        invoices = invoices_with_balance(
-            Invoice.objects.filter(student_id__in=student_ids)
-        )
-        badges['/parent/invoices/'] = sum(
-            1 for inv in invoices if inv.balance_annotated > 0
-        )
-
+    badges = {}
+    badges['/school-admin/results/review/'] = pending_score_review_count(school)
+    invoices = outstanding_invoices(school)
+    badges['/school-admin/invoices/'] = sum(
+        1 for inv in invoices if inv.balance_annotated > 0
+    )
+    badges['/school-admin/fees/pending/'] = pending_transfer_count(school)
     return badges
+
+
+def _parent_badges(user):
+    """Badge counts for PARENT role."""
+    from students.models import StudentGuardianLink
+    from fees.models import Invoice
+    from fees.selectors import invoices_with_balance
+
+    student_ids = StudentGuardianLink.objects.filter(
+        guardian=user,
+    ).values_list('student_id', flat=True)
+    invoices = invoices_with_balance(
+        Invoice.objects.filter(student_id__in=student_ids)
+    )
+    return {
+        '/parent/invoices/': sum(
+            1 for inv in invoices if inv.balance_annotated > 0
+        ),
+    }
+
+
+def _badge_counts(request, role):
+    """Small per-role live counts for sidebar badges (0 = no badge)."""
+    school = getattr(request, 'school', None)
+    if not school:
+        return {}
+
+    if role == Roles.ADMIN:
+        return _admin_badges(school)
+    if role == Roles.PARENT:
+        return _parent_badges(request.user)
+    return {}
 
 
 SECTION_ICONS = {

@@ -1,6 +1,7 @@
 """Tests for the School Admin portal views."""
 from datetime import date
 
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -9,7 +10,7 @@ from decimal import Decimal
 
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
-from academics.models import Score, Subject, TeacherAssignment, TermResult
+from academics.models import Score, Subject, ClassSubject, TeacherAssignment, TermResult
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from fees.models import FeeCategory, FeeStructure, Invoice, Payment
 
@@ -493,8 +494,168 @@ class FlowReproTest(TestCase):
         self.assertNotContains(resp, 'user_mode')
         self.assertNotContains(resp, 'existing-user-section')
 
+    def test_guardian_search_api_returns_matching_parents(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.get(reverse('school_admin:guardian_search_api'), {'q': 'Papa'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        names = [item['name'] for item in data]
+        self.assertIn('Papa One', names)
 
-class PaymentAdminActionsTest(TestCase):
+    def test_guardian_search_api_scoped_to_school(self):
+        other_school = School.objects.create(name='Other School', short_code='other')
+        User.objects.create_user(
+            username='other_parent', email='other@test.com', password='pass123',
+            school=other_school, role=Roles.PARENT, first_name='Other', last_name='Parent',
+        )
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.get(reverse('school_admin:guardian_search_api'), {'q': 'Parent'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 0)
+
+    def test_student_create_warns_on_reused_guardian_email(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'Second', 'last_name': 'Kid',
+            'date_of_birth': '2014-06-06', 'gender': 'MALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+            'guardian_0_name': 'Papa One',
+            'guardian_0_email': 'papa1@test.com',
+            'guardian_0_phone': '0801',
+            'guardian_0_relationship': 'FATHER',
+        })
+        self.assertEqual(resp.status_code, 302)
+        messages_list = list(messages.get_messages(resp.wsgi_request))
+        self.assertTrue(
+            any('Reused existing guardian' in str(m) for m in messages_list),
+            'Expected reuse warning in messages',
+        )
+        student = Student.objects.get(user__first_name='Second')
+        link = StudentGuardianLink.objects.get(student=student)
+        self.assertEqual(link.guardian, self.parent1)
+
+    def test_student_create_warns_on_new_guardian(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'Third', 'last_name': 'Kid',
+            'date_of_birth': '2015-07-07', 'gender': 'FEMALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+            'guardian_0_name': 'New Parent',
+            'guardian_0_email': 'newparent@test.com',
+            'guardian_0_phone': '0803',
+            'guardian_0_relationship': 'MOTHER',
+        })
+        self.assertEqual(resp.status_code, 302)
+        messages_list = list(messages.get_messages(resp.wsgi_request))
+        self.assertTrue(
+            any('New guardian account created' in str(m) for m in messages_list),
+            'Expected new-account warning in messages',
+        )
+        new_parent = User.objects.get(email='newparent@test.com')
+        self.assertEqual(new_parent.role, Roles.PARENT)
+
+    def test_student_create_rejects_duplicate_guardian_names(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'Dup', 'last_name': 'Kid',
+            'date_of_birth': '2014-06-06', 'gender': 'MALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+            'guardian_0_name': 'Same Name',
+            'guardian_0_email': 'a@test.com',
+            'guardian_0_phone': '0801',
+            'guardian_0_relationship': 'FATHER',
+            'guardian_1_name': 'Same Name',
+            'guardian_1_email': 'b@test.com',
+            'guardian_1_phone': '0802',
+            'guardian_1_relationship': 'MOTHER',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('school_admin:student_create'))
+        messages_list = list(messages.get_messages(resp.wsgi_request))
+        self.assertTrue(
+            any('duplicate guardian' in str(m).lower() for m in messages_list),
+            'Expected duplicate guardian error in messages',
+        )
+        self.assertFalse(Student.objects.filter(user__first_name='Dup').exists())
+
+    def test_student_create_rejects_duplicate_guardian_emails(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'Dup', 'last_name': 'Kid',
+            'date_of_birth': '2014-06-06', 'gender': 'MALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+            'guardian_0_name': 'Parent A',
+            'guardian_0_email': 'same@test.com',
+            'guardian_0_phone': '0801',
+            'guardian_0_relationship': 'FATHER',
+            'guardian_1_name': 'Parent B',
+            'guardian_1_email': 'same@test.com',
+            'guardian_1_phone': '0802',
+            'guardian_1_relationship': 'MOTHER',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('school_admin:student_create'))
+        messages_list = list(messages.get_messages(resp.wsgi_request))
+        self.assertTrue(
+            any('duplicate guardian' in str(m).lower() for m in messages_list),
+            'Expected duplicate guardian error in messages',
+        )
+        self.assertFalse(Student.objects.filter(user__first_name='Dup').exists())
+
+    def test_student_create_rejects_duplicate_guardian_phones(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'Dup', 'last_name': 'Kid',
+            'date_of_birth': '2014-06-06', 'gender': 'MALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+            'guardian_0_name': 'Parent A',
+            'guardian_0_email': 'a@test.com',
+            'guardian_0_phone': '08099999999',
+            'guardian_0_relationship': 'FATHER',
+            'guardian_1_name': 'Parent B',
+            'guardian_1_email': 'b@test.com',
+            'guardian_1_phone': '08099999999',
+            'guardian_1_relationship': 'MOTHER',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('school_admin:student_create'))
+        messages_list = list(messages.get_messages(resp.wsgi_request))
+        self.assertTrue(
+            any('duplicate guardian' in str(m).lower() for m in messages_list),
+            'Expected duplicate guardian error in messages',
+        )
+        self.assertFalse(Student.objects.filter(user__first_name='Dup').exists())
+
+    def test_student_create_allows_distinct_guardians(self):
+        self.client.login(username='adminx', password='pass123')
+        resp = self.client.post(reverse('school_admin:student_create'), {
+            'first_name': 'Distinct', 'last_name': 'Kid',
+            'date_of_birth': '2014-06-06', 'gender': 'MALE',
+            'admission_date': '2026-09-01', 'status': 'ACTIVE',
+            'class_id': self.school_class.pk,
+            'session_id': self.session.pk,
+            'guardian_0_name': 'Parent A',
+            'guardian_0_email': 'a@test.com',
+            'guardian_0_phone': '0801',
+            'guardian_0_relationship': 'FATHER',
+            'guardian_1_name': 'Parent B',
+            'guardian_1_email': 'b@test.com',
+            'guardian_1_phone': '0802',
+            'guardian_1_relationship': 'MOTHER',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(Student.objects.filter(user__first_name='Distinct').exists())
     """Admin payment recording, editing and deletion (school_admin portal)."""
 
     def setUp(self):
@@ -711,7 +872,9 @@ class ResultModerationViewTests(TestCase):
         )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH', pass_mark=40,
-            school_class=self.school_class,
+        )
+        ClassSubject.objects.create(
+            school=self.school, subject=self.subject, school_class=self.school_class,
         )
         self.admin_user = User.objects.create_user(
             username='admin1', email='admin@test.com', password='testpass123',
@@ -1306,3 +1469,144 @@ class DashboardCollectedThisTermTest(TestCase):
         resp = self.client.get(reverse('school_admin:dashboard'))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, '25000')
+
+
+class ClassFirstSubjectManagementTests(TestCase):
+    """Tests for class-first subject management."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Test School', short_code='test')
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31), is_current=True,
+        )
+        self.admin_user = User.objects.create_user(
+            username='admin', email='admin@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        self.client.force_login(self.admin_user)
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS 1', level='Junior',
+        )
+        self.subject = Subject.objects.create(
+            school=self.school, name='Mathematics', code='MTH',
+        )
+
+    def test_class_detail_renders_subjects(self):
+        resp = self.client.get(reverse('school_admin:class_detail', args=[self.school_class.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Mathematics')
+
+    def test_add_existing_subject_to_class(self):
+        resp = self.client.post(
+            reverse('school_admin:class_subject_add', args=[self.school_class.pk]),
+            {'subject_ids': [self.subject.pk], 'pass_mark': '50'},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(
+            ClassSubject.objects.filter(
+                school=self.school, subject=self.subject, school_class=self.school_class, pass_mark=50
+            ).exists()
+        )
+
+    def test_bulk_add_subjects(self):
+        english = Subject.objects.create(school=self.school, name='English', code='ENG')
+        resp = self.client.post(
+            reverse('school_admin:class_subject_bulk_add', args=[self.school_class.pk]),
+            {'subject_ids': [self.subject.pk, english.pk], 'pass_mark': '45'},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(ClassSubject.objects.filter(school_class=self.school_class).count(), 2)
+
+    def test_create_new_subject_from_class(self):
+        resp = self.client.post(
+            reverse('school_admin:class_subject_create', args=[self.school_class.pk]),
+            {'name': 'Physics', 'code': 'PHY', 'pass_mark': '50'},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(Subject.objects.filter(school=self.school, name='Physics').exists())
+        self.assertTrue(
+            ClassSubject.objects.filter(
+                school=self.school, subject__name='Physics', school_class=self.school_class, pass_mark=50
+            ).exists()
+        )
+
+    def test_remove_subject_from_class(self):
+        ClassSubject.objects.create(
+            school=self.school, subject=self.subject, school_class=self.school_class, pass_mark=40,
+        )
+        resp = self.client.post(
+            reverse('school_admin:class_subject_remove', args=[self.school_class.pk, self.subject.pk]),
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(
+            ClassSubject.objects.filter(
+                school=self.school, subject=self.subject, school_class=self.school_class
+            ).exists()
+        )
+
+
+class StaffDeleteViewTest(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(name='Del School', short_code='delsch')
+        self.school_class = SchoolClass.objects.create(school=self.school, name='JSS1', level='JSS1')
+        self.superadmin = User.objects.create_user(
+            username='super1', email='super1@test.com', password='pass123',
+            school=None, role=Roles.ADMIN, first_name='Super', last_name='Admin',
+            is_superuser=True, is_staff=True,
+        )
+        self.regular_admin = User.objects.create_user(
+            username='admin1', email='admin1@test.com', password='pass123',
+            school=self.school, role=Roles.ADMIN, first_name='Admin', last_name='Regular',
+        )
+        self.teacher = User.objects.create_user(
+            username='teacher1', email='teacher1@test.com', password='pass123',
+            school=self.school, role=Roles.TEACHER, first_name='Tea', last_name='Cher',
+        )
+
+    def test_superuser_can_access_delete_page(self):
+        self.client.force_login(self.superadmin)
+        resp = self.client.get(reverse('school_admin:staff_delete', args=[self.teacher.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Delete Staff Member')
+
+    def test_regular_admin_cannot_delete(self):
+        self.client.force_login(self.regular_admin)
+        resp = self.client.get(reverse('school_admin:staff_delete', args=[self.teacher.pk]))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_superuser_can_hard_delete_teacher(self):
+        self.client.force_login(self.superadmin)
+        resp = self.client.post(reverse('school_admin:staff_delete', args=[self.teacher.pk]))
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(User.objects.filter(pk=self.teacher.pk).exists())
+
+    def test_superuser_cannot_delete_self(self):
+        self.client.force_login(self.superadmin)
+        resp = self.client.post(reverse('school_admin:staff_delete', args=[self.superadmin.pk]))
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(User.objects.filter(pk=self.superadmin.pk).exists())
+
+    def test_delete_page_shows_related_warnings(self):
+        from academics.models import TeacherAssignment, Score
+        subject = Subject.objects.create(school=self.school, name='Math', code='MTH')
+        TeacherAssignment.objects.create(school=self.school, teacher=self.teacher, subject=subject, school_class=self.school_class)
+        Score.objects.create(school=self.school, teacher=self.teacher, student=None, subject=subject, score=80)
+
+        self.client.force_login(self.superadmin)
+        resp = self.client.get(reverse('school_admin:staff_delete', args=[self.teacher.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'teacher assignment(s)')
+        self.assertContains(resp, 'score record(s)')
+
+    def test_superuser_sees_delete_button_in_staff_list(self):
+        self.client.force_login(self.superadmin)
+        resp = self.client.get(reverse('school_admin:staff_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, reverse('school_admin:staff_delete', args=[self.teacher.pk]))
+
+    def test_regular_admin_does_not_see_delete_button(self):
+        self.client.force_login(self.regular_admin)
+        resp = self.client.get(reverse('school_admin:staff_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, reverse('school_admin:staff_delete', args=[self.teacher.pk]))

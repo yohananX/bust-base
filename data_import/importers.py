@@ -1,4 +1,5 @@
 import csv
+import logging
 import re
 from datetime import date
 
@@ -7,7 +8,7 @@ from django.utils import timezone
 
 from accounts.models import User, Roles
 from accounts.utils import generate_username
-from academics.models import Subject
+from academics.models import Subject, ClassSubject
 from core.models import AcademicSession
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from students.utils import generate_admission_number, find_or_create_parent
@@ -46,6 +47,7 @@ class BaseImporter:
         self.dry_run = dry_run
         self.verbose = verbose
         self._counter = 0
+        self._logger = logging.getLogger(__name__)
 
     def import_csv(self, file_path):
         """Override in subclasses."""
@@ -57,8 +59,11 @@ class BaseImporter:
         with open(file_path, newline='', encoding='utf-8-sig') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                rows.append({k: v.strip() if v else '' for k, v in row.items()})
+                rows.append({k.strip(): v.strip() if v else '' for k, v in row.items()})
         return rows
+
+    def _log(self, msg):
+        self._logger.info(msg)
 
 
 class ClassImporter(BaseImporter):
@@ -100,7 +105,7 @@ class ClassImporter(BaseImporter):
                 )
             created += 1
             if self.verbose:
-                self._log(f"Row {i}: CREATED — '{name}' (level: {level})")
+                self._log(f"Row {i}: CREATED — {first_name} {last_name} ({username})")
 
         return {
             'total': total,
@@ -109,15 +114,13 @@ class ClassImporter(BaseImporter):
             'errors': errors,
         }
 
-    def _log(self, msg):
-        print(msg)
-
 
 class SubjectImporter(BaseImporter):
     """Import subjects from CSV.
 
     CSV columns: class_name, subject_name
     Looks up SchoolClass by name (case-insensitive), auto-generates code.
+    Reuses existing subjects by code/name and links classes via ClassSubject.
     """
 
     def import_csv(self, file_path):
@@ -138,7 +141,6 @@ class SubjectImporter(BaseImporter):
                 errors.append({'row': i, 'message': 'Missing subject_name'})
                 continue
 
-            # Case-insensitive lookup for class
             school_class = SchoolClass.objects.filter(
                 school=self.school,
                 name__iexact=class_name,
@@ -150,32 +152,47 @@ class SubjectImporter(BaseImporter):
 
             code = _generate_code(subject_name)
 
-            if Subject.objects.filter(school=self.school, name__iexact=subject_name).exists():
-                skipped += 1
-                if self.verbose:
-                    self._log(f"Row {i}: SKIP — subject '{subject_name}' already exists")
-                continue
+            subject = Subject.objects.filter(school=self.school, code=code).first()
+            if not subject:
+                subject = Subject.objects.filter(school=self.school, name__iexact=subject_name).first()
 
-            base_code = code
-            suffix = 1
-            while Subject.objects.filter(school=self.school, code=code).exists():
-                code = f'{base_code}{suffix}'
-                suffix += 1
-
-            if not self.dry_run:
-                subject = Subject.objects.create(
-                    school=self.school,
-                    name=subject_name,
-                    code=code,
-                )
-                ClassSubject.objects.create(
+            if subject:
+                link, link_created = ClassSubject.objects.get_or_create(
                     school=self.school,
                     subject=subject,
                     school_class=school_class,
+                    defaults={'pass_mark': None},
                 )
-            created += 1
-            if self.verbose:
-                self._log(f"Row {i}: CREATED — '{subject_name}' (code: {code})")
+                if link_created:
+                    created += 1
+                    if self.verbose:
+                        self._log(f"Row {i}: LINKED — '{subject_name}' to '{class_name}'")
+                else:
+                    skipped += 1
+                    if self.verbose:
+                        self._log(f"Row {i}: SKIP — '{subject_name}' already linked to '{class_name}'")
+            else:
+                base_code = code
+                suffix = 1
+                while Subject.objects.filter(school=self.school, code=code).exists():
+                    code = f'{base_code}{suffix}'
+                    suffix += 1
+
+                if not self.dry_run:
+                    subject = Subject.objects.create(
+                        school=self.school,
+                        name=subject_name,
+                        code=code,
+                    )
+                    ClassSubject.objects.create(
+                        school=self.school,
+                        subject=subject,
+                        school_class=school_class,
+                        pass_mark=None,
+                    )
+                created += 1
+                if self.verbose:
+                    self._log(f"Row {i}: CREATED — '{subject_name}' (code: {code}) linked to '{class_name}'")
 
         return {
             'total': total,
@@ -183,9 +200,6 @@ class SubjectImporter(BaseImporter):
             'skipped': skipped,
             'errors': errors,
         }
-
-    def _log(self, msg):
-        print(msg)
 
 
 class StudentImporter(BaseImporter):
@@ -375,9 +389,6 @@ class StudentImporter(BaseImporter):
             'errors': errors,
         }
 
-    def _log(self, msg):
-        print(msg)
-
 
 class StaffImporter(BaseImporter):
     """Import staff from CSV.
@@ -444,5 +455,17 @@ class StaffImporter(BaseImporter):
             'errors': errors,
         }
 
-    def _log(self, msg):
-        print(msg)
+
+IMPORTERS = {
+    'classes': ClassImporter,
+    'subjects': SubjectImporter,
+    'students': StudentImporter,
+    'staff': StaffImporter,
+}
+
+TEMPLATES = {
+    'classes': 'name,section\nReception,\nPrimary 1,Primary\nPrimary 2,Primary\nJSS 1,Junior\nJSS 2,Junior\nSS 1,Senior',
+    'subjects': 'class_name,subject_name\nReception,Literacy\nReception,Numeracy\nPrimary 1,English Studies\nPrimary 1,Mathematics\nJSS 1,Basic Science',
+    'students': 'first_name,last_name,date_of_birth,gender,parent_name,parent_email,parent_phone,class_name\nJohn,Doe,2010-01-15,M,Jane Doe,jane@example.com,08012345678,JSS 1',
+    'staff': 'first_name,last_name,username,email,phone_number,role\nEmeka,Teacher,emekat,emeka@school.com,08011112222,TEACHER',
+}

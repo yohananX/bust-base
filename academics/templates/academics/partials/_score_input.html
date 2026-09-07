@@ -1,0 +1,6 @@
+{% load score_extras %}
+<input type="number" min="0" max="{{ max_value }}" value="{{ display_value }}"
+       hx-post="{{ update_url }}"
+       hx-trigger="blur" hx-target="closest td"
+       name="{{ field_name }}"
+       class="{{ input_classes }}">

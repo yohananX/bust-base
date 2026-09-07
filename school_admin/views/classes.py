@@ -3,9 +3,11 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic.base import View
 from django.contrib import messages
 from django.db import transaction, IntegrityError
+from django.http import JsonResponse
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
+from academics.models import Subject, ClassSubject
 from students.models import SchoolClass, ClassEnrollment
 from django.db.models import Q, Count
 
@@ -198,3 +200,191 @@ class ClassDeleteView(RoleRequiredMixin, View):
             f'Class "{class_name}" deleted successfully.',
         )
         return redirect('school_admin:class_list')
+
+
+class ClassDetailView(RoleRequiredMixin, View):
+    """Class detail with embedded subject management."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def get(self, request, pk):
+        school = request.school
+        class_obj = get_object_or_404(SchoolClass, school=school, pk=pk)
+        linked_subject_ids = list(
+            ClassSubject.objects.filter(
+                school=school, school_class=class_obj
+            ).values_list('subject_id', flat=True)
+        )
+        available_subjects = Subject.objects.filter(
+            school=school
+        ).exclude(id__in=linked_subject_ids).order_by('name')
+        class_subjects = ClassSubject.objects.filter(
+            school=school, school_class=class_obj
+        ).select_related('subject').order_by('subject__name')
+
+        context = {
+            'class_obj': class_obj,
+            'available_subjects': available_subjects,
+            'class_subjects': class_subjects,
+        }
+        return render(request, 'school_admin/class_detail.html', context)
+
+
+class ClassSubjectAddView(RoleRequiredMixin, View):
+    """Add existing subjects to a class (single or bulk)."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk):
+        school = request.school
+        class_obj = get_object_or_404(SchoolClass, school=school, pk=pk)
+        subject_ids = request.POST.getlist('subject_ids')
+        pass_mark = request.POST.get('pass_mark', '').strip()
+
+        if not subject_ids:
+            messages.error(request, 'Please select at least one subject.')
+            return redirect('school_admin:class_detail', pk=pk)
+
+        try:
+            pass_mark_val = int(pass_mark) if pass_mark else None
+        except (ValueError, TypeError):
+            pass_mark_val = None
+
+        if pass_mark_val is not None and (pass_mark_val < 0 or pass_mark_val > 100):
+            messages.error(request, 'Pass mark must be between 0 and 100.')
+            return redirect('school_admin:class_detail', pk=pk)
+
+        added = []
+        skipped = []
+        for subject_id in subject_ids:
+            subject = get_object_or_404(Subject, pk=subject_id, school=school)
+            link, created = ClassSubject.objects.get_or_create(
+                school=school,
+                subject=subject,
+                school_class=class_obj,
+                defaults={'pass_mark': pass_mark_val},
+            )
+            if created:
+                added.append(subject.name)
+            else:
+                skipped.append(subject.name)
+
+        msg = f'Added {len(added)} subject(s) to {class_obj.name}.'
+        if skipped:
+            msg += f' {len(skipped)} already existed (skipped).'
+        messages.success(request, msg)
+        return redirect('school_admin:class_detail', pk=pk)
+
+
+class ClassSubjectCreateView(RoleRequiredMixin, View):
+    """Create a new subject and add it to the class."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk):
+        school = request.school
+        class_obj = get_object_or_404(SchoolClass, school=school, pk=pk)
+        name = request.POST.get('name', '').strip()
+        code = request.POST.get('code', '').strip()
+        pass_mark = request.POST.get('pass_mark', '').strip()
+
+        if not name or not code:
+            messages.error(request, 'Subject name and code are required.')
+            return redirect('school_admin:class_detail', pk=pk)
+
+        if Subject.objects.filter(school=school, code__iexact=code).exists():
+            messages.error(request, f'A subject with code "{code}" already exists.')
+            return redirect('school_admin:class_detail', pk=pk)
+
+        try:
+            pass_mark_val = int(pass_mark) if pass_mark else None
+        except (ValueError, TypeError):
+            pass_mark_val = None
+
+        if pass_mark_val is not None and (pass_mark_val < 0 or pass_mark_val > 100):
+            messages.error(request, 'Pass mark must be between 0 and 100.')
+            return redirect('school_admin:class_detail', pk=pk)
+
+        with transaction.atomic():
+            subject = Subject.objects.create(
+                school=school,
+                name=name,
+                code=code,
+            )
+            ClassSubject.objects.create(
+                school=school,
+                subject=subject,
+                school_class=class_obj,
+                pass_mark=pass_mark_val,
+            )
+
+        messages.success(request, f'Subject "{name}" created and added to {class_obj.name}.')
+        return redirect('school_admin:class_detail', pk=pk)
+
+
+class ClassSubjectRemoveView(RoleRequiredMixin, View):
+    """Remove a subject from a class."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk, subject_id):
+        school = request.school
+        class_obj = get_object_or_404(SchoolClass, school=school, pk=pk)
+        subject = get_object_or_404(Subject, pk=subject_id, school=school)
+
+        link = ClassSubject.objects.filter(
+            school=school, subject=subject, school_class=class_obj
+        ).first()
+        if link:
+            link.delete()
+            messages.success(request, f'Removed "{subject.name}" from {class_obj.name}.')
+        else:
+            messages.error(request, 'Subject is not assigned to this class.')
+
+        return redirect('school_admin:class_detail', pk=pk)
+
+
+class ClassSubjectBulkAddView(RoleRequiredMixin, View):
+    """Bulk add multiple subjects to a class."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def post(self, request, pk):
+        school = request.school
+        class_obj = get_object_or_404(SchoolClass, school=school, pk=pk)
+        subject_ids = request.POST.getlist('subject_ids')
+        pass_mark = request.POST.get('pass_mark', '').strip()
+
+        if not subject_ids:
+            messages.error(request, 'Please select at least one subject.')
+            return redirect('school_admin:class_detail', pk=pk)
+
+        try:
+            pass_mark_val = int(pass_mark) if pass_mark else None
+        except (ValueError, TypeError):
+            pass_mark_val = None
+
+        if pass_mark_val is not None and (pass_mark_val < 0 or pass_mark_val > 100):
+            messages.error(request, 'Pass mark must be between 0 and 100.')
+            return redirect('school_admin:class_detail', pk=pk)
+
+        added = 0
+        skipped = 0
+        for subject_id in subject_ids:
+            subject = get_object_or_404(Subject, pk=subject_id, school=school)
+            _, created = ClassSubject.objects.get_or_create(
+                school=school,
+                subject=subject,
+                school_class=class_obj,
+                defaults={'pass_mark': pass_mark_val},
+            )
+            if created:
+                added += 1
+            else:
+                skipped += 1
+
+        msg = f'Added {added} subject(s) to {class_obj.name}.'
+        if skipped:
+            msg += f' {skipped} already existed (skipped).'
+        messages.success(request, msg)
+        return redirect('school_admin:class_detail', pk=pk)

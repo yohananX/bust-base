@@ -8,7 +8,7 @@ from django.views.generic.base import View
 from django.contrib import messages
 from django.db import transaction, IntegrityError
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.utils.dateparse import parse_date
 
 from accounts.mixins import RoleRequiredMixin
@@ -30,7 +30,10 @@ class StudentListView(RoleRequiredMixin, View):
         students = Student.objects.filter(
             school=school
         ).select_related('user').prefetch_related(
-            'enrollments__school_class'
+            Prefetch(
+                'enrollments',
+                queryset=ClassEnrollment.objects.filter(is_current=True).select_related('school_class'),
+            )
         )
 
         # Search by name / admission number
@@ -57,11 +60,9 @@ class StudentListView(RoleRequiredMixin, View):
 
         students = students.distinct()
 
-        # Annotate current class
+        # Annotate current class from the targeted prefetch
         for s in students:
-            current_enrollment = next(
-                (e for e in s.enrollments.all() if e.is_current), None
-            )
+            current_enrollment = s.enrollments.first() if hasattr(s, 'enrollments') else None
             s.current_class = current_enrollment.school_class if current_enrollment else None
 
         classes = SchoolClass.objects.filter(school=school, is_active=True)
@@ -243,6 +244,14 @@ class StudentCreateView(RoleRequiredMixin, View):
             messages.error(request, 'All student fields are required.')
             return redirect('school_admin:student_create')
 
+        # Validate guardian entries for duplicates within this submission
+        from students.utils import validate_guardian_form
+        guardian_errors = validate_guardian_form(request.POST)
+        if guardian_errors:
+            for error in guardian_errors:
+                messages.error(request, error)
+            return redirect('school_admin:student_create')
+
         try:
             with transaction.atomic():
                 # --- Create new user ---
@@ -341,35 +350,10 @@ class StudentCreateView(RoleRequiredMixin, View):
                     generate_invoice_for_current_term(student)
 
                 # --- Optional parent/guardian creation ---
-                guardian_index = 0
-                while True:
-                    name = request.POST.get(f'guardian_{guardian_index}_name', '').strip()
-                    email = request.POST.get(f'guardian_{guardian_index}_email', '').strip()
-                    phone = request.POST.get(f'guardian_{guardian_index}_phone', '').strip()
-                    relationship = request.POST.get(f'guardian_{guardian_index}_relationship', 'GUARDIAN')
-                    occupation = request.POST.get(f'guardian_{guardian_index}_occupation', '').strip()
-                    address = request.POST.get(f'guardian_{guardian_index}_address', '').strip()
-                    authorized_pickup_person = request.POST.get(f'guardian_{guardian_index}_authorized_pickup_person', '').strip()
-
-                    if not name and not email and not phone:
-                        break
-
-                    if name:
-                        parent_user = find_or_create_parent(
-                            school, name, email=email, phone=phone, relationship=relationship
-                        )
-                        StudentGuardianLink.objects.create(
-                            school=school,
-                            student=student,
-                            guardian=parent_user,
-                            relationship=relationship,
-                            is_primary_contact=(guardian_index == 0),
-                            occupation=occupation,
-                            address=address,
-                            authorized_pickup_person=authorized_pickup_person,
-                        )
-
-                    guardian_index += 1
+                from students.utils import create_guardians_from_form
+                _, guardian_warnings = create_guardians_from_form(student, school, request.POST)
+                for warning in guardian_warnings:
+                    messages.warning(request, warning)
 
                 messages.success(request, f'Student "{user.get_full_name()}" created successfully.')
                 return redirect('school_admin:student_detail', pk=student.pk)
@@ -621,25 +605,25 @@ class StudentGuardianCreateView(RoleRequiredMixin, View):
 
         try:
             with transaction.atomic():
-                username = unique_username(first_name, last_name)
-                password = generate_password(8)
-
-                guardian = User.objects.create_user(
-                    username=username,
-                    first_name=first_name,
-                    last_name=last_name,
-                    email=email,
-                    phone_number=phone_number,
-                    role=Roles.PARENT,
-                    school=school,
-                    password=password,
-                    must_change_password=True,
+                name = f'{first_name} {last_name}'.strip()
+                from students.utils import find_or_create_parent
+                guardian, was_reused = find_or_create_parent(
+                    school, name, email=email, phone=phone_number, relationship=relationship
                 )
 
-                uploaded = request.FILES.get('guardian_passport')
-                if uploaded:
-                    guardian.passport = uploaded
-                    guardian.save(update_fields=['passport'])
+                if was_reused:
+                    messages.warning(
+                        request,
+                        f'Reused existing guardian: {guardian.get_full_name() or guardian.username}.'
+                    )
+                else:
+                    username = unique_username(first_name, last_name)
+                    password = generate_password(8)
+                    guardian.username = username
+                    guardian.password = password
+                    guardian.must_change_password = True
+                    guardian.save(update_fields=['username', 'password', 'must_change_password'])
+                    request.session[f'credential_slip_{guardian.pk}'] = password
 
                 if is_primary_contact:
                     StudentGuardianLink.objects.filter(student=student).update(is_primary_contact=False)
@@ -656,7 +640,6 @@ class StudentGuardianCreateView(RoleRequiredMixin, View):
                 )
                 link.full_clean()
                 link.save()
-                request.session[f'credential_slip_{guardian.pk}'] = password
 
                 messages.success(
                     request,

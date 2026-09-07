@@ -2,6 +2,7 @@ import csv
 import io
 import os
 import tempfile
+from contextlib import contextmanager
 
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
@@ -11,23 +12,28 @@ from django.contrib import messages
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
-from data_import.importers import ClassImporter, SubjectImporter, StudentImporter, StaffImporter
+from data_import.importers import ClassImporter, SubjectImporter, StudentImporter, StaffImporter, IMPORTERS, TEMPLATES
 from data_import.models import ImportLog
 
 
-IMPORTERS = {
-    'classes': ClassImporter,
-    'subjects': SubjectImporter,
-    'students': StudentImporter,
-    'staff': StaffImporter,
-}
+@contextmanager
+def _temp_csv_path(rows):
+    """Write rows to a temporary CSV file and yield its path.
 
-TEMPLATES = {
-    'classes': 'name,section\nReception,\nPrimary 1,Primary\nPrimary 2,Primary\nJSS 1,Junior\nJSS 2,Junior\nSS 1,Senior',
-    'subjects': 'class_name,subject_name\nReception,Literacy\nReception,Numeracy\nPrimary 1,English Studies\nPrimary 1,Mathematics\nJSS 1,Basic Science',
-    'students': 'first_name,last_name,date_of_birth,gender,parent_name,parent_email,parent_phone,class_name\nJohn,Doe,2010-01-15,M,Jane Doe,jane@example.com,08012345678,JSS 1',
-    'staff': 'first_name,last_name,username,email,phone_number,role\nEmeka,Teacher,emekat,emeka@school.com,08011112222,TEACHER',
-}
+    The file is automatically deleted when the context exits.
+    """
+    tmp = tempfile.NamedTemporaryFile(
+        mode='w', newline='', suffix='.csv', delete=False, encoding='utf-8',
+    )
+    try:
+        if rows:
+            writer = csv.DictWriter(tmp, fieldnames=rows[0].keys())
+            writer.writeheader()
+            writer.writerows(rows)
+        tmp.close()
+        yield tmp.name
+    finally:
+        os.unlink(tmp.name)
 
 
 class DataImportView(RoleRequiredMixin, View):
@@ -68,19 +74,10 @@ class DataImportView(RoleRequiredMixin, View):
             return redirect('data_import:import')
 
         # Run dry_run to get created/skipped/error counts
-        tmp = tempfile.NamedTemporaryFile(mode='w', newline='', suffix='.csv', delete=False, encoding='utf-8')
-        try:
-            if all_rows:
-                writer = csv.DictWriter(tmp, fieldnames=all_rows[0].keys())
-                writer.writeheader()
-                writer.writerows(all_rows)
-            tmp.close()
-
+        with _temp_csv_path(all_rows) as tmp_path:
             importer_class = IMPORTERS[import_type]
             importer = importer_class(school=request.school, dry_run=True, verbose=False)
-            dry_result = importer.import_csv(tmp.name)
-        finally:
-            os.unlink(tmp.name)
+            dry_result = importer.import_csv(tmp_path)
 
         # Store data in session for confirmation
         request.session['import_data'] = {
@@ -126,19 +123,10 @@ class DataImportConfirmView(RoleRequiredMixin, View):
         rows = import_data['rows']
 
         # Write rows to a temporary CSV file for the importer
-        tmp = tempfile.NamedTemporaryFile(
-            mode='w', newline='', suffix='.csv', delete=False, encoding='utf-8',
-        )
-        try:
-            if rows:
-                writer = csv.DictWriter(tmp, fieldnames=rows[0].keys())
-                writer.writeheader()
-                writer.writerows(rows)
-            tmp.close()
-
+        with _temp_csv_path(rows) as tmp_path:
             importer_class = IMPORTERS[import_type]
             importer = importer_class(school=request.school, dry_run=False, verbose=False)
-            result = importer.import_csv(tmp.name)
+            result = importer.import_csv(tmp_path)
 
             # Create import log
             log = ImportLog.objects.create(
@@ -175,8 +163,6 @@ class DataImportConfirmView(RoleRequiredMixin, View):
                 'result': result,
             }
             return render(request, 'data_import/partials/_results.html', context)
-        finally:
-            os.unlink(tmp.name)
 
 
 class DataImportTemplateDownloadView(RoleRequiredMixin, View):

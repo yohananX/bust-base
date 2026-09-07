@@ -12,6 +12,7 @@ from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 
 from core.models import TenantScopedModel
+from core.utils import money_status
 from accounts.models import Roles
 
 
@@ -256,9 +257,9 @@ class LessonEnrollment(TenantScopedModel):
     @property
     def payment_status(self):
         """One of PAID / PARTIAL / UNPAID based on confirmed payments."""
-        paid = self.amount_paid
-        if paid >= self.fee_amount:
-            return 'PAID'
-        if paid > 0:
-            return 'PARTIAL'
-        return 'UNPAID'
+        return money_status(self.amount_paid, self.fee_amount)
+
+    @property
+    def balance(self):
+        """Outstanding amount (fee amount minus confirmed payments, never negative)."""
+        return max(self.fee_amount - self.amount_paid, Decimal('0.00'))

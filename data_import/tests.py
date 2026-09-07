@@ -9,7 +9,7 @@ from django.core.management import call_command
 from core.models import School, AcademicSession
 from accounts.models import User, Roles
 from students.models import SchoolClass, Student, StudentGuardianLink
-from academics.models import Subject
+from academics.models import Subject, ClassSubject
 from data_import.importers import (
     ClassImporter, SubjectImporter, StudentImporter, StaffImporter,
     _generate_code,
@@ -190,7 +190,7 @@ class SubjectImporterRequiresExistingClassTest(BaseImportTestCase):
 
 
 class SubjectImporterSkipsDuplicatesTest(BaseImportTestCase):
-    def test_skips_duplicates(self):
+    def test_skips_duplicate_class_subject_link(self):
         school_class = SchoolClass.objects.create(school=self.school, name='Primary 1', level='Primary')
         subject = Subject.objects.create(school=self.school, name='English Studies', code='ES')
         ClassSubject.objects.create(school=self.school, subject=subject, school_class=school_class)
@@ -205,6 +205,28 @@ class SubjectImporterSkipsDuplicatesTest(BaseImportTestCase):
 
             self.assertEqual(result['skipped'], 1)
             self.assertEqual(result['created'], 0)
+            self.assertEqual(ClassSubject.objects.filter(subject=subject).count(), 1)
+        finally:
+            os.unlink(csv_path)
+
+    def test_links_existing_subject_to_new_class(self):
+        """Importing an existing subject for a new class should create the link."""
+        existing_class = SchoolClass.objects.create(school=self.school, name='Primary 1', level='Primary')
+        new_class = SchoolClass.objects.create(school=self.school, name='Primary 2', level='Primary')
+        subject = Subject.objects.create(school=self.school, name='English Studies', code='ES')
+        ClassSubject.objects.create(school=self.school, subject=subject, school_class=existing_class)
+
+        csv_path = _write_csv(
+            ['class_name', 'subject_name'],
+            [{'class_name': 'Primary 2', 'subject_name': 'English Studies'}],
+        )
+        try:
+            importer = SubjectImporter(school=self.school)
+            result = importer.import_csv(csv_path)
+
+            self.assertEqual(result['created'], 1)
+            self.assertEqual(result['skipped'], 0)
+            self.assertEqual(ClassSubject.objects.filter(subject=subject).count(), 2)
         finally:
             os.unlink(csv_path)
 
@@ -240,7 +262,7 @@ class StudentImporterAutoInvoiceTest(BaseImportTestCase):
     def setUp(self):
         super().setUp()
         from core.models import Term
-        from fees.models import FeeCategory, FeeStructure
+        from fees.models import FeeCategory, FeePrice
 
         self.term = Term.objects.create(
             school=self.school, session=self.session, name='First Term',
@@ -249,9 +271,13 @@ class StudentImporterAutoInvoiceTest(BaseImportTestCase):
         self.school_class = SchoolClass.objects.create(
             school=self.school, name='JSS 1', level='Junior',
         )
-        category = FeeCategory.objects.create(school=self.school, name='Tuition')
-        FeeStructure.objects.create(
-            school=self.school, school_class=self.school_class, term=self.term,
+        category = FeeCategory.objects.create(
+            school=self.school, name='Tuition',
+            billing_cycle='PER_TERM', is_compulsory=True,
+        )
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_CLASS,
+            school_class=self.school_class, term=self.term,
             category=category, amount=Decimal('54000.00'),
         )
 

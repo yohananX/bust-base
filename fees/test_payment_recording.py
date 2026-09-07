@@ -376,7 +376,7 @@ class NewReturningBreakdownTest(TestCase):
         self.assertIsNone(data['total_pseudo'])
 
     def test_auto_flip_on_registration_payment(self):
-        from school_admin.views.fees import StudentRecordPaymentView
+        from school_admin.views.invoices import StudentRecordPaymentView
         self.assertEqual(self.student.student_type, 'NEW')
         registration_price = FeePrice.objects.get(category=self.registration)
         tuition_price = FeePrice.objects.get(category=self.tuition)
@@ -396,7 +396,7 @@ class NewReturningBreakdownTest(TestCase):
         self.assertEqual(self.student.registration_paid_term_id, self.term.id)
 
     def test_no_auto_flip_without_registration(self):
-        from school_admin.views.fees import StudentRecordPaymentView
+        from school_admin.views.invoices import StudentRecordPaymentView
         tuition_price = FeePrice.objects.get(category=self.tuition)
         url = reverse('school_admin:student_record_payment', kwargs={'pk': self.student.pk})
         response = self.client.post(url, {

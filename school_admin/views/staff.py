@@ -5,10 +5,18 @@ from django.urls import reverse
 from django.views.generic.base import View
 from django.contrib import messages
 from django.db.models import Q
+from django.db import transaction
+from django.core.exceptions import PermissionDenied
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
 from accounts.utils import generate_password, unique_username
+
+
+def _superuser_or_school_qs(request, queryset):
+    if request.user.is_superuser:
+        return queryset
+    return queryset.filter(school=request.school)
 
 
 class StaffListView(RoleRequiredMixin, View):
@@ -184,4 +192,74 @@ class StaffToggleActiveView(RoleRequiredMixin, View):
         user.save()
         status = 'activated' if user.is_active else 'deactivated'
         messages.success(request, f'Staff "{user.get_full_name() or user.username}" {status}.')
+        return redirect('school_admin:staff_list')
+
+
+class StaffDeleteView(RoleRequiredMixin, View):
+    """Hard-delete a staff user. Superusers only."""
+
+    allowed_roles = [Roles.ADMIN]
+
+    def _get_staff_user(self, request, pk):
+        qs = User.objects.filter(pk=pk, role__in=[Roles.TEACHER, Roles.ADMIN])
+        qs = _superuser_or_school_qs(request, qs)
+        return get_object_or_404(qs)
+
+    def get(self, request, pk):
+        if not request.user.is_superuser:
+            raise PermissionDenied("Only superadmins can delete users.")
+
+        staff_user = self._get_staff_user(request, pk)
+        if staff_user.pk == request.user.pk:
+            messages.warning(request, "You cannot delete your own account.")
+            return redirect('school_admin:staff_list')
+
+        from academics.models import TeacherAssignment, Score
+        from payroll.models import PayrollRun, Payslip
+        from finance.models import Expenditure, Project
+        from lessons.models import LessonClass
+        from notifications.models import NotificationLog
+        from inventory.models import StockItem, Procurement, StockRemoval, InventoryTransaction
+
+        related = {
+            'teacher_assignments': TeacherAssignment.objects.filter(teacher=staff_user).count(),
+            'scores': Score.objects.filter(teacher=staff_user).count(),
+            'payroll_runs': PayrollRun.objects.filter(initiated_by=staff_user).count(),
+            'payslips': Payslip.objects.filter(teacher=staff_user).count(),
+            'projects': Project.objects.filter(created_by=staff_user).count(),
+            'expenditures': Expenditure.objects.filter(created_by=staff_user).count(),
+            'lesson_classes': LessonClass.objects.filter(teacher=staff_user).count(),
+            'notifications': NotificationLog.objects.filter(recipient=staff_user).count(),
+            'stock_items': StockItem.objects.filter(created_by=staff_user).count(),
+            'procurements': Procurement.objects.filter(purchased_by=staff_user).count(),
+            'stock_removals': StockRemoval.objects.filter(created_by=staff_user).count(),
+            'inventory_transactions': InventoryTransaction.objects.filter(created_by=staff_user).count(),
+        }
+        has_related = any(v > 0 for v in related.values())
+
+        context = {
+            'staff_user': staff_user,
+            'related': related,
+            'has_related': has_related,
+        }
+        return render(request, 'school_admin/staff/staff_confirm_delete.html', context)
+
+    def post(self, request, pk):
+        if not request.user.is_superuser:
+            raise PermissionDenied("Only superadmins can delete users.")
+
+        staff_user = self._get_staff_user(request, pk)
+        name = staff_user.get_full_name() or staff_user.username
+
+        if staff_user.pk == request.user.pk:
+            messages.warning(request, "You cannot delete your own account.")
+            return redirect('school_admin:staff_list')
+
+        try:
+            with transaction.atomic():
+                staff_user.delete()
+            messages.success(request, f'Staff "{name}" has been permanently deleted.')
+        except Exception as e:
+            messages.error(request, f'Error deleting staff: {e}')
+
         return redirect('school_admin:staff_list')

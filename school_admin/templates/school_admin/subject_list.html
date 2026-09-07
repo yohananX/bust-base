@@ -32,15 +32,6 @@
     </form>
   </div>
 
-  <!-- Header and Add Button -->
-  <div class="flex justify-between items-center mb-4">
-    <h2 class="text-lg font-display font-semibold text-gray-900">Subjects</h2>
-    <a href="{% url 'school_admin:subject_create' %}"
-       class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
-      <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Subject
-    </a>
-  </div>
-
   <!-- Subject Table -->
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
     <div class="overflow-x-auto">
@@ -50,8 +41,6 @@
           <th class="px-5 py-3.5 font-semibold">Name</th>
           <th class="px-5 py-3.5 font-semibold">Code</th>
           <th class="px-5 py-3.5 font-semibold">Classes</th>
-          <th class="px-5 py-3.5 font-semibold">Pass Mark</th>
-          <th class="px-5 py-3.5 font-semibold text-right">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -77,25 +66,10 @@
               {% endif %}
             {% endwith %}
           </td>
-          <td class="px-5 py-3.5 text-gray-700">{{ subj.pass_mark }}%</td>
-          <td class="px-5 py-3.5">
-            <div class="flex items-center justify-end gap-1">
-              <a href="{% url 'school_admin:subject_edit' subj.pk %}"
-                 title="Edit"
-                 class="p-2 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors">
-                <i data-lucide="pencil" class="w-4 h-4"></i>
-              </a>
-              <a href="{% url 'school_admin:subject_delete' subj.pk %}"
-                 title="Delete"
-                 class="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
-              </a>
-            </div>
-          </td>
         </tr>
         {% empty %}
         <tr class="border-t border-gray-100">
-          <td colspan="5" class="px-5 py-12 text-center">
+          <td colspan="3" class="px-5 py-12 text-center">
             <div class="flex flex-col items-center gap-2 text-gray-400">
               <i data-lucide="book-open" class="w-8 h-8"></i>
               <p class="text-sm">No subjects found.</p>

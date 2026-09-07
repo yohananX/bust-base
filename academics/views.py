@@ -14,6 +14,23 @@ from students.models import ClassEnrollment
 VALID_SCORE_FIELDS = {'exam_score'}
 
 
+def _score_owned_by_teacher(score, user):
+    """Return True when the user is the teacher assigned to this score's class+subject."""
+    enrollment = ClassEnrollment.objects.filter(
+        student=score.student,
+        session=score.term.session,
+        is_current=True,
+    ).first()
+    if not enrollment:
+        return False
+    return TeacherAssignment.objects.filter(
+        teacher=user,
+        subject=score.subject,
+        school_class=enrollment.school_class,
+        session=score.term.session,
+    ).exists()
+
+
 def _valid_score_fields(school):
     """Return the set of valid score field names for a school."""
     fields = set(VALID_SCORE_FIELDS)
@@ -244,19 +261,7 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
 
         score = get_object_or_404(Score, pk=score_pk)
 
-        # Verify teacher owns this score's assignment
-        enrollment = ClassEnrollment.objects.filter(
-            student=score.student,
-            session=score.term.session,
-            is_current=True,
-        ).first()
-
-        if not enrollment or not TeacherAssignment.objects.filter(
-            teacher=request.user,
-            subject=score.subject,
-            school_class=enrollment.school_class,
-            session=score.term.session,
-        ).exists():
+        if not _score_owned_by_teacher(score, request.user):
             resp = HttpResponseForbidden("Not your assignment")
             return attach_toast(resp, "Not your assignment", "error")
 

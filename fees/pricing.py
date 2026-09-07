@@ -53,67 +53,54 @@ def _resolve_from_feeprice(school, school_class, term, student_type='ALL', stude
 
     class_level = school_class.level or ''
 
-    qs = FeePrice.objects.filter(
+    base_qs = FeePrice.objects.filter(
         school=school,
         category__is_compulsory=True,
         is_active=True,
     )
-
-    if term is not None:
-        explicit = list(qs.filter(term=term))
-        fallback_candidates = qs.exclude(term=term).order_by('-term__start_date', 'category__name')
-    else:
-        explicit = list(qs.filter(term__isnull=True))
-        fallback_candidates = qs.exclude(term__isnull=True).order_by('-term__start_date', 'category__name')
-
     if student_type != 'ALL':
-        explicit = [fp for fp in explicit if fp.student_type in ('ALL', student_type)]
-        fallback_candidates = fallback_candidates.filter(
+        base_qs = base_qs.filter(
             Q(student_type='ALL') | Q(student_type=student_type)
         )
 
-    def matches_class(price):
-        return price.scope == FeePrice.SCOPE_CLASS and price.school_class_id == school_class.id
-
-    def matches_level(price):
-        return price.scope == FeePrice.SCOPE_LEVEL and price.level == class_level
-
-    def matches_school_wide(price):
-        return price.scope == FeePrice.SCOPE_SCHOOL_WIDE and not price.school_class_id and not price.level
+    scope_precedence = {
+        FeePrice.SCOPE_CLASS: 0,
+        FeePrice.SCOPE_LEVEL: 1,
+        FeePrice.SCOPE_SCHOOL_WIDE: 2,
+    }
 
     def is_applicable(price):
-        return matches_class(price) or matches_level(price) or matches_school_wide(price)
+        if price.scope == FeePrice.SCOPE_CLASS and price.school_class_id == school_class.id:
+            return True
+        if price.scope == FeePrice.SCOPE_LEVEL and price.level == class_level:
+            return True
+        if price.scope == FeePrice.SCOPE_SCHOOL_WIDE and not price.school_class_id and not price.level:
+            return True
+        return False
 
-    def effective(price):
-        return _is_fee_price_active(price)
+    if term is not None:
+        explicit = list(base_qs.filter(term=term))
+        fallback_candidates = base_qs.exclude(term=term).order_by('-term__start_date', 'category__name')
+    else:
+        explicit = list(base_qs.filter(term__isnull=True))
+        fallback_candidates = base_qs.exclude(term__isnull=True).order_by('-term__start_date', 'category__name')
 
-    def precedence(price):
-        if matches_class(price):
-            return 0
-        if matches_level(price):
-            return 1
-        if matches_school_wide(price):
-            return 2
-        return 99
-
-    explicit = [fp for fp in explicit if is_applicable(fp)]
-    explicit.sort(key=lambda p: (precedence(p), p.category_id))
+    explicit = [fp for fp in explicit if is_applicable(fp) and _is_fee_price_active(fp)]
+    explicit.sort(key=lambda p: (scope_precedence.get(p.scope, 99), p.category_id))
     deduped_explicit = []
     seen_cats = set()
     for fp in explicit:
         if fp.category_id in seen_cats:
             continue
-        if not effective(fp):
-            continue
         seen_cats.add(fp.category_id)
         deduped_explicit.append(fp)
 
     fallbacks = []
-    seen = set(seen_cats)
+    seen = {fp.category_id for fp in deduped_explicit}
     for fp in fallback_candidates:
         if fp.category_id in seen:
             continue
-        if not effective(fp):
+        if not _is_fee_price_active(fp):
             continue
         if not is_applicable(fp):
             continue

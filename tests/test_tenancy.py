@@ -300,9 +300,9 @@ class AdminPortalLeakageTests(TwoSchoolsFixture):
         resp = self.client.get(reverse('finance:financial_report'))
         self.assertEqual(resp.status_code, 200)
 
-    def test_subject_edit_foreign_pk_404(self):
+    def test_class_detail_foreign_pk_404(self):
         resp = self.client.get(
-            reverse('school_admin:subject_edit', args=[self.b['subject'].pk])
+            reverse('school_admin:class_detail', args=[self.b['school_class'].pk])
         )
         self.assertEqual(resp.status_code, 404)
 

@@ -3,6 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.db.models import F
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
 from notifications.utils import notify_admins
 
 from .models import InventoryItem, InventoryTransaction, BookPurchase, InventoryProcurement

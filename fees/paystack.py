@@ -288,6 +288,84 @@ def confirm_payment_from_verify(payment, data):
     return payment
 
 
+def _payment_kwargs_from_webhook(data, school, invoice, student, reference):
+    """Build Payment kwargs from a Paystack charge.success payload.
+
+    Returns a dict suitable for ``Payment.objects.create(...)`` or for
+    updating an existing payment row.
+    """
+    paid_at = data.get('paid_at')
+    authorization = data.get('authorization') or {}
+    customer = data.get('customer') or {}
+    metadata = data.get('metadata') or {}
+
+    return {
+        'school': school,
+        'invoice': invoice,
+        'student': student,
+        'description': metadata.get('description') or '',
+        'amount': Decimal(data.get('amount', 0)) / Decimal('100'),
+        'method': Payment.Method.PAYSTACK,
+        'reference': reference,
+        'status': Payment.Status.CONFIRMED,
+        'paid_on': _parse_paid_at(paid_at),
+        'webhook_processed': True,
+        'webhook_payload': data,
+        'verified_at': timezone.now(),
+        'confirmed_at': timezone.now(),
+        'currency': data.get('currency') or _default_currency(),
+        'fees_charged': Decimal(str(data.get('fees') or 0)) / Decimal('100'),
+        'channel': authorization.get('channel', ''),
+        'card_last4': str(authorization.get('last4') or ''),
+        'card_brand': authorization.get('card_type', ''),
+        'bank_name': authorization.get('bank', ''),
+        'paid_by_email': customer.get('email', ''),
+        'paid_by_name': (
+            (customer.get('first_name') or '') + ' ' + (customer.get('last_name') or '')
+        ).strip(),
+        'paid_by_phone': str(customer.get('phone') or ''),
+    }
+
+
+def _apply_paystack_success(payment, data, webhook_log):
+    """Apply a successful Paystack charge to an existing Payment row.
+
+    Enriches the payment with Paystack metadata, confirms it, issues a
+    receipt, notifies the payer, and marks the webhook log as processed.
+    """
+    reference = data.get('reference')
+    metadata = data.get('metadata') or {}
+
+    if not payment.student_id and metadata.get('student_id'):
+        from students.models import Student
+        student = Student.objects.filter(pk=metadata['student_id']).first()
+        if student:
+            payment.student = student
+    if not payment.description and metadata.get('description'):
+        payment.description = metadata['description']
+
+    kwargs = _payment_kwargs_from_webhook(
+        data, payment.school, payment.invoice, payment.student, reference,
+    )
+    for field, value in kwargs.items():
+        setattr(payment, field, value)
+
+    payment.save(update_fields=list(kwargs.keys()) + ['description'])
+    issue_receipt(payment)
+    _notify_payment(
+        payment,
+        subject=f'Payment confirmed: ₦{payment.amount:,.2f}',
+        message=(
+            f'Payment of ₦{payment.amount:,.2f} for {payment.student} '
+            f'has been confirmed.'
+        ),
+        reference=f'payment-confirm:{payment.id}',
+    )
+    _mark_webhook_log_processed(webhook_log)
+    logger.info(f'Payment {reference} confirmed (updated)')
+    return JsonResponse({'status': 'confirmed'})
+
+
 def _handle_charge_success(event, data, webhook_log):
     """Process a charge.success webhook event (idempotent, tamper-checked)."""
     reference = data.get('reference')
@@ -321,53 +399,7 @@ def _handle_charge_success(event, data, webhook_log):
             return JsonResponse({'status': 'amount mismatch'})
 
         # Amount matches — confirm the existing payment row
-        metadata = data.get('metadata') or {}
-        if not payment.student_id and metadata.get('student_id'):
-            from students.models import Student
-            student = Student.objects.filter(pk=metadata['student_id']).first()
-            if student:
-                payment.student = student
-        if not payment.description and metadata.get('description'):
-            payment.description = metadata['description']
-        payment.status = Payment.Status.CONFIRMED
-        payment.paid_on = _parse_paid_at(paid_at)
-        payment.webhook_processed = True
-        payment.webhook_payload = event
-        payment.verified_at = timezone.now()
-        payment.confirmed_at = timezone.now()
-        payment.currency = data.get('currency') or _default_currency()
-        payment.fees_charged = Decimal(str(data.get('fees') or 0)) / Decimal('100')
-        authorization = data.get('authorization') or {}
-        payment.channel = authorization.get('channel', '')
-        payment.card_last4 = str(authorization.get('last4') or '')
-        payment.card_brand = authorization.get('card_type', '')
-        payment.bank_name = authorization.get('bank', '')
-        customer = data.get('customer') or {}
-        payment.paid_by_email = customer.get('email', '')
-        payment.paid_by_name = (
-            (customer.get('first_name') or '') + ' ' + (customer.get('last_name') or '')
-        ).strip()
-        payment.paid_by_phone = str(customer.get('phone') or '')
-        payment.save(update_fields=[
-            'status', 'paid_on', 'webhook_processed', 'webhook_payload',
-            'verified_at', 'confirmed_at', 'currency', 'fees_charged',
-            'channel', 'card_last4', 'card_brand', 'bank_name',
-            'paid_by_email', 'paid_by_name', 'paid_by_phone', 'student',
-            'description',
-        ])
-        issue_receipt(payment)
-        _notify_payment(
-            payment,
-            subject=f'Payment confirmed: ₦{payment.amount:,.2f}',
-            message=(
-                f'Payment of ₦{payment.amount:,.2f} for {payment.student} '
-                f'has been confirmed.'
-            ),
-            reference=f'payment-confirm:{payment.id}',
-        )
-        _mark_webhook_log_processed(webhook_log)
-        logger.info(f'Payment {reference} confirmed (updated)')
-        return JsonResponse({'status': 'confirmed'})
+        return _apply_paystack_success(payment, data, webhook_log)
 
     # No existing payment row — webhook-first fallback
     metadata = data.get('metadata', {})
@@ -421,31 +453,7 @@ def _handle_charge_success(event, data, webhook_log):
 
     # Create the payment as CONFIRMED (it's already been charged by Paystack)
     payment = Payment.objects.create(
-        school=school,
-        invoice=invoice,
-        student=student,
-        description=metadata.get('description') or '',
-        amount=Decimal(amount_kobo) / Decimal('100'),
-        method=Payment.Method.PAYSTACK,
-        reference=reference,
-        status=Payment.Status.CONFIRMED,
-        paid_on=_parse_paid_at(paid_at),
-        recorded_by=None,  # Webhook — no user
-        webhook_processed=True,
-        webhook_payload=event,
-        verified_at=timezone.now(),
-        confirmed_at=timezone.now(),
-        currency=data.get('currency') or _default_currency(),
-        fees_charged=Decimal(str(data.get('fees') or 0)) / Decimal('100'),
-        channel=authorization.get('channel', ''),
-        card_last4=str(authorization.get('last4') or ''),
-        card_brand=authorization.get('card_type', ''),
-        bank_name=authorization.get('bank', ''),
-        paid_by_email=customer.get('email', ''),
-        paid_by_name=(
-            (customer.get('first_name') or '') + ' ' + (customer.get('last_name') or '')
-        ).strip(),
-        paid_by_phone=str(customer.get('phone') or ''),
+        **_payment_kwargs_from_webhook(data, school, invoice, student, reference),
     )
     issue_receipt(payment)
     _mark_webhook_log_processed(webhook_log)
@@ -646,12 +654,12 @@ def initiate_payment(invoice, parent_email, callback_url, existing_reference=Non
         resp.raise_for_status()
         return resp.json()
 
-    try:
+    def _try_init(reference, payment_row):
+        """Initialize Paystack with a reference and persist the result."""
         data = _initialize(reference)
         if data.get('status'):
-            # Persist the Paystack session details onto the payment row
-            if payment is not None:
-                Payment.objects.filter(pk=payment.pk).update(
+            if payment_row is not None:
+                Payment.objects.filter(pk=payment_row.pk).update(
                     authorization_url=data['data'].get('authorization_url', ''),
                     access_code=data['data'].get('access_code', ''),
                     initiated_at=timezone.now(),
@@ -661,27 +669,16 @@ def initiate_payment(invoice, parent_email, callback_url, existing_reference=Non
                 'reference': reference,
             }
         return {'error': data.get('message', 'Paystack initialization failed')}
+
+    try:
+        return _try_init(reference, payment)
     except Exception as e:
         logger.error(f'Paystack API error: {e}')
-        # A reused reference is already registered with Paystack (e.g. the parent
-        # abandoned the previous checkout), so re-initializing it is rejected as a
-        # duplicate. Drop it and start a fresh transaction instead.
         if existing_reference is not None:
             reference = f'GH-{invoice.id if invoice is not None else student.pk}-{uuid.uuid4().hex[:8].upper()}'
             payment = _create_pending(reference)
             try:
-                data = _initialize(reference)
-                if data.get('status'):
-                    Payment.objects.filter(pk=payment.pk).update(
-                        authorization_url=data['data'].get('authorization_url', ''),
-                        access_code=data['data'].get('access_code', ''),
-                        initiated_at=timezone.now(),
-                    )
-                    return {
-                        'authorization_url': data['data']['authorization_url'],
-                        'reference': reference,
-                    }
-                return {'error': data.get('message', 'Paystack initialization failed')}
+                return _try_init(reference, payment)
             except Exception as e2:
                 logger.error(f'Paystack API error (new reference): {e2}')
         return {'error': 'Payment gateway error. Please try again.'}

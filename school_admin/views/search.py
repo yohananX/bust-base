@@ -6,6 +6,8 @@ changes (a model with ``updated_at``) send ``Last-Modified`` and honour
 ``If-Modified-Since`` (HTTP 304), so the autocomplete can revalidate its
 localStorage cache with a near-zero-cost request.
 """
+from django.db.models import Q, Prefetch, Value
+from django.db.models.functions import Concat
 from django.http import JsonResponse, HttpResponseNotModified
 from django.utils.http import http_date, parse_http_date
 from django.views.generic.base import View
@@ -15,7 +17,7 @@ from accounts.models import Roles, User
 from academics.models import Subject
 from fees.models import Invoice
 from notifications.models import NotificationLog
-from students.models import Student, SchoolClass
+from students.models import Student, SchoolClass, StudentGuardianLink
 from lessons.models import LessonEnrollment
 
 
@@ -184,6 +186,44 @@ class NotificationSearchAPIView(EntitySearchAPIView):
             'id': log.pk,
             'name': log.subject,
             'subtitle': log.recipient.email,
+        }
+
+
+class GuardianSearchAPIView(EntitySearchAPIView):
+    """Autocomplete for parent/guardian users at the current school."""
+
+    def get_queryset(self, request):
+        q = request.GET.get('q', '').strip()
+        qs = User.objects.filter(
+            school=request.school,
+            role=Roles.PARENT,
+        ).annotate(
+            full_name=Concat('first_name', Value(' '), 'last_name')
+        ).prefetch_related(
+            Prefetch('student_links', queryset=StudentGuardianLink.objects.order_by('-pk'))
+        ).order_by('last_name', 'first_name')
+        if q:
+            qs = qs.filter(
+                Q(full_name__icontains=q) |
+                Q(first_name__icontains=q) |
+                Q(last_name__icontains=q) |
+                Q(email__icontains=q) |
+                Q(phone_number__icontains=q)
+            )
+        return qs
+
+    def serialize(self, user):
+        link = user.student_links.all()[:1]
+        link = link[0] if link else None
+        return {
+            'id': user.pk,
+            'name': user.get_full_name() or user.username,
+            'email': user.email or '',
+            'phone': user.phone_number or '',
+            'relationship': link.relationship if link else 'GUARDIAN',
+            'occupation': link.occupation or '',
+            'address': link.address or '',
+            'authorized_pickup_person': link.authorized_pickup_person or '',
         }
 
 

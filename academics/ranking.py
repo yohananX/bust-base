@@ -1,6 +1,41 @@
 from .models import Score
 
 
+def _assign_dense_ranks(items, score_attr, id_attr=None, *, key=None):
+    """Assign dense/ Olympic ranks to items based on a numeric score attribute.
+
+    ``items`` may be a list of objects or dicts. When ``key`` is given, it is
+    used as the sort key; otherwise items are sorted by
+    ``(-score_attr, id_attr)``.
+
+    Returns a list of (item, rank) tuples in ranked order.
+    """
+    def _score(item):
+        if isinstance(item, dict):
+            return item[score_attr]
+        return getattr(item, score_attr)
+
+    if key is None:
+        def key(x):
+            if id_attr is None:
+                return (-_score(x), 0)
+            if isinstance(x, dict):
+                return (-_score(x), x[id_attr])
+            return (-_score(x), getattr(x, id_attr))
+
+    items_sorted = sorted(items, key=key)
+    ranked = []
+    prev_score = None
+    rank = 0
+    for i, item in enumerate(items_sorted, start=1):
+        score = _score(item)
+        if score != prev_score:
+            rank = i
+        ranked.append((item, rank))
+        prev_score = score
+    return ranked
+
+
 def compute_positions(school_class, subject, term):
     """Compute Olympic/dense ranking for scores in a given class, subject, and term.
 
@@ -44,14 +79,9 @@ def compute_positions(school_class, subject, term):
     complete.sort(key=lambda s: (-s.total_score, s.student_id))
 
     # Olympic/dense ranking: [90, 85, 85, 70] -> [1, 2, 2, 4]
-    rank = 0
-    prev_total = None
-    for i, score in enumerate(complete, start=1):
-        if score.total_score != prev_total:
-            rank = i
+    for score, rank in _assign_dense_ranks(complete, 'total_score', 'student_id'):
         score.position = rank
         score.save(update_fields=['position'])
-        prev_total = score.total_score
 
     return len(complete)
 
@@ -105,14 +135,12 @@ def compute_term_summary(school_class, term):
         })
 
     # Olympic/dense ranking by grand_total (same algorithm as compute_positions)
-    student_totals.sort(key=lambda x: (-x['grand_total'], x['student'].pk))
-    rank = 0
-    prev_total = None
-    for i, entry in enumerate(student_totals, start=1):
-        if entry['grand_total'] != prev_total:
-            rank = i
+    def _summary_key(entry):
+        student = entry['student']
+        return (-entry['grand_total'], student.pk)
+
+    for entry, rank in _assign_dense_ranks(student_totals, 'grand_total', key=_summary_key):
         entry['overall_position'] = rank
-        prev_total = entry['grand_total']
 
     # Create/update TermResult rows
     count = 0

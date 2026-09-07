@@ -1,0 +1,15 @@
+{% if score.moderation_status == 'REJECTED' %}
+  <span {% if score.moderated_by %}title="Rejected by {{ score.moderated_by.get_full_name|default:score.moderated_by.username }}{% if score.moderated_at %} on {{ score.moderated_at|date:'d M Y, H:i' }}{% endif %}"{% endif %}>
+    {% include 'components/badge.html' with status='danger' text='Rejected by Admin' %}
+  </span>
+{% elif score.moderation_status == 'APPROVED' %}
+  {% include 'components/badge.html' with status='success' text='Approved' %}
+{% elif score.is_complete %}
+  {% include 'components/badge.html' with status='warning' text='Awaiting Review' %}
+{% elif score.passed is None %}
+  {% include 'components/badge.html' with status='info' text='Pending' %}
+{% elif score.passed %}
+  {% include 'components/badge.html' with status='success' text='Pass' %}
+{% else %}
+  {% include 'components/badge.html' with status='danger' text='Fail' %}
+{% endif %}

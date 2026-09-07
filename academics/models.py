@@ -13,7 +13,6 @@ class Subject(TenantScopedModel):
 
     name = models.CharField(max_length=200, verbose_name=_('name'))
     code = models.CharField(max_length=20, verbose_name=_('code'))
-    pass_mark = models.PositiveSmallIntegerField(default=40, verbose_name=_('pass mark'))
     school_classes = models.ManyToManyField(
         'students.SchoolClass',
         through='ClassSubject',
@@ -46,6 +45,13 @@ class ClassSubject(TenantScopedModel):
         related_name='class_subjects',
         verbose_name=_('subject'),
     )
+    pass_mark = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        default=None,
+        verbose_name=_('pass mark'),
+        help_text=_('Override the subject default for this class. Leave blank to use the subject default.'),
+    )
 
     class Meta:
         verbose_name = _('class subject')
@@ -55,6 +61,10 @@ class ClassSubject(TenantScopedModel):
 
     def __str__(self):
         return f"{self.subject.name} - {self.school_class.name}"
+
+    def effective_pass_mark(self):
+        """Return the class-specific pass_mark if set, otherwise the subject default."""
+        return self.pass_mark if self.pass_mark is not None else self.subject.pass_mark
 
 
 class TeacherAssignment(TenantScopedModel):
@@ -242,7 +252,13 @@ class Score(TenantScopedModel):
     def passed(self):
         if not self.is_complete:
             return None
-        return self.total_score >= self.subject.pass_mark
+        school_class_id = self.student.enrollments.filter(session=self.term.session).values_list('school_class_id', flat=True).first()
+        if not school_class_id:
+            return None
+        link = ClassSubject.objects.filter(subject=self.subject, school_class_id=school_class_id).first()
+        if not link or link.pass_mark is None:
+            return None
+        return self.total_score >= link.pass_mark
 
     def clean(self):
         """Enforce the school's configured score maxima.

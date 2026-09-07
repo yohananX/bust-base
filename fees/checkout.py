@@ -21,14 +21,14 @@ Business rules:
 - All money is ``Decimal``.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 
-from .models import FeeCategory, FeeStructure, Invoice, InvoiceLineItem, PaymentLineItem
+from .models import FeeCategory, FeePrice, Invoice, InvoiceLineItem, PaymentLineItem
 from .utils import resolve_student_type
 from .generation import effective_fee_structures
 from core.models import Term
@@ -36,7 +36,7 @@ from students.models import ClassEnrollment
 
 
 def _applicable_fee_structures(school, school_class, term, student_type='ALL'):
-    """Return all applicable FeeStructure rows for a class + term.
+    """Return all applicable FeePrice rows for a class + term.
 
     Merges:
     - compulsory categories (with fallback pricing from prior terms)
@@ -45,11 +45,14 @@ def _applicable_fee_structures(school, school_class, term, student_type='ALL'):
     compulsory = list(
         effective_fee_structures(school, school_class, term, student_type=student_type)
     )
-    optional = FeeStructure.objects.filter(
+    optional = FeePrice.objects.filter(
         school=school,
-        school_class__in=[school_class, None],
         term=term,
         category__is_compulsory=False,
+        is_active=True,
+    ).filter(
+        Q(scope=FeePrice.SCOPE_CLASS, school_class=school_class) |
+        Q(scope=FeePrice.SCOPE_SCHOOL_WIDE, school_class__isnull=True, level='')
     ).select_related('category')
     if student_type != 'ALL':
         optional = optional.filter(
@@ -143,7 +146,7 @@ def _billed_category_ids(invoice):
 
 
 def _extra_options(term, enrollment, invoice, student, student_type='ALL'):
-    """Build 'extra' options from all applicable FeeStructure rows for the term.
+    """Build 'extra' options from all applicable FeePrice rows for the term.
 
     Uses ``_applicable_fee_structures`` so compulsory categories with fallback
     pricing from prior terms are included.
@@ -179,7 +182,7 @@ def _extra_options(term, enrollment, invoice, student, student_type='ALL'):
 
 
 def _next_term_options(term, enrollment, student, student_type='ALL'):
-    """Build 'next' options from all applicable FeeStructure rows for the following term.
+    """Build 'next' options from all applicable FeePrice rows for the following term.
 
     Uses ``_applicable_fee_structures`` so compulsory categories with fallback
     pricing are included.
@@ -233,7 +236,7 @@ def get_checkout_options(student, term) -> CheckoutOptions:
 
     - ``outstanding``: the student's existing invoice for ``term`` when its
       computed balance is positive.
-    - ``extras``: every FeeStructure row for the student's current class +
+    - ``extras``: every FeePrice row for the student's current class +
       ``term``. Categories already billed on the term invoice are flagged
       ``billed=True`` (rendered as paid); the rest stay selectable.
     - ``next_term``: the same for the following term, or ``None`` when there is
@@ -320,6 +323,7 @@ class ReconcileResult:
     minimum_payable: Decimal
     total_balance: Decimal  # sum of involved invoices' balance AFTER additions
     is_split: bool          # True when two invoices involved
+    selected_items: list = field(default_factory=list)  # resolved item dicts for PaymentLineItems
 
 
 def _parse_key(key):
@@ -349,7 +353,7 @@ def _parse_key(key):
 
 
 def _resolve_fee_structure(student, enrollment, term, category_pk, student_type='ALL'):
-    """Look up the FeeStructure row for a category within a term + class."""
+    """Look up the FeePrice row for a category within a term + class."""
     if enrollment is None:
         return None
     for fs in _applicable_fee_structures(
@@ -361,7 +365,7 @@ def _resolve_fee_structure(student, enrollment, term, category_pk, student_type=
 
 
 def _bundle_fee_structures(student, enrollment, term, student_type='ALL'):
-    """Return all applicable FeeStructure rows for a student type in a term."""
+    """Return all applicable FeePrice rows for a student type in a term."""
     if enrollment is None:
         return []
     return _applicable_fee_structures(
@@ -445,6 +449,69 @@ def reconcile_checkout(student, term, selected_keys, amount) -> ReconcileResult:
             if fs not in bundle_fee_structures:
                 bundle_fee_structures.append(fs)
 
+    selected_items = []
+    if involves_outstanding:
+        current_invoice_for_items = _invoice_for(student, term)
+        if current_invoice_for_items is not None and current_invoice_for_items.balance > 0:
+            selected_items.append({
+                'kind': PaymentLineItem.KIND_OUTSTANDING,
+                'label': f"Outstanding: {term.name}",
+                'amount': current_invoice_for_items.balance,
+                'source_key': 'outstanding',
+                'category': None,
+                'term': term,
+                'session': term.session,
+                'invoice': current_invoice_for_items,
+            })
+
+    for fs in extra_fee_structures:
+        selected_items.append({
+            'kind': PaymentLineItem.KIND_EXTRA,
+            'label': fs.category.name,
+            'amount': fs.amount,
+            'source_key': f'extra:{fs.category_id}',
+            'category': fs.category,
+            'term': term,
+            'session': term.session,
+            'invoice': _invoice_for(student, term),
+        })
+
+    for fs in next_fee_structures:
+        next_invoice_for_items = _invoice_for(student, next_term) if next_term else None
+        selected_items.append({
+            'kind': PaymentLineItem.KIND_NEXT,
+            'label': fs.category.name,
+            'amount': fs.amount,
+            'source_key': f'next:{fs.category_id}',
+            'category': fs.category,
+            'term': next_term,
+            'session': next_term.session if next_term else None,
+            'invoice': next_invoice_for_items,
+        })
+
+    for key in bundle_keys:
+        parsed = _parse_key(key)
+        if parsed is None:
+            continue
+        kind, raw_term_id = parsed
+        if kind != 'bundle':
+            continue
+        try:
+            bundle_term = Term.objects.get(school=term.school, pk=raw_term_id)
+        except Term.DoesNotExist:
+            continue
+        for fs in _bundle_fee_structures(student, enrollment, bundle_term, student_type=student_type):
+            selected_items.append({
+                'kind': PaymentLineItem.KIND_EXTRA,
+                'label': fs.category.name,
+                'amount': fs.amount,
+                'source_key': key,
+                'category': fs.category,
+                'term': bundle_term,
+                'session': bundle_term.session,
+                'invoice': _invoice_for(student, bundle_term),
+            })
+
     with transaction.atomic():
         current_invoice = None
         if involves_outstanding:
@@ -461,33 +528,25 @@ def reconcile_checkout(student, term, selected_keys, amount) -> ReconcileResult:
                 defaults={'total_amount': Decimal('0.00')},
             )
 
-        if current_invoice is not None and extra_fee_structures:
-            for fs in extra_fee_structures:
+        if current_invoice is not None and (extra_fee_structures or bundle_fee_structures):
+            new_line_items = []
+            for fs in extra_fee_structures + bundle_fee_structures:
                 already_billed = current_invoice.line_items.filter(
                     category_id=fs.category_id
                 ).exists()
                 if not already_billed:
-                    InvoiceLineItem.objects.create(
-                        invoice=current_invoice,
-                        category_id=fs.category_id,
-                        amount=fs.amount,
-                    )
-                    current_invoice.total_amount = current_invoice.total_amount + fs.amount
-                    current_invoice.save(update_fields=['total_amount'])
+                    new_line_items.append(fs)
 
-        if current_invoice is not None and bundle_fee_structures:
-            for fs in bundle_fee_structures:
-                already_billed = current_invoice.line_items.filter(
-                    category_id=fs.category_id
-                ).exists()
-                if not already_billed:
+            if new_line_items:
+                total_add = sum(fs.amount for fs in new_line_items)
+                for fs in new_line_items:
                     InvoiceLineItem.objects.create(
                         invoice=current_invoice,
                         category_id=fs.category_id,
                         amount=fs.amount,
                     )
-                    current_invoice.total_amount = current_invoice.total_amount + fs.amount
-                    current_invoice.save(update_fields=['total_amount'])
+                current_invoice.total_amount = current_invoice.total_amount + total_add
+                current_invoice.save(update_fields=['total_amount'])
 
         next_invoice = None
         if next_keys and next_term is not None:
@@ -549,6 +608,7 @@ def reconcile_checkout(student, term, selected_keys, amount) -> ReconcileResult:
         minimum_payable=Decimal('0.00'),
         total_balance=total_balance,
         is_split=len(invoices) == 2,
+        selected_items=selected_items,
     )
 
 

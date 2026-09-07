@@ -1,0 +1,5 @@
+{% load score_extras %}
+<script id="row-script-{{ score.pk }}" hx-swap-oob="outerHTML">
+  var el=document.getElementById("score-row-{{ score.pk }}");
+  if(el)el.className="{{ row_class }}";
+</script>
