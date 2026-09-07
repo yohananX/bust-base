@@ -1549,6 +1549,14 @@ class ClassFirstSubjectManagementTests(TestCase):
 class StaffDeleteViewTest(TestCase):
     def setUp(self):
         self.school = School.objects.create(name='Del School', short_code='delsch')
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2026/2027',
+            start_date=date(2026, 9, 1), end_date=date(2027, 8, 31), is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school, session=self.session, name='First Term',
+            start_date=date(2026, 9, 1), end_date=date(2026, 12, 15), is_current=True,
+        )
         self.school_class = SchoolClass.objects.create(school=self.school, name='JSS1', level='JSS1')
         self.superadmin = User.objects.create_user(
             username='super1', email='super1@test.com', password='pass123',
@@ -1590,8 +1598,8 @@ class StaffDeleteViewTest(TestCase):
     def test_delete_page_shows_related_warnings(self):
         from academics.models import TeacherAssignment, Score
         subject = Subject.objects.create(school=self.school, name='Math', code='MTH')
-        TeacherAssignment.objects.create(school=self.school, teacher=self.teacher, subject=subject, school_class=self.school_class)
-        Score.objects.create(school=self.school, teacher=self.teacher, student=None, subject=subject, score=80)
+        TeacherAssignment.objects.create(school=self.school, teacher=self.teacher, subject=subject, school_class=self.school_class, session=self.session)
+        Score.objects.create(school=self.school, student=None, subject=subject, term=self.term, entered_by=self.teacher)
 
         self.client.force_login(self.superadmin)
         resp = self.client.get(reverse('school_admin:staff_delete', args=[self.teacher.pk]))

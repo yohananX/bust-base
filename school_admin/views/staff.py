@@ -26,10 +26,10 @@ class StaffListView(RoleRequiredMixin, View):
 
     def get(self, request):
         school = request.school
-        staff = User.objects.filter(
-            school=school,
-            role__in=[Roles.TEACHER, Roles.ADMIN],
-        ).order_by('role', 'last_name', 'first_name')
+        qs = User.objects.filter(role__in=[Roles.TEACHER, Roles.ADMIN])
+        if not request.user.is_superuser:
+            qs = qs.filter(school=school)
+        staff = qs.order_by('role', 'last_name', 'first_name')
 
         q = request.GET.get('q', '')
         if q:
@@ -217,22 +217,21 @@ class StaffDeleteView(RoleRequiredMixin, View):
         from academics.models import TeacherAssignment, Score
         from payroll.models import PayrollRun, Payslip
         from finance.models import Expenditure, Project
-        from lessons.models import LessonClass
+        from lessons.models import LessonTeacherAssignment
         from notifications.models import NotificationLog
-        from inventory.models import StockItem, Procurement, StockRemoval, InventoryTransaction
+        from inventory.models import InventoryItem, InventoryProcurement, InventoryTransaction
 
         related = {
             'teacher_assignments': TeacherAssignment.objects.filter(teacher=staff_user).count(),
-            'scores': Score.objects.filter(teacher=staff_user).count(),
-            'payroll_runs': PayrollRun.objects.filter(initiated_by=staff_user).count(),
+            'scores_entered': Score.objects.filter(entered_by=staff_user).count(),
+            'payroll_runs': PayrollRun.objects.filter(generated_by=staff_user).count(),
             'payslips': Payslip.objects.filter(teacher=staff_user).count(),
             'projects': Project.objects.filter(created_by=staff_user).count(),
             'expenditures': Expenditure.objects.filter(created_by=staff_user).count(),
-            'lesson_classes': LessonClass.objects.filter(teacher=staff_user).count(),
+            'lesson_teacher_assignments': LessonTeacherAssignment.objects.filter(teacher=staff_user).count(),
             'notifications': NotificationLog.objects.filter(recipient=staff_user).count(),
-            'stock_items': StockItem.objects.filter(created_by=staff_user).count(),
-            'procurements': Procurement.objects.filter(purchased_by=staff_user).count(),
-            'stock_removals': StockRemoval.objects.filter(created_by=staff_user).count(),
+            'inventory_items': InventoryItem.objects.filter(created_by=staff_user).count(),
+            'procurements': InventoryProcurement.objects.filter(purchased_by=staff_user).count(),
             'inventory_transactions': InventoryTransaction.objects.filter(created_by=staff_user).count(),
         }
         has_related = any(v > 0 for v in related.values())
