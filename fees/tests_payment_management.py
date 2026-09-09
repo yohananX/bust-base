@@ -1,11 +1,9 @@
 """Tests for the payment management module enhancements.
 
 Covers:
-- FeeCategoryGroup hierarchy and assignments
 - InvoiceResetLog audit trail
 - FeeValidationError logging
 - InvoiceIntegrityValidator
-- FeeStructureValidator
 - InvoiceResetService (term, class, student, school)
 - Generation billing_cycle enforcement and one-time guard
 - Checkout grouped_extras
@@ -21,7 +19,7 @@ from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from fees.models import (
-    FeeCategory, FeeCategoryGroup, FeeCategoryGroupAssignment,
+    FeeCategory,
     FeePrice, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
     InvoiceResetLog, FeeValidationError,
 )
@@ -103,48 +101,6 @@ class BasePaymentManagementTest(TestCase):
         )
 
 
-# ─── FeeCategoryGroup Tests ──────────────────────────────────────────────────
-
-
-class FeeCategoryGroupTest(BasePaymentManagementTest):
-    def test_group_creation(self):
-        group = FeeCategoryGroup.objects.create(
-            school=self.school,
-            name='Academic',
-            group_type=FeeCategoryGroup.GROUP_TYPES[0][0],
-        )
-        self.assertEqual(str(group), 'Academic')
-
-    def test_nested_group_depth_limit(self):
-        parent = FeeCategoryGroup.objects.create(
-            school=self.school,
-            name='Parent',
-        )
-        child = FeeCategoryGroup.objects.create(
-            school=self.school,
-            name='Child',
-            parent=parent,
-        )
-        grandchild = FeeCategoryGroup(
-            school=self.school,
-            name='Grandchild',
-            parent=child,
-        )
-        with self.assertRaises(ValidationError):
-            grandchild.full_clean()
-
-    def test_group_assignment_unique_together(self):
-        group = FeeCategoryGroup.objects.create(school=self.school, name='Academic')
-        category = FeeCategory.objects.create(school=self.school, name='Tuition')
-        FeeCategoryGroupAssignment.objects.create(
-            school=self.school, group=group, category=category
-        )
-        with self.assertRaises(Exception):
-            FeeCategoryGroupAssignment.objects.create(
-                school=self.school, group=group, category=category
-            )
-
-
 # ─── InvoiceResetLog Tests ───────────────────────────────────────────────────
 
 
@@ -183,7 +139,7 @@ class FeeValidationErrorTest(BasePaymentManagementTest):
             school=self.school,
             code=FeeValidationError.ErrorCode.NEGATIVE_AMOUNT,
             message='Amount is negative',
-            related_object_type='FeeStructure',
+            related_object_type='Invoice',
             related_object_id=1,
         )
         self.assertEqual(err.code, 'NEGATIVE_AMOUNT')

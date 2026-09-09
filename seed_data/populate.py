@@ -33,7 +33,7 @@ from core.models import AcademicSession, Term
 from data_import.importers import (
     ClassImporter, StaffImporter, StudentImporter, SubjectImporter,
 )
-from fees.models import FeeCategory, FeeReceipt, FeeStructure, Invoice, InvoiceLineItem, Payment
+from fees.models import FeeCategory, FeePrice, FeeReceipt, Invoice, InvoiceLineItem, Payment
 from students.models import ClassEnrollment, SchoolClass, Student, StudentGuardianLink
 
 from curriculum import CLASSES, CURRICULUM, FEE_TIERS, PRIMARY_SUBJECTS, TEACHERS
@@ -55,7 +55,7 @@ def wipe(school):
     counts = {}
     models = [
         TeacherAssignment, Score, TermResult, Payment, FeeReceipt,
-        InvoiceLineItem, Invoice, FeeStructure, FeeCategory,
+        InvoiceLineItem, Invoice, FeePrice, FeeCategory,
         StudentGuardianLink, ClassEnrollment, Student, Subject, SchoolClass,
     ]
     for model in models:
@@ -96,9 +96,10 @@ def create_fee_structures(school, session):
             defaults={'is_compulsory': True},
         )
         for term in terms:
-            FeeStructure.objects.create(
+            FeePrice.objects.create(
                 school=school, school_class=classes[class_name],
                 term=term, category=category, amount=Decimal(FEE_TIERS[class_name]),
+                scope=FeePrice.SCOPE_CLASS,
             )
             created += 1
     print('  structures created:', created)

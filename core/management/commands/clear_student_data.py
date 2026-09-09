@@ -14,7 +14,7 @@ class Command(BaseCommand):
     help = (
         'Selectively delete all student-related records for a school while '
         'preserving School, SchoolClass, Subject, AcademicSession, Term, '
-        'FeeStructure, TeacherAssignment, and payroll/finance data.'
+        'TeacherAssignment, and payroll/finance data.'
     )
 
     def add_arguments(self, parser):

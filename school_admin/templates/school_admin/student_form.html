@@ -5,15 +5,15 @@
 {% block page_header %}{% if is_edit %}Edit Student{% else %}Add Student{% endif %}{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto">
+<div class="max-w-4xl mx-auto space-y-4">
   {% if is_edit and existing_enrollment %}
-  <div class="bg-blue-50 text-blue-800 rounded-xl p-4 text-sm mb-4 border border-blue-100 flex items-center gap-2">
+  <div class="bg-info-tint text-info rounded-xl p-4 text-sm border border-line flex items-center gap-2">
     <i data-lucide="info" class="w-4 h-4 flex-shrink-0"></i>
     <span>Currently enrolled in <strong>{{ existing_enrollment.school_class.name }}</strong> for the <strong>{{ existing_enrollment.session.name }}</strong> session.</span>
   </div>
   {% endif %}
 
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+  <div class="bg-white rounded-xl p-6 border border-line">
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
 
@@ -81,7 +81,7 @@
           <label class="block text-sm font-medium text-gray-600 mb-1.5">Phone Number <span class="text-gray-400 font-normal">(Optional)</span></label>
           <input type="text" name="new_phone_number" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
         </div>
-        <div class="bg-blue-50 text-blue-800 rounded-xl p-3.5 text-sm border border-blue-100 flex items-start gap-2">
+        <div class="bg-info-tint text-info rounded-xl p-3.5 text-sm border border-line flex items-start gap-2">
           <i data-lucide="key-round" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
           <span>A random password will be generated automatically. You can share it with the student after creation.</span>
         </div>

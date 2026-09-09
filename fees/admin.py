@@ -6,8 +6,8 @@ from django.utils.translation import gettext_lazy as _
 from django.http import HttpResponseRedirect
 
 from .models import (
-    FeeCategory, FeeCategoryGroup, FeeCategoryGroupAssignment,
-    FeeStructure, FeePrice, FeePriceOverride, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
+    FeeCategory,
+    FeePrice, FeePriceOverride, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
     InvoiceResetLog, FeeValidationError,
 )
 
@@ -68,30 +68,13 @@ class InvoiceStatusListFilter(admin.SimpleListFilter):
         return queryset
 
 
-# ─── FeeCategoryGroup Admin ──────────────────────────────────────────────────
-
-
-@admin.register(FeeCategoryGroup)
-class FeeCategoryGroupAdmin(admin.ModelAdmin):
-    list_display = ['name', 'group_type', 'school', 'is_active', 'parent']
-    list_filter = ['group_type', 'is_active', 'school']
-    search_fields = ['name']
-
-
-@admin.register(FeeCategoryGroupAssignment)
-class FeeCategoryGroupAssignmentAdmin(admin.ModelAdmin):
-    list_display = ['group', 'category', 'school']
-    list_filter = ['group', 'school']
-    search_fields = ['category__name', 'group__name']
-
-
 # ─── FeeCategory Admin ───────────────────────────────────────────────────────
 
 
 @admin.register(FeeCategory)
 class FeeCategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'compulsory_badge', 'billing_cycle', 'student_type', 'group', 'school']
-    list_filter = ['is_compulsory', 'billing_cycle', 'student_type', 'group', 'school']
+    list_display = ['name', 'compulsory_badge', 'billing_cycle', 'student_type', 'school']
+    list_filter = ['is_compulsory', 'billing_cycle', 'student_type', 'school']
     search_fields = ['name']
 
     @admin.display(description=_('Compulsory'))
@@ -99,33 +82,6 @@ class FeeCategoryAdmin(admin.ModelAdmin):
         if obj.is_compulsory:
             return format_html('<span style="color: #b45309; font-weight: bold;">Compulsory</span>')
         return format_html('<span style="color: #2563eb; font-weight: bold;">Optional</span>')
-
-
-# ─── FeeStructure Admin (DEPRECATED — kept readable for one release) ─────────
-
-
-@admin.register(FeeStructure)
-class FeeStructureAdmin(admin.ModelAdmin):
-    list_display = ['scope', 'school_class', 'term', 'category', 'amount', 'student_type', 'is_recurring_override', 'deprecated', 'school']
-    list_filter = ['scope', 'school_class', 'term', 'category', 'student_type', 'deprecated', 'school']
-    search_fields = ['school_class__name', 'category__name']
-    readonly_fields = ['deprecated', 'scope', 'school_class', 'term', 'category', 'amount', 'student_type', 'is_recurring_override', 'school']
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-    def get_queryset(self, request):
-        from django.contrib import messages
-        if not request.session.get('feestructure_deprecation_warned'):
-            messages.warning(
-                request,
-                'FeeStructure is deprecated. Use FeePrice for new pricing.',
-            )
-            request.session['feestructure_deprecation_warned'] = True
-        return super().get_queryset(request)
 
 
 @admin.register(FeePrice)

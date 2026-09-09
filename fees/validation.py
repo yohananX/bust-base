@@ -2,7 +2,6 @@
 
 Provides validators for:
 - Invoice integrity (totals match line items, compulsory coverage)
-- FeeStructure validity (positive amounts, no duplicates) - kept for legacy rows
 - FeePrice validity (positive amounts, no duplicates)
 - One-time fee rebill guards
 """
@@ -12,7 +11,6 @@ from django.db.models import Q, Sum
 
 from .models import (
     FeeCategory,
-    FeeStructure,
     FeePrice,
     FeeValidationError,
     Invoice,

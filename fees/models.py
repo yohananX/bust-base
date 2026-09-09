@@ -8,76 +8,6 @@ from core.utils import money_status
 from fees.validators import validate_proof_file
 
 
-class FeeCategoryGroup(TenantScopedModel):
-    GROUP_TYPES = [
-        ('RECURRING', _('Recurring (per-term)')),
-        ('ONE_OFF', _('One-off')),
-    ]
-
-    name = models.CharField(max_length=200, verbose_name=_('name'))
-    group_type = models.CharField(
-        max_length=20,
-        choices=GROUP_TYPES,
-        default='RECURRING',
-        verbose_name=_('group type'),
-    )
-    parent = models.ForeignKey(
-        'self',
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name='children',
-        verbose_name=_('parent group'),
-    )
-    sort_order = models.PositiveIntegerField(default=0, verbose_name=_('sort order'))
-    is_active = models.BooleanField(default=True, verbose_name=_('active'))
-
-    class Meta:
-        verbose_name = _('fee category group')
-        verbose_name_plural = _('fee category groups')
-        ordering = ['sort_order', 'name']
-        unique_together = ('school', 'name')
-
-    def __str__(self):
-        return self.name
-
-    def clean(self):
-        if self.parent and self.parent.school_id != self.school_id:
-            raise ValidationError(_('Parent group must belong to the same school.'))
-        depth = 0
-        parent = self.parent
-        while parent:
-            depth += 1
-            if depth > 1:
-                raise ValidationError(_('Groups may be nested at most 2 levels deep.'))
-            parent = parent.parent
-
-
-class FeeCategoryGroupAssignment(TenantScopedModel):
-    group = models.ForeignKey(
-        FeeCategoryGroup,
-        on_delete=models.CASCADE,
-        related_name='assignments',
-        verbose_name=_('group'),
-    )
-    category = models.ForeignKey(
-        'FeeCategory',
-        on_delete=models.CASCADE,
-        related_name='group_assignments',
-        verbose_name=_('category'),
-    )
-    sort_order = models.PositiveIntegerField(default=0, verbose_name=_('sort order'))
-
-    class Meta:
-        verbose_name = _('fee category group assignment')
-        verbose_name_plural = _('fee category group assignments')
-        ordering = ['sort_order', 'category__name']
-        unique_together = ('school', 'group', 'category')
-
-    def __str__(self):
-        return f'{self.category.name} → {self.group.name}'
-
-
 class FeeCategory(TenantScopedModel):
     BILLING_CYCLE_CHOICES = [
         ('ONE_TIME', _('One-time')),
@@ -112,14 +42,6 @@ class FeeCategory(TenantScopedModel):
         default='ALL',
         verbose_name=_('student type'),
         help_text=_('Which students this category applies to.'),
-    )
-    group = models.ForeignKey(
-        FeeCategoryGroup,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='categories',
-        verbose_name=_('group'),
     )
 
     class Meta:
@@ -256,70 +178,6 @@ class FeePrice(TenantScopedModel):
             )
 
 
-class FeeStructure(TenantScopedModel):
-    """DEPRECATED compatibility shim. Use FeePrice for new code.
-
-    Phase 5: FeeStructure is kept as a thin wrapper around FeePrice for
-    backward compatibility with existing tests, fixtures, and admin
-    registrations. New code should use FeePrice directly. This model is
-    not actively written to; the migration that copies data into FeePrice
-    ran in phase 2 and the table is now effectively read-only legacy.
-    """
-    SCOPE_CLASS = 'CLASS'
-    SCOPE_SCHOOL_WIDE = 'SCHOOL_WIDE'
-    SCOPE_CHOICES = [
-        (SCOPE_CLASS, _('Class-specific')),
-        (SCOPE_SCHOOL_WIDE, _('School-wide (all classes)')),
-    ]
-
-    scope = models.CharField(
-        max_length=20,
-        choices=SCOPE_CHOICES,
-        default=SCOPE_CLASS,
-    )
-    school_class = models.ForeignKey(
-        'students.SchoolClass',
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-    )
-    term = models.ForeignKey(
-        'core.Term',
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-    )
-    category = models.ForeignKey(
-        FeeCategory,
-        on_delete=models.CASCADE,
-    )
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    student_type = models.CharField(
-        max_length=20,
-        choices=FeeCategory.STUDENT_TYPE_CHOICES,
-        default='ALL',
-    )
-    is_recurring_override = models.BooleanField(null=True, blank=True)
-    deprecated = models.BooleanField(
-        default=True,
-        help_text='Always true: this model is the legacy compatibility shim for FeePrice.',
-    )
-
-    class Meta:
-        verbose_name = 'fee structure (legacy)'
-        verbose_name_plural = 'fee structures (legacy)'
-        unique_together = ('school', 'scope', 'school_class', 'term', 'category', 'student_type')
-        ordering = ['school_class', 'category']
-
-    def __str__(self):
-        scope_label = 'School-wide' if self.scope == self.SCOPE_SCHOOL_WIDE else str(self.school_class)
-        return f'{scope_label} - {self.term or "One-time"} - {self.category}: {self.amount}'
-
-    def save(self, *args, **kwargs):
-        self.deprecated = True
-        super().save(*args, **kwargs)
-
-
 class FeePriceOverride(TenantScopedModel):
     student = models.ForeignKey(
         'students.Student',
@@ -361,7 +219,7 @@ class FeePriceOverride(TenantScopedModel):
         verbose_name = _('fee price override')
         verbose_name_plural = _('fee price overrides')
         ordering = ['-valid_from', 'category__name']
-        unique_together = ('school', 'student', 'category', 'valid_from', 'valid_to')
+        unique_together = ('school', 'student', 'category')
 
     def __str__(self):
         return f'{self.student} - {self.category}: {self.amount} ({self.valid_from} to {self.valid_to})'
@@ -371,6 +229,15 @@ class FeePriceOverride(TenantScopedModel):
             raise ValidationError({'amount': _('Amount must be greater than 0.')})
         if self.valid_to < self.valid_from:
             raise ValidationError({'valid_to': _('Valid to must be after valid from.')})
+        # Prevent overlapping date ranges for the same student+category
+        overlapping = FeePriceOverride.objects.filter(
+            school=self.school,
+            student=self.student,
+            category=self.category,
+            is_active=True,
+        ).exclude(pk=self.pk)
+        if overlapping.filter(valid_from__lte=self.valid_to, valid_to__gte=self.valid_from).exists():
+            raise ValidationError(_('Overlapping date range exists for this student and category.'))
 
 
 class Invoice(TenantScopedModel):

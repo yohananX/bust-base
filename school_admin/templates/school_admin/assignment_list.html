@@ -5,13 +5,13 @@
 {% block page_header %}Teacher Assignments{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
+<div class="max-w-7xl mx-auto space-y-5">
 
   <div class="flex flex-col lg:flex-row gap-6" style="min-height: 70vh;">
 
     {# ── LEFT COLUMN: Teacher List ── #}
     <div class="lg:w-80 flex-shrink-0">
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full flex flex-col">
+      <div class="bg-white rounded-xl border border-line overflow-hidden h-full flex flex-col">
         <div class="px-5 py-4 border-b border-gray-100">
           <h2 class="text-sm font-semibold text-gray-900">Teachers</h2>
           <p class="text-xs text-gray-400 mt-0.5">{{ teachers.count }} active</p>
@@ -21,9 +21,9 @@
           <a href="?teacher_id={{ t.id }}"
              class="flex items-center gap-3 px-5 py-3.5 border-b border-gray-50 transition-colors
              {% if selected_teacher and selected_teacher.pk == t.pk %}
-               bg-violet-50/70 border-l-4 border-l-primary
+               bg-primary-tint border-l-4 border-l-primary
              {% else %}
-               hover:bg-gray-50
+               hover:bg-surface-muted
              {% endif %}">
             <div class="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0
               {% if selected_teacher and selected_teacher.pk == t.pk %}ring-2 ring-primary/40{% endif %}">
@@ -52,7 +52,7 @@
     {# ── RIGHT COLUMN: Assignments & Add Form ── #}
     <div class="flex-1 min-w-0">
       {% if selected_teacher %}
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col">
+      <div class="bg-white rounded-xl border border-line h-full flex flex-col">
 
         {# Teacher header #}
         <div class="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
@@ -140,7 +140,7 @@
 
       {% else %}
       {# No teacher selected placeholder #}
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 h-full flex items-center justify-center">
+      <div class="bg-white rounded-xl border border-line h-full flex items-center justify-center">
         <div class="text-center py-16">
           <div class="w-16 h-16 rounded-full bg-violet-50 flex items-center justify-center mx-auto mb-4">
             <i data-lucide="user-round" class="w-8 h-8 text-violet-300"></i>
