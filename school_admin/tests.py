@@ -1907,9 +1907,29 @@ class SetupChecksTest(TestCase):
         )
         self.assertIsNone(check_fee_prices(self.school))
 
+    def test_fee_prices_alert_uses_available_icon(self):
+        """Fee pricing alerts use an icon supported by the vendored Lucide set."""
+        from school_admin.setup_checks import check_fee_prices
+        session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        Term.objects.create(
+            school=self.school, session=session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+
+        alert = check_fee_prices(self.school)
+
+        self.assertEqual(alert['icon'], 'tag')
+
     def test_dashboard_renders_setup_alerts_template(self):
         """Dashboard page shows setup alert titles when checks fire."""
         resp = self.client.get(reverse('school_admin:dashboard'))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Set up sessions')
         self.assertContains(resp, 'No active academic session')
+        self.assertContains(resp, 'href="/school-admin/settings/"')
+        self.assertNotContains(resp, 'href="school_admin:school_settings"')

@@ -33,7 +33,7 @@
   {% if setup_alerts %}
   <div data-setup-alerts class="space-y-3">
     {% for alert in setup_alerts %}
-    <a href="{{ alert.action_url }}" class="flex items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-line hover:shadow-md transition-shadow group">
+    <a href="{% url alert.action_url %}" class="flex items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-line hover:shadow-md transition-shadow group">
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-full bg-{{ alert.color }}-tint flex items-center justify-center flex-shrink-0">
           <i data-lucide="{{ alert.icon }}" class="w-5 h-5 text-{{ alert.color }}"></i>

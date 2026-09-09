@@ -165,7 +165,7 @@ def check_fee_prices(school):
             key='no_fee_prices',
             title='No fee prices for current term',
             description=f'Set up fee prices for {current_term.name} to generate invoices.',
-            icon='pricetag',
+            icon='tag',
             color='warning',
             action_url='school_admin:fee_pricing_list',
             action_label='Set up pricing',
