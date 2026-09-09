@@ -34,13 +34,7 @@
       <ul class="list-disc list-inside space-y-0.5">
         {% if related.teacher_assignments %}<li>{{ related.teacher_assignments }} teacher assignment(s)</li>{% endif %}
         {% if related.scores_entered %}<li>{{ related.scores_entered }} score record(s) entered</li>{% endif %}
-        {% if related.payroll_runs %}<li>{{ related.payroll_runs }} payroll run(s)</li>{% endif %}
-        {% if related.payslips %}<li>{{ related.payslips }} payslip(s)</li>{% endif %}
-        {% if related.projects %}<li>{{ related.projects }} project(s)</li>{% endif %}
-        {% if related.expenditures %}<li>{{ related.expenditures }} expenditure(s)</li>{% endif %}
-        {% if related.lesson_teacher_assignments %}<li>{{ related.lesson_teacher_assignments }} lesson teacher assignment(s)</li>{% endif %}
         {% if related.notifications %}<li>{{ related.notifications }} notification(s)</li>{% endif %}
-        {% if related.inventory_items %}<li>{{ related.inventory_items }} inventory item(s)</li>{% endif %}
         {% if related.procurements %}<li>{{ related.procurements }} procurement(s)</li>{% endif %}
         {% if related.inventory_transactions %}<li>{{ related.inventory_transactions }} inventory transaction(s)</li>{% endif %}
       </ul>

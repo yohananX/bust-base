@@ -9,7 +9,7 @@ from django.utils import timezone
 from core.models import School, AcademicSession, Term
 from students.models import SchoolClass, Student, ClassEnrollment
 from accounts.models import Roles, User
-from fees.models import FeeCategory, FeeStructure, FeePrice, FeePriceOverride
+from fees.models import FeeCategory, FeePrice, FeePriceOverride
 from fees.pricing import resolve_prices, resolve_price_for_student
 
 

@@ -12,7 +12,7 @@ from django.utils import timezone
 from accounts.models import Roles
 from core.models import School, AcademicSession, Term
 from fees.models import (
-    FeeCategory, FeeStructure, Invoice, Payment, FeeReceipt,
+    FeeCategory, FeePrice, Invoice, Payment, FeeReceipt,
 )
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from notifications.models import NotificationLog
@@ -79,10 +79,10 @@ class BankTransferEndToEndTest(TestCase):
         self.tuition_category = FeeCategory.objects.create(
             school=self.school, name='Tuition',
         )
-        FeeStructure.objects.create(
-            school=self.school, school_class=self.school_class,
-            term=self.term, category=self.tuition_category,
-            amount=Decimal('60000.00'),
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_CLASS, school_class=self.school_class,
+            term=self.term, category=self.tuition_category, amount=Decimal('60000.00'),
+            student_type='ALL',
         )
         self.invoice = Invoice.objects.create(
             school=self.school, student=self.student, term=self.term,

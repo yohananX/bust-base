@@ -87,7 +87,11 @@ SESSION_COOKIE_HTTPONLY = env.bool('SESSION_COOKIE_HTTPONLY', default=True)
 CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=False)  # False for local dev
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
 SECURE_CONTENT_TYPE_NOSNIFF = env.bool('SECURE_CONTENT_TYPE_NOSNIFF', default=True)
+SECURE_BROWSER_XSS_FILTER = env.bool('SECURE_BROWSER_XSS_FILTER', default=True)
 SECURE_REFERRER_POLICY = env('SECURE_REFERRER_POLICY', default='same-origin')
+CSRF_COOKIE_SAMESITE = env('CSRF_COOKIE_SAMESITE', default='Lax')
+SESSION_COOKIE_SAMESITE = env('SESSION_COOKIE_SAMESITE', default='Lax')
+SECURE_CROSS_ORIGIN_OPENER_POLICY = env('SECURE_CROSS_ORIGIN_OPENER_POLICY', default='same-origin')
 
 # ─── Production guard ───────────────────────────────────────────────────────
 # When DEBUG is off, refuse to boot unless the security settings that make
@@ -107,6 +111,14 @@ if not DEBUG:
         _required.append('SESSION_COOKIE_SECURE=True')
     if not env.bool('CSRF_COOKIE_SECURE', default=False):
         _required.append('CSRF_COOKIE_SECURE=True')
+    if not env.bool('SECURE_BROWSER_XSS_FILTER', default=True):
+        _required.append('SECURE_BROWSER_XSS_FILTER=True')
+    if not env('CSRF_COOKIE_SAMESITE', default='Lax'):
+        _required.append('CSRF_COOKIE_SAMESITE=Lax')
+    if not env('SESSION_COOKIE_SAMESITE', default='Lax'):
+        _required.append('SESSION_COOKIE_SAMESITE=Lax')
+    if not env('SECURE_CROSS_ORIGIN_OPENER_POLICY', default='same-origin'):
+        _required.append('SECURE_CROSS_ORIGIN_OPENER_POLICY=same-origin')
     if _required:
         raise ImproperlyConfigured(
             'Production boot refused — missing security settings: '
@@ -138,6 +150,34 @@ WSGI_APPLICATION = 'school.wsgi.application'
 DATABASES = {
     'default': env.db('DATABASE_URL', default='sqlite:///db.sqlite3')
 }
+
+redis_url = env('REDIS_URL', default='')
+if redis_url:
+    try:
+        import django_redis  # noqa: F401
+        CACHES = {
+            'default': {
+                'BACKEND': 'django_redis.cache.RedisCache',
+                'LOCATION': redis_url,
+                'OPTIONS': {
+                    'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                },
+            }
+        }
+    except ImportError:
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'bust-base-cache',
+            }
+        }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'bust-base-cache',
+        }
+    }
 
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -212,3 +252,94 @@ PAYSTACK_SECRET_KEY = env('PAYSTACK_SECRET_KEY', default='')
 PAYSTACK_PUBLIC_KEY = env('PAYSTACK_PUBLIC_KEY', default='')
 PAYSTACK_BASE_URL = env('PAYSTACK_BASE_URL', default='https://api.paystack.co')
 DEFAULT_CURRENCY = env('DEFAULT_CURRENCY', default='NGN')
+
+
+# ─── Logging ────────────────────────────────────────────────────────────────
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
+        },
+        'structured': {
+            'format': '{"time":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","msg":"%(message)s"}',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'structured',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': env('DJANGO_LOG_LEVEL', default='INFO'),
+            'propagate': False,
+        },
+        'fees': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'notifications': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
+
+
+# ─── Sentry error monitoring ────────────────────────────────────────────────
+SENTRY_DSN = env('SENTRY_DSN', default='')
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        environment=env('SENTRY_ENVIRONMENT', default='production'),
+        traces_sample_rate=env.float('SENTRY_TRACES_SAMPLE_RATE', default=0.1),
+        profiles_sample_rate=env.float('SENTRY_PROFILES_SAMPLE_RATE', default=0.1),
+        send_default_pii=False,
+    )
+
+
+# ─── S3 media storage ───────────────────────────────────────────────────────
+USE_S3 = env.bool('USE_S3', default=False)
+if USE_S3:
+    AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME', default='us-east-1')
+    AWS_QUERYSTRING_AUTH = False
+    AWS_DEFAULT_ACL = None
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+            'OPTIONS': {'location': 'media'},
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
+    MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/media/'
+else:
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+            'OPTIONS': {'location': MEDIA_ROOT},
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }

@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
-from fees.models import FeeCategory, FeePrice, FeeStructure, Invoice, InvoiceLineItem, Payment, PaymentLineItem
+from fees.models import FeeCategory, FeePrice, Invoice, InvoiceLineItem, Payment, PaymentLineItem
 from fees.selectors import invoices_with_balance
 from notifications.models import NotificationLog
 
@@ -90,19 +90,23 @@ class BaseFeesTest(TestCase):
             name='Sports Fee',
         )
 
-        self.tuition_fee = FeeStructure.objects.create(
+        self.tuition_fee = FeePrice.objects.create(
             school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=self.school_class,
             term=self.term,
             category=self.tuition_category,
             amount=Decimal('50000.00'),
+            student_type='ALL',
         )
-        self.sports_fee = FeeStructure.objects.create(
+        self.sports_fee = FeePrice.objects.create(
             school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=self.school_class,
             term=self.term,
             category=self.sports_category,
             amount=Decimal('10000.00'),
+            student_type='ALL',
         )
 
         # Create admin user
@@ -148,23 +152,25 @@ class FeeCategoryModelTest(BaseFeesTest):
         self.assertEqual(category.school, self.school)
 
 
-class FeeStructureModelTest(BaseFeesTest):
-    def test_fee_structure_creation(self):
-        """Test FeeStructure creation with unique constraint."""
-        fs = FeeStructure.objects.get(pk=self.tuition_fee.pk)
+class FeePriceModelTest(BaseFeesTest):
+    def test_fee_price_creation(self):
+        """Test FeePrice creation with unique constraint."""
+        fs = FeePrice.objects.get(pk=self.tuition_fee.pk)
         self.assertEqual(fs.amount, Decimal('50000.00'))
         self.assertEqual(fs.school_class, self.school_class)
         self.assertEqual(fs.term, self.term)
 
-    def test_fee_structure_unique_constraint(self):
-        """Test that duplicate FeeStructure raises IntegrityError."""
+    def test_fee_price_unique_constraint(self):
+        """Test that duplicate FeePrice raises IntegrityError."""
         with self.assertRaises(IntegrityError):
-            FeeStructure.objects.create(
+            FeePrice.objects.create(
                 school=self.school,
+                scope=FeePrice.SCOPE_CLASS,
                 school_class=self.school_class,
                 term=self.term,
                 category=self.tuition_category,
                 amount=Decimal('60000.00'),
+                student_type='ALL',
             )
 
 
@@ -598,24 +604,26 @@ class CrossSchoolIsolationTest(BaseFeesTest):
             name='Tuition',
         )
 
-        # Create fee structure in second school
-        FeeStructure.objects.create(
+        # Create fee price in second school
+        FeePrice.objects.create(
             school=school2,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=class2,
             term=term2,
             category=category2,
             amount=Decimal('70000.00'),
+            student_type='ALL',
         )
 
         # First school's data should be isolated
         self.assertEqual(FeeCategory.objects.filter(school=self.school).count(), 2)
         self.assertEqual(FeeCategory.objects.filter(school=school2).count(), 1)
 
-        self.assertEqual(FeeStructure.objects.filter(school=self.school).count(), 2)
-        self.assertEqual(FeeStructure.objects.filter(school=school2).count(), 1)
+        self.assertEqual(FeePrice.objects.filter(school=self.school).count(), 2)
+        self.assertEqual(FeePrice.objects.filter(school=school2).count(), 1)
 
         self.assertEqual(
-            FeeStructure.objects.get(school=self.school, category=self.tuition_category).amount,
+            FeePrice.objects.get(school=self.school, category=self.tuition_category).amount,
             Decimal('50000.00'),
         )
 
@@ -2577,8 +2585,9 @@ class ReceiptLineItemBreakdownTest(BaseFeesTest):
         self.sports_category.is_compulsory = False
         self.sports_category.save()
 
-        FeeStructure.objects.filter(
+        FeePrice.objects.filter(
             school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=self.school_class,
             term=self.term,
             category=self.tuition_category,

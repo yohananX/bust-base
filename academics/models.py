@@ -13,6 +13,13 @@ class Subject(TenantScopedModel):
 
     name = models.CharField(max_length=200, verbose_name=_('name'))
     code = models.CharField(max_length=20, verbose_name=_('code'))
+    pass_mark = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        default=None,
+        verbose_name=_('pass mark'),
+        help_text=_('Default pass mark for this subject. Can be overridden per class in ClassSubject.'),
+    )
     school_classes = models.ManyToManyField(
         'students.SchoolClass',
         through='ClassSubject',

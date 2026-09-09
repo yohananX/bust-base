@@ -525,6 +525,19 @@ const bellCountUrl = '{% url 'notifications:bell_count' %}';
       const bellClearAllUrl = '{% url 'notifications:bell_clear_all' %}';
       const csrfToken = '{{ csrf_token }}';
       let lastSeenId = 0;
+      let pollTimer = null;
+
+      function isRedirectOrAuthError(r) {
+        return r.redirected || r.status === 302 || r.status === 401 || r.status === 403;
+      }
+
+      function stopBellPoll() {
+        if (pollTimer) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
+        document.removeEventListener('visibilitychange', visibilityHandler);
+      }
 
       function applyBadge(count) {
         count = count || 0;
@@ -540,7 +553,13 @@ const bellCountUrl = '{% url 'notifications:bell_count' %}';
 
       function updateBadge() {
         return fetch(bellCountUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(function(r) { return r.json(); })
+          .then(function(r) {
+            if (isRedirectOrAuthError(r)) {
+              stopBellPoll();
+              return {};
+            }
+            return r.json();
+          })
           .then(function(data) {
             applyBadge(data.unread_count);
             return data;
@@ -556,8 +575,15 @@ const bellCountUrl = '{% url 'notifications:bell_count' %}';
 
       function pollBell() {
         fetch(bellPollUrl + '?since=' + lastSeenId, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(function(r) { return r.json(); })
+          .then(function(r) {
+            if (isRedirectOrAuthError(r)) {
+              stopBellPoll();
+              return null;
+            }
+            return r.json();
+          })
           .then(function(data) {
+            if (!data) return;
             applyBadge(data.unread_count);
             (data.new_notifications || []).forEach(function(n) {
               if (n.pk > lastSeenId) lastSeenId = n.pk;
@@ -574,8 +600,16 @@ const bellCountUrl = '{% url 'notifications:bell_count' %}';
         bellDropdown.classList.remove('hidden');
         bellBtn.setAttribute('aria-expanded', 'true');
         fetch(bellDropdownUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(function(r) { return r.text(); })
-.then(function(html) {
+          .then(function(r) {
+            if (isRedirectOrAuthError(r)) {
+              stopBellPoll();
+              bellDropdown.innerHTML = '<div class="px-4 py-6 text-center text-sm text-ink-muted">Session expired. Please <a href="/accounts/login/" class="underline">log in</a> to continue.</div>';
+              return null;
+            }
+            return r.text();
+          })
+          .then(function(html) {
+            if (html === null) return;
             bellDropdown.innerHTML = html;
             if (window.lucide) lucide.createIcons({}, bellDropdown);
             updateBadge();
@@ -583,6 +617,15 @@ const bellCountUrl = '{% url 'notifications:bell_count' %}';
           .catch(function() {
             bellDropdown.innerHTML = '<div class="px-4 py-6 text-center text-sm text-ink-muted">Failed to load notifications.</div>';
           });
+      }
+
+      function visibilityHandler() {
+        if (document.hidden) {
+          stopBellPoll();
+        } else if (!pollTimer) {
+          pollTimer = setInterval(pollBell, 15000);
+          updateBadge();
+        }
       }
 
       function closeDropdown() {
@@ -668,7 +711,9 @@ document.addEventListener('click', function(e) {
       });
 
       updateBadge();
-      setInterval(pollBell, 15000);
+      pollTimer = setInterval(pollBell, 15000);
+      document.addEventListener('visibilitychange', visibilityHandler);
+      window.addEventListener('beforeunload', stopBellPoll);
     })();
   </script>
   {% endif %}

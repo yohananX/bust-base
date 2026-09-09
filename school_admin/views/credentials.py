@@ -6,7 +6,6 @@ keyed by user pk (`credential_slip_<pk>`), and are never persisted
 to the database, files, or logs.
 """
 from django.contrib import messages
-from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic.base import View
@@ -91,7 +90,7 @@ class CredentialBatchView(RoleRequiredMixin, View):
             pairs = []
             for user in users:
                 raw_password = generate_password()
-                user.password = make_password(raw_password, hasher='md5')
+                user.set_password(raw_password)
                 user.must_change_password = True
                 pairs.append((user, raw_password))
             User.objects.bulk_update(users, ['password', 'must_change_password'])
