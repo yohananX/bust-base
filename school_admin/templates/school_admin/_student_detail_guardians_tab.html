@@ -1,11 +1,11 @@
 {# ── TAB: GUARDIANS ── #}
-<div data-tab-panel="guardians" class="hidden space-y-5">
+<div data-tab-panel="guardians" class="hidden space-y-6">
   <div class="flex items-center justify-between">
     <p class="text-sm text-ink-muted">
       {{ guardian_links|length }} {{ guardian_links|length|pluralize:"person,people" }} linked to this student
     </p>
     <button type="button" id="toggle-guardian-form"
-            class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">
+            class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-lg transition-colors">
       <i data-lucide="user-plus" class="w-4 h-4"></i>Add Guardian
     </button>
   </div>
@@ -13,7 +13,7 @@
   {% if guardian_links %}
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
     {% for g in guardian_links %}
-    <article class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col">
+    <article class="bg-white rounded-xl border border-line p-5 flex flex-col">
       <div class="flex items-start gap-3">
         {% include "components/avatar.html" with name=g.guardian.get_full_name size="md" %}
         <div class="min-w-0 flex-1">
@@ -68,7 +68,7 @@
     {% endfor %}
   </div>
   {% else %}
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm">
+  <div class="bg-white rounded-xl border border-line">
     <div class="px-5 py-10 text-center">
       <div class="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center mx-auto mb-3">
         <i data-lucide="users-round" class="w-5 h-5 text-ink-muted"></i>

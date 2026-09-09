@@ -2,4 +2,25 @@
 
 {% block extra_head %}
 {{ block.super }}
+<style>
+  /*
+   * Keep older admin templates aligned with the current workspace surfaces.
+   * These aliases let the page families converge without changing their
+   * existing form, table, and interaction markup.
+   */
+  main .rounded-2xl { border-radius: 0.75rem; }
+  main .shadow-sm,
+  main .shadow-md { box-shadow: none; }
+  main .border-gray-100,
+  main .border-gray-200 { border-color: var(--color-line); }
+  main .bg-gray-50,
+  main .bg-gray-50\/50 { background-color: var(--color-surface-muted); }
+  main .text-gray-900 { color: var(--color-ink); }
+  main .text-gray-700,
+  main .text-gray-600 { color: var(--color-ink-muted); }
+  main .text-gray-500,
+  main .text-gray-400 { color: var(--color-ink-faint); }
+  main table thead tr { background-color: var(--color-surface-muted); }
+  main table tbody tr { border-color: var(--color-line); }
+</style>
 {% endblock %}

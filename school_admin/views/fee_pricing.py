@@ -8,7 +8,7 @@ from django.views.generic.base import View
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from core.models import Term
-from fees.models import FeeCategory, FeeStructure, FeePrice, InvoiceLineItem
+from fees.models import FeeCategory, FeePrice, InvoiceLineItem
 from fees.pricing import resolve_price_for_student
 from students.models import SchoolClass
 
@@ -346,7 +346,7 @@ class FeePricingCreateView(RoleRequiredMixin, View):
 
 
 class FeePricingEditView(RoleRequiredMixin, View):
-    """Edit a fee price (FeePrice or deprecated FeeStructure)."""
+    """Edit a fee price (FeePrice)."""
 
     allowed_roles = [Roles.ADMIN]
 

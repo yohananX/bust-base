@@ -5,7 +5,7 @@
 {% block page_title %}Welcome back, {{ user.first_name|default:user.username }}{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto space-y-6">
+<div class="max-w-7xl mx-auto space-y-5">
 
   {# ── GREETING + CONTEXT ── #}
   <div class="flex flex-wrap items-end justify-between gap-3">
@@ -31,27 +31,38 @@
 
   {# ── SETUP ALERTS ── #}
   {% if setup_alerts %}
-  <div data-setup-alerts class="space-y-3">
-    {% for alert in setup_alerts %}
-    <a href="{% url alert.action_url %}" class="flex items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-line hover:shadow-md transition-shadow group">
-      <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 rounded-full bg-{{ alert.color }}-tint flex items-center justify-center flex-shrink-0">
-          <i data-lucide="{{ alert.icon }}" class="w-5 h-5 text-{{ alert.color }}"></i>
-        </div>
-        <div class="min-w-0">
-          <p class="text-sm font-semibold text-ink">{{ alert.title }}</p>
-          <p class="text-xs text-ink-muted">{{ alert.description }}</p>
-        </div>
+  <section data-setup-alerts aria-labelledby="setup-checklist-title" class="bg-white rounded-xl border border-line overflow-hidden">
+    <div class="px-5 py-4 border-b border-line flex items-center justify-between gap-3">
+      <div>
+        <h2 id="setup-checklist-title" class="text-sm font-semibold text-ink">Setup checklist</h2>
+        <p class="text-xs text-ink-muted mt-0.5">Finish these essentials before running the school day.</p>
       </div>
-      <div class="flex items-center gap-2 shrink-0">
-        <span class="hidden sm:inline-flex text-sm font-medium text-{{ alert.color }} shrink-0">{{ alert.action_label }}</span>
-        <i data-lucide="arrow-up-right" class="w-4 h-4 text-ink-faint transition-colors flex-shrink-0"></i>
-      </div>
-    </a>
-    {% endfor %}
-  </div>
+      <span class="text-xs font-medium text-warning bg-warning-tint px-2.5 py-1 rounded-full whitespace-nowrap">
+        {{ setup_alerts|length }} remaining
+      </span>
+    </div>
+    <div class="divide-y divide-line/70">
+      {% for alert in setup_alerts %}
+      <a href="{% url alert.action_url %}" class="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-surface-muted/50 transition-colors group">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-lg bg-{{ alert.color }}-tint flex items-center justify-center flex-shrink-0">
+            <i data-lucide="{{ alert.icon }}" class="w-4 h-4 text-{{ alert.color }}"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-ink">{{ alert.title }}</p>
+            <p class="text-xs text-ink-muted mt-0.5 truncate">{{ alert.description }}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="hidden sm:inline-flex text-xs font-semibold text-{{ alert.color }} shrink-0">{{ alert.action_label }}</span>
+          <i data-lucide="arrow-up-right" class="w-4 h-4 text-ink-faint group-hover:text-{{ alert.color }} transition-colors flex-shrink-0"></i>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
   {% else %}
-  <div class="bg-success-tint border border-line rounded-2xl p-4 flex items-center gap-3">
+  <div class="bg-success-tint border border-line rounded-xl p-4 flex items-center gap-3">
     <div class="w-10 h-10 rounded-full bg-success-tint flex items-center justify-center flex-shrink-0">
       <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
     </div>
@@ -63,12 +74,16 @@
   {% endif %}
 
   {# ── ATTENTION ZONE ── #}
-  <div class="space-y-3">
+  <section aria-labelledby="attention-title" class="space-y-2">
+    <div class="flex items-center justify-between">
+      <h2 id="attention-title" class="text-sm font-semibold text-ink">Needs attention</h2>
+      <span class="text-xs text-ink-muted">Review when ready</span>
+    </div>
     {% if pending_transfers %}
-    <div data-dismiss="attention-transfers-{{ pending_transfers }}" class="bg-white rounded-2xl p-4 border border-line flex items-center justify-between gap-4">
+    <div data-dismiss="attention-transfers-{{ pending_transfers }}" class="bg-white rounded-xl p-3.5 border border-line flex items-center justify-between gap-4">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center flex-shrink-0">
-          <i data-lucide="clock" class="w-5 h-5 text-warning"></i>
+        <div class="w-9 h-9 rounded-lg bg-warning-tint flex items-center justify-center flex-shrink-0">
+          <i data-lucide="clock" class="w-4 h-4 text-warning"></i>
         </div>
         <div class="min-w-0">
           <p class="text-sm font-semibold text-ink">{{ pending_transfers }} bank transfers awaiting confirmation</p>
@@ -85,10 +100,10 @@
     {% endif %}
 
     {% if owing_students %}
-    <div data-dismiss="attention-fees-{{ owing_students }}" class="bg-white rounded-2xl p-4 border border-line flex items-center justify-between gap-4">
+    <div data-dismiss="attention-fees-{{ owing_students }}" class="bg-white rounded-xl p-3.5 border border-line flex items-center justify-between gap-4">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 rounded-full bg-danger-tint flex items-center justify-center flex-shrink-0">
-          <i data-lucide="banknote" class="w-5 h-5 text-danger"></i>
+        <div class="w-9 h-9 rounded-lg bg-danger-tint flex items-center justify-center flex-shrink-0">
+          <i data-lucide="banknote" class="w-4 h-4 text-danger"></i>
         </div>
         <div class="min-w-0">
           <p class="text-sm font-semibold text-ink">&#8358;{{ outstanding_fees|floatformat:0 }} fees due across {{ owing_students }} students</p>
@@ -105,10 +120,10 @@
     {% endif %}
 
     {% if results_published %}
-    <div data-dismiss="attention-results-{{ current_term_name|default:'none' }}" class="bg-success-tint border border-line rounded-2xl p-4 flex items-center justify-between gap-4">
+    <div data-dismiss="attention-results-{{ current_term_name|default:'none' }}" class="bg-success-tint border border-line rounded-xl p-3.5 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 rounded-full bg-success-tint flex items-center justify-center flex-shrink-0">
-          <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
+        <div class="w-9 h-9 rounded-lg bg-success-tint flex items-center justify-center flex-shrink-0">
+          <i data-lucide="check-circle" class="w-4 h-4 text-success"></i>
         </div>
         <div class="min-w-0">
           <p class="text-sm font-semibold text-ink">Current term results are published</p>
@@ -123,10 +138,10 @@
       </div>
     </div>
     {% else %}
-    <div data-dismiss="attention-results-{{ current_term_name|default:'none' }}" class="bg-warning-tint border border-line rounded-2xl p-4 flex items-center justify-between gap-4">
+    <div data-dismiss="attention-results-{{ current_term_name|default:'none' }}" class="bg-warning-tint border border-line rounded-xl p-3.5 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 rounded-full bg-warning-tint flex items-center justify-center flex-shrink-0">
-          <i data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>
+        <div class="w-9 h-9 rounded-lg bg-warning-tint flex items-center justify-center flex-shrink-0">
+          <i data-lucide="alert-triangle" class="w-4 h-4 text-warning"></i>
         </div>
         <div class="min-w-0">
           <p class="text-sm font-semibold text-ink">Results for the current term are not yet published</p>
@@ -141,13 +156,13 @@
       </div>
     </div>
     {% endif %}
-  </div>
+  </section>
 
   {# ── KPI ROW ── #}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
 
     {# Students #}
-    <a href="{% url 'school_admin:student_list' %}" class="h-full bg-white rounded-2xl p-5 border border-line block hover:shadow-md transition-shadow">
+    <a href="{% url 'school_admin:student_list' %}" class="h-full bg-white rounded-xl p-5 border border-line block hover:shadow-md transition-shadow">
       <div class="flex items-start justify-between">
         <div class="w-10 h-10 rounded-lg bg-primary-tint flex items-center justify-center text-primary">
           <i data-lucide="users" class="w-5 h-5"></i>
@@ -169,7 +184,7 @@
     </a>
 
     {# Teachers on staff #}
-    <a href="{% url 'school_admin:staff_list' %}" class="h-full bg-white rounded-2xl p-5 border border-line block hover:shadow-md transition-shadow">
+    <a href="{% url 'school_admin:staff_list' %}" class="h-full bg-white rounded-xl p-5 border border-line block hover:shadow-md transition-shadow">
       <div class="w-10 h-10 rounded-lg bg-info-tint flex items-center justify-center text-info">
         <i data-lucide="graduation-cap" class="w-5 h-5"></i>
       </div>
@@ -178,7 +193,7 @@
     </a>
 
     {# Outstanding Fees #}
-    <a href="{% url 'school_admin:outstanding_fees' %}" class="h-full bg-white rounded-2xl p-5 border border-line block hover:shadow-md transition-shadow">
+    <a href="{% url 'school_admin:outstanding_fees' %}" class="h-full bg-white rounded-xl p-5 border border-line block hover:shadow-md transition-shadow">
       <div class="w-10 h-10 rounded-lg bg-success-tint flex items-center justify-center text-success">
         <i data-lucide="banknote" class="w-5 h-5"></i>
       </div>
@@ -262,7 +277,7 @@
     </section>
 
     {# Pending Actions #}
-    <section aria-labelledby="pending-actions-title" class="lg:col-span-2 bg-white rounded-2xl border border-line overflow-hidden">
+    <section aria-labelledby="pending-actions-title" class="lg:col-span-2 bg-white rounded-xl border border-line overflow-hidden">
       <div class="px-5 py-4 border-b border-line">
         <h2 id="pending-actions-title" class="text-sm font-semibold text-ink">Pending Actions</h2>
       </div>
@@ -324,7 +339,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
 
     {# Recent Fee Payments #}
-    <div class="h-full bg-white rounded-2xl border border-line overflow-hidden">
+    <div class="h-full bg-white rounded-xl border border-line overflow-hidden">
       <div class="px-5 py-4 border-b border-line flex items-center justify-between">
         <h3 class="text-sm font-semibold text-ink">Recent Fee Payments</h3>
         <a href="{% url 'school_admin:invoice_list' %}" class="text-xs text-primary hover:text-primary-hover font-medium">View All</a>
@@ -383,7 +398,7 @@
     </div>
 
     {# Top Owing Students #}
-    <div class="h-full bg-white rounded-2xl border border-line overflow-hidden">
+    <div class="h-full bg-white rounded-xl border border-line overflow-hidden">
       <div class="px-5 py-4 border-b border-line flex items-center justify-between">
         <h3 class="text-sm font-semibold text-ink">Students Owing</h3>
         <a href="{% url 'school_admin:outstanding_fees' %}" class="text-xs text-primary hover:text-primary-hover font-medium">View All</a>

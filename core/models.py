@@ -1,5 +1,7 @@
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 
 
@@ -179,8 +181,25 @@ class AuditLog(TenantScopedModel):
         related_name='+',
         verbose_name=_('actor'),
     )
+    # Legacy string-based fields (kept for backward compatibility during migration)
     model_name = models.CharField(max_length=50, db_index=True, verbose_name=_('model'))
     object_id = models.CharField(max_length=50, db_index=True, verbose_name=_('object id'))
+    # New GenericForeignKey fields
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+        verbose_name=_('content type'),
+    )
+    object_id_int = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name=_('object id (int)'),
+    )
+    content_object = GenericForeignKey('content_type', 'object_id_int')
     action = models.CharField(max_length=10, choices=Action.choices, verbose_name=_('action'))
     summary = models.CharField(max_length=200, blank=True, verbose_name=_('summary'))
     changes = models.JSONField(

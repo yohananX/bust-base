@@ -69,18 +69,18 @@ def _applicable_fee_structures(school, school_class, term, student_type='ALL'):
 
 
 def _grouped_extras(term, enrollment, invoice, student, student_type='ALL'):
-    """Build extras grouped by FeeCategoryGroup.
+    """Build extras grouped by billing cycle (One-time vs Per-term).
 
     Returns a dict of {group_name: [CheckoutOption, ...]}.
-    Categories without a group land under 'Other'.
     """
     raw = _extra_options(term, enrollment, invoice, student, student_type)
     groups = {}
     for opt in raw:
-        group_name = 'Other'
         category = FeeCategory.objects.filter(pk=opt.category_id).first()
-        if category and category.group_id:
-            group_name = category.group.name
+        if category:
+            group_name = 'One-time' if category.billing_cycle == 'ONE_TIME' else 'Per-term'
+        else:
+            group_name = 'Other'
         groups.setdefault(group_name, []).append(opt)
     return dict(sorted(groups.items()))
 

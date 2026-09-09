@@ -9,25 +9,25 @@
 <style>
   [data-tab-panel].hidden { display: none !important; }
   .fee-row:has(input:checked) { background: #F6EFE1; border-color: #D4B56A; }
-  .tab-active { color: #8A6420; border-color: #8A6420; background: #FBF7F0; }
+  .tab-active { color: #8A6420; border-color: #D4B56A; background: #FBF7F0; }
   .stat-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
   .stat-card:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(27,36,48,0.08); }
   .scroll-soft::-webkit-scrollbar { height: 6px; width: 6px; }
   .scroll-soft::-webkit-scrollbar-thumb { background: #D4CFC4; border-radius: 99px; }
-  .hero-avatar > div { width: 5rem !important; height: 5rem !important; border-radius: 1rem !important; font-size: 1.25rem !important; }
+  .hero-avatar > div { width: 4.25rem !important; height: 4.25rem !important; border-radius: 999px !important; font-size: 1.1rem !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto space-y-5">
+<div class="max-w-6xl mx-auto space-y-6">
 
   {# ── PROFILE HERO ── #}
-  <section class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-    <div class="bg-gradient-to-r from-[#FBF7F0] via-white to-primary-tint/40 px-5 sm:px-6 pt-5 pb-4">
+  <section class="bg-white rounded-xl border border-line overflow-hidden">
+    <div class="px-5 sm:px-7 pt-6 pb-5">
       <div class="flex flex-col sm:flex-row sm:items-center gap-4">
         <div class="relative shrink-0 hero-avatar">
           {% if student.passport %}
-          <img src="{{ student.passport.url }}" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-white shadow-sm">
+          <img src="{{ student.passport.url }}" class="w-16 h-16 sm:w-[4.25rem] sm:h-[4.25rem] rounded-full object-cover ring-4 ring-primary-tint">
           {% else %}
           {% include "components/avatar.html" with name=student.user.get_full_name size="lg" %}
           {% endif %}
@@ -38,7 +38,7 @@
 
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-2 mb-1">
-            <h2 class="text-xl sm:text-2xl font-bold text-ink tracking-tight">{{ student.user.get_full_name|default:student.user.username }}</h2>
+            <h2 class="text-xl sm:text-2xl font-semibold text-ink tracking-tight">{{ student.user.get_full_name|default:student.user.username }}</h2>
             {% if student.status == 'ACTIVE' %}
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
@@ -58,7 +58,7 @@
             {% endif %}
           </div>
           <p class="text-sm text-ink-muted">{{ student.user.email|default:'No email on file' }}</p>
-          <div class="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
             <span class="text-ink-muted"><span class="text-[11px] uppercase tracking-wider text-ink-faint">Adm. No</span> <strong class="text-ink font-semibold ml-1">{{ student.admission_number }}</strong></span>
             {% if current_enrollment %}
             <span class="text-ink-muted"><span class="text-[11px] uppercase tracking-wider text-ink-faint">Class</span> <strong class="text-ink font-semibold ml-1">{{ current_enrollment.school_class.name }}</strong></span>
@@ -71,15 +71,15 @@
 
         <div class="sm:text-right shrink-0 flex flex-col sm:items-end gap-2">
           <div class="flex flex-wrap gap-2 justify-end">
-            <a href="{% url 'school_admin:student_password_change' student.pk %}" class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-ink-muted bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-              <i data-lucide="key-round" class="w-4 h-4"></i>Password
-            </a>
-            <a href="{% url 'school_admin:student_edit' student.pk %}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-xl shadow-sm transition-colors">
+            <a href="{% url 'school_admin:student_edit' student.pk %}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors">
               <i data-lucide="pencil" class="w-4 h-4"></i>Edit
+            </a>
+            <a href="{% url 'school_admin:student_password_change' student.pk %}" class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-ink-muted border border-line rounded-lg hover:bg-surface-muted transition-colors">
+              <i data-lucide="key-round" class="w-4 h-4"></i>Password
             </a>
           </div>
           <button type="button" data-tab-target="fees"
-                  class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">
+                  class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors">
             <i data-lucide="banknote" class="w-4 h-4"></i>Record Payment
           </button>
           {% if total_outstanding %}
@@ -89,7 +89,7 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-100 border-t border-gray-100">
+    <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-line border-t border-line bg-surface-muted/30">
       <div class="px-4 py-3.5">
         <p class="text-[11px] uppercase tracking-wider text-ink-muted mb-0.5">Outstanding</p>
         <p class="text-lg font-bold text-amber-700 tabular-nums">&#8358;{{ total_outstanding|floatformat:0 }}</p>
@@ -110,7 +110,7 @@
   </section>
 
   {# ── TABS ── #}
-  <div class="flex gap-1 p-1 bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto scroll-soft" role="tablist">
+  <div class="flex gap-1 p-1 bg-surface-muted border border-line rounded-lg overflow-x-auto scroll-soft" role="tablist">
     <button type="button" data-tab="overview" class="tab-btn tab-active flex-1 min-w-[100px] px-4 py-2.5 text-sm font-semibold rounded-lg border border-transparent transition-colors">
       Overview
     </button>
@@ -127,14 +127,16 @@
 
   {# ── TAB: OVERVIEW ── #}
   <div data-tab-panel="overview" class="space-y-5">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-      <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-        <h3 class="text-sm font-semibold text-ink mb-4 flex items-center gap-2">
+    <div class="bg-white rounded-xl border border-line p-5 sm:p-7">
+        <div class="flex items-center justify-between gap-3 mb-5">
+          <div>
+            <p class="text-[11px] uppercase tracking-[0.14em] text-ink-faint">Profile</p>
+            <h3 class="text-base font-semibold text-ink mt-1">Student information</h3>
+          </div>
           <span class="w-7 h-7 rounded-lg bg-primary-tint flex items-center justify-center">
             <i data-lucide="user-round" class="w-3.5 h-3.5 text-primary"></i>
           </span>
-          Student details
-        </h3>
+        </div>
         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
           <div>
             <dt class="text-[11px] uppercase tracking-wider text-ink-muted">Admission Number</dt>
@@ -174,50 +176,11 @@
             <dd class="mt-0.5 text-sm font-semibold text-ink truncate">{{ student.user.email|default:"—" }}</dd>
           </div>
         </dl>
-      </div>
-
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-        <h3 class="text-sm font-semibold text-ink mb-4">Summary</h3>
-        <ul class="space-y-3">
-          {% if total_outstanding > 0 %}
-          <li class="flex items-start gap-3">
-            <div class="w-9 h-9 rounded-xl bg-warning-tint flex items-center justify-center shrink-0">
-              <i data-lucide="banknote" class="w-4 h-4 text-warning"></i>
-            </div>
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-ink">
-                {% if current_term %}{{ current_term.name }}{% endif %} outstanding
-              </p>
-              <p class="text-xs text-ink-muted">&#8358;{{ total_outstanding|floatformat:2 }} due</p>
-            </div>
-          </li>
-          {% endif %}
-          <li class="flex items-start gap-3">
-            <div class="w-9 h-9 rounded-xl bg-primary-tint flex items-center justify-center shrink-0">
-              <i data-lucide="users-round" class="w-4 h-4 text-primary"></i>
-            </div>
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-ink">{{ guardian_links|length }} guardian{{ guardian_links|length|pluralize:"s" }} linked</p>
-              <p class="text-xs text-ink-muted">
-                {% if guardian_links %}On file{% else %}None on file{% endif %}
-              </p>
-            </div>
-          </li>
-          <li class="flex items-start gap-3">
-            <div class="w-9 h-9 rounded-xl bg-info-tint flex items-center justify-center shrink-0">
-              <i data-lucide="calendar" class="w-4 h-4 text-info"></i>
-            </div>
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-ink">Current: {% if current_enrollment %}{{ current_enrollment.school_class.name }}{% else %}—{% endif %}</p>
-              <p class="text-xs text-ink-muted">{% if current_term %}{{ current_term.session.name }}{% endif %}</p>
-            </div>
-          </li>
-        </ul>
-        <button type="button" data-tab-target="fees"
-                class="mt-5 w-full py-2.5 text-sm font-semibold text-primary bg-primary-tint hover:bg-primary/10 rounded-xl transition-colors">
-          Go to Fees &amp; Payments →
-        </button>
-      </div>
+        <div class="mt-6 pt-5 border-t border-line grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div><p class="text-[11px] uppercase tracking-wider text-ink-muted">Guardians</p><p class="mt-1 text-sm font-semibold text-ink">{{ guardian_links|length }} linked</p></div>
+          <div><p class="text-[11px] uppercase tracking-wider text-ink-muted">Current class</p><p class="mt-1 text-sm font-semibold text-ink">{% if current_enrollment %}{{ current_enrollment.school_class.name }}{% else %}—{% endif %}</p></div>
+          <div><p class="text-[11px] uppercase tracking-wider text-ink-muted">Current session</p><p class="mt-1 text-sm font-semibold text-ink">{% if current_term %}{{ current_term.session.name }}{% else %}—{% endif %}</p></div>
+        </div>
     </div>
   </div>
 

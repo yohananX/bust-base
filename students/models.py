@@ -143,6 +143,11 @@ class Student(TenantScopedModel):
             pass
         return name
 
+    @property
+    def middle_name(self):
+        """Delegate to linked User's middle_name."""
+        return self.user.middle_name
+
     def clean(self):
         """Constraint: the linked user must have role=STUDENT."""
         if self.user_id and self.user.role != Roles.STUDENT:
@@ -273,6 +278,11 @@ class StudentGuardianLink(TenantScopedModel):
         student_name = self.student.user.get_full_name() or self.student.user.username
         rel_display = self.get_relationship_display()
         return f"{student_name}'s {rel_display.lower()}"
+
+    @property
+    def middle_name(self):
+        """Delegate to linked guardian User's middle_name."""
+        return self.guardian.middle_name
 
     def clean(self):
         """Constraint: the linked user must have role=PARENT."""

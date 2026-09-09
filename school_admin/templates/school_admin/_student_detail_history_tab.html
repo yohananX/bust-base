@@ -1,6 +1,6 @@
 {# ── TAB: CLASS HISTORY ── #}
-<div data-tab-panel="history" class="hidden space-y-5">
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+<div data-tab-panel="history" class="hidden space-y-6">
+  <div class="bg-white rounded-xl border border-line overflow-hidden">
     <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
       <h3 class="text-sm font-semibold text-ink">Enrollment history</h3>
       <span class="text-xs text-ink-muted">{{ enrollments|length }} enrollment{{ enrollments|length|pluralize }}</span>
@@ -35,7 +35,10 @@
     </div>
 
     <div class="px-5 py-5 border-t border-gray-100 bg-surface-muted/30">
-      <h4 class="text-sm font-semibold text-ink mb-3">Change current class</h4>
+      <div class="mb-4">
+        <p class="text-[11px] uppercase tracking-wider text-ink-faint">Enrollment</p>
+        <h4 class="text-sm font-semibold text-ink mt-1">Change current class</h4>
+      </div>
       <form method="post" action="{% url 'school_admin:student_change_class' student.pk %}" class="flex flex-wrap items-end gap-3">
         {% csrf_token %}
         <input type="hidden" name="student_id" value="{{ student.pk }}">

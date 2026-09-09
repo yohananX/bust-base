@@ -21,6 +21,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from .models import AuditLog
+from django.contrib.contenttypes.models import ContentType
 
 WATCHED_MODELS = {
     'fees.payment': 'Payment',
@@ -75,11 +76,14 @@ def _snapshot(instance):
 
 def _write_log(instance, action, changes):
     actor = get_current_user()
+    content_type = ContentType.objects.get_for_model(instance)
     AuditLog.objects.create(
         school=instance.school,
         actor=actor if actor and actor.is_authenticated else None,
         model_name=instance.__class__.__name__,
         object_id=str(instance.pk),
+        content_type=content_type,
+        object_id_int=instance.pk,
         action=action,
         summary=f'{instance.__class__.__name__} #{instance.pk} {action.lower()}',
         changes=changes or {},

@@ -1,21 +1,21 @@
 {# ── TAB: FEES & PAYMENTS ── #}
-<div data-tab-panel="fees" class="hidden space-y-5">
+<div data-tab-panel="fees" class="hidden space-y-6">
 
   {# Balance summary #}
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-    <div class="stat-card bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="stat-card bg-white rounded-xl border border-line p-5">
       <p class="text-[11px] uppercase tracking-wider text-ink-muted">Total billed (term)</p>
       <p class="mt-1 text-2xl font-bold text-ink tabular-nums">&#8358;{{ total_billed_current_term|floatformat:0 }}</p>
       <p class="text-xs text-ink-muted mt-1">{% if current_term %}{{ current_term.name }} · {{ current_term.session.name }}{% endif %}</p>
     </div>
-    <div class="stat-card bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+    <div class="stat-card bg-white rounded-xl border border-line p-5">
       <p class="text-[11px] uppercase tracking-wider text-ink-muted">Amount paid</p>
       <p class="mt-1 text-2xl font-bold text-emerald-600 tabular-nums">&#8358;{{ total_paid_current_term|floatformat:0 }}</p>
       <p class="text-xs text-ink-muted mt-1">
         {% if total_paid_current_term > 0 %}This term{% else %}No payments recorded yet{% endif %}
       </p>
     </div>
-    <div class="stat-card bg-warning-tint/80 rounded-2xl border border-line shadow-sm p-5">
+    <div class="stat-card bg-warning-tint/80 rounded-xl border border-line p-5">
       <p class="text-[11px] uppercase tracking-wider text-amber-700/80">Balance due</p>
       <p class="mt-1 text-2xl font-bold text-amber-800 tabular-nums">&#8358;{{ total_outstanding|floatformat:0 }}</p>
       <p class="text-xs text-amber-700/70 mt-1">
@@ -27,9 +27,9 @@
   </div>
 
   {# Invoices (compact) + Record Payment + Payment history under invoices #}
-  <div class="grid grid-cols-1 xl:grid-cols-5 gap-5">
+  <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
     <div class="xl:col-span-2 space-y-5">
-      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="bg-white rounded-xl border border-line overflow-hidden">
         <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 class="text-sm font-semibold text-ink">Invoices</h3>
           <span class="text-xs font-medium text-ink-muted">{{ invoices|length }} term{{ invoices|length|pluralize }}</span>
@@ -141,11 +141,11 @@
     </div>
 
     {# Record Payment panel #}
-    <div class="xl:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="xl:col-span-3 bg-white rounded-xl border border-line overflow-hidden">
       <div class="px-5 py-4 border-b border-gray-100 bg-[#FBF7F0]/60 flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h3 class="text-sm font-semibold text-ink">Record a payment</h3>
-          <p class="text-xs text-ink-muted mt-0.5">Tick the items this payment covers, or add something else.</p>
+          <p class="text-xs text-ink-muted mt-0.5">Select the fees this payment covers.</p>
         </div>
         {% if current_enrollment %}
         <div class="flex items-center gap-2 shrink-0">
@@ -192,12 +192,9 @@
           <button type="button" id="add-custom-btn"
                   class="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium text-primary bg-primary-tint/50 hover:bg-primary-tint border border-dashed border-primary/30 rounded-xl transition-colors">
             <i data-lucide="plus" class="w-4 h-4"></i>
-            Add something else (books, bus, sponsor gift…)
+            Add another item
           </button>
 
-          <p class="mt-2 text-[11px] text-ink-muted leading-relaxed">
-            Tick known fees <em>or</em> add a custom item. The system attaches the payment to the right invoice when possible; custom-only payments still get a full receipt.
-          </p>
         </div>
 
         {# Smart status chip — filled by JS #}
