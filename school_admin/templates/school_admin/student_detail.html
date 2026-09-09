@@ -303,8 +303,15 @@
       btn.classList.toggle('hover:bg-gray-50', !isActive);
     });
     const breakdown = document.getElementById('fee-breakdown');
-    if (breakdown && breakdown.getAttribute('hx-get')) {
-      htmx.ajax('GET', breakdown.getAttribute('hx-get'), {target: '#fee-breakdown', swap: 'innerHTML'});
+    if (breakdown) {
+      const hxGet = breakdown.getAttribute('hx-get') || '';
+      const [path, ...queryParts] = hxGet.split('?');
+      const params = new URLSearchParams(queryParts.join('?'));
+      params.set('scope', 'total');
+      params.set('student_type', t);
+      const newUrl = `${path}?${params.toString()}`;
+      breakdown.setAttribute('hx-get', newUrl);
+      htmx.ajax('GET', newUrl, {target: '#fee-breakdown', swap: 'innerHTML'});
     }
   }
 
