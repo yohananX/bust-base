@@ -27,7 +27,7 @@ device browser  →  http://portal.ghis.sch  →  Caddy :80  →  Waitress :8000
 | `scripts/start_lan.bat` | Starts Django-Q2 `qcluster` + Waitress on `0.0.0.0:8000` |
 | `scripts/open_firewall.bat` | Admin script: opens TCP 80, TCP 8000, TCP/UDP 53 |
 | `.env` | `ALLOWED_HOSTS` + `CSRF_TRUSTED_ORIGINS` already include `portal.ghis.sch` and `192.168.0.50` |
-| `requirements.txt` | `waitress` added (gunicorn is Linux-only) |
+| `requirements.txt` | `waitress` retained for the Windows LAN deployment; production Docker uses Uvicorn |
 | `staticfiles/` | `collectstatic` already run (Whitenoise serves static) |
 
 ## Part A — on the school network (do once)
