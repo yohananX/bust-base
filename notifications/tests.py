@@ -663,6 +663,18 @@ class NotificationBellViewTest(BaseNotificationTest):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['unread_count'], 1)
 
+    def test_bell_count_requires_authentication(self):
+        """Anonymous users are redirected to login."""
+        response = self.client.get(reverse('notifications:bell_count'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_bell_dropdown_requires_authentication(self):
+        """Anonymous users are redirected to login."""
+        response = self.client.get(reverse('notifications:bell_dropdown'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
 
 # --- Dismiss Tests ---
 
@@ -843,6 +855,12 @@ class NotificationBellPollTest(BaseNotificationTest):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()['new_notifications']), 1)
+
+    def test_poll_requires_authentication(self):
+        """Anonymous users are redirected to login, never reaching the view logic."""
+        response = self.client.get(reverse('notifications:bell_poll'), {'since': 0})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
 
 
 # --- Clear All Tests ---

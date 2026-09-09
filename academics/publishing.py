@@ -79,6 +79,7 @@ def notify_results_published(term, student_ids):
             subject=f'Results available for {term.name}',
             message=f'Your results for {term.name} are now available.',
             url_kwargs={
+                'child_pk': student_id,
                 'term_id': term.id,
             },
         )

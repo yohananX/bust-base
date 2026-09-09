@@ -10,3 +10,6 @@ django-q2==1.10.0
 Pillow==12.3.0
 requests==2.34.2
 openpyxl==3.1.5
+django-redis==5.4.0
+django-storages==1.14.4
+boto3==1.35.74

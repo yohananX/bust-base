@@ -12,7 +12,8 @@ from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from academics.models import Score, Subject, ClassSubject, TeacherAssignment, TermResult
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
-from fees.models import FeeCategory, FeeStructure, Invoice, Payment
+from fees.models import FeeCategory, FeePrice, Invoice, Payment
+from payroll.models import StaffProfile
 
 
 User = get_user_model()
@@ -313,9 +314,10 @@ class FlowReproTest(TestCase):
         self.tuition_cat = FeeCategory.objects.create(
             school=self.school, name='Tuition', is_compulsory=True,
         )
-        FeeStructure.objects.create(
-            school=self.school, school_class=self.school_class,
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_CLASS, school_class=self.school_class,
             term=self.term, category=self.tuition_cat, amount=Decimal('54000.00'),
+            student_type='ALL',
         )
         self.admin = User.objects.create_user(
             username='adminx', email='adminx@test.com', password='pass123',
@@ -523,19 +525,19 @@ class FlowReproTest(TestCase):
             'class_id': self.school_class.pk,
             'session_id': self.session.pk,
             'guardian_0_name': 'Papa One',
-            'guardian_0_email': 'papa1@test.com',
+            'guardian_0_email': self.parent1.email,
             'guardian_0_phone': '0801',
             'guardian_0_relationship': 'FATHER',
         })
         self.assertEqual(resp.status_code, 302)
         messages_list = list(messages.get_messages(resp.wsgi_request))
+        student = Student.objects.get(user__first_name='Second')
+        link = StudentGuardianLink.objects.get(student=student)
+        self.assertEqual(link.guardian, self.parent1)
         self.assertTrue(
             any('Reused existing guardian' in str(m) for m in messages_list),
             'Expected reuse warning in messages',
         )
-        student = Student.objects.get(user__first_name='Second')
-        link = StudentGuardianLink.objects.get(student=student)
-        self.assertEqual(link.guardian, self.parent1)
 
     def test_student_create_warns_on_new_guardian(self):
         self.client.login(username='adminx', password='pass123')
@@ -546,7 +548,7 @@ class FlowReproTest(TestCase):
             'class_id': self.school_class.pk,
             'session_id': self.session.pk,
             'guardian_0_name': 'New Parent',
-            'guardian_0_email': 'newparent@test.com',
+            'guardian_0_email': f'newparent_{self.school.pk}@test.com',
             'guardian_0_phone': '0803',
             'guardian_0_relationship': 'MOTHER',
         })
@@ -556,7 +558,7 @@ class FlowReproTest(TestCase):
             any('New guardian account created' in str(m) for m in messages_list),
             'Expected new-account warning in messages',
         )
-        new_parent = User.objects.get(email='newparent@test.com')
+        new_parent = User.objects.get(email=f'newparent_{self.school.pk}@test.com')
         self.assertEqual(new_parent.role, Roles.PARENT)
 
     def test_student_create_rejects_duplicate_guardian_names(self):
@@ -656,6 +658,8 @@ class FlowReproTest(TestCase):
         })
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Student.objects.filter(user__first_name='Distinct').exists())
+
+class PaymentAdminTest(TestCase):
     """Admin payment recording, editing and deletion (school_admin portal)."""
 
     def setUp(self):
@@ -1599,7 +1603,22 @@ class StaffDeleteViewTest(TestCase):
         from academics.models import TeacherAssignment, Score
         subject = Subject.objects.create(school=self.school, name='Math', code='MTH')
         TeacherAssignment.objects.create(school=self.school, teacher=self.teacher, subject=subject, school_class=self.school_class, session=self.session)
-        Score.objects.create(school=self.school, student=None, subject=subject, term=self.term, entered_by=self.teacher)
+        student_user = User.objects.create_user(
+            username='scorestu', email='scorestu@test.com', password='pass123',
+            school=self.school, role=Roles.STUDENT, first_name='Score', last_name='Student',
+        )
+        student = Student.objects.create(
+            school=self.school, user=student_user, admission_number='SCR01',
+            date_of_birth=date(2012, 1, 1), gender='MALE',
+            admission_date=date(2026, 9, 1), status='ACTIVE',
+        )
+        Score.objects.create(school=self.school, student=student, subject=subject, term=self.term, entered_by=self.teacher)
+
+        self.client.force_login(self.superadmin)
+        resp = self.client.get(reverse('school_admin:staff_delete', args=[self.teacher.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'teacher assignment(s)')
+        self.assertContains(resp, 'score record(s) entered')
 
         self.client.force_login(self.superadmin)
         resp = self.client.get(reverse('school_admin:staff_delete', args=[self.teacher.pk]))
@@ -1618,3 +1637,279 @@ class StaffDeleteViewTest(TestCase):
         resp = self.client.get(reverse('school_admin:staff_list'))
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, reverse('school_admin:staff_delete', args=[self.teacher.pk]))
+
+
+class SetupChecksTest(TestCase):
+    """Tests for dashboard setup status checks."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Test School', short_code='test')
+        self.admin_user = User.objects.create_user(
+            username='admin1', email='admin@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        self.client.force_login(self.admin_user)
+
+    def test_all_checks_trigger_on_bare_school(self):
+        """When nothing is configured, only the top 5 priority alerts show."""
+        from school_admin.setup_checks import run_setup_checks
+        alerts = run_setup_checks(self.school)
+        self.assertEqual(len(alerts), 5)
+        keys = [a['key'] for a in alerts]
+        self.assertEqual(keys, [
+            'school_profile', 'no_session', 'no_term',
+            'no_classes', 'no_subjects',
+        ])
+
+    def test_max_alerts_limit(self):
+        """No more than MAX_DASHBOARD_ALERTS alerts are returned."""
+        from school_admin.setup_checks import run_setup_checks, MAX_DASHBOARD_ALERTS
+        alerts = run_setup_checks(self.school)
+        self.assertLessEqual(len(alerts), MAX_DASHBOARD_ALERTS)
+
+    def test_priority_ordering(self):
+        """Alerts are sorted by priority (ascending)."""
+        from school_admin.setup_checks import run_setup_checks
+        alerts = run_setup_checks(self.school)
+        priorities = [a['priority'] for a in alerts]
+        self.assertEqual(priorities, sorted(priorities))
+
+    def test_fee_prices_check_without_term(self):
+        """FeePrice check does not trigger when there is no current term."""
+        from school_admin.setup_checks import check_fee_prices
+        alert = check_fee_prices(self.school)
+        self.assertIsNone(alert)
+
+    def test_teacher_assignments_check_without_session(self):
+        """TeacherAssignment check does not trigger when there is no current session."""
+        from school_admin.setup_checks import check_teacher_assignments
+        alert = check_teacher_assignments(self.school)
+        self.assertIsNone(alert)
+
+    def test_fee_prices_check_triggers_with_term(self):
+        """FeePrice check triggers when there is a current term but no prices."""
+        session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        Term.objects.create(
+            school=self.school, session=session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+        from school_admin.setup_checks import check_fee_prices
+        alert = check_fee_prices(self.school)
+        self.assertIsNotNone(alert)
+        self.assertEqual(alert['key'], 'no_fee_prices')
+
+    def test_setup_complete_shows_no_alerts(self):
+        """When everything is configured, run_setup_checks returns []."""
+        session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        term = Term.objects.create(
+            school=self.school, session=session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+        school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', level='JSS1',
+        )
+        subject = Subject.objects.create(
+            school=self.school, name='Math', code='MTH',
+        )
+        category = FeeCategory.objects.create(school=self.school, name='School Fees')
+        FeePrice.objects.create(
+            school=self.school, category=category,
+            amount=Decimal('50000.00'), term=term,
+            scope=FeePrice.SCOPE_SCHOOL_WIDE,
+        )
+        teacher = User.objects.create_user(
+            username='teacher1', email='teacher@test.com', password='testpass123',
+            school=self.school, role=Roles.TEACHER,
+        )
+        TeacherAssignment.objects.create(
+            school=self.school, teacher=teacher, subject=subject,
+            school_class=school_class, session=session,
+        )
+        student_user = User.objects.create_user(
+            username='stu1', email='stu@test.com', password='testpass123',
+            school=self.school, role=Roles.STUDENT, first_name='Kid', last_name='One',
+        )
+        Student.objects.create(
+            school=self.school, user=student_user, admission_number='M001',
+            date_of_birth=date(2012, 1, 1), gender='MALE',
+            admission_date=date(2025, 9, 1), status='ACTIVE',
+        )
+        StaffProfile.objects.create(
+            school=self.school, user=self.admin_user, employee_id='E001',
+            bank_name='Test Bank', bank_account_number='1234567890',
+            bank_account_name='Test Account', hire_date=date(2025, 1, 1),
+        )
+        self.school.phone = '0123456789'
+        self.school.email = 'test@test.com'
+        self.school.bank_name = 'Test Bank'
+        self.school.account_name = 'Test Account'
+        self.school.account_number = '1234567890'
+        self.school.save()
+
+        from school_admin.setup_checks import run_setup_checks
+        alerts = run_setup_checks(self.school)
+        self.assertEqual(alerts, [])
+
+    def test_dashboard_includes_setup_alerts(self):
+        """Dashboard view passes setup_alerts in context."""
+        resp = self.client.get(reverse('school_admin:dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('setup_alerts', resp.context)
+        self.assertGreater(len(resp.context['setup_alerts']), 0)
+
+    def test_all_action_urls_resolve(self):
+        """Every alert's action_url must resolve to a real URL."""
+        from school_admin.setup_checks import run_setup_checks
+        alerts = run_setup_checks(self.school)
+        self.assertGreater(len(alerts), 0)
+        for alert in alerts:
+            url = reverse(alert['action_url'])
+            self.assertTrue(url.startswith('/'))
+
+    def test_school_profile_alert_disappears_when_fixed(self):
+        """School profile check returns None once contact and bank details are filled."""
+        from school_admin.setup_checks import check_school_profile
+        # Bare school: missing phone, email, bank details
+        self.assertIsNotNone(check_school_profile(self.school))
+        # Fix the school
+        self.school.phone = '0123456789'
+        self.school.email = 'test@test.com'
+        self.school.bank_name = 'Test Bank'
+        self.school.account_name = 'Test Account'
+        self.school.account_number = '1234567890'
+        self.school.save()
+        self.assertIsNone(check_school_profile(self.school))
+
+    def test_session_alert_disappears_when_fixed(self):
+        """Session check returns None once a current session exists."""
+        from school_admin.setup_checks import check_current_session
+        self.assertIsNotNone(check_current_session(self.school))
+        AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        self.assertIsNone(check_current_session(self.school))
+
+    def test_term_alert_disappears_when_fixed(self):
+        """Term check returns None once a current term exists."""
+        from school_admin.setup_checks import check_current_term
+        self.assertIsNotNone(check_current_term(self.school))
+        session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        Term.objects.create(
+            school=self.school, session=session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+        self.assertIsNone(check_current_term(self.school))
+
+    def test_classes_alert_disappears_when_fixed(self):
+        """Classes check returns None once an active class exists."""
+        from school_admin.setup_checks import check_active_classes
+        self.assertIsNotNone(check_active_classes(self.school))
+        SchoolClass.objects.create(school=self.school, name='JSS1', level='JSS1', is_active=True)
+        self.assertIsNone(check_active_classes(self.school))
+
+    def test_subjects_alert_disappears_when_fixed(self):
+        """Subjects check returns None once a subject exists."""
+        from school_admin.setup_checks import check_subjects
+        self.assertIsNotNone(check_subjects(self.school))
+        Subject.objects.create(school=self.school, name='Math', code='MTH')
+        self.assertIsNone(check_subjects(self.school))
+
+    def test_fee_categories_alert_disappears_when_fixed(self):
+        """FeeCategory check returns None once a category exists."""
+        from school_admin.setup_checks import check_fee_categories
+        self.assertIsNotNone(check_fee_categories(self.school))
+        FeeCategory.objects.create(school=self.school, name='School Fees')
+        self.assertIsNone(check_fee_categories(self.school))
+
+    def test_students_alert_disappears_when_fixed(self):
+        """Students check returns None once an active student exists."""
+        from school_admin.setup_checks import check_students
+        self.assertIsNotNone(check_students(self.school))
+        student_user = User.objects.create_user(
+            username='stu1', email='stu@test.com', password='testpass123',
+            school=self.school, role=Roles.STUDENT,
+        )
+        Student.objects.create(
+            school=self.school, user=student_user, admission_number='M001',
+            date_of_birth=date(2012, 1, 1), gender='MALE',
+            admission_date=date(2025, 9, 1), status='ACTIVE',
+        )
+        self.assertIsNone(check_students(self.school))
+
+    def test_staff_alert_disappears_when_fixed(self):
+        """StaffProfile check returns None once a staff profile exists."""
+        from school_admin.setup_checks import check_staff_profiles
+        self.assertIsNotNone(check_staff_profiles(self.school))
+        StaffProfile.objects.create(
+            school=self.school, user=self.admin_user, employee_id='E001',
+            bank_name='Test Bank', bank_account_number='1234567890',
+            bank_account_name='Test Account', hire_date=date(2025, 1, 1),
+        )
+        self.assertIsNone(check_staff_profiles(self.school))
+
+    def test_teacher_assignments_alert_disappears_when_fixed(self):
+        """TeacherAssignment check returns None once an assignment exists for the current session."""
+        from school_admin.setup_checks import check_teacher_assignments
+        session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        self.assertIsNotNone(check_teacher_assignments(self.school))
+        school_class = SchoolClass.objects.create(school=self.school, name='JSS1', level='JSS1')
+        subject = Subject.objects.create(school=self.school, name='Math', code='MTH')
+        teacher = User.objects.create_user(
+            username='t1', email='t@test.com', password='testpass123',
+            school=self.school, role=Roles.TEACHER,
+        )
+        TeacherAssignment.objects.create(
+            school=self.school, teacher=teacher, subject=subject,
+            school_class=school_class, session=session,
+        )
+        self.assertIsNone(check_teacher_assignments(self.school))
+
+    def test_fee_prices_alert_disappears_when_fixed(self):
+        """FeePrice check returns None once a price exists for the current term."""
+        from school_admin.setup_checks import check_fee_prices
+        session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        term = Term.objects.create(
+            school=self.school, session=session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+        self.assertIsNotNone(check_fee_prices(self.school))
+        category = FeeCategory.objects.create(school=self.school, name='School Fees')
+        FeePrice.objects.create(
+            school=self.school, category=category,
+            amount=Decimal('50000.00'), term=term,
+            scope=FeePrice.SCOPE_SCHOOL_WIDE,
+        )
+        self.assertIsNone(check_fee_prices(self.school))
+
+    def test_dashboard_renders_setup_alerts_template(self):
+        """Dashboard page shows setup alert titles when checks fire."""
+        resp = self.client.get(reverse('school_admin:dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Set up sessions')
+        self.assertContains(resp, 'No active academic session')

@@ -11,6 +11,7 @@ from accounts.models import Roles, User
 from core.models import AcademicSession, Term
 from students.models import Student, SchoolClass, ClassEnrollment
 from fees.models import Payment
+from school_admin.setup_checks import run_setup_checks
 
 
 class DashboardView(RoleRequiredMixin, View):
@@ -151,5 +152,6 @@ class DashboardView(RoleRequiredMixin, View):
             'results_to_review': results_to_review,
             'top_owing_students': top_owing_students,
             'recent_payments': recent_payments,
+            'setup_alerts': run_setup_checks(school),
         }
         return render(request, 'school_admin/dashboard.html', context)

@@ -1,0 +1,8 @@
+{
+  "agent": "git-wrangler",
+  "action_taken": "fix(fees): show all fee categories for new students on fee breakdown",
+  "commit_hash": "bfd4b8d",
+  "files_changed": ["fees/pricing.py", "school_admin/templates/school_admin/student_detail.html"],
+  "branches_affected": ["main"],
+  "status": "clean"
+}

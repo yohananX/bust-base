@@ -456,6 +456,15 @@ def _handle_charge_success(event, data, webhook_log):
         **_payment_kwargs_from_webhook(data, school, invoice, student, reference),
     )
     issue_receipt(payment)
+    _notify_payment(
+        payment,
+        subject=f'Payment confirmed: ₦{payment.amount:,.2f}',
+        message=(
+            f'Payment of ₦{payment.amount:,.2f} for {payment.student} '
+            f'has been confirmed.'
+        ),
+        reference=f'payment-confirm:{payment.id}',
+    )
     _mark_webhook_log_processed(webhook_log)
     logger.info(f'Payment {reference} created and confirmed via webhook')
     return JsonResponse({'status': 'created'})

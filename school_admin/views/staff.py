@@ -215,22 +215,13 @@ class StaffDeleteView(RoleRequiredMixin, View):
             return redirect('school_admin:staff_list')
 
         from academics.models import TeacherAssignment, Score
-        from payroll.models import PayrollRun, Payslip
-        from finance.models import Expenditure, Project
-        from lessons.models import LessonTeacherAssignment
         from notifications.models import NotificationLog
-        from inventory.models import InventoryItem, InventoryProcurement, InventoryTransaction
+        from inventory.models import InventoryProcurement, InventoryTransaction
 
         related = {
             'teacher_assignments': TeacherAssignment.objects.filter(teacher=staff_user).count(),
             'scores_entered': Score.objects.filter(entered_by=staff_user).count(),
-            'payroll_runs': PayrollRun.objects.filter(generated_by=staff_user).count(),
-            'payslips': Payslip.objects.filter(teacher=staff_user).count(),
-            'projects': Project.objects.filter(created_by=staff_user).count(),
-            'expenditures': Expenditure.objects.filter(created_by=staff_user).count(),
-            'lesson_teacher_assignments': LessonTeacherAssignment.objects.filter(teacher=staff_user).count(),
             'notifications': NotificationLog.objects.filter(recipient=staff_user).count(),
-            'inventory_items': InventoryItem.objects.filter(created_by=staff_user).count(),
             'procurements': InventoryProcurement.objects.filter(purchased_by=staff_user).count(),
             'inventory_transactions': InventoryTransaction.objects.filter(created_by=staff_user).count(),
         }

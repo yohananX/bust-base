@@ -15,7 +15,7 @@ from django.utils import timezone
 from accounts.models import Roles
 from core.models import School, AcademicSession, Term
 from fees.models import (
-    FeeCategory, FeeStructure, Invoice, Payment, FeeReceipt, WebhookLog,
+    FeeCategory, FeePrice, Invoice, Payment, FeeReceipt, WebhookLog,
 )
 from fees.paystack import (
     handle_webhook as webhook_view,
@@ -109,10 +109,10 @@ class PaymentEndToEndTest(TestCase):
         self.tuition_category = FeeCategory.objects.create(
             school=self.school, name='Tuition',
         )
-        FeeStructure.objects.create(
-            school=self.school, school_class=self.school_class,
-            term=self.term, category=self.tuition_category,
-            amount=Decimal('60000.00'),
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_CLASS, school_class=self.school_class,
+            term=self.term, category=self.tuition_category, amount=Decimal('60000.00'),
+            student_type='ALL',
         )
         self.invoice = Invoice.objects.create(
             school=self.school, student=self.student, term=self.term,
@@ -126,7 +126,11 @@ class PaymentEndToEndTest(TestCase):
             'reference': reference,
             'amount': amount_kobo,
             'paid_at': '2026-01-15T10:30:00.000Z',
-            'metadata': {'invoice_id': self.invoice.id, 'school_id': self.school.id},
+            'metadata': {
+                'invoice_id': self.invoice.id,
+                'school_id': self.school.id,
+                'student_id': self.student.id,
+            },
         }
         data.update(extra_data)
 
@@ -304,9 +308,9 @@ class PaymentEndToEndTest(TestCase):
         fail_payment.refresh_from_db()
         self.assertEqual(fail_payment.status, Payment.Status.FAILED)
 
-        # Invoice balance unchanged (still has the confirmed payment from step 2)
+        # Invoice balance reflects both confirmed payments
         self.invoice.refresh_from_db()
-        self.assertEqual(self.invoice.amount_paid, Decimal('60000.00'))
+        self.assertEqual(self.invoice.amount_paid, Decimal('120000.00'))
 
         # No receipt for failed payment
         self.assertFalse(FeeReceipt.objects.filter(payment=fail_payment).exists())

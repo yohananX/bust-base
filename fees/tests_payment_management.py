@@ -22,7 +22,7 @@ from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from fees.models import (
     FeeCategory, FeeCategoryGroup, FeeCategoryGroupAssignment,
-    FeeStructure, FeePrice, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
+    FeePrice, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
     InvoiceResetLog, FeeValidationError,
 )
 from fees.validation import InvoiceIntegrityValidator
@@ -210,19 +210,23 @@ class ValidationServiceTest(BasePaymentManagementTest):
             billing_cycle=FeeCategory.BILLING_CYCLE_CHOICES[0][0],
             student_type=FeeCategory.STUDENT_TYPE_CHOICES[2][0],
         )
-        self.tuition_fee = FeeStructure.objects.create(
+        self.tuition_fee = FeePrice.objects.create(
             school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=self.school_class,
             term=self.term,
             category=self.tuition_category,
             amount=Decimal('50000.00'),
+            student_type='ALL',
         )
-        self.sports_fee = FeeStructure.objects.create(
+        self.sports_fee = FeePrice.objects.create(
             school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=self.school_class,
             term=self.term,
             category=self.sports_category,
             amount=Decimal('10000.00'),
+            student_type='ALL',
         )
 
     def test_validate_invoice_totals_mismatch(self):
@@ -299,12 +303,14 @@ class ResetServiceTest(BasePaymentManagementTest):
             name='Tuition',
             is_compulsory=True,
         )
-        self.fee_structure = FeeStructure.objects.create(
+        self.fee_structure = FeePrice.objects.create(
             school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
             school_class=self.school_class,
             term=self.term,
             category=self.tuition_category,
             amount=Decimal('50000.00'),
+            student_type='ALL',
         )
         self.invoice = Invoice.objects.create(
             school=self.school,

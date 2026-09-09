@@ -123,7 +123,6 @@ class CredentialEndToEndTest(TestCase):
         self.assertEqual(login_resp.status_code, 302)
 
         # Step 5: GET /student/ -> redirected to forced-password-change
-        self.client.force_login(self.student1_user)
         overview_resp = self.client.get('/student/')
         self.assertRedirects(overview_resp, reverse('forced_password_change'))
 
@@ -137,7 +136,11 @@ class CredentialEndToEndTest(TestCase):
             },
         )
         self.assertEqual(change_resp.status_code, 302)
-        self.assertRedirects(change_resp, reverse('post_login_redirect'))
+        self.assertRedirects(
+            change_resp,
+            reverse('post_login_redirect'),
+            fetch_redirect_response=False,
+        )
 
         # Flag cleared
         self.student1_user.refresh_from_db()
@@ -159,7 +162,11 @@ class CredentialEndToEndTest(TestCase):
             reverse('school_admin:credential_single_reset', args=[self.student2_user.pk])
         )
         self.assertEqual(reset_resp.status_code, 302)
-        self.assertRedirects(reset_resp, reverse('school_admin:credential_slip', args=[self.student2_user.pk]))
+        self.assertRedirects(
+            reset_resp,
+            reverse('school_admin:credential_slip', args=[self.student2_user.pk]),
+            fetch_redirect_response=False,
+        )
 
         # must_change_password=True
         self.student2_user.refresh_from_db()
@@ -181,7 +188,6 @@ class CredentialEndToEndTest(TestCase):
         self.assertEqual(login_resp.status_code, 302)
 
         # Step 4: Forced password change
-        self.client.force_login(self.student2_user)
         overview_resp = self.client.get('/student/')
         self.assertRedirects(overview_resp, reverse('forced_password_change'))
 
@@ -194,7 +200,11 @@ class CredentialEndToEndTest(TestCase):
             },
         )
         self.assertEqual(change_resp.status_code, 302)
-        self.assertRedirects(change_resp, reverse('post_login_redirect'))
+        self.assertRedirects(
+            change_resp,
+            reverse('post_login_redirect'),
+            fetch_redirect_response=False,
+        )
 
         self.student2_user.refresh_from_db()
         self.assertFalse(self.student2_user.must_change_password)

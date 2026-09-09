@@ -224,10 +224,10 @@ def create_guardians_from_form(student, school, post_data):
             break
 
         if name:
-            parent_user, was_reused = find_or_create_parent(
+            parent_user, was_created = find_or_create_parent(
                 school, name, email=email, phone=phone, relationship=relationship
             )
-            if not was_reused:
+            if was_created:
                 warnings.append(
                     f"New guardian account created for {parent_user.get_full_name() or parent_user.username}."
                 )

@@ -365,7 +365,7 @@ class StudentImporter(BaseImporter):
                         if not name and not email and not phone:
                             continue
 
-                        parent_user = find_or_create_parent(
+                        parent_user, _ = find_or_create_parent(
                             self.school, name, email=email, phone=phone,
                             relationship=relationship,
                         )

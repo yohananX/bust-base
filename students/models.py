@@ -118,7 +118,14 @@ class Student(TenantScopedModel):
         unique_together = ('school', 'admission_number')
 
     def __str__(self):
-        return self.user.get_full_name() or self.user.username
+        name = self.user.get_full_name() or self.user.username
+        try:
+            current_enrollment = self.enrollments.filter(is_current=True).first()
+            if current_enrollment:
+                return f"{name} ({current_enrollment.school_class.name})"
+        except Exception:
+            pass
+        return name
 
     def display_name_with_class(self):
         """Full name plus current class, when available.
