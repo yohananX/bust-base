@@ -7,16 +7,16 @@
 {% block content %}
 <div class="max-w-5xl mx-auto">
   <!-- Filters -->
-  <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
+  <div class="bg-white rounded-xl p-5 mb-6 shadow-sm border border-line">
     <form method="GET" class="flex flex-wrap gap-4 items-end">
       <div class="flex-1 min-w-52">
-        <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
+        <label class="block text-xs font-medium text-ink-muted mb-1.5">Search</label>
         {% include 'components/search_autocomplete.html' with cache_key='classes' api_path='/school-admin/api/classes/' item_url='/school-admin/classes/{id}/edit/' placeholder='Name or level' %}
       </div>
       <div>
-        <label class="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
+        <label class="block text-xs font-medium text-ink-muted mb-1.5">Status</label>
         <select name="status"
-                class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                class="px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
           <option value="">All</option>
           <option value="active" {% if filter_status == 'active' %}selected{% endif %}>Active</option>
           <option value="inactive" {% if filter_status == 'inactive' %}selected{% endif %}>Inactive</option>
@@ -27,13 +27,13 @@
         Filter
       </button>
       <a href="{% url 'school_admin:class_list' %}"
-         class="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Clear</a>
+         class="px-5 py-2.5 border border-line rounded-xl text-sm font-medium text-ink-muted hover:bg-surface-muted transition-colors">Clear</a>
     </form>
   </div>
 
   <!-- Header and Add Button -->
   <div class="flex justify-between items-center mb-4">
-    <h2 class="text-lg font-display font-semibold text-gray-900">Classes</h2>
+    <h2 class="text-lg font-display font-semibold text-ink">Classes</h2>
     <a href="{% url 'school_admin:class_create' %}"
        class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
       <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Class
@@ -41,30 +41,30 @@
   </div>
 
   <!-- Class Table -->
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div class="bg-white rounded-xl shadow-sm border border-line overflow-hidden">
     <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead>
-        <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
-          <th class="px-5 py-3.5 font-semibold">Name</th>
-          <th class="px-5 py-3.5 font-semibold">Level</th>
-          <th class="px-5 py-3.5 font-semibold">Active Status</th>
-          <th class="px-5 py-3.5 font-semibold">Student Count</th>
-          <th class="px-5 py-3.5 font-semibold text-right">Actions</th>
+        <tr class="bg-surface-muted text-left text-ink-muted uppercase text-xs tracking-wider">
+          <th scope="col" class="px-5 py-3.5 font-semibold">Name</th>
+          <th scope="col" class="px-5 py-3.5 font-semibold">Level</th>
+          <th scope="col" class="px-5 py-3.5 font-semibold">Active Status</th>
+          <th scope="col" class="px-5 py-3.5 font-semibold">Student Count</th>
+          <th scope="col" class="px-5 py-3.5 font-semibold text-right">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for c in classes %}
-        <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+        <tr class="border-t border-line hover:bg-surface-muted/70 transition-colors">
           <td class="px-5 py-3.5">
             <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center flex-shrink-0">
+              <div class="w-9 h-9 rounded-xl bg-primary-tint text-primary flex items-center justify-center flex-shrink-0">
                 <i data-lucide="graduation-cap" class="w-4.5 h-4.5"></i>
               </div>
-              <span class="font-medium text-gray-900">{{ c.name }}</span>
+              <span class="font-medium text-ink">{{ c.name }}</span>
             </div>
           </td>
-          <td class="px-5 py-3.5 text-gray-600">{{ c.level }}</td>
+          <td class="px-5 py-3.5 text-ink-muted">{{ c.level }}</td>
           <td class="px-5 py-3.5">
             {% if c.is_active %}
               {% include 'components/badge.html' with status='success' text='Active' %}
@@ -73,39 +73,39 @@
             {% endif %}
           </td>
           <td class="px-5 py-3.5">
-            <span class="inline-flex items-center gap-1.5 text-gray-700">
-              <i data-lucide="users" class="w-3.5 h-3.5 text-gray-400"></i>{{ c.student_count }}
+            <span class="inline-flex items-center gap-1.5 text-ink">
+              <i data-lucide="users" class="w-3.5 h-3.5 text-ink-faint"></i>{{ c.student_count }}
             </span>
           </td>
           <td class="px-5 py-3.5">
             <div class="flex items-center justify-end gap-1">
               <a href="{% url 'school_admin:class_detail' c.pk %}"
                  title="View subjects"
-                 class="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-violet-50 transition-colors">
+                 class="p-2 rounded-lg text-ink-muted hover:text-primary hover:bg-primary-tint transition-colors">
                 <i data-lucide="book-open" class="w-4 h-4"></i>
               </a>
               <a href="{% url 'school_admin:student_list' %}?class_id={{ c.pk }}"
                  title="View students"
-                 class="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-violet-50 transition-colors">
+                 class="p-2 rounded-lg text-ink-muted hover:text-primary hover:bg-primary-tint transition-colors">
                 <i data-lucide="users" class="w-4 h-4"></i>
               </a>
               <a href="{% url 'school_admin:class_edit' c.pk %}"
                  title="Edit"
-                 class="p-2 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                 class="p-2 rounded-lg text-ink-muted hover:text-amber-600 hover:bg-amber-50 transition-colors">
                 <i data-lucide="pencil" class="w-4 h-4"></i>
               </a>
               <a href="{% url 'school_admin:class_delete' c.pk %}"
                  title="Delete"
-                 class="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
+                 class="p-2 rounded-lg text-ink-muted hover:text-red-600 hover:bg-red-50 transition-colors">
                 <i data-lucide="trash-2" class="w-4 h-4"></i>
               </a>
             </div>
           </td>
         </tr>
         {% empty %}
-        <tr class="border-t border-gray-100">
+        <tr class="border-t border-line">
           <td colspan="5" class="px-5 py-12 text-center">
-            <div class="flex flex-col items-center gap-2 text-gray-400">
+            <div class="flex flex-col items-center gap-2 text-ink-faint">
               <i data-lucide="graduation-cap" class="w-8 h-8"></i>
               <p class="text-sm">No classes found.</p>
             </div>

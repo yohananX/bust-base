@@ -6,23 +6,23 @@
 
 {% block content %}
 <div class="max-w-lg mx-auto">
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+  <div class="bg-surface rounded-xl p-6  border border-line text-center">
     <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 border border-red-100">
       <i data-lucide="alert-triangle" class="w-7 h-7 text-red-600"></i>
     </div>
 
-    <h2 class="text-lg font-semibold text-gray-900 mb-2">Delete Staff Member</h2>
-    <p class="text-sm text-gray-500 mb-6">
+    <h2 class="text-lg font-semibold text-ink mb-2">Delete Staff Member</h2>
+    <p class="text-sm text-ink-muted mb-6">
       Are you sure you want to permanently delete <strong>{{ staff_user.get_full_name|default:staff_user.username }}</strong>?
       This action cannot be undone.
     </p>
 
-    <div class="bg-gray-50 rounded-xl p-4 text-left text-sm mb-6 space-y-1.5 border border-gray-100">
-      <p><span class="text-gray-500">Name:</span> <span class="text-gray-900 font-medium">{{ staff_user.get_full_name|default:staff_user.username }}</span></p>
-      <p><span class="text-gray-500">Username:</span> <span class="text-gray-900 font-medium">{{ staff_user.username }}</span></p>
-      <p><span class="text-gray-500">Role:</span> <span class="text-gray-900 font-medium">{{ staff_user.get_role_display }}</span></p>
-      <p><span class="text-gray-500">Email:</span> <span class="text-gray-900 font-medium">{{ staff_user.email|default:'—' }}</span></p>
-      <p><span class="text-gray-500">School:</span> <span class="text-gray-900 font-medium">{{ staff_user.school|default:'All Schools' }}</span></p>
+    <div class="bg-surface-muted rounded-xl p-4 text-left text-sm mb-6 space-y-1.5 border border-line">
+      <p><span class="text-ink-muted">Name:</span> <span class="text-ink font-medium">{{ staff_user.get_full_name|default:staff_user.username }}</span></p>
+      <p><span class="text-ink-muted">Username:</span> <span class="text-ink font-medium">{{ staff_user.username }}</span></p>
+      <p><span class="text-ink-muted">Role:</span> <span class="text-ink font-medium">{{ staff_user.get_role_display }}</span></p>
+      <p><span class="text-ink-muted">Email:</span> <span class="text-ink font-medium">{{ staff_user.email|default:'—' }}</span></p>
+      <p><span class="text-ink-muted">School:</span> <span class="text-ink font-medium">{{ staff_user.school|default:'All Schools' }}</span></p>
     </div>
 
     {% if has_related %}
@@ -48,10 +48,10 @@
     {% endif %}
 
     <div class="flex items-center justify-center gap-3">
-      <a href="{% url 'school_admin:staff_list' %}" class="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Cancel</a>
+      <a href="{% url 'school_admin:staff_list' %}" class="px-4 py-2.5 bg-surface border border-line rounded-xl text-sm font-medium text-ink-muted hover:bg-surface-muted transition-colors">Cancel</a>
       <form method="post" class="inline">
         {% csrf_token %}
-        <button type="submit" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">Confirm Delete</button>
+        <button type="submit" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors ">Confirm Delete</button>
       </form>
     </div>
   </div>

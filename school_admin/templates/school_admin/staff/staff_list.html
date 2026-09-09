@@ -10,35 +10,35 @@
   {# ── Toolbar ── #}
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
-      <p class="text-sm text-gray-500">{{ staff_list|length }} staff member(s)</p>
+      <p class="text-sm text-ink-muted">{{ staff_list|length }} staff member(s)</p>
     </div>
     <div class="flex gap-3">
       <a href="{% url 'school_admin:credential_batch' %}"
-         class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+         class="inline-flex items-center px-4 py-2.5 bg-surface border border-line rounded-xl text-sm font-medium text-ink-muted hover:bg-surface-muted transition-colors">
         <i data-lucide="printer" class="w-4 h-4 mr-1.5"></i>Print Passwords
       </a>
       <a href="{% url 'school_admin:staff_create' %}"
-         class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+         class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors ">
         <i data-lucide="user-plus" class="w-4 h-4 mr-1.5"></i>Add Staff
       </a>
     </div>
   </div>
 
   {# ── Search ── #}
-  <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+  <div class="bg-surface rounded-xl p-4  border border-line">
     <form method="get" class="flex flex-wrap gap-4 items-end">
       <div class="flex-1 min-w-[220px]">
-        <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
+        <label class="block text-xs font-medium text-ink-muted mb-1.5">Search</label>
         {% include 'components/search_autocomplete.html' with cache_key='staff' api_path='/school-admin/api/staff/' item_url='/school-admin/staff/{id}/edit/' placeholder='Search by name or email...' %}
       </div>
       <div class="flex gap-2">
         <button type="submit"
-                class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+                class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors ">
           <i data-lucide="search" class="w-4 h-4 mr-1.5"></i>Search
         </button>
         {% if q %}
           <a href="{% url 'school_admin:staff_list' %}"
-             class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+             class="inline-flex items-center px-4 py-2.5 bg-surface border border-line rounded-xl text-sm font-medium text-ink-muted hover:bg-surface-muted transition-colors">
             <i data-lucide="x" class="w-4 h-4 mr-1.5"></i>Clear
           </a>
         {% endif %}
@@ -47,11 +47,11 @@
   </div>
 
   {# ── Staff Table ── #}
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div class="bg-surface rounded-xl  border border-line overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
-          <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
+          <tr class="bg-surface-muted text-left text-ink-muted uppercase text-xs tracking-wider">
             <th class="px-5 py-3.5 font-semibold">Name</th>
             <th class="px-5 py-3.5 font-semibold">Role</th>
             <th class="px-5 py-3.5 font-semibold">Email</th>
@@ -62,19 +62,19 @@
         </thead>
         <tbody>
           {% for s in staff_list %}
-          <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
+          <tr class="border-t border-line hover:bg-surface-muted/70 transition-colors">
             <td class="px-5 py-3.5">
               <div class="flex items-center gap-3">
                 {% include 'components/avatar.html' with name=s.get_full_name|default:s.username size='md' %}
-                <span class="font-medium text-gray-900">{{ s.get_full_name|default:'—' }}</span>
+                <span class="font-medium text-ink">{{ s.get_full_name|default:'—' }}</span>
               </div>
             </td>
             <td class="px-5 py-3.5">
               {% if s.role == 'ADMIN' %}{% include 'components/badge.html' with status='info' text=s.get_role_display %}
               {% elif s.role == 'TEACHER' %}{% include 'components/badge.html' with status='info' text=s.get_role_display %}{% endif %}
             </td>
-            <td class="px-5 py-3.5 text-gray-600">{{ s.email }}</td>
-            <td class="px-5 py-3.5 text-gray-600">{{ s.phone_number|default:'—' }}</td>
+            <td class="px-5 py-3.5 text-ink-muted">{{ s.email }}</td>
+            <td class="px-5 py-3.5 text-ink-muted">{{ s.phone_number|default:'—' }}</td>
             <td class="px-5 py-3.5">
               {% if s.is_active %}
                 {% include 'components/badge.html' with status='success' text='Active' %}
@@ -85,12 +85,12 @@
             <td class="px-5 py-3.5">
               <div class="flex items-center justify-end gap-1">
                 <a href="{% url 'school_admin:staff_edit' s.pk %}" title="Edit"
-                   class="p-2 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                   class="p-2 rounded-lg text-ink-muted hover:text-amber-600 hover:bg-amber-50 transition-colors">
                   <i data-lucide="pencil" class="w-4 h-4"></i>
                 </a>
                 {% if request.user.is_superuser %}
                 <a href="{% url 'school_admin:staff_delete' s.pk %}" title="Delete"
-                   class="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                   class="p-2 rounded-lg text-ink-muted hover:text-red-600 hover:bg-red-50 transition-colors"
                    onclick="return confirm('Permanently delete {{ s.get_full_name|default:s.username }}? This cannot be undone.')">
                   <i data-lucide="trash-2" class="w-4 h-4"></i>
                 </a>
@@ -98,7 +98,7 @@
                 <form method="post" action="{% url 'school_admin:staff_toggle_active' s.pk %}" onsubmit="return confirm('{% if s.is_active %}Deactivate{% else %}Activate{% endif %} this staff member?')">
                   {% csrf_token %}
                   <button type="submit" title="{% if s.is_active %}Deactivate{% else %}Activate{% endif %}"
-                          class="p-2 rounded-lg transition-colors {% if s.is_active %}text-gray-500 hover:text-red-600 hover:bg-red-50{% else %}text-gray-500 hover:text-emerald-600 hover:bg-emerald-50{% endif %}">
+                          class="p-2 rounded-lg transition-colors {% if s.is_active %}text-ink-muted hover:text-red-600 hover:bg-red-50{% else %}text-ink-muted hover:text-emerald-600 hover:bg-emerald-50{% endif %}">
                     <i data-lucide="power" class="w-4 h-4"></i>
                   </button>
                 </form>
@@ -106,9 +106,9 @@
             </td>
           </tr>
           {% empty %}
-          <tr class="border-t border-gray-100">
+          <tr class="border-t border-line">
             <td colspan="6" class="px-5 py-12 text-center">
-              <div class="flex flex-col items-center gap-2 text-gray-400">
+              <div class="flex flex-col items-center gap-2 text-ink-faint">
                 <i data-lucide="users" class="w-8 h-8"></i>
                 <p class="text-sm">No staff found.</p>
               </div>
