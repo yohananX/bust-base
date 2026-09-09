@@ -14,7 +14,7 @@
     <div>
       <p class="text-sm text-gray-500">{{ students|length }} student(s)</p>
     </div>
-    <div class="flex flex-wrap gap-2">
+    <div class="flex flex-wrap gap-2 [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none">
       <a href="{{ print_passwords_url }}"
          class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
         <i data-lucide="printer" class="w-4 h-4 mr-2 text-gray-400"></i>Print Passwords
@@ -25,7 +25,7 @@
 
   {# ── Filters ── #}
   <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-    <form method="GET" class="flex flex-wrap gap-4 items-end">
+    <form method="GET" class="mobile-form-stack">
       <div class="flex-1 min-w-[200px]">
         <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
         {% include 'components/search_autocomplete.html' with cache_key='students' api_path='/school-admin/api/students/' item_url='/school-admin/students/{id}/' placeholder='Search by name or admission #' %}
@@ -57,7 +57,7 @@
 
   {# ── Student Table ── #}
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="overflow-x-auto">
+    <div class="responsive-table-wrap">
       <table class="w-full">
         <thead>
           <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">

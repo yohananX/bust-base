@@ -8,8 +8,8 @@
 <div class="max-w-5xl mx-auto">
   <!-- Filters -->
   <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
-    <form method="GET" class="flex flex-wrap gap-4 items-end">
-      <div class="flex-1 min-w-52">
+    <form method="GET" class="mobile-form-stack">
+      <div class="flex-1 min-w-0">
         <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
         {% include 'components/search_autocomplete.html' with cache_key='subjects' api_path='/school-admin/api/subjects/' item_url='/school-admin/subjects/{id}/edit/' placeholder='Subject name or code' %}
       </div>
@@ -34,7 +34,7 @@
 
   <!-- Subject Table -->
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="overflow-x-auto">
+    <div class="responsive-table-wrap">
     <table class="w-full text-sm">
       <thead>
         <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">

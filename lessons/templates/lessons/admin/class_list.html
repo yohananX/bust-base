@@ -7,8 +7,8 @@
 {% block content %}
 <div class="max-w-5xl mx-auto">
   <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
-    <form method="GET" class="flex flex-wrap gap-4 items-end">
-      <div class="flex-1 min-w-52">
+    <form method="GET" class="mobile-form-stack">
+      <div class="flex-1 min-w-0">
         <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
         <input type="text" name="q" value="{{ q }}" placeholder="Search classes, students, or parents…"
                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
@@ -46,7 +46,7 @@
   </div>
 
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="overflow-x-auto">
+    <div class="responsive-table-wrap">
     <table class="w-full text-sm">
       <thead>
         <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
