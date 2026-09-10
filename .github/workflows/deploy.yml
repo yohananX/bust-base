@@ -28,6 +28,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}:${{ github.sha }},ghcr.io/${{ github.repository }}:latest
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
+          tags: ghcr.io/yohananx/bust-base:${{ github.sha }},ghcr.io/yohananx/bust-base:latest
+          cache-from: type=registry,ref=ghcr.io/yohananx/bust-base:buildcache
+          cache-to: type=registry,ref=ghcr.io/yohananx/bust-base:buildcache,mode=max
