@@ -14,7 +14,7 @@
     <div>
       <p class="text-sm text-ink-muted">{{ students|length }} student(s)</p>
     </div>
-    <div class="flex flex-wrap gap-2">
+    <div class="flex flex-wrap gap-2 [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none">
       <a href="{{ print_passwords_url }}"
          class="inline-flex items-center px-4 py-2.5 bg-white border border-line rounded-xl text-sm font-medium text-ink hover:bg-surface-muted transition-colors">
         <i data-lucide="printer" class="w-4 h-4 mr-2 text-ink-faint"></i>Print Passwords
@@ -25,7 +25,7 @@
 
   {# ── Filters ── #}
   <div class="bg-white rounded-xl p-4 shadow-sm border border-line">
-    <form method="GET" class="flex flex-wrap gap-4 items-end">
+    <form method="GET" class="mobile-form-stack">
       <div class="flex-1 min-w-[200px]">
         <label class="block text-xs font-medium text-ink-muted mb-1.5">Search</label>
         {% include 'components/search_autocomplete.html' with cache_key='students' api_path='/school-admin/api/students/' item_url='/school-admin/students/{id}/' placeholder='Search by name or admission #' %}
@@ -48,7 +48,7 @@
           {% endfor %}
         </select>
       </div>
-      <div class="flex gap-2">
+      <div class="mobile-form-actions flex gap-2">
         <button type="submit" class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">Filter</button>
         <a href="{% url 'school_admin:student_list' %}" class="px-4 py-2.5 bg-white border border-line rounded-xl text-sm font-medium text-ink hover:bg-surface-muted transition-colors">Clear</a>
       </div>
@@ -57,7 +57,7 @@
 
   {# ── Student Table ── #}
   <div class="bg-white rounded-xl shadow-sm border border-line overflow-hidden">
-    <div class="overflow-x-auto">
+    <div class="responsive-table-wrap">
       <table class="w-full">
         <thead>
           <tr class="text-left text-xs text-ink-muted border-b border-line bg-surface-muted/50">

@@ -55,7 +55,7 @@
 
   {# ── Filter card ── #}
   <div class="bg-surface rounded-xl p-4 shadow-none border border-line">
-    <form method="GET" class="flex flex-wrap gap-4 items-end">
+    <form method="GET" class="mobile-form-stack">
       <div>
         <label class="block text-xs font-medium text-ink-faint mb-1.5">Scope</label>
         <select name="scope" class="px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
@@ -93,7 +93,7 @@
   {# ── Pricing table ── #}
   {% if pricing %}
   <div class="bg-surface rounded-xl shadow-none border border-line overflow-hidden">
-    <div class="overflow-x-auto">
+    <div class="responsive-table-wrap">
       <table class="w-full">
         <thead>
           <tr class="text-left text-xs text-ink-faint border-b border-line bg-surface-muted/70">

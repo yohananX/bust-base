@@ -51,7 +51,7 @@
     <form method="post" action="{% url 'lessons:class_teachers' lesson_class.pk %}" class="flex flex-wrap gap-3 items-end">
       {% csrf_token %}
       <input type="hidden" name="action" value="add">
-      <div class="flex-1 min-w-52">
+      <div class="flex-1 min-w-0">
         <label class="block text-xs font-medium text-gray-500 mb-1.5">Add teacher</label>
         <select name="teacher" required
                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">

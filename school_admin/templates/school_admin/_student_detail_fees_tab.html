@@ -249,4 +249,57 @@
     </div>
   </div>
 
+  {# Payment history (invoice-less) #}
+  {% if invoice_less_payments %}
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h3 class="text-sm font-semibold text-ink">Payments (no invoice)</h3>
+    </div>
+    <div class="responsive-table-wrap">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-[11px] uppercase tracking-wider text-ink-muted bg-surface-muted/50 border-b border-gray-100">
+            <th class="px-5 py-3 font-semibold">Date</th>
+            <th class="px-5 py-3 font-semibold">Method</th>
+            <th class="px-5 py-3 font-semibold">Amount</th>
+            <th class="px-5 py-3 font-semibold">Reference</th>
+            <th class="px-5 py-3 font-semibold">Receipt</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line/70">
+          {% for payment in invoice_less_payments %}
+          <tr class="hover:bg-surface-muted/50">
+            <td class="px-5 py-3.5 text-ink">{{ payment.paid_on|date:"d M Y" }}</td>
+            <td class="px-5 py-3.5 text-ink-muted">{{ payment.get_method_display }}</td>
+            <td class="px-5 py-3.5 text-ink font-medium tabular-nums">&#8358;{{ payment.amount|floatformat:2 }}</td>
+            <td class="px-5 py-3.5 text-ink-muted">{{ payment.reference|default:"—" }}</td>
+            <td class="px-5 py-3.5">
+              {% if payment.status == 'CONFIRMED' %}
+              <a href="{% url 'fees:payment-receipt' payment.pk %}" target="_blank"
+                 class="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-hover">
+                <i data-lucide="receipt" class="w-3.5 h-3.5"></i>View
+              </a>
+              {% else %}
+              <span class="text-xs text-ink-muted">{{ payment.get_status_display }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
+  {% else %}
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h3 class="text-sm font-semibold text-ink">Payments (no invoice)</h3>
+    </div>
+    <div class="px-5 py-10 text-center">
+      <div class="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="banknote" class="w-5 h-5 text-ink-muted"></i>
+      </div>
+      <p class="text-sm text-ink-muted">No payments recorded for this student yet.</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
