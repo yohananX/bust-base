@@ -6,41 +6,41 @@
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
-  <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+  <div class="bg-surface rounded-xl p-8 shadow-none border border-line">
     <div class="flex items-start gap-4 mb-6">
       <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0">
         <i data-lucide="alert-triangle" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-lg font-display font-semibold text-gray-900">Delete Pricing: {{ price.category.name }}</h3>
-        <p class="text-sm text-gray-500 mt-1">This action cannot be undone.</p>
+        <h3 class="text-lg font-display font-semibold text-ink">Delete Pricing: {{ price.category.name }}</h3>
+        <p class="text-sm text-ink-faint mt-1">This action cannot be undone.</p>
       </div>
     </div>
 
-    <div class="rounded-xl border border-gray-100 overflow-hidden mb-6">
+    <div class="rounded-xl border border-line overflow-hidden mb-6">
       <table class="w-full text-sm">
         <tbody>
-          <tr class="border-b border-gray-100">
-            <td class="px-5 py-3.5 font-medium text-gray-500 w-32">Scope</td>
-            <td class="px-5 py-3.5 text-gray-900 font-medium">{{ price.get_scope_display }}</td>
+          <tr class="border-b border-line">
+            <td class="px-5 py-3.5 font-medium text-ink-faint w-32">Scope</td>
+            <td class="px-5 py-3.5 text-ink font-medium">{{ price.get_scope_display }}</td>
           </tr>
-          <tr class="border-b border-gray-100">
-            <td class="px-5 py-3.5 font-medium text-gray-500 w-32">Class / Level</td>
-            <td class="px-5 py-3.5 text-gray-900 font-medium">
+          <tr class="border-b border-line">
+            <td class="px-5 py-3.5 font-medium text-ink-faint w-32">Class / Level</td>
+            <td class="px-5 py-3.5 text-ink font-medium">
               {% if price.school_class %}{{ price.school_class.name }}{% elif price.level %}{{ price.level }}{% else %}All Classes{% endif %}
             </td>
           </tr>
-          <tr class="border-b border-gray-100">
-            <td class="px-5 py-3.5 font-medium text-gray-500 w-32">Term</td>
-            <td class="px-5 py-3.5 text-gray-900 font-medium">{{ price.term.name|default:'One-time' }}</td>
+          <tr class="border-b border-line">
+            <td class="px-5 py-3.5 font-medium text-ink-faint w-32">Term</td>
+            <td class="px-5 py-3.5 text-ink font-medium">{{ price.term.name|default:'One-time' }}</td>
           </tr>
-          <tr class="border-b border-gray-100">
-            <td class="px-5 py-3.5 font-medium text-gray-500 w-32">Category</td>
-            <td class="px-5 py-3.5 text-gray-900 font-medium">{{ price.category.name }}</td>
+          <tr class="border-b border-line">
+            <td class="px-5 py-3.5 font-medium text-ink-faint w-32">Category</td>
+            <td class="px-5 py-3.5 text-ink font-medium">{{ price.category.name }}</td>
           </tr>
           <tr>
-            <td class="px-5 py-3.5 font-medium text-gray-500 w-32">Amount</td>
-            <td class="px-5 py-3.5 text-gray-900 font-semibold">NGN {{ price.amount|floatformat:2 }}</td>
+            <td class="px-5 py-3.5 font-medium text-ink-faint w-32">Amount</td>
+            <td class="px-5 py-3.5 text-ink font-semibold">NGN {{ price.amount|floatformat:2 }}</td>
           </tr>
         </tbody>
       </table>
@@ -59,10 +59,10 @@
     <form method="post" class="flex items-center gap-4">
       {% csrf_token %}
       <button type="submit"
-              class="inline-flex items-center px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+              class="inline-flex items-center px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors shadow-none">
         <i data-lucide="trash-2" class="w-4 h-4 mr-2"></i>Delete Pricing
       </button>
-      <a href="{% url 'school_admin:fee_pricing_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
+      <a href="{% url 'school_admin:fee_pricing_list' %}" class="text-sm font-medium text-ink-muted hover:text-ink transition-colors">Cancel</a>
     </form>
   </div>
 </div>

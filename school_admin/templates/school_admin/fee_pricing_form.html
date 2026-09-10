@@ -6,7 +6,7 @@
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+  <div class="bg-surface rounded-xl p-6 shadow-none border border-line">
 
     {# ── Model note banner ── #}
       <div class="bg-violet-50 border border-violet-100 rounded-xl p-4 mb-6 text-sm text-violet-700">
@@ -24,9 +24,9 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Category <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-ink-muted mb-1.5">Category <span class="text-red-500">*</span></label>
             <select name="category_id" required
-                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                    class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
               <option value="">— Select category —</option>
               {% for cat in categories %}
                 <option value="{{ cat.id }}" {% if selected_category_id == cat.id %}selected{% endif %}>{{ cat.name }} ({{ cat.get_billing_cycle_display }}, {{ cat.get_student_type_display }})</option>
@@ -34,9 +34,9 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Scope <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-ink-muted mb-1.5">Scope <span class="text-red-500">*</span></label>
             <select name="scope" id="id_scope" required
-                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                    class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
               {% for s, label in scopes %}
                 <option value="{{ s }}" {% if selected_scope == s %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
@@ -46,9 +46,9 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div id="class_field">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Class</label>
+            <label class="block text-sm font-medium text-ink-muted mb-1.5">Class</label>
             <select name="class_id"
-                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                    class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
               <option value="">— Select class —</option>
               {% for c in classes %}
                 <option value="{{ c.id }}" {% if selected_class_id == c.id %}selected{% endif %}>{{ c.name }}</option>
@@ -56,33 +56,33 @@
             </select>
           </div>
           <div id="level_field" class="hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Level</label>
+            <label class="block text-sm font-medium text-ink-muted mb-1.5">Level</label>
             <input type="text" name="level" value="{{ selected_level|default_if_none:'' }}" placeholder="e.g. JSS, PRIMARY"
-                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                   class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Term</label>
+            <label class="block text-sm font-medium text-ink-muted mb-1.5">Term</label>
             <select name="term_id"
-                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                    class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
               <option value="">— One-time (no term) —</option>
               {% for t in terms %}
                 <option value="{{ t.id }}" {% if selected_term_id == t.id %}selected{% endif %}>{{ t.name }}</option>
               {% endfor %}
             </select>
-            <p class="text-xs text-gray-500 mt-1">Leave blank for one-time fees.</p>
+            <p class="text-xs text-ink-faint mt-1">Leave blank for one-time fees.</p>
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Amount (NGN) <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-ink-muted mb-1.5">Amount (NGN) <span class="text-red-500">*</span></label>
             <input type="number" name="amount" step="0.01" min="0" value="{{ entered_amount|default_if_none:'' }}" required
-                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                   class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Student Type <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-ink-muted mb-1.5">Student Type <span class="text-red-500">*</span></label>
             <select name="student_type" required
-                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                    class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
               <option value="ALL" {% if selected_student_type|default:'ALL' == 'ALL' %}selected{% endif %}>All students</option>
               <option value="NEW" {% if selected_student_type|default:'' == 'NEW' %}selected{% endif %}>New intake only</option>
               <option value="RETURNING" {% if selected_student_type|default:'' == 'RETURNING' %}selected{% endif %}>Returning pupils only</option>
@@ -92,24 +92,24 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Effective From</label>
+            <label class="block text-sm font-medium text-ink-muted mb-1.5">Effective From</label>
             <input type="date" name="effective_from" value="{{ selected_effective_from|default_if_none:'' }}"
-                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                   class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Effective To</label>
+            <label class="block text-sm font-medium text-ink-muted mb-1.5">Effective To</label>
             <input type="date" name="effective_to" value="{{ selected_effective_to|default_if_none:'' }}"
-                   class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                   class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
           </div>
         </div>
 
       <div class="flex items-center gap-4 pt-2">
         <button type="submit"
-                class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+                class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-none">
           {% if is_edit %}<i data-lucide="check" class="w-4 h-4 mr-2"></i>{% else %}<i data-lucide="plus" class="w-4 h-4 mr-2"></i>{% endif %}
           {% if is_edit %}Update Pricing{% else %}Save Pricing{% endif %}
         </button>
-        <a href="{% url 'school_admin:fee_pricing_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
+        <a href="{% url 'school_admin:fee_pricing_list' %}" class="text-sm font-medium text-ink-muted hover:text-ink transition-colors">Cancel</a>
       </div>
     </form>
   </div>

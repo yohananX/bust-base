@@ -14,7 +14,7 @@ from school_admin.views import (
     ParentListView,
     ClassListView, ClassCreateView, ClassEditView, ClassDeleteView,
     ClassDetailView, ClassSubjectAddView, ClassSubjectCreateView, ClassSubjectRemoveView, ClassSubjectBulkAddView,
-    SubjectListView,
+    SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView,
     TeacherAssignmentListView, AssignmentDeleteView, AssignmentAddView, AssignmentSubjectsPartialView,
     ScoreAdminView,
     PayGradeListView, AllowanceDeductionListView,
@@ -87,6 +87,9 @@ urlpatterns = [
 
     # Academics
     path('subjects/', SubjectListView.as_view(), name='subject_list'),
+    path('subjects/new/', SubjectCreateView.as_view(), name='subject_create'),
+    path('subjects/<int:pk>/edit/', SubjectEditView.as_view(), name='subject_edit'),
+    path('subjects/<int:pk>/delete/', SubjectDeleteView.as_view(), name='subject_delete'),
     path('assignments/', TeacherAssignmentListView.as_view(), name='assignment_list'),
     path('assignments/delete/<int:pk>/', AssignmentDeleteView.as_view(), name='assignment_delete'),
     path('assignments/add/', AssignmentAddView.as_view(), name='assignment_add'),

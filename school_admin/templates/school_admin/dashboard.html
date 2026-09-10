@@ -158,6 +158,33 @@
     {% endif %}
   </section>
 
+  {% if onboarding_tasks %}
+  <section aria-labelledby="onboarding-title" class="bg-primary-tint border border-line rounded-2xl p-5">
+    <div class="flex items-start gap-3">
+      <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary flex-shrink-0">
+        <i data-lucide="list-checks" class="w-5 h-5"></i>
+      </div>
+      <div class="min-w-0 flex-1">
+        <h2 id="onboarding-title" class="text-sm font-semibold text-ink">Finish setting up your school</h2>
+        <p class="text-xs text-ink-muted mt-1">Complete these steps to get the admin portal ready.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-4">
+          {% for task in onboarding_tasks %}
+          <a href="{{ task.url }}" class="flex items-center gap-3 bg-white rounded-xl border border-line px-3 py-3 hover:border-primary/40 hover:shadow-sm transition-all">
+            <span class="w-7 h-7 rounded-lg bg-primary-tint text-primary flex items-center justify-center flex-shrink-0">
+              <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+            </span>
+            <span class="min-w-0">
+              <span class="block text-sm font-medium text-ink">{{ task.label }}</span>
+              <span class="block text-xs text-ink-muted mt-0.5">{{ task.description }}</span>
+            </span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
   {# ── KPI ROW ── #}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
 

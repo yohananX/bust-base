@@ -7,52 +7,52 @@
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-6">
   {# ── Summary ── #}
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+  <div class="bg-surface rounded-xl p-6 shadow-none border border-line">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div>
-        <span class="text-xs text-gray-500 block">Student</span>
-        <span class="font-medium text-gray-900">{{ invoice.student.user.get_full_name|default:invoice.student.user.username }}</span>
+        <span class="text-xs text-ink-faint block">Student</span>
+        <span class="font-medium text-ink">{{ invoice.student.user.get_full_name|default:invoice.student.user.username }}</span>
       </div>
       <div>
-        <span class="text-xs text-gray-500 block">Term</span>
-        <span class="font-medium text-gray-900">{{ invoice.term.name }}</span>
+        <span class="text-xs text-ink-faint block">Term</span>
+        <span class="font-medium text-ink">{{ invoice.term.name }}</span>
       </div>
       <div>
-        <span class="text-xs text-gray-500 block">Status</span>
+        <span class="text-xs text-ink-faint block">Status</span>
         {% if invoice.status == 'PAID' %}{% include "components/badge.html" with status="success" text=invoice.status %}
         {% elif invoice.status == 'PARTIAL' %}{% include "components/badge.html" with status="warning" text=invoice.status %}
         {% else %}{% include "components/badge.html" with status="danger" text=invoice.status %}{% endif %}
       </div>
       <div>
-        <span class="text-xs text-gray-500 block">Balance</span>
-        <span class="font-semibold text-lg text-gray-900">NGN {{ invoice.balance|floatformat:2 }}</span>
+        <span class="text-xs text-ink-faint block">Balance</span>
+        <span class="font-semibold text-lg text-ink">NGN {{ invoice.balance|floatformat:2 }}</span>
       </div>
     </div>
   </div>
 
   {# ── Fee Breakdown ── #}
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-100">
-      <h3 class="text-sm font-semibold text-gray-800">Fee Breakdown</h3>
+  <div class="bg-surface rounded-xl shadow-none border border-line overflow-hidden">
+    <div class="px-6 py-4 border-b border-line">
+      <h3 class="text-sm font-semibold text-ink">Fee Breakdown</h3>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full">
         <thead>
-          <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+          <tr class="text-left text-xs text-ink-faint border-b border-line bg-surface-muted/70">
             <th class="px-6 py-2.5 font-medium">Category</th>
             <th class="px-6 py-2.5 font-medium text-right">Amount</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-50">
+        <tbody class="divide-y divide-line">
           {% for li in line_items %}
-          <tr class="hover:bg-gray-50/50">
-            <td class="px-6 py-3 text-sm text-gray-600">{{ li.category.name }}</td>
-            <td class="px-6 py-3 text-sm text-gray-900 text-right">NGN {{ li.amount|floatformat:2 }}</td>
+          <tr class="hover:bg-surface-muted/70">
+            <td class="px-6 py-3 text-sm text-ink-muted">{{ li.category.name }}</td>
+            <td class="px-6 py-3 text-sm text-ink text-right">NGN {{ li.amount|floatformat:2 }}</td>
           </tr>
           {% endfor %}
-          <tr class="bg-gray-50/50">
-            <td class="px-6 py-3 text-sm font-semibold text-gray-900">Total</td>
-            <td class="px-6 py-3 text-sm font-bold text-gray-900 text-right">NGN {{ invoice.total_amount|floatformat:2 }}</td>
+          <tr class="bg-surface-muted/70">
+            <td class="px-6 py-3 text-sm font-semibold text-ink">Total</td>
+            <td class="px-6 py-3 text-sm font-bold text-ink text-right">NGN {{ invoice.total_amount|floatformat:2 }}</td>
           </tr>
         </tbody>
       </table>
@@ -61,15 +61,15 @@
 
   {# ── Payments & Cash Payment Form ── #}
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-100">
-        <h3 class="text-sm font-semibold text-gray-800">Payment History</h3>
+    <div class="bg-surface rounded-xl shadow-none border border-line overflow-hidden">
+      <div class="px-6 py-4 border-b border-line">
+        <h3 class="text-sm font-semibold text-ink">Payment History</h3>
       </div>
       {% if payments %}
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
-            <tr class="text-left text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+            <tr class="text-left text-xs text-ink-faint border-b border-line bg-surface-muted/70">
               <th class="px-6 py-2.5 font-medium text-right">Amount</th>
               <th class="px-6 py-2.5 font-medium">Method</th>
               <th class="px-6 py-2.5 font-medium">Paid By</th>
@@ -78,15 +78,15 @@
               <th class="px-6 py-2.5 font-medium text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-50">
+          <tbody class="divide-y divide-line">
             {% for p in payments %}
-            <tr class="hover:bg-gray-50/50">
-              <td class="px-6 py-3 text-sm font-medium text-gray-900 text-right">NGN {{ p.amount|floatformat:2 }}</td>
-              <td class="px-6 py-3 text-sm text-gray-600">{{ p.get_method_display }}</td>
-              <td class="px-6 py-3 text-sm text-gray-600">
-                {% if p.paid_by_name %}{{ p.paid_by_name }}{% if p.paid_by_relation %} <span class="text-gray-400">({{ p.paid_by_relation }})</span>{% endif %}{% else %}—{% endif %}
+            <tr class="hover:bg-surface-muted/70">
+              <td class="px-6 py-3 text-sm font-medium text-ink text-right">NGN {{ p.amount|floatformat:2 }}</td>
+              <td class="px-6 py-3 text-sm text-ink-muted">{{ p.get_method_display }}</td>
+              <td class="px-6 py-3 text-sm text-ink-muted">
+                {% if p.paid_by_name %}{{ p.paid_by_name }}{% if p.paid_by_relation %} <span class="text-ink-faint">({{ p.paid_by_relation }})</span>{% endif %}{% else %}—{% endif %}
               </td>
-              <td class="px-6 py-3 text-sm text-gray-600">{{ p.paid_on|date:'M d, Y H:i' }}</td>
+              <td class="px-6 py-3 text-sm text-ink-muted">{{ p.paid_on|date:'M d, Y H:i' }}</td>
               <td class="px-6 py-3">
                 {% if p.status == 'CONFIRMED' %}{% include "components/badge.html" with status="success" text="Paid" %}
                 {% elif p.status == 'PENDING' %}{% include "components/badge.html" with status="warning" text="Awaiting confirmation" %}
@@ -94,17 +94,17 @@
               </td>
               <td class="px-6 py-3 text-right whitespace-nowrap">
                 {% if p.proof_image %}
-                <a href="{{ p.proof_image.url }}" target="_blank" rel="noopener" class="inline-flex items-center px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium rounded-lg transition-colors border border-amber-100 mr-1">
+                <a href="{{ p.proof_image.url }}" target="_blank" rel="noopener" class="inline-flex items-center px-2.5 py-1.5 bg-amber-50 hover:bg-warning-tint text-warning text-xs font-medium rounded-xl transition-colors border border-amber-100 mr-1">
                   <i data-lucide="paperclip" class="w-3 h-3 mr-1"></i>Proof
                 </a>
                 {% endif %}
-                <a href="{% url 'school_admin:payment_edit' p.pk %}" class="inline-flex items-center px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-medium rounded-lg transition-colors border border-gray-200">
+                <a href="{% url 'school_admin:payment_edit' p.pk %}" class="inline-flex items-center px-2.5 py-1.5 bg-surface-muted hover:bg-surface-muted text-ink-muted text-xs font-medium rounded-xl transition-colors border border-line">
                   <i data-lucide="pencil" class="w-3 h-3 mr-1"></i>Edit
                 </a>
                 <form method="POST" action="{% url 'school_admin:payment_delete' p.pk %}" class="inline ml-1"
                       onsubmit="return confirm('Delete this payment of NGN {{ p.amount|floatformat:2 }}? The invoice balance will be recalculated.')">
                   {% csrf_token %}
-                  <button type="submit" class="inline-flex items-center px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-medium rounded-lg transition-colors border border-red-100">
+                  <button type="submit" class="inline-flex items-center px-2.5 py-1.5 bg-red-50 hover:bg-danger-tint text-danger text-xs font-medium rounded-xl transition-colors border border-red-100">
                     <i data-lucide="trash-2" class="w-3 h-3 mr-1"></i>Delete
                   </button>
                 </form>
@@ -116,23 +116,23 @@
       </div>
       {% else %}
       <div class="py-12 text-center">
-        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="banknote" class="w-5 h-5 text-gray-400"></i></div>
-        <p class="text-sm text-gray-400">No payments recorded</p>
+        <div class="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center mx-auto mb-3"><i data-lucide="banknote" class="w-5 h-5 text-ink-faint"></i></div>
+        <p class="text-sm text-ink-faint">No payments recorded</p>
       </div>
       {% endif %}
     </div>
 
     {# ── Record Payment ── #}
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-      <h3 class="text-sm font-semibold text-gray-800 mb-4">Record Payment</h3>
+    <div class="bg-surface rounded-xl shadow-none border border-line p-6">
+      <h3 class="text-sm font-semibold text-ink mb-4">Record Payment</h3>
       {% if invoice.balance > 0 %}
       <form method="POST" class="space-y-4">
         {% csrf_token %}
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Amount (NGN)</label>
+          <label class="block text-sm font-medium text-ink-muted mb-1.5">Amount (NGN)</label>
           <div class="flex gap-2">
             <input type="number" name="amount" step="0.01" max="{{ invoice.balance }}" required
-                   class="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                   class="flex-1 px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
             <button type="button" id="pay-full-btn"
                     class="px-4 py-2.5 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold rounded-xl transition-colors border border-primary/20 whitespace-nowrap"
                     data-balance="{{ invoice.balance }}">
@@ -141,8 +141,8 @@
           </div>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Method</label>
-          <select name="method" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <label class="block text-sm font-medium text-ink-muted mb-1.5">Method</label>
+          <select name="method" class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
             <option value="CASH">Cash</option>
             <option value="POS">POS / Card at school</option>
             <option value="CHEQUE">Cheque</option>
@@ -151,21 +151,21 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Paid by (optional)</label>
+          <label class="block text-sm font-medium text-ink-muted mb-1.5">Paid by (optional)</label>
           <input type="text" name="paid_by_name" placeholder="Who paid?"
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                 class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Relation to student (optional)</label>
+          <label class="block text-sm font-medium text-ink-muted mb-1.5">Relation to student (optional)</label>
           <input type="text" name="paid_by_relation" placeholder="e.g. mother, sponsor"
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                 class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1.5">Reference (optional)</label>
+          <label class="block text-sm font-medium text-ink-muted mb-1.5">Reference (optional)</label>
           <input type="text" name="reference" placeholder="Receipt #"
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                 class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
         </div>
-        <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-colors shadow-none">
           <i data-lucide="check" class="w-4 h-4 mr-2"></i>Record Payment
         </button>
       </form>

@@ -9,7 +9,7 @@ from .staff import StaffListView, StaffCreateView, StaffEditView, StaffToggleAct
 from .parents import ParentListView
 from .classes import ClassListView, ClassCreateView, ClassEditView, ClassDeleteView, ClassDetailView, ClassSubjectAddView, ClassSubjectCreateView, ClassSubjectRemoveView, ClassSubjectBulkAddView
 from .academics import (
-    SubjectListView,
+    SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView,
     TeacherAssignmentListView, AssignmentDeleteView, AssignmentAddView, AssignmentSubjectsPartialView,
     ScoreAdminView,
 )

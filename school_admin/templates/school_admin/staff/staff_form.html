@@ -6,59 +6,59 @@
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
-  <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+  <div class="bg-surface rounded-xl p-8  border border-line">
     <div class="flex items-center gap-3 mb-6">
       <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
         <i data-lucide="user-round" class="w-5 h-5"></i>
       </div>
-      <p class="text-sm text-gray-600">{% if is_edit %}Update the staff member's details and role.{% else %}Create a new staff account for your school.{% endif %}</p>
+      <p class="text-sm text-ink-muted">{% if is_edit %}Update the staff member's details and role.{% else %}Create a new staff account for your school.{% endif %}</p>
     </div>
     <form method="post" class="space-y-5">
       {% csrf_token %}
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
+          <label class="block text-sm font-medium text-ink-muted mb-1.5">First Name</label>
           <input type="text" name="first_name" value="{{ staff_obj.first_name|default:'' }}"
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                 class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
+          <label class="block text-sm font-medium text-ink-muted mb-1.5">Last Name</label>
           <input type="text" name="last_name" value="{{ staff_obj.last_name|default:'' }}"
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                 class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
         </div>
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Username</label>
         {% if is_edit %}
           <input type="text" value="{{ staff_obj.username }}" disabled
-                 class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500 cursor-not-allowed">
-          <p class="text-xs text-gray-400 mt-1.5">Username cannot be changed.</p>
+                 class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink-muted cursor-not-allowed">
+          <p class="text-xs text-ink-faint mt-1.5">Username cannot be changed.</p>
         {% else %}
           <input type="text" value="Generated from first and last name" disabled
-                 class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-400 cursor-not-allowed">
-          <p class="text-xs text-gray-400 mt-1.5">Created automatically (e.g. john.doe) once you add the names above.</p>
+                 class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink-faint cursor-not-allowed">
+          <p class="text-xs text-ink-faint mt-1.5">Created automatically (e.g. john.doe) once you add the names above.</p>
         {% endif %}
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+          <label class="block text-sm font-medium text-ink-muted mb-1.5">Email</label>
           <input type="email" name="email" value="{{ staff_obj.email|default:'' }}"
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                 class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Phone Number <span class="text-red-500">*</span></label>
+          <label class="block text-sm font-medium text-ink-muted mb-1.5">Phone Number <span class="text-red-500">*</span></label>
           <input type="text" name="phone_number" value="{{ staff_obj.phone_number|default:'' }}" required
-                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                 class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
         </div>
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">Role <span class="text-red-500">*</span></label>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Role <span class="text-red-500">*</span></label>
         <select name="role" required
-                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+                class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
           <option value="">— Select —</option>
           {% for val, label in staff_roles %}
             <option value="{{ val }}" {% if staff_obj.role == val %}selected{% endif %}>{{ label }}</option>
@@ -68,10 +68,10 @@
 
       {% if is_edit %}
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+        <label class="block text-sm font-medium text-ink-muted mb-1.5">Password</label>
         <input type="password" name="password" value=""
-               class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-        <p class="text-xs text-gray-400 mt-1.5">Leave blank to keep current password.</p>
+               class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
+        <p class="text-xs text-ink-faint mt-1.5">Leave blank to keep current password.</p>
       </div>
       {% else %}
       <div class="bg-violet-50 border border-violet-100 rounded-xl p-4 text-sm text-violet-700">
@@ -82,11 +82,11 @@
 
       <div class="flex items-center gap-4 pt-2">
         <button type="submit"
-                class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+                class="inline-flex items-center px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors ">
           {% if is_edit %}<i data-lucide="check" class="w-4 h-4 mr-2"></i>{% else %}<i data-lucide="plus" class="w-4 h-4 mr-2"></i>{% endif %}
           {% if is_edit %}Update Staff{% else %}Create Staff{% endif %}
         </button>
-        <a href="{% url 'school_admin:staff_list' %}" class="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</a>
+        <a href="{% url 'school_admin:staff_list' %}" class="text-sm font-medium text-ink-muted hover:text-ink transition-colors">Cancel</a>
       </div>
     </form>
   </div>

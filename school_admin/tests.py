@@ -12,7 +12,7 @@ from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from academics.models import Score, Subject, ClassSubject, TeacherAssignment, TermResult
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
-from fees.models import FeeCategory, FeePrice, Invoice, Payment
+from fees.models import FeeCategory, FeeStructure, FeePrice, Invoice, Payment
 from payroll.models import StaffProfile
 
 
@@ -1473,6 +1473,75 @@ class DashboardCollectedThisTermTest(TestCase):
         resp = self.client.get(reverse('school_admin:dashboard'))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, '25000')
+
+
+class DashboardOnboardingTest(TestCase):
+    """Dashboard onboarding links point to the relevant admin setup pages."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Test School', short_code='test')
+        self.admin_user = User.objects.create_user(
+            username='admin', email='admin@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        self.client.force_login(self.admin_user)
+
+    def test_empty_school_shows_onboarding_links(self):
+        response = self.client.get(reverse('school_admin:dashboard'), follow=True)
+
+        self.assertContains(response, 'Finish setting up your school')
+        for route_name in (
+            'school_settings',
+            'session_list',
+            'class_list',
+            'subject_list',
+            'staff_list',
+            'student_list',
+            'fee_category_list',
+        ):
+            self.assertContains(response, reverse(f'school_admin:{route_name}'))
+
+    def test_completed_setup_hides_onboarding_alert(self):
+        session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        Term.objects.create(
+            school=self.school, session=session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+        self.school.address = '1 School Road'
+        self.school.phone = '08000000000'
+        self.school.email = 'school@test.com'
+        self.school.principal_name = 'Principal'
+        self.school.save()
+        SchoolClass.objects.create(school=self.school, name='JSS1', level='JSS1')
+        Subject.objects.create(school=self.school, name='Maths', code='MTH')
+        User.objects.create_user(
+            username='teacher', email='teacher@test.com', password='testpass123',
+            school=self.school, role=Roles.TEACHER,
+        )
+        student_user = User.objects.create_user(
+            username='student', email='student@test.com', password='testpass123',
+            school=self.school, role=Roles.STUDENT,
+        )
+        Student.objects.create(
+            school=self.school, user=student_user, admission_number='S001',
+            date_of_birth=date(2012, 1, 1), gender='MALE',
+            admission_date=date(2025, 9, 1),
+        )
+        FeeCategory.objects.create(school=self.school, name='Tuition')
+        FeePrice.objects.create(
+            school=self.school, category=FeeCategory.objects.get(school=self.school),
+            term=Term.objects.get(school=self.school), amount=Decimal('1000'),
+            scope=FeePrice.SCOPE_SCHOOL_WIDE,
+        )
+
+        response = self.client.get(reverse('school_admin:dashboard'), follow=True)
+
+        self.assertNotContains(response, 'Finish setting up your school')
 
 
 class ClassFirstSubjectManagementTests(TestCase):
