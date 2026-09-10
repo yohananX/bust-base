@@ -57,8 +57,7 @@ def _resolve_from_feeprice(school, school_class, term, student_type='ALL', stude
         school=school,
         is_active=True,
     )
-    if student_type != 'NEW':
-        base_qs = base_qs.filter(category__is_compulsory=True)
+    base_qs = base_qs.filter(category__is_compulsory=True)
     if student_type != 'ALL':
         base_qs = base_qs.filter(
             Q(student_type='ALL') | Q(student_type=student_type)
@@ -159,4 +158,3 @@ def resolve_price_for_student(school, student, school_class, category, term=None
             return price.amount
 
     return None
-
