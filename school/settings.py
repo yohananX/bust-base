@@ -333,7 +333,11 @@ if USE_S3:
             'OPTIONS': {'location': 'media'},
         },
         'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+            'BACKEND': (
+                'django.contrib.staticfiles.storage.StaticFilesStorage'
+                if DEBUG
+                else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+            ),
         },
     }
     MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/media/'
@@ -344,6 +348,10 @@ else:
             'OPTIONS': {'location': MEDIA_ROOT},
         },
         'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+            'BACKEND': (
+                'django.contrib.staticfiles.storage.StaticFilesStorage'
+                if DEBUG
+                else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+            ),
         },
     }
