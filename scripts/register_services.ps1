@@ -23,7 +23,7 @@ $services = @(
   @{
     Name = "GHSS-Portal"
     Exe  = "$BASE\venv\Scripts\python.exe"
-    Args = "-m waitress --listen=0.0.0.0:8000 --threads=8 school.wsgi:application"
+    Args = "-m waitress --listen=127.0.0.1:8000 --threads=8 school.wsgi:application"
     Dir  = $BASE
     Env  = $null
   },

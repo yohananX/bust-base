@@ -9,7 +9,7 @@ Goal: the portal is reachable from any phone/laptop/tablet on the school Wi-Fi a
 phone/laptop/tablet  →  router DHCP hands out our DNS  →  Technitium DNS (this PC)
                                                     ↓  resolves portal.ghis.sch → 192.168.0.50
                                                     ↓
-device browser  →  http://portal.ghis.sch  →  Caddy :80  →  Waitress :8000 (one Django app)
+device browser  →  http://portal.ghis.sch  →  Caddy :80  →  Waitress 127.0.0.1:8000 (one Django app)
 ```
 
 - **ONE Django instance, one SQLite DB, ONE URL (`portal.ghis.sch`).** The app is
@@ -25,9 +25,9 @@ device browser  →  http://portal.ghis.sch  →  Caddy :80  →  Waitress :8000
 |---|---|
 | `Caddyfile` | Reverse proxy: `http://portal.ghis.sch` + LAN IP → `127.0.0.1:8000` |
 | `scripts/start_lan.bat` | Starts Django-Q2 `qcluster` + Waitress on `0.0.0.0:8000` |
-| `scripts/open_firewall.bat` | Admin script: opens TCP 80, TCP 8000, TCP/UDP 53 |
+| `scripts/open_firewall.bat` | Admin script: opens TCP 80 and TCP/UDP 53; the app port stays local |
 | `.env` | `ALLOWED_HOSTS` + `CSRF_TRUSTED_ORIGINS` already include `portal.ghis.sch` and `192.168.0.50` |
-| `requirements.txt` | `waitress` added (gunicorn is Linux-only) |
+| `requirements.txt` | `waitress` retained for the Windows LAN deployment; production Docker uses Uvicorn |
 | `staticfiles/` | `collectstatic` already run (Whitenoise serves static) |
 
 ## Part A — on the school network (do once)
@@ -50,7 +50,7 @@ device browser  →  http://portal.ghis.sch  →  Caddy :80  →  Waitress :8000
    - Settings → General: listen on all interfaces; port 53.
 
 3. **Windows Firewall** — run `scripts\open_firewall.bat` as Administrator
-   (opens 80, 8000, 53). Verify: `netsh advfirewall firewall show rule name="GHSS*"`.
+   (opens 80 and 53; port 8000 is local-only). Verify: `netsh advfirewall firewall show rule name="GHSS*"`.
 
 4. **Router (MTN HyNetFlex)** — `http://192.168.0.1`, find the LAN/DHCP DNS setting
    (may be called "DNS Server", "Primary DNS", or "DNS Proxy"):
@@ -68,7 +68,7 @@ device browser  →  http://portal.ghis.sch  →  Caddy :80  →  Waitress :8000
      ```
 
 6. **Start the app** — double-click `scripts\start_lan.bat` (keep the window open).
-   Two processes: `qcluster` (notifications/bell) and Waitress on :8000.
+   Two processes: `qcluster` (notifications/bell) and Waitress on `127.0.0.1:8000`.
 
 ## Part B — testing (from any device)
 
