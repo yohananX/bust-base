@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.db.models import Sum
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.generic.base import View
 
@@ -10,8 +11,9 @@ from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
 from core.models import AcademicSession, Term
 from students.models import Student, SchoolClass, ClassEnrollment
-from fees.models import Payment
+from fees.models import FeeCategory, FeePrice, Payment
 from school_admin.setup_checks import run_setup_checks
+from academics.models import Subject
 
 
 class DashboardView(RoleRequiredMixin, View):
@@ -72,7 +74,63 @@ class DashboardView(RoleRequiredMixin, View):
                         (enrolled_now - enrolled_before) / enrolled_before * 100
                     )
 
-        active_classes = SchoolClass.objects.filter(school=school).count()
+        active_classes = SchoolClass.objects.filter(
+            school=school, is_active=True,
+        ).count()
+        onboarding_tasks = []
+
+        if any(not getattr(school, field) for field in (
+            'address', 'phone', 'email', 'principal_name',
+        )):
+            onboarding_tasks.append({
+                'label': 'Complete the school profile',
+                'description': 'Add the school contact and principal details.',
+                'url': reverse('school_admin:school_settings'),
+            })
+        if not current_session:
+            onboarding_tasks.append({
+                'label': 'Create an academic session',
+                'description': 'Set up the current school year and its terms.',
+                'url': reverse('school_admin:session_list'),
+            })
+        if not active_classes:
+            onboarding_tasks.append({
+                'label': 'Add a class',
+                'description': 'Create the classes students will be enrolled in.',
+                'url': reverse('school_admin:class_list'),
+            })
+        if not Subject.objects.filter(school=school).exists():
+            onboarding_tasks.append({
+                'label': 'Add a subject',
+                'description': 'Create the subjects used by your classes.',
+                'url': reverse('school_admin:subject_list'),
+            })
+        if not teacher_count:
+            onboarding_tasks.append({
+                'label': 'Add a staff member',
+                'description': 'Create a teacher or staff account.',
+                'url': reverse('school_admin:staff_list'),
+            })
+        if not total_students:
+            onboarding_tasks.append({
+                'label': 'Add a student',
+                'description': 'Create the first student record.',
+                'url': reverse('school_admin:student_list'),
+            })
+        if not FeeCategory.objects.filter(school=school).exists():
+            onboarding_tasks.append({
+                'label': 'Set up fee categories',
+                'description': 'Define the fees that can be billed to students.',
+                'url': reverse('school_admin:fee_category_list'),
+            })
+        elif current_term and not FeePrice.objects.filter(
+            school=school, term=current_term,
+        ).exists():
+            onboarding_tasks.append({
+                'label': 'Add fee pricing',
+                'description': 'Set the current term prices for your fee categories.',
+                'url': reverse('school_admin:fee_pricing_list'),
+            })
 
         # Collected this term — confirmed payments for the current term's invoices
         collected_this_term = Decimal('0')
@@ -153,5 +211,6 @@ class DashboardView(RoleRequiredMixin, View):
             'top_owing_students': top_owing_students,
             'recent_payments': recent_payments,
             'setup_alerts': run_setup_checks(school),
+            'onboarding_tasks': onboarding_tasks,
         }
         return render(request, 'school_admin/dashboard.html', context)

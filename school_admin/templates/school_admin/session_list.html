@@ -8,7 +8,7 @@
 <div class="max-w-7xl mx-auto space-y-6">
 
   {# ── Auto-term note banner ── #}
-  <div class="bg-violet-50 border border-violet-100 rounded-xl p-4 text-sm text-violet-700">
+  <div class="bg-primary-tint border border-line rounded-xl p-4 text-sm text-ink">
     <div class="flex items-start gap-3">
       <i data-lucide="info" class="w-4.5 h-4.5 mt-0.5 flex-shrink-0"></i>
       <p>A new session automatically creates First, Second and Third Term.</p>
@@ -17,7 +17,7 @@
 
   {# ── Header row ── #}
   <div class="flex justify-between items-center">
-    <h2 class="text-lg font-display font-semibold text-gray-900">Sessions</h2>
+    <h2 class="text-lg font-display font-semibold text-ink">Sessions</h2>
     <a href="{% url 'school_admin:session_create' %}"
        class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
       <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Session
@@ -27,12 +27,12 @@
   {% if sessions %}
   {# ── Session cards ── #}
   {% for s in sessions %}
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+  <div class="bg-white rounded-xl shadow-sm border border-line overflow-hidden mb-6">
     {# Session header #}
-    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
+    <div class="px-6 py-4 border-b border-line flex items-center justify-between gap-4">
       <div class="min-w-0">
-        <h3 class="text-base font-display font-semibold text-gray-900">{{ s.name }}</h3>
-        <p class="text-xs text-gray-400 mt-0.5">{{ s.start_date|date:'M j, Y' }} – {{ s.end_date|date:'M j, Y' }}</p>
+        <h3 class="text-base font-display font-semibold text-ink">{{ s.name }}</h3>
+        <p class="text-xs text-ink-faint mt-0.5">{{ s.start_date|date:'M j, Y' }} – {{ s.end_date|date:'M j, Y' }}</p>
       </div>
       <div class="flex-shrink-0">
         {% if current_session and current_session.pk == s.pk %}
@@ -42,7 +42,7 @@
         {% else %}
         <form method="POST" action="{% url 'school_admin:session_set_current' s.pk %}">
           {% csrf_token %}
-          <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-200 hover:border-primary/40 hover:bg-violet-50/50 text-xs font-medium text-gray-700 hover:text-primary rounded-lg transition-colors">
+          <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-white border border-line hover:border-primary/40 hover:bg-primary-tint/50 text-xs font-medium text-ink hover:text-primary rounded-lg transition-colors">
             Set Current
           </button>
         </form>
@@ -51,14 +51,14 @@
     </div>
 
     {# Term rows #}
-    <div class="divide-y divide-gray-50">
+    <div class="divide-y divide-line">
       {% for t in s.terms.all %}
-      <div class="px-6 py-3.5 flex items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors">
+      <div class="px-6 py-3.5 flex items-center justify-between gap-4 hover:bg-surface-muted/50 transition-colors">
         <div class="flex items-center min-w-0">
-          <i data-lucide="calendar-days" class="w-4 h-4 text-gray-400 mr-3 flex-shrink-0"></i>
+          <i data-lucide="calendar-days" class="w-4 h-4 text-ink-faint mr-3 flex-shrink-0"></i>
           <div class="min-w-0">
-            <div class="text-sm font-medium text-gray-900">{{ t.name }}</div>
-            <div class="text-xs text-gray-400">{{ t.start_date|date:'M j, Y' }} – {{ t.end_date|date:'M j, Y' }}</div>
+            <div class="text-sm font-medium text-ink">{{ t.name }}</div>
+            <div class="text-xs text-ink-faint">{{ t.start_date|date:'M j, Y' }} – {{ t.end_date|date:'M j, Y' }}</div>
           </div>
         </div>
         <div class="flex-shrink-0">
@@ -69,7 +69,7 @@
           {% else %}
           <form method="POST" action="{% url 'school_admin:term_set_current' t.pk %}">
             {% csrf_token %}
-            <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-200 hover:border-primary/40 hover:bg-violet-50/50 text-xs font-medium text-gray-700 hover:text-primary rounded-lg transition-colors">
+            <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-white border border-line hover:border-primary/40 hover:bg-primary-tint/50 text-xs font-medium text-ink hover:text-primary rounded-lg transition-colors">
               Set Current
             </button>
           </form>
@@ -77,19 +77,19 @@
         </div>
       </div>
       {% empty %}
-      <div class="px-6 py-4 text-sm text-gray-400">No terms yet</div>
+      <div class="px-6 py-4 text-sm text-ink-faint">No terms yet</div>
       {% endfor %}
     </div>
   </div>
   {% endfor %}
   {% else %}
   {# ── Empty state ── #}
-  <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
-    <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-      <i data-lucide="calendar-range" class="w-5 h-5 text-gray-400"></i>
+  <div class="bg-white rounded-xl p-8 shadow-sm border border-line text-center">
+    <div class="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center mx-auto mb-3">
+      <i data-lucide="calendar-range" class="w-5 h-5 text-ink-faint"></i>
     </div>
-    <h3 class="text-base font-display font-semibold text-gray-900">No sessions yet</h3>
-    <p class="text-sm text-gray-500 mt-1">Create a session to get started — its three terms will be created automatically.</p>
+    <h3 class="text-base font-display font-semibold text-ink">No sessions yet</h3>
+    <p class="text-sm text-ink-muted mt-1">Create a session to get started — its three terms will be created automatically.</p>
     <a href="{% url 'school_admin:session_create' %}"
        class="inline-flex items-center mt-4 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
       <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Session
