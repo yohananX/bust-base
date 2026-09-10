@@ -87,4 +87,57 @@ input, textarea, select { caret-color: var(--color-primary); }
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  /* ===== Responsive page primitives =====
+     These classes keep form controls and dense data views usable at phone widths
+     without changing their desktop layout. */
+  .mobile-form-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+  }
+
+  .mobile-form-stack > * {
+    min-width: 0;
+  }
+
+  .responsive-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .responsive-table-wrap > table {
+    min-width: 42rem;
+  }
+
+  .responsive-table-wrap::after {
+    content: 'Swipe to see more';
+    display: none;
+    padding: 0.5rem 1rem;
+    color: var(--color-ink-muted);
+    background: var(--color-surface-muted);
+    font-size: 0.7rem;
+    text-align: right;
+  }
+
+  @media (max-width: 639px) {
+    .mobile-form-stack > * {
+      width: 100%;
+    }
+
+    .mobile-form-stack > .mobile-form-actions {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .mobile-form-stack > .mobile-form-actions > * {
+      flex: 1 1 auto;
+    }
+
+    .responsive-table-wrap::after {
+      display: block;
+    }
+  }
 }

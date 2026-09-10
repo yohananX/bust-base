@@ -28,7 +28,7 @@
 
   {% if section == 'pay_grades' %}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="responsive-table-wrap">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
@@ -74,7 +74,7 @@
         <div class="px-5 py-4 border-b border-gray-100">
           <h3 class="text-sm font-semibold text-gray-800">Allowance Definitions</h3>
         </div>
-        <div class="overflow-x-auto">
+        <div class="responsive-table-wrap">
           <table class="w-full text-sm">
             <thead>
               <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
@@ -114,7 +114,7 @@
         <div class="px-5 py-4 border-b border-gray-100">
           <h3 class="text-sm font-semibold text-gray-800">Deduction Definitions</h3>
         </div>
-        <div class="overflow-x-auto">
+        <div class="responsive-table-wrap">
           <table class="w-full text-sm">
             <thead>
               <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
@@ -153,7 +153,7 @@
 
   {% elif section == 'runs' %}
     <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-      <form method="GET" class="flex flex-wrap gap-4 items-end">
+      <form method="GET" class="mobile-form-stack">
         <input type="hidden" name="section" value="runs">
         <div>
           <label class="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
@@ -170,7 +170,7 @@
     </div>
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="responsive-table-wrap">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">

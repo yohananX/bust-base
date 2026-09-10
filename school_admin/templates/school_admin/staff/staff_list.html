@@ -12,7 +12,7 @@
     <div>
       <p class="text-sm text-ink-muted">{{ staff_list|length }} staff member(s)</p>
     </div>
-    <div class="flex gap-3">
+    <div class="flex flex-wrap gap-3 [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none">
       <a href="{% url 'school_admin:credential_batch' %}"
          class="inline-flex items-center px-4 py-2.5 bg-surface border border-line rounded-xl text-sm font-medium text-ink-muted hover:bg-surface-muted transition-colors">
         <i data-lucide="printer" class="w-4 h-4 mr-1.5"></i>Print Passwords
@@ -26,12 +26,12 @@
 
   {# ── Search ── #}
   <div class="bg-surface rounded-xl p-4  border border-line">
-    <form method="get" class="flex flex-wrap gap-4 items-end">
+    <form method="get" class="mobile-form-stack">
       <div class="flex-1 min-w-[220px]">
         <label class="block text-xs font-medium text-ink-muted mb-1.5">Search</label>
         {% include 'components/search_autocomplete.html' with cache_key='staff' api_path='/school-admin/api/staff/' item_url='/school-admin/staff/{id}/edit/' placeholder='Search by name or email...' %}
       </div>
-      <div class="flex gap-2">
+      <div class="mobile-form-actions flex gap-2">
         <button type="submit"
                 class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors ">
           <i data-lucide="search" class="w-4 h-4 mr-1.5"></i>Search
@@ -48,7 +48,7 @@
 
   {# ── Staff Table ── #}
   <div class="bg-surface rounded-xl  border border-line overflow-hidden">
-    <div class="overflow-x-auto">
+    <div class="responsive-table-wrap">
       <table class="w-full text-sm">
         <thead>
           <tr class="bg-surface-muted text-left text-ink-muted uppercase text-xs tracking-wider">

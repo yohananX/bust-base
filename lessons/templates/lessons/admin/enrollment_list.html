@@ -7,8 +7,8 @@
 {% block content %}
 <div class="max-w-6xl mx-auto">
   <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
-    <form method="GET" class="flex flex-wrap gap-4 items-end">
-      <div class="flex-1 min-w-52">
+    <form method="GET" class="mobile-form-stack">
+      <div class="flex-1 min-w-0">
         <label class="block text-xs font-medium text-gray-500 mb-1.5">Search</label>
         {% include 'components/search_autocomplete.html' with cache_key='enrollments' api_path='/school-admin/api/enrollments/' item_url='/school-admin/lessons/enrollments/{id}/' placeholder='Search child, parent, or linked student…' %}
       </div>
@@ -59,7 +59,7 @@
   </div>
 
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="overflow-x-auto">
+    <div class="responsive-table-wrap">
     <table class="w-full text-sm">
       <thead>
         <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">

@@ -17,7 +17,7 @@
 
   {# ── Search ── #}
   <div class="bg-surface rounded-xl p-4  border border-line">
-    <form method="GET" class="flex flex-wrap gap-4 items-end">
+    <form method="GET" class="mobile-form-stack">
       <div class="flex-1 min-w-[200px]">
         <label class="block text-xs font-medium text-ink-muted mb-1.5">Search</label>
         <input type="text" name="q" value="{{ q }}" placeholder="Search by name, email or username"
@@ -32,7 +32,7 @@
 
   {# ── Parents Table ── #}
   <div class="bg-surface rounded-xl  border border-line overflow-hidden">
-    <div class="overflow-x-auto">
+    <div class="responsive-table-wrap">
       <table class="w-full">
         <thead>
           <tr class="text-left text-xs text-ink-muted border-b border-line bg-surface-muted/50">

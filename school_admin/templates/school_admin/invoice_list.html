@@ -7,7 +7,7 @@
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
   <div class="bg-surface rounded-xl p-4 shadow-none border border-line">
-    <form method="GET" class="flex flex-wrap gap-4 items-end">
+    <form method="GET" class="mobile-form-stack">
       <div class="min-w-[220px]">
         <label class="block text-xs font-medium text-ink-faint mb-1.5">Search Student</label>
         {% include 'components/search_autocomplete.html' with cache_key='invoices' api_path='/school-admin/api/invoices/' item_url='/school-admin/invoices/{id}/' placeholder='Student name' %}
@@ -30,7 +30,7 @@
           <option value="UNPAID" {% if filter_status == 'UNPAID' %}selected{% endif %}>Unpaid</option>
         </select>
       </div>
-      <div class="flex gap-2">
+      <div class="mobile-form-actions flex gap-2">
         <button type="submit" class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-none">Filter</button>
         <a href="{% url 'school_admin:invoice_list' %}" class="px-4 py-2.5 bg-surface border border-line rounded-xl text-sm font-medium text-ink-muted hover:bg-surface-muted transition-colors">Clear</a>
       </div>
@@ -41,7 +41,7 @@
   </div>
 
   <div class="bg-surface rounded-xl shadow-none border border-line overflow-hidden">
-    <div class="overflow-x-auto">
+    <div class="responsive-table-wrap">
       <table class="w-full">
         <thead>
           <tr class="text-left text-xs text-ink-faint border-b border-line bg-surface-muted/70">
