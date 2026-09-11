@@ -12,7 +12,7 @@ from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from academics.models import Score, Subject, ClassSubject, TeacherAssignment, TermResult
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
-from fees.models import FeeCategory, FeeStructure, FeePrice, Invoice, Payment
+from fees.models import FeeCategory, FeePrice, Invoice, Payment
 from payroll.models import StaffProfile
 
 
