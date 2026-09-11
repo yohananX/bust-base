@@ -18,7 +18,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN python manage.py collectstatic --noinput
+# Static collection only needs Django settings, not production credentials.
+# Runtime production checks remain enforced when the container starts.
+RUN DEBUG=True SECRET_KEY=build-only-not-a-runtime-secret ALLOWED_HOSTS=* \
+    python manage.py collectstatic --noinput
 
 RUN addgroup --system --gid 1001 appgroup && adduser --system --uid 1001 --gid 1001 appuser && chown -R appuser:appgroup /app
 USER appuser
