@@ -29,6 +29,50 @@
     </div>
   </div>
 
+  {# ── SETUP ALERTS ── #}
+  {% if setup_alerts %}
+  <section data-setup-alerts aria-labelledby="setup-checklist-title" class="bg-white rounded-xl border border-line overflow-hidden">
+    <div class="px-5 py-4 border-b border-line flex items-center justify-between gap-3">
+      <div>
+        <h2 id="setup-checklist-title" class="text-sm font-semibold text-ink">Setup checklist</h2>
+        <p class="text-xs text-ink-muted mt-0.5">Finish these essentials before running the school day.</p>
+      </div>
+      <span class="text-xs font-medium text-warning bg-warning-tint px-2.5 py-1 rounded-full whitespace-nowrap">
+        {{ setup_alerts|length }} remaining
+      </span>
+    </div>
+    <div class="divide-y divide-line/70">
+      {% for alert in setup_alerts %}
+      <a href="{% url alert.action_url %}" class="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-surface-muted/50 transition-colors group">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-lg bg-{{ alert.color }}-tint flex items-center justify-center flex-shrink-0">
+            <i data-lucide="{{ alert.icon }}" class="w-4 h-4 text-{{ alert.color }}"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-ink">{{ alert.title }}</p>
+            <p class="text-xs text-ink-muted mt-0.5 truncate">{{ alert.description }}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="hidden sm:inline-flex text-xs font-semibold text-{{ alert.color }} shrink-0">{{ alert.action_label }}</span>
+          <i data-lucide="arrow-up-right" class="w-4 h-4 text-ink-faint group-hover:text-{{ alert.color }} transition-colors flex-shrink-0"></i>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% else %}
+  <div class="bg-success-tint border border-line rounded-xl p-4 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-full bg-success-tint flex items-center justify-center flex-shrink-0">
+      <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
+    </div>
+    <div>
+      <p class="text-sm font-semibold text-ink">Setup complete</p>
+      <p class="text-xs text-ink-muted">All essential configuration is in place.</p>
+    </div>
+  </div>
+  {% endif %}
+
   {# ── ATTENTION ZONE ── #}
   <section aria-labelledby="attention-title" class="space-y-2">
     <div class="flex items-center justify-between">
@@ -113,33 +157,6 @@
     </div>
     {% endif %}
   </section>
-
-  {% if onboarding_tasks %}
-  <section aria-labelledby="onboarding-title" class="bg-primary-tint border border-line rounded-2xl p-5">
-    <div class="flex items-start gap-3">
-      <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary flex-shrink-0">
-        <i data-lucide="list-checks" class="w-5 h-5"></i>
-      </div>
-      <div class="min-w-0 flex-1">
-        <h2 id="onboarding-title" class="text-sm font-semibold text-ink">Finish setting up your school</h2>
-        <p class="text-xs text-ink-muted mt-1">Complete these steps to get the admin portal ready.</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-4">
-          {% for task in onboarding_tasks %}
-          <a href="{{ task.url }}" class="flex items-center gap-3 bg-white rounded-xl border border-line px-3 py-3 hover:border-primary/40 hover:shadow-sm transition-all">
-            <span class="w-7 h-7 rounded-lg bg-primary-tint text-primary flex items-center justify-center flex-shrink-0">
-              <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
-            </span>
-            <span class="min-w-0">
-              <span class="block text-sm font-medium text-ink">{{ task.label }}</span>
-              <span class="block text-xs text-ink-muted mt-0.5">{{ task.description }}</span>
-            </span>
-          </a>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-  </section>
-  {% endif %}
 
   {# ── KPI ROW ── #}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
