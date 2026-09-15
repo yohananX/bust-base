@@ -1,0 +1,5 @@
+# Shell scripts must use LF (CRLF breaks shebang lines under Docker/Linux)
+*.sh text eol=lf
+
+# All other text files: normalize to LF on commit
+* text=auto
