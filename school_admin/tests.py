@@ -2002,3 +2002,73 @@ class SetupChecksTest(TestCase):
         self.assertContains(resp, 'No active academic session')
         self.assertContains(resp, 'href="/school-admin/settings/"')
         self.assertNotContains(resp, 'href="school_admin:school_settings"')
+
+
+class SubjectListViewTests(TestCase):
+    """Tests for the subject list page — add button, row actions, and filtering."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Test School', short_code='ts')
+        self.admin_user = User.objects.create_user(
+            username='admin', email='admin@test.com', password='testpass123',
+            school=self.school, role=Roles.ADMIN,
+        )
+        self.client.force_login(self.admin_user)
+
+        self.cls_a = SchoolClass.objects.create(school=self.school, name='JSS1', level='JSS1')
+        self.cls_b = SchoolClass.objects.create(school=self.school, name='JSS2', level='JSS2')
+
+        self.math = Subject.objects.create(school=self.school, name='Mathematics', code='MTH')
+        self.eng = Subject.objects.create(school=self.school, name='English', code='ENG')
+        ClassSubject.objects.create(school=self.school, subject=self.math, school_class=self.cls_a)
+        ClassSubject.objects.create(school=self.school, subject=self.eng, school_class=self.cls_b)
+
+    def test_add_subject_button_present(self):
+        """The list page has a link to create a new subject."""
+        resp = self.client.get(reverse('school_admin:subject_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Add Subject')
+        self.assertContains(resp, reverse('school_admin:subject_create'))
+
+    def test_row_edit_and_delete_links_present(self):
+        """Each subject row has inline Edit and Delete action links."""
+        resp = self.client.get(reverse('school_admin:subject_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, reverse('school_admin:subject_edit', args=[self.math.pk]))
+        self.assertContains(resp, reverse('school_admin:subject_delete', args=[self.math.pk]))
+
+    def test_search_filters_by_name(self):
+        """Server-side q search narrows the subject list."""
+        resp = self.client.get(reverse('school_admin:subject_list'), {'q': 'English'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'English')
+        self.assertNotContains(resp, 'Mathematics')
+
+    def test_class_filter_narrows_results(self):
+        """Filtering by class_id shows only subjects linked to that class."""
+        resp = self.client.get(
+            reverse('school_admin:subject_list'), {'class_id': self.cls_a.pk}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Mathematics')
+        self.assertNotContains(resp, 'English')
+
+    def test_search_api_filters_by_class_id(self):
+        """SubjectSearchAPIView returns only subjects linked to the given class."""
+        resp = self.client.get(
+            reverse('school_admin:subject_search_api'), {'class_id': self.cls_a.pk}
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        names = [d['name'] for d in data]
+        self.assertIn('Mathematics', names)
+        self.assertNotIn('English', names)
+
+    def test_search_api_returns_all_without_class_filter(self):
+        """Without a class_id filter the API returns all subjects."""
+        resp = self.client.get(reverse('school_admin:subject_search_api'))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        names = [d['name'] for d in data]
+        self.assertIn('Mathematics', names)
+        self.assertIn('English', names)
