@@ -17,7 +17,7 @@ from django.db.models import (
     Sum,
     Value,
 )
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, Greatest
 
 from .models import Invoice, Payment
 
@@ -72,9 +72,12 @@ def invoices_with_balance(queryset):
         _paid_amount_subquery(),
         Value(Decimal('0.00')),
     )
-    balance_expr = ExpressionWrapper(
-        F('total_amount') - amount_paid_expr,
-        output_field=DecimalField(max_digits=12, decimal_places=2),
+    balance_expr = Greatest(
+        ExpressionWrapper(
+            F('total_amount') - amount_paid_expr,
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        ),
+        Value(Decimal('0.00')),
     )
     return queryset.annotate(
         amount_paid_annotated=amount_paid_expr,

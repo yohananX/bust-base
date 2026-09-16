@@ -104,7 +104,10 @@
                {% if item.disabled %}disabled{% endif %}
                {% if item.default_checked %}checked{% endif %}>
         <div class="min-w-0">
-          <p class="text-sm font-medium text-gray-900 truncate">{{ item.category_name }}</p>
+          <p class="text-sm font-medium text-gray-900 truncate">{{ item.display_name|default:item.category_name }}</p>
+          {% if item.display_name and item.display_name != item.category_name %}
+            <p class="text-xs text-gray-400 truncate">{{ item.category_name }}</p>
+          {% endif %}
           <p class="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
             <span>{{ item.term_name }}</span>
             {% if item.is_one_time %}

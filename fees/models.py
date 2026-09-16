@@ -68,6 +68,16 @@ class FeePrice(TenantScopedModel):
         on_delete=models.CASCADE,
         verbose_name=_('category'),
     )
+    name = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        verbose_name=_('item name'),
+        help_text=_(
+            'Display name for this item, e.g. "Tuition Fee — JSS1A". '
+            'Leave blank to use the category name.'
+        ),
+    )
     amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -139,6 +149,11 @@ class FeePrice(TenantScopedModel):
         else:
             scope_label = str(self.school_class)
         return f'{scope_label} - {self.term or "One-time"} - {self.category}: {self.amount}'
+
+    @property
+    def display_name(self) -> str:
+        """Item display name — FeePrice.name, falling back to the category name."""
+        return self.name or self.category.name
 
     def clean(self):
         if self.scope == self.SCOPE_CLASS and not self.school_class_id:
@@ -283,6 +298,12 @@ class Invoice(TenantScopedModel):
         return self.total_amount - self.amount_paid
 
     @property
+    def display_balance(self) -> Decimal:
+        """Non-negative balance for display. Capped at 0 for overpayments."""
+        b = self.balance
+        return b if b > Decimal('0.00') else Decimal('0.00')
+
+    @property
     def status(self) -> str:
         """One of PAID / PARTIAL / UNPAID based on the confirmed balance."""
         return money_status(self.amount_paid, self.total_amount)
@@ -318,6 +339,16 @@ class InvoiceLineItem(models.Model):
         on_delete=models.CASCADE,
         verbose_name=_('category'),
     )
+    item_name = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        verbose_name=_('item name'),
+        help_text=_(
+            'Denormalized display name captured at generation time so '
+            'old invoices keep their original wording.'
+        ),
+    )
     amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -350,7 +381,12 @@ class InvoiceLineItem(models.Model):
         ordering = ['id']
 
     def __str__(self):
-        return f'{self.category}: {self.amount}'
+        return f'{self.display_name}: {self.amount}'
+
+    @property
+    def display_name(self) -> str:
+        """Item display name — denormalized item_name, falling back to the category name."""
+        return self.item_name or self.category.name
 
     def clean(self):
         if self.amount <= Decimal('0.00'):
