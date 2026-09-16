@@ -10,6 +10,14 @@ from accounts.models import Roles
 from core.models import Term
 from fees.models import FeeCategory, FeePrice, InvoiceLineItem
 from fees.pricing import resolve_price_for_student
+from fees.generation import (
+    generate_invoices_for_class,
+    sync_class_invoices,
+    generate_invoices_for_level,
+    sync_level_invoices,
+    generate_invoices_school_wide,
+    sync_school_wide_invoices,
+)
 from students.models import SchoolClass
 
 
@@ -329,13 +337,29 @@ class FeePricingCreateView(RoleRequiredMixin, View):
             effective_to=effective_to if effective_to else None,
         )
 
-        if term and school_class:
-            from fees.generation import generate_invoices_for_class
-            generated = generate_invoices_for_class(school_class, term)
+        generated = 0
+        re_priced = 0
+        scope_desc = ""
+
+        if term:
+            if scope == FeePrice.SCOPE_CLASS and school_class:
+                generated = generate_invoices_for_class(school_class, term)
+                re_priced = sync_class_invoices(school_class, term)
+                scope_desc = f"{school_class.name}"
+            elif scope == FeePrice.SCOPE_LEVEL and level:
+                generated = generate_invoices_for_level(school, level, term)
+                re_priced = sync_level_invoices(school, level, term)
+                scope_desc = f"Level {level}"
+            elif scope == FeePrice.SCOPE_SCHOOL_WIDE:
+                generated = generate_invoices_school_wide(school, term)
+                re_priced = sync_school_wide_invoices(school, term)
+                scope_desc = "School-wide"
+
+        if scope_desc:
             messages.success(
                 request,
-                f'Price added: {category.name} — {school_class.name} ({term.name}, {student_type}). '
-                f'{generated} invoice(s) generated for students without one.',
+                f'Price added: {category.name} — {scope_desc} ({term.name}, {student_type}). '
+                f'{generated} invoice(s) generated, {re_priced} unpaid invoice(s) re-priced.',
             )
         else:
             messages.success(
@@ -459,13 +483,28 @@ class FeePricingEditView(RoleRequiredMixin, View):
         price.effective_to = effective_to if effective_to else None
         price.save()
 
-        if term and school_class:
-            from fees.generation import generate_invoices_for_class, sync_class_invoices
-            generated = generate_invoices_for_class(school_class, term)
-            re_priced = sync_class_invoices(school_class, term)
+        generated = 0
+        re_priced = 0
+        scope_desc = ""
+
+        if term:
+            if scope == FeePrice.SCOPE_CLASS and school_class:
+                generated = generate_invoices_for_class(school_class, term)
+                re_priced = sync_class_invoices(school_class, term)
+                scope_desc = f"{school_class.name}"
+            elif scope == FeePrice.SCOPE_LEVEL and level:
+                generated = generate_invoices_for_level(school, level, term)
+                re_priced = sync_level_invoices(school, level, term)
+                scope_desc = f"Level {level}"
+            elif scope == FeePrice.SCOPE_SCHOOL_WIDE:
+                generated = generate_invoices_school_wide(school, term)
+                re_priced = sync_school_wide_invoices(school, term)
+                scope_desc = "School-wide"
+
+        if scope_desc:
             messages.success(
                 request,
-                f'Price updated: {category.name} — {school_class.name} ({term.name}, {student_type}). '
+                f'Price updated: {category.name} — {scope_desc} ({term.name}, {student_type}). '
                 f'{generated} invoice(s) generated, {re_priced} unpaid invoice(s) re-priced.',
             )
         else:

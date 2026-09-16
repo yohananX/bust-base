@@ -9,8 +9,14 @@ from django.utils import timezone
 from core.models import School, AcademicSession, Term
 from students.models import SchoolClass, Student, ClassEnrollment
 from accounts.models import Roles, User
-from fees.models import FeeCategory, FeePrice, FeePriceOverride
+from fees.models import FeeCategory, FeePrice, FeePriceOverride, Invoice
 from fees.pricing import resolve_prices, resolve_price_for_student
+from fees.generation import (
+    generate_invoices_for_level,
+    sync_level_invoices,
+    generate_invoices_school_wide,
+    sync_school_wide_invoices,
+)
 
 
 class BasePricingTest(TestCase):
@@ -477,4 +483,175 @@ class FeePriceOverrideTest(BasePricingTest):
         )
         result = resolve_price_for_student(self.school, self.student, self.school_class, cat, term=self.term)
         self.assertIsNone(result)
+
+
+class GenerationScopeTest(BasePricingTest):
+    """Test scope-aware invoice generation utilities."""
+
+    def setUp(self):
+        super().setUp()
+        self.cat = FeeCategory.objects.create(
+            school=self.school, name='Tuition', billing_cycle='PER_TERM', student_type='ALL'
+        )
+
+    def test_generate_invoices_for_level_creates_invoices(self):
+        """LEVEL scope creates invoices for all classes with matching level."""
+        jss1b = SchoolClass.objects.create(
+            school=self.school, name='JSS1B', level='JSS1',
+        )
+        jss2 = SchoolClass.objects.create(
+            school=self.school, name='JSS2', level='JSS',
+        )
+        Student.objects.create(
+            school=self.school,
+            user=User.objects.create_user(username='stu2', school=self.school, role=Roles.STUDENT),
+            admission_number='STU002', date_of_birth=date(2010, 1, 1), gender='M',
+            admission_date=date(2025, 9, 1), status='ACTIVE',
+        )
+        Student.objects.create(
+            school=self.school,
+            user=User.objects.create_user(username='stu3', school=self.school, role=Roles.STUDENT),
+            admission_number='STU003', date_of_birth=date(2010, 1, 1), gender='M',
+            admission_date=date(2025, 9, 1), status='ACTIVE',
+        )
+        ClassEnrollment.objects.create(
+            school=self.school, student=Student.objects.get(admission_number='STU002'),
+            school_class=jss1b, session=self.session, is_current=True,
+        )
+        ClassEnrollment.objects.create(
+            school=self.school, student=Student.objects.get(admission_number='STU003'),
+            school_class=jss2, session=self.session, is_current=True,
+        )
+
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_LEVEL, level='JSS1',
+            term=self.term, category=self.cat, amount=Decimal('25000.00'), student_type='ALL'
+        )
+
+        generated = generate_invoices_for_level(self.school, 'JSS1', self.term)
+        self.assertEqual(generated, 2)  # JSS1A and JSS1B
+
+        # JSS2 should not have invoice (different level)
+        jss2_invoices = Invoice.objects.filter(student__enrollments__school_class=jss2, term=self.term)
+        self.assertEqual(jss2_invoices.count(), 0)
+
+    def test_generate_invoices_school_wide_creates_invoices(self):
+        """SCHOOL_WIDE scope creates invoices for all active classes."""
+        jss2 = SchoolClass.objects.create(
+            school=self.school, name='JSS2', level='JSS',
+        )
+        Student.objects.create(
+            school=self.school,
+            user=User.objects.create_user(username='stu2', school=self.school, role=Roles.STUDENT),
+            admission_number='STU002', date_of_birth=date(2010, 1, 1), gender='M',
+            admission_date=date(2025, 9, 1), status='ACTIVE',
+        )
+        ClassEnrollment.objects.create(
+            school=self.school, student=Student.objects.get(admission_number='STU002'),
+            school_class=jss2, session=self.session, is_current=True,
+        )
+
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_SCHOOL_WIDE, school_class=None,
+            term=self.term, category=self.cat, amount=Decimal('20000.00'), student_type='ALL'
+        )
+
+        generated = generate_invoices_school_wide(self.school, self.term)
+        self.assertEqual(generated, 2)  # JSS1A and JSS2
+
+    def test_sync_level_invoices_reprices_unpaid(self):
+        """sync_level_invoices only re-prices unpaid invoices."""
+        jss1b = SchoolClass.objects.create(
+            school=self.school, name='JSS1B', level='JSS1',
+        )
+        Student.objects.create(
+            school=self.school,
+            user=User.objects.create_user(username='stu2', school=self.school, role=Roles.STUDENT),
+            admission_number='STU002', date_of_birth=date(2010, 1, 1), gender='M',
+            admission_date=date(2025, 9, 1), status='ACTIVE',
+        )
+        ClassEnrollment.objects.create(
+            school=self.school, student=Student.objects.get(admission_number='STU002'),
+            school_class=jss1b, session=self.session, is_current=True,
+        )
+
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_LEVEL, level='JSS1',
+            term=self.term, category=self.cat, amount=Decimal('25000.00'), student_type='ALL'
+        )
+
+        generate_invoices_for_level(self.school, 'JSS1', self.term)
+
+        # Confirm one payment on JSS1A student's invoice
+        invoice1 = Invoice.objects.get(student=self.student, term=self.term)
+        from fees.models import Payment
+        Payment.objects.create(
+            school=self.school, invoice=invoice1, student=self.student,
+            amount=Decimal('25000.00'), method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED, paid_on=timezone.now(),
+        )
+
+        # Update price
+        FeePrice.objects.filter(school=self.school, category=self.cat, term=self.term).update(amount=Decimal('30000.00'))
+
+        # Sync level - should only update unpaid invoice (JSS1B)
+        re_priced = sync_level_invoices(self.school, 'JSS1', self.term)
+        self.assertEqual(re_priced, 1)
+
+        invoice1.refresh_from_db()
+        invoice2 = Invoice.objects.get(student__admission_number='STU002', term=self.term)
+        invoice2.refresh_from_db()
+
+        # JSS1A has payment, should keep old amount
+        self.assertEqual(invoice1.total_amount, Decimal('25000.00'))
+        # JSS1B no payment, should be updated
+        self.assertEqual(invoice2.total_amount, Decimal('30000.00'))
+
+    def test_sync_school_wide_invoices_reprices_unpaid(self):
+        """sync_school_wide_invoices only re-prices unpaid invoices."""
+        jss2 = SchoolClass.objects.create(
+            school=self.school, name='JSS2', level='JSS',
+        )
+        Student.objects.create(
+            school=self.school,
+            user=User.objects.create_user(username='stu2', school=self.school, role=Roles.STUDENT),
+            admission_number='STU002', date_of_birth=date(2010, 1, 1), gender='M',
+            admission_date=date(2025, 9, 1), status='ACTIVE',
+        )
+        ClassEnrollment.objects.create(
+            school=self.school, student=Student.objects.get(admission_number='STU002'),
+            school_class=jss2, session=self.session, is_current=True,
+        )
+
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_SCHOOL_WIDE, school_class=None,
+            term=self.term, category=self.cat, amount=Decimal('20000.00'), student_type='ALL'
+        )
+
+        generate_invoices_school_wide(self.school, self.term)
+
+        # Confirm payment on JSS1A student's invoice
+        invoice1 = Invoice.objects.get(student=self.student, term=self.term)
+        from fees.models import Payment
+        Payment.objects.create(
+            school=self.school, invoice=invoice1, student=self.student,
+            amount=Decimal('20000.00'), method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED, paid_on=timezone.now(),
+        )
+
+        # Update price
+        FeePrice.objects.filter(school=self.school, category=self.cat, term=self.term).update(amount=Decimal('25000.00'))
+
+        # Sync school-wide - should only update unpaid invoice (JSS2)
+        re_priced = sync_school_wide_invoices(self.school, self.term)
+        self.assertEqual(re_priced, 1)
+
+        invoice1.refresh_from_db()
+        invoice2 = Invoice.objects.get(student__admission_number='STU002', term=self.term)
+        invoice2.refresh_from_db()
+
+        # JSS1A has payment, should keep old amount
+        self.assertEqual(invoice1.total_amount, Decimal('20000.00'))
+        # JSS2 no payment, should be updated
+        self.assertEqual(invoice2.total_amount, Decimal('25000.00'))
 
