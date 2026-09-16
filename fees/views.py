@@ -18,10 +18,6 @@ from .models import Invoice, Payment, PaymentLineItem, InvoiceLineItem, FeePrice
 from .pricing import resolve_prices, resolve_price_for_student
 from .paystack import initiate_payment as paystack_initiate
 from .visibility import (
-    ONBOARDING_TOTAL_CATEGORIES,
-    RETURNING_HIDDEN_CATEGORIES,
-    CHRISTMAS_FEE,
-    is_category_visible,
     is_default_checked,
     is_onboarding_total,
     is_onboarding_total_by_name,
@@ -189,11 +185,10 @@ class InitiatePaymentView(RoleRequiredMixin, View):
                 except (InvalidOperation, TypeError, ValueError):
                     messages.error(request, 'Enter a valid payment amount.')
                     return redirect(back_url)
-                if amount <= 0 or amount > invoice.balance:
+                if amount <= 0:
                     messages.error(
                         request,
-                        f'Amount must be greater than 0 and at most '
-                        f'{invoice.balance:,.2f}.',
+                        'Amount must be greater than 0.',
                     )
                     return redirect(back_url)
         else:
@@ -931,6 +926,7 @@ def student_line_items_api(request, student_id):
                 'id': f'invoice:{li.pk}',
                 'category_id': li.category_id,
                 'category_name': li.category.name,
+                'display_name': li.display_name,
                 'amount': str(li.amount),
                 'term_id': li.invoice.term_id,
                 'term_name': li.invoice.term.name,
@@ -987,7 +983,7 @@ def student_line_items_api(request, student_id):
     else:
         student_type = computed_student_type
 
-    resolver_student_type = 'ALL' if student_type == 'RETURNING' else 'NEW'
+    resolver_student_type = student_type
 
     prices = resolve_prices(
         school=student.school,
@@ -1005,30 +1001,15 @@ def student_line_items_api(request, student_id):
         ).values_list('category_id', flat=True).distinct()
     )
 
-    is_first_term_of_session = Term.objects.filter(
-        school=student.school, session=session,
-    ).order_by('start_date').first()
-    christmas_visible = (
-        is_first_term_of_session is not None
-        and is_first_term_of_session.id == term.id
-    )
-
     items = []
     selectable_total = Decimal('0.00')
     seen_category_ids = set()
     onboarding_item_ids = []
-    christmas_item_id = None
 
     for price in prices:
         cat = price.category
         is_one_time = cat.billing_cycle == 'ONE_TIME'
         already_paid = cat.id in paid_one_time_ids and is_one_time
-
-        if not is_category_visible(cat, student_type, term, student.school):
-            continue
-
-        if cat.name == CHRISTMAS_FEE and not christmas_visible:
-            continue
 
         try:
             amount = resolve_price_for_student(
@@ -1037,6 +1018,7 @@ def student_line_items_api(request, student_id):
                 school_class=school_class,
                 category=cat,
                 term=term,
+                student_type=student_type,
             ) or price.amount
         except (InvoiceLineItem.DoesNotExist, ValueError, InvalidOperation):
             amount = price.amount
@@ -1048,6 +1030,7 @@ def student_line_items_api(request, student_id):
             'id': item_id,
             'category_id': cat.id,
             'category_name': cat.name,
+            'display_name': price.display_name,
             'amount': str(amount),
             'term_id': term.id,
             'term_name': term.name,
@@ -1065,8 +1048,6 @@ def student_line_items_api(request, student_id):
             selectable_total += amount
         if is_onboarding_total(cat) and not already_paid:
             onboarding_item_ids.append(item_id)
-        if cat.name == CHRISTMAS_FEE:
-            christmas_item_id = item_id
 
     unpaid_invoice_items = InvoiceLineItem.objects.filter(
         invoice__school=student.school,
@@ -1082,6 +1063,7 @@ def student_line_items_api(request, student_id):
             'id': f'invoice:{li.pk}',
             'category_id': li.category_id,
             'category_name': li.category.name,
+            'display_name': li.display_name,
             'amount': str(li.amount),
             'term_id': li.invoice.term_id,
             'term_name': li.invoice.term.name,
