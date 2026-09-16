@@ -86,42 +86,56 @@ class DashboardView(RoleRequiredMixin, View):
                 'label': 'Complete the school profile',
                 'description': 'Add the school contact and principal details.',
                 'url': reverse('school_admin:school_settings'),
+                'icon': 'settings',
+                'color': 'danger',
             })
         if not current_session:
             onboarding_tasks.append({
                 'label': 'Create an academic session',
                 'description': 'Set up the current school year and its terms.',
                 'url': reverse('school_admin:session_list'),
+                'icon': 'calendar',
+                'color': 'danger',
             })
         if not active_classes:
             onboarding_tasks.append({
                 'label': 'Add a class',
                 'description': 'Create the classes students will be enrolled in.',
                 'url': reverse('school_admin:class_list'),
+                'icon': 'layers',
+                'color': 'warning',
             })
         if not Subject.objects.filter(school=school).exists():
             onboarding_tasks.append({
                 'label': 'Add a subject',
                 'description': 'Create the subjects used by your classes.',
                 'url': reverse('school_admin:subject_list'),
+                'icon': 'book-open',
+                'color': 'warning',
             })
         if not teacher_count:
             onboarding_tasks.append({
                 'label': 'Add a staff member',
                 'description': 'Create a teacher or staff account.',
                 'url': reverse('school_admin:staff_list'),
+                'icon': 'graduation-cap',
+                'color': 'info',
             })
         if not total_students:
             onboarding_tasks.append({
                 'label': 'Add a student',
                 'description': 'Create the first student record.',
                 'url': reverse('school_admin:student_list'),
+                'icon': 'users',
+                'color': 'info',
             })
         if not FeeCategory.objects.filter(school=school).exists():
             onboarding_tasks.append({
                 'label': 'Set up fee categories',
                 'description': 'Define the fees that can be billed to students.',
                 'url': reverse('school_admin:fee_category_list'),
+                'icon': 'wallet',
+                'color': 'warning',
             })
         elif current_term and not FeePrice.objects.filter(
             school=school, term=current_term,
@@ -130,6 +144,8 @@ class DashboardView(RoleRequiredMixin, View):
                 'label': 'Add fee pricing',
                 'description': 'Set the current term prices for your fee categories.',
                 'url': reverse('school_admin:fee_pricing_list'),
+                'icon': 'tag',
+                'color': 'warning',
             })
 
         # Collected this term — confirmed payments for the current term's invoices
