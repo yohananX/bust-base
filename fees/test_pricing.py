@@ -655,3 +655,230 @@ class GenerationScopeTest(BasePricingTest):
         # JSS2 no payment, should be updated
         self.assertEqual(invoice2.total_amount, Decimal('25000.00'))
 
+
+class SubScopingResolutionTest(BasePricingTest):
+    """Deterministic two-stage precedence for NEW/RETURNING sub-scoping.
+
+    Stage 1: scope (CLASS < LEVEL < SCHOOL_WIDE — most specific wins).
+    Stage 2: within the winning scope, target type beats a generic ALL row.
+    """
+
+    def _cat(self, name, **kwargs):
+        return FeeCategory.objects.create(
+            school=self.school, name=name,
+            billing_cycle=kwargs.pop('billing_cycle', 'PER_TERM'),
+            student_type=kwargs.pop('student_type', 'ALL'),
+        )
+
+    def _price(self, category, amount, scope=FeePrice.SCOPE_CLASS, **kwargs):
+        return FeePrice.objects.create(
+            school=self.school, scope=scope,
+            school_class=self.school_class if scope == FeePrice.SCOPE_CLASS else None,
+            level=kwargs.pop('level', ''),
+            term=kwargs.pop('term', self.term),
+            category=category, amount=Decimal(amount), student_type=kwargs.pop('student_type', 'ALL'),
+        )
+
+    def test_target_type_beats_all_in_same_scope(self):
+        cat = self._cat('Tuition')
+        self._price(cat, '40000.00', student_type='ALL')
+        self._price(cat, '35000.00', student_type='NEW')
+        result = resolve_prices(self.school, self.school_class, self.term, student_type='NEW')
+        fp = next(fp for fp in result if fp.category == cat)
+        self.assertEqual(fp.amount, Decimal('35000.00'))
+        self.assertEqual(fp.student_type, 'NEW')
+
+    def test_returning_type_beats_all_in_same_scope(self):
+        cat = self._cat('Tuition')
+        self._price(cat, '40000.00', student_type='ALL')
+        self._price(cat, '38000.00', student_type='RETURNING')
+        result = resolve_prices(self.school, self.school_class, self.term, student_type='RETURNING')
+        fp = next(fp for fp in result if fp.category == cat)
+        self.assertEqual(fp.amount, Decimal('38000.00'))
+        self.assertEqual(fp.student_type, 'RETURNING')
+
+    def test_missing_target_type_falls_back_to_all(self):
+        cat = self._cat('Tuition')
+        self._price(cat, '40000.00', student_type='ALL')
+        result = resolve_prices(self.school, self.school_class, self.term, student_type='NEW')
+        fp = next(fp for fp in result if fp.category == cat)
+        self.assertEqual(fp.amount, Decimal('40000.00'))
+
+    def test_new_excludes_returning_only_rows(self):
+        cat = self._cat('Uniforms')
+        self._price(cat, '40000.00', student_type='RETURNING')
+        result = resolve_prices(self.school, self.school_class, self.term, student_type='NEW')
+        self.assertNotIn(cat, {fp.category for fp in result})
+
+    def test_returning_excludes_new_only_rows(self):
+        cat = self._cat('Registration')
+        self._price(cat, '5000.00', student_type='NEW')
+        result = resolve_prices(self.school, self.school_class, self.term, student_type='RETURNING')
+        self.assertNotIn(cat, {fp.category for fp in result})
+
+    def test_scope_wins_over_type_precedence(self):
+        """A generic ALL row in a more specific scope beats a NEW-tagged row
+        further away, even though type has higher numeric priority."""
+        cat = self._cat('Tuition')
+        self._price(cat, '30000.00', scope=FeePrice.SCOPE_SCHOOL_WIDE, student_type='NEW')
+        self._price(cat, '25000.00', scope=FeePrice.SCOPE_LEVEL, level='JSS1', student_type='ALL')
+        result = resolve_prices(self.school, self.school_class, self.term, student_type='NEW')
+        fp = next(fp for fp in result if fp.category == cat)
+        self.assertEqual(fp.scope, FeePrice.SCOPE_LEVEL)
+        self.assertEqual(fp.amount, Decimal('25000.00'))
+
+    def test_agg_scope_aggregate_mode_mixes_types(self):
+        """student_type='ALL' is aggregate mode: NEW and RETURNING prices both
+        resolve, deterministically (lowest pk per category)."""
+        cat = self._cat('Tuition')
+        self._price(cat, '35000.00', student_type='NEW')
+        self._price(cat, '38000.00', student_type='RETURNING')
+        result = resolve_prices(self.school, self.school_class, self.term, student_type='ALL')
+        fp = next(fp for fp in result if fp.category == cat)
+        self.assertEqual(fp.student_type, 'NEW')
+        self.assertEqual(fp.amount, Decimal('35000.00'))
+
+    def test_specific_minus_all_in_aggregate_mode(self):
+        """Aggregate mode keeps a single deterministic row per category (ALL
+        beats a type-specific sibling on pk order)."""
+        cat = self._cat('Uniforms')
+        self._price(cat, '40000.00', student_type='ALL')
+        self._price(cat, '45000.00', student_type='NEW')
+        result = resolve_prices(self.school, self.school_class, self.term, student_type='ALL')
+        prices = [fp for fp in result if fp.category == cat]
+        self.assertEqual(len(prices), 1)
+        self.assertEqual(prices[0].student_type, 'ALL')
+        self.assertEqual(prices[0].amount, Decimal('40000.00'))
+
+    def test_resolve_price_for_student_respects_subscoping(self):
+        cat = self._cat('Tuition')
+        self._price(cat, '40000.00', student_type='ALL')
+        self._price(cat, '35000.00', student_type='NEW')
+        new_amount = resolve_price_for_student(
+            self.school, self.student, self.school_class, cat,
+            term=self.term, student_type='NEW',
+        )
+        self.assertEqual(new_amount, Decimal('35000.00'))
+        returning_amount = resolve_price_for_student(
+            self.school, self.student, self.school_class, cat,
+            term=self.term, student_type='RETURNING',
+        )
+        self.assertEqual(returning_amount, Decimal('40000.00'))
+
+
+class ChristmasFeeGateTest(BasePricingTest):
+    """The Christmas fee resolves only in the first term of a session."""
+
+    def _cat(self, name, **kwargs):
+        return FeeCategory.objects.create(
+            school=self.school, name=name,
+            billing_cycle=kwargs.pop('billing_cycle', 'PER_TERM'),
+            student_type=kwargs.pop('student_type', 'ALL'),
+        )
+
+    def _setup_two_terms(self):
+        self.term2 = Term.objects.create(
+            school=self.school, session=self.session, name='Second Term',
+            start_date=date(2026, 1, 1), end_date=date(2026, 3, 31), is_current=False,
+        )
+        self.christmas = self._cat('Christmas/End of Term Party Fee')
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_SCHOOL_WIDE, school_class=None,
+            term=None, category=self.christmas, amount=Decimal('5000.00'), student_type='ALL',
+        )
+
+    def test_christmas_visible_in_first_term(self):
+        self._setup_two_terms()
+        result = resolve_prices(self.school, self.school_class, self.term, student_type='NEW')
+        self.assertIn(self.christmas, {fp.category for fp in result})
+
+    def test_christmas_hidden_in_second_term(self):
+        self._setup_two_terms()
+        result = resolve_prices(self.school, self.school_class, self.term2, student_type='NEW')
+        self.assertNotIn(self.christmas, {fp.category for fp in result})
+
+
+class NameAndOverpaymentTest(BasePricingTest):
+    """display_name plumbing and clamped display_balance."""
+
+    def test_feeprice_display_name_falls_back_to_category(self):
+        cat = FeeCategory.objects.create(
+            school=self.school, name='Tuition', billing_cycle='PER_TERM', student_type='ALL'
+        )
+        fp = FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_CLASS, school_class=self.school_class,
+            term=self.term, category=cat, amount=Decimal('25000.00'), student_type='ALL',
+        )
+        self.assertEqual(fp.display_name, 'Tuition')
+
+    def test_feeprice_display_name_uses_custom_name(self):
+        cat = FeeCategory.objects.create(
+            school=self.school, name='Tuition', billing_cycle='PER_TERM', student_type='ALL'
+        )
+        fp = FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_CLASS, school_class=self.school_class,
+            term=self.term, category=cat, amount=Decimal('25000.00'), student_type='ALL',
+            name='Boarders Tuition'
+        )
+        self.assertEqual(fp.display_name, 'Boarders Tuition')
+
+    def test_generation_line_item_captures_item_name(self):
+        cat = FeeCategory.objects.create(
+            school=self.school, name='Tuition', billing_cycle='PER_TERM', student_type='ALL'
+        )
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_CLASS, school_class=self.school_class,
+            term=self.term, category=cat, amount=Decimal('25000.00'), student_type='ALL',
+            name='Boarding Fee'
+        )
+        from fees.generation import generate_invoice_for_student
+        invoice = generate_invoice_for_student(self.student, self.term)
+        line = invoice.line_items.get(category=cat)
+        self.assertEqual(line.item_name, 'Boarding Fee')
+        self.assertEqual(line.display_name, 'Boarding Fee')
+
+    def test_generation_line_item_item_name_falls_back_to_category(self):
+        cat = FeeCategory.objects.create(
+            school=self.school, name='Tuition', billing_cycle='PER_TERM', student_type='ALL'
+        )
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_CLASS, school_class=self.school_class,
+            term=self.term, category=cat, amount=Decimal('25000.00'), student_type='ALL',
+        )
+        from fees.generation import generate_invoice_for_student
+        invoice = generate_invoice_for_student(self.student, self.term)
+        line = invoice.line_items.get(category=cat)
+        self.assertEqual(line.item_name, 'Tuition')
+        self.assertEqual(line.display_name, 'Tuition')
+
+    def test_invoice_display_balance_clamps_negative(self):
+        invoice = Invoice.objects.create(
+            school=self.school, student=self.student, term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+        from fees.models import Payment
+        from django.utils import timezone
+        Payment.objects.create(
+            school=self.school, invoice=invoice, student=self.student,
+            amount=Decimal('65000.00'), method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED, paid_on=timezone.now(),
+        )
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.balance, Decimal('-5000.00'))
+        self.assertEqual(invoice.display_balance, Decimal('0.00'))
+
+    def test_invoice_display_balance_positive_unchanged(self):
+        invoice = Invoice.objects.create(
+            school=self.school, student=self.student, term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+        from fees.models import Payment
+        from django.utils import timezone
+        Payment.objects.create(
+            school=self.school, invoice=invoice, student=self.student,
+            amount=Decimal('20000.00'), method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED, paid_on=timezone.now(),
+        )
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.display_balance, Decimal('40000.00'))
+

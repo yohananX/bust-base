@@ -1395,17 +1395,21 @@ class FlexibleInitiateTest(BaseFeesTest):
         self.invoice.refresh_from_db()
         self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
 
-    def test_amount_exceeding_balance_rejected(self):
-        """An amount above the invoice balance is rejected — no payment row."""
+    def test_amount_exceeding_balance_allowed_as_overpayment(self):
+        """An amount above the invoice balance is allowed as an overpayment."""
         response, mock_post = self._post_initiate({
             'invoice_id': self.invoice.id,
             'amount': '70000.00',
         })
 
         self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, reverse('parent-pay'), fetch_redirect_response=False)
-        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 0)
-        mock_post.assert_not_called()
+        self.assertRedirects(
+            response, 'https://paystack.test/start', fetch_redirect_response=False,
+        )
+        payment = Payment.objects.get(status=Payment.Status.PENDING)
+        self.assertEqual(payment.amount, Decimal('70000.00'))
+        self.assertEqual(payment.invoice, self.invoice)
+        mock_post.assert_called_once()
 
     def test_zero_amount_rejected(self):
         """A zero amount is rejected — no payment row is created."""
@@ -2324,7 +2328,11 @@ class PaymentAuditTrailTest(BaseFeesTest):
 
 
 class OverpaymentCapTest(BaseFeesTest):
-    """Item 21: no entry point accepts more than the outstanding balance."""
+    """Overpayment: payments above the balance are accepted as credits.
+
+    display_balance clamps to 0 so overpaid invoices never show a negative
+    outstanding amount.
+    """
 
     def setUp(self):
         super().setUp()
@@ -2337,17 +2345,19 @@ class OverpaymentCapTest(BaseFeesTest):
             password='testpass123', school=self.school, role=Roles.ADMIN,
         )
 
-    def test_admin_invoice_detail_post_rejects_over_balance(self):
+    def test_admin_invoice_detail_post_allows_over_balance_overpayment(self):
         self.client.force_login(self.admin)
         resp = self.client.post(
             reverse('school_admin:invoice_detail', kwargs={'pk': self.invoice.pk}),
             {'amount': '65000.00', 'method': Payment.Method.CASH, 'reference': ''},
         )
         self.assertEqual(resp.status_code, 302)
-        self.assertEqual(
-            self.invoice.payments.count(), 0,
-            'Over-balance payment must not be recorded.',
-        )
+        payment = self.invoice.payments.get(method=Payment.Method.CASH)
+        self.assertEqual(payment.amount, Decimal('65000.00'))
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.balance, Decimal('-5000.00'))
+        self.assertEqual(self.invoice.display_balance, Decimal('0.00'))
 
     def test_partial_payments_accumulate_to_balance(self):
         self.client.force_login(self.admin)

@@ -21,6 +21,15 @@ from fees.generation import (
 from students.models import SchoolClass
 
 
+def _other_student_type(student_type):
+    """Return the sibling student type for a type-specific price, else None."""
+    if student_type == 'NEW':
+        return 'RETURNING'
+    if student_type == 'RETURNING':
+        return 'NEW'
+    return None
+
+
 class FeePricingListView(RoleRequiredMixin, View):
     """List fee prices with scope, class, and term filters."""
 
@@ -97,6 +106,34 @@ class FeePricingListView(RoleRequiredMixin, View):
                         'term_id': current_term.id,
                     })
 
+        type_specific = FeePrice.objects.filter(
+            school=school,
+            is_active=True,
+            student_type__in=['NEW', 'RETURNING'],
+        ).select_related('category', 'term', 'school_class')
+        for price in type_specific:
+            other_type = _other_student_type(price.student_type)
+            sibling_missing = not FeePrice.objects.filter(
+                school=school,
+                scope=price.scope,
+                school_class=price.school_class,
+                level=price.level,
+                term=price.term,
+                category=price.category,
+                student_type=other_type,
+            ).exists()
+            if sibling_missing:
+                warnings.append({
+                    'message': (
+                        f'"{price.category.name}" has a {price.student_type} price but no '
+                        f'{other_type} sibling for {price.get_scope_display()} '
+                        f'({price.term.name if price.term else "One-time"}). Returning students '
+                        f'will fall back to the ALL price.'
+                    ),
+                    'category_id': price.category_id,
+                    'term_id': price.term_id,
+                })
+
         return warnings
 
 
@@ -153,6 +190,7 @@ class FeePricingBulkCopyView(RoleRequiredMixin, View):
                 level=price.level,
                 term=to_term,
                 category=price.category,
+                name=price.name,
                 amount=price.amount,
                 student_type=price.student_type,
                 is_active=True,
@@ -215,6 +253,7 @@ class FeePricingPromoteView(RoleRequiredMixin, View):
             level=target_level or '',
             term=price.term,
             category=price.category,
+            name=price.name,
             amount=price.amount,
             student_type=price.student_type,
             is_active=True,
@@ -257,11 +296,13 @@ class FeePricingCreateView(RoleRequiredMixin, View):
         level = request.POST.get('level', '')
         term_id = request.POST.get('term_id', '')
         raw_amount = request.POST.get('amount', '').strip()
+        name = request.POST.get('name', '').strip()
         student_type = request.POST.get('student_type', 'ALL')
+        apply_to_other_type = request.POST.get('apply_to_other_type') == 'on'
         effective_from = request.POST.get('effective_from', '')
         effective_to = request.POST.get('effective_to', '')
 
-        if student_type not in FeeCategory.STUDENT_TYPE_CHOICES:
+        if student_type not in dict(FeeCategory.STUDENT_TYPE_CHOICES):
             student_type = 'ALL'
 
         categories = FeeCategory.objects.filter(school=school)
@@ -284,6 +325,7 @@ class FeePricingCreateView(RoleRequiredMixin, View):
                 'selected_effective_from': effective_from,
                 'selected_effective_to': effective_to,
                 'entered_amount': raw_amount,
+                'entered_name': name,
             })
 
         if not category_id or not raw_amount:
@@ -331,11 +373,38 @@ class FeePricingCreateView(RoleRequiredMixin, View):
             level=level,
             term=term,
             category=category,
+            name=name,
             amount=amount,
             student_type=student_type,
             effective_from=effective_from if effective_from else None,
             effective_to=effective_to if effective_to else None,
         )
+
+        other_type = _other_student_type(student_type)
+        sibling_added = False
+        if apply_to_other_type and other_type and not FeePrice.objects.filter(
+            school=school,
+            scope=scope,
+            school_class=school_class,
+            level=level,
+            term=term,
+            category=category,
+            student_type=other_type,
+        ).exists():
+            FeePrice.objects.create(
+                school=school,
+                scope=scope,
+                school_class=school_class,
+                level=level,
+                term=term,
+                category=category,
+                name=name,
+                amount=amount,
+                student_type=other_type,
+                effective_from=fp.effective_from,
+                effective_to=fp.effective_to,
+            )
+            sibling_added = True
 
         generated = 0
         re_priced = 0
@@ -359,12 +428,14 @@ class FeePricingCreateView(RoleRequiredMixin, View):
             messages.success(
                 request,
                 f'Price added: {category.name} — {scope_desc} ({term.name}, {student_type}). '
-                f'{generated} invoice(s) generated, {re_priced} unpaid invoice(s) re-priced.',
+                f'{generated} invoice(s) generated, {re_priced} unpaid invoice(s) re-priced.'
+                + (' Sibling price created for the other student type.' if sibling_added else ''),
             )
         else:
             messages.success(
                 request,
-                f'Price added: {category.name} ({scope}, {student_type}).',
+                f'Price added: {category.name} ({scope}, {student_type}).'
+                + (' Sibling price created for the other student type.' if sibling_added else ''),
             )
         return redirect('school_admin:fee_pricing_list')
 
@@ -392,6 +463,7 @@ class FeePricingEditView(RoleRequiredMixin, View):
             'selected_student_type': price.student_type,
             'selected_effective_from': price.effective_from,
             'selected_effective_to': price.effective_to,
+            'entered_name': price.name,
         })
 
     def post(self, request, pk):
@@ -404,11 +476,13 @@ class FeePricingEditView(RoleRequiredMixin, View):
         level = request.POST.get('level', '')
         term_id = request.POST.get('term_id', '')
         raw_amount = request.POST.get('amount', '').strip()
+        name = request.POST.get('name', '').strip()
         student_type = request.POST.get('student_type', price.student_type)
+        apply_to_other_type = request.POST.get('apply_to_other_type') == 'on'
         effective_from = request.POST.get('effective_from', '')
         effective_to = request.POST.get('effective_to', '')
 
-        if student_type not in FeeCategory.STUDENT_TYPE_CHOICES:
+        if student_type not in dict(FeeCategory.STUDENT_TYPE_CHOICES):
             student_type = price.student_type
 
         categories = FeeCategory.objects.filter(school=school)
@@ -432,6 +506,7 @@ class FeePricingEditView(RoleRequiredMixin, View):
                 'selected_effective_from': effective_from,
                 'selected_effective_to': effective_to,
                 'entered_amount': raw_amount,
+                'entered_name': name,
             })
 
         if not category_id or not raw_amount:
@@ -477,11 +552,38 @@ class FeePricingEditView(RoleRequiredMixin, View):
         price.level = level
         price.term = term
         price.category = category
+        price.name = name
         price.amount = amount
         price.student_type = student_type
         price.effective_from = effective_from if effective_from else None
         price.effective_to = effective_to if effective_to else None
         price.save()
+
+        other_type = _other_student_type(student_type)
+        sibling_added = False
+        if apply_to_other_type and other_type and not FeePrice.objects.filter(
+            school=school,
+            scope=scope,
+            school_class=school_class,
+            level=level,
+            term=term,
+            category=category,
+            student_type=other_type,
+        ).exclude(pk=pk).exists():
+            FeePrice.objects.create(
+                school=school,
+                scope=scope,
+                school_class=school_class,
+                level=level,
+                term=term,
+                category=category,
+                name=name,
+                amount=amount,
+                student_type=other_type,
+                effective_from=price.effective_from,
+                effective_to=price.effective_to,
+            )
+            sibling_added = True
 
         generated = 0
         re_priced = 0
@@ -505,12 +607,14 @@ class FeePricingEditView(RoleRequiredMixin, View):
             messages.success(
                 request,
                 f'Price updated: {category.name} — {scope_desc} ({term.name}, {student_type}). '
-                f'{generated} invoice(s) generated, {re_priced} unpaid invoice(s) re-priced.',
+                f'{generated} invoice(s) generated, {re_priced} unpaid invoice(s) re-priced.'
+                + (' Sibling price created for the other student type.' if sibling_added else ''),
             )
         else:
             messages.success(
                 request,
-                f'Price updated: {category.name} ({scope}, {student_type}).',
+                f'Price updated: {category.name} ({scope}, {student_type}).'
+                + (' Sibling price created for the other student type.' if sibling_added else ''),
             )
         return redirect('school_admin:fee_pricing_list')
 

@@ -97,13 +97,6 @@ class InvoiceDetailView(RoleRequiredMixin, View):
         if amount <= 0:
             messages.error(request, 'Amount must be positive.')
             return redirect('school_admin:invoice_detail', pk=pk)
-        if amount > invoice.balance:
-            messages.error(
-                request,
-                f'Amount must be at most the outstanding balance '
-                f'(₦{invoice.balance:,.2f}).',
-            )
-            return redirect('school_admin:invoice_detail', pk=pk)
 
         reference = request.POST.get('reference', '').strip()
         method = request.POST.get('method', '')

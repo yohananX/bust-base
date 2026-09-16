@@ -116,8 +116,17 @@
             <td class="px-6 py-3.5 text-sm text-ink-muted">{{ p.term.name|default:'One-time' }}</td>
             <td class="px-6 py-3.5">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">{{ p.category.name }}</span>
+              {% if p.name %}
+                <span class="block mt-1 text-xs font-medium text-ink-muted">{{ p.display_name }}</span>
+              {% endif %}
             </td>
-            <td class="px-6 py-3.5 text-xs text-ink-faint">{{ p.get_student_type_display }}</td>
+            <td class="px-6 py-3.5">
+              {% if p.student_type == 'ALL' %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-muted text-ink-muted border border-line">{{ p.get_student_type_display }}</span>
+              {% else %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if p.student_type == 'NEW' %}bg-emerald-50 text-emerald-700 border border-emerald-100{% else %}bg-sky-50 text-sky-700 border border-sky-100{% endif %}">{{ p.get_student_type_display }}</span>
+              {% endif %}
+            </td>
             <td class="px-6 py-3.5 text-sm font-semibold text-ink text-right">NGN {{ p.amount|floatformat:2 }}</td>
             <td class="px-6 py-3.5">
               <div class="flex items-center justify-end gap-1">
