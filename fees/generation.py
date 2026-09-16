@@ -2,7 +2,7 @@
 from decimal import Decimal
 
 from core.models import Term
-from students.models import ClassEnrollment
+from students.models import ClassEnrollment, SchoolClass
 from .models import FeeCategory, FeePrice, Invoice, InvoiceLineItem
 from .utils import resolve_student_type
 
@@ -215,3 +215,39 @@ def _notify_primary_guardian(student, term, invoice):
         ),
         reference=f'invoice:{invoice.id}',
     )
+
+
+def generate_invoices_for_level(school, level, term):
+    """Generate invoices for all students in classes matching a level."""
+    classes = SchoolClass.objects.filter(school=school, level=level, is_active=True)
+    total = 0
+    for cls in classes:
+        total += generate_invoices_for_class(cls, term)
+    return total
+
+
+def sync_level_invoices(school, level, term):
+    """Re-price unpaid invoices for all students in classes matching a level."""
+    classes = SchoolClass.objects.filter(school=school, level=level, is_active=True)
+    total = 0
+    for cls in classes:
+        total += sync_class_invoices(cls, term)
+    return total
+
+
+def generate_invoices_school_wide(school, term):
+    """Generate invoices for all active students in the school."""
+    classes = SchoolClass.objects.filter(school=school, is_active=True)
+    total = 0
+    for cls in classes:
+        total += generate_invoices_for_class(cls, term)
+    return total
+
+
+def sync_school_wide_invoices(school, term):
+    """Re-price unpaid invoices for all students in the school."""
+    classes = SchoolClass.objects.filter(school=school, is_active=True)
+    total = 0
+    for cls in classes:
+        total += sync_class_invoices(cls, term)
+    return total
