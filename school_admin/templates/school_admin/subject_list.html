@@ -5,22 +5,13 @@
 {% block page_header %}Academic Subjects{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto space-y-6">
-  <!-- Toolbar -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-    <div>
-      <p class="text-sm text-ink-muted">{{ subjects|length }} subject(s)</p>
-    </div>
-    {% url 'school_admin:subject_create' as add_url %}
-    {% include "components/button_primary.html" with text="Add Subject" icon="plus" href=add_url %}
-  </div>
-
+<div class="max-w-5xl mx-auto">
   <!-- Filters -->
-  <div class="bg-white rounded-xl p-5 shadow-sm border border-line">
+  <div class="bg-white rounded-xl p-5 mb-6 shadow-sm border border-line">
     <form method="GET" class="mobile-form-stack">
-      <div class="flex-1 min-w-[200px] max-w-md">
+      <div class="flex-1 min-w-0">
         <label class="block text-xs font-medium text-ink-muted mb-1.5">Search</label>
-        {% include 'components/search_autocomplete.html' with cache_key='subjects' api_path='/school-admin/api/subjects/' placeholder='Subject name or code' %}
+        {% include 'components/search_autocomplete.html' with cache_key='subjects' api_path='/school-admin/api/subjects/' item_url='/school-admin/subjects/{id}/edit/' placeholder='Subject name or code' %}
       </div>
       <div>
         <label class="block text-xs font-medium text-ink-muted mb-1.5">Class</label>
@@ -32,21 +23,25 @@
           {% endfor %}
         </select>
       </div>
-      <div class="mobile-form-actions flex gap-2">
-        <button type="submit"
-                class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
-          Filter
-        </button>
-        <a href="{% url 'school_admin:subject_list' %}"
-           class="px-4 py-2.5 bg-white border border-line rounded-xl text-sm font-medium text-ink-muted hover:bg-surface-muted transition-colors">
-          Clear
-        </a>
-      </div>
+      <button type="submit"
+              class="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors">
+        Search
+      </button>
+      <a href="{% url 'school_admin:subject_list' %}"
+         class="px-5 py-2.5 border border-line rounded-xl text-sm font-medium text-ink-muted hover:bg-surface-muted transition-colors">Clear</a>
     </form>
   </div>
 
   <!-- Subject Table -->
   <div class="bg-white rounded-xl shadow-sm border border-line overflow-hidden">
+    <div class="px-5 py-4 border-b border-line flex justify-between items-center">
+      <h2 class="text-lg font-medium text-ink">Subjects</h2>
+      <a href="{% url 'school_admin:subject_create' %}"
+         class="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        <span>Add Subject</span>
+      </a>
+    </div>
     <div class="responsive-table-wrap">
     <table class="w-full text-sm">
       <thead>
@@ -80,16 +75,16 @@
               {% endif %}
             {% endwith %}
           </td>
-          <td class="px-5 py-3.5">
-            <div class="flex items-center justify-end gap-1">
+          <td class="px-5 py-3.5 text-right">
+            <div class="flex justify-end gap-2">
               <a href="{% url 'school_admin:subject_edit' subj.pk %}"
-                 title="Edit"
-                 class="p-2 rounded-lg text-ink-muted hover:text-primary hover:bg-primary-tint transition-colors">
-                <i data-lucide="pencil" class="w-4 h-4"></i>
+                 class="p-1.5 text-ink-muted hover:text-primary rounded-lg hover:bg-primary-tint transition-colors"
+                 title="Edit">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
               </a>
               <a href="{% url 'school_admin:subject_delete' subj.pk %}"
-                 title="Delete"
-                 class="p-2 rounded-lg text-ink-muted hover:text-red-600 hover:bg-red-50 transition-colors">
+                 class="p-1.5 text-ink-muted hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                 title="Delete">
                 <i data-lucide="trash-2" class="w-4 h-4"></i>
               </a>
             </div>
@@ -97,7 +92,7 @@
         </tr>
         {% empty %}
         <tr class="border-t border-line">
-          <td colspan="4" class="px-5 py-12 text-center">
+          <td colspan="3" class="px-5 py-12 text-center">
             <div class="flex flex-col items-center gap-2 text-ink-faint">
               <i data-lucide="book-open" class="w-8 h-8"></i>
               <p class="text-sm">No subjects found.</p>

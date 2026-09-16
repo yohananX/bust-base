@@ -164,7 +164,7 @@ class SubjectSearchAPIView(EntitySearchAPIView):
         qs = Subject.objects.filter(school=request.school).order_by('name')
         class_id = request.GET.get('class_id', '')
         if class_id:
-            qs = qs.filter(school_classes__id=class_id)
+            qs = qs.filter(class_subjects__school_class_id=class_id)
         return qs
 
     def serialize(self, subject):
