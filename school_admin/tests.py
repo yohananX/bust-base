@@ -1995,11 +1995,11 @@ class SetupChecksTest(TestCase):
         self.assertEqual(alert['icon'], 'tag')
 
     def test_dashboard_renders_setup_alerts_template(self):
-        """Dashboard page shows setup alert titles when checks fire."""
+        """Dashboard page shows onboarding checklist when checks fire."""
         resp = self.client.get(reverse('school_admin:dashboard'))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, 'Set up sessions')
-        self.assertContains(resp, 'No active academic session')
+        self.assertContains(resp, 'Complete the school profile')
+        self.assertContains(resp, 'Create an academic session')
         self.assertContains(resp, 'href="/school-admin/settings/"')
         self.assertNotContains(resp, 'href="school_admin:school_settings"')
 

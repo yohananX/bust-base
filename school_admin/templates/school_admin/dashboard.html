@@ -29,33 +29,33 @@
     </div>
   </div>
 
-  {# ── SETUP ALERTS ── #}
-  {% if setup_alerts %}
-  <section data-setup-alerts aria-labelledby="setup-checklist-title" class="bg-white rounded-xl border border-line overflow-hidden">
+  {# ── ONBOARDING CHECKLIST ── #}
+  {% if onboarding_tasks %}
+  <section aria-labelledby="onboarding-title" class="bg-white rounded-xl border border-line overflow-hidden">
     <div class="px-5 py-4 border-b border-line flex items-center justify-between gap-3">
       <div>
-        <h2 id="setup-checklist-title" class="text-sm font-semibold text-ink">Setup checklist</h2>
-        <p class="text-xs text-ink-muted mt-0.5">Finish these essentials before running the school day.</p>
+        <h2 id="onboarding-title" class="text-sm font-semibold text-ink">Finish setting up your school</h2>
+        <p class="text-xs text-ink-muted mt-0.5">{{ onboarding_tasks|length }} essential step(s) remaining</p>
       </div>
       <span class="text-xs font-medium text-warning bg-warning-tint px-2.5 py-1 rounded-full whitespace-nowrap">
-        {{ setup_alerts|length }} remaining
+        {{ onboarding_tasks|length }} remaining
       </span>
     </div>
     <div class="divide-y divide-line/70">
-      {% for alert in setup_alerts %}
-      <a href="{% url alert.action_url %}" class="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-surface-muted/50 transition-colors group">
+      {% for task in onboarding_tasks %}
+      <a href="{{ task.url }}" class="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-surface-muted/50 transition-colors group">
         <div class="flex items-center gap-3 min-w-0">
-          <div class="w-9 h-9 rounded-lg bg-{{ alert.color }}-tint flex items-center justify-center flex-shrink-0">
-            <i data-lucide="{{ alert.icon }}" class="w-4 h-4 text-{{ alert.color }}"></i>
+          <div class="w-9 h-9 rounded-lg bg-{{ task.color }}-tint flex items-center justify-center flex-shrink-0">
+            <i data-lucide="{{ task.icon }}" class="w-4 h-4 text-{{ task.color }}"></i>
           </div>
           <div class="min-w-0">
-            <p class="text-sm font-medium text-ink">{{ alert.title }}</p>
-            <p class="text-xs text-ink-muted mt-0.5 truncate">{{ alert.description }}</p>
+            <p class="text-sm font-medium text-ink">{{ task.label }}</p>
+            <p class="text-xs text-ink-muted mt-0.5 truncate">{{ task.description }}</p>
           </div>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-          <span class="hidden sm:inline-flex text-xs font-semibold text-{{ alert.color }} shrink-0">{{ alert.action_label }}</span>
-          <i data-lucide="arrow-up-right" class="w-4 h-4 text-ink-faint group-hover:text-{{ alert.color }} transition-colors flex-shrink-0"></i>
+          <span class="hidden sm:inline-flex text-xs font-semibold text-{{ task.color }} shrink-0">Complete</span>
+          <i data-lucide="arrow-up-right" class="w-4 h-4 text-ink-faint group-hover:text-{{ task.color }} transition-colors flex-shrink-0"></i>
         </div>
       </a>
       {% endfor %}
