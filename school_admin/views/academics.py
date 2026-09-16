@@ -13,7 +13,7 @@ from core.models import AcademicSession
 
 
 class SubjectListView(RoleRequiredMixin, View):
-    """List all subjects with CRUD (read-only list for now)."""
+    """List all subjects with search, filter, and inline CRUD actions."""
 
     allowed_roles = [Roles.ADMIN]
 
