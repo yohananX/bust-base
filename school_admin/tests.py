@@ -2072,3 +2072,100 @@ class SubjectListViewTests(TestCase):
         names = [d['name'] for d in data]
         self.assertIn('Mathematics', names)
         self.assertIn('English', names)
+
+
+class FeePricingCreateViewTest(TestCase):
+    """Item 15: custom names, student-type validation, and sibling creation."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='Test School', short_code='test')
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31), is_current=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school, session=self.session, name='First Term',
+            start_date=date(2025, 9, 1), end_date=date(2025, 12, 15), is_current=True,
+        )
+        self.admin = User.objects.create_user(
+            username='fp_admin', email='fp@test.com',
+            password='testpass123', school=self.school, role=Roles.ADMIN,
+        )
+        self.cat = FeeCategory.objects.create(
+            school=self.school, name='Tuition', billing_cycle='PER_TERM', student_type='ALL',
+        )
+
+    def _post(self, **overrides):
+        data = {
+            'category_id': str(self.cat.pk),
+            'scope': 'SCHOOL_WIDE',
+            'student_type': 'ALL',
+            'amount': '30000.00',
+            'name': '',
+        }
+        data.update(overrides)
+        return self.client.post(reverse('school_admin:fee_pricing_create'), data)
+
+    def test_create_stores_custom_name(self):
+        self.client.force_login(self.admin)
+        resp = self._post(name='Boarding Fee')
+        self.assertEqual(resp.status_code, 302)
+        fp = FeePrice.objects.get(school=self.school, category=self.cat)
+        self.assertEqual(fp.name, 'Boarding Fee')
+        self.assertEqual(fp.display_name, 'Boarding Fee')
+
+    def test_create_student_type_validated(self):
+        self.client.force_login(self.admin)
+        resp = self._post(student_type='BOGUS')
+        self.assertEqual(resp.status_code, 302)
+        fp = FeePrice.objects.get(school=self.school, category=self.cat)
+        self.assertEqual(fp.student_type, 'ALL')
+
+    def test_create_applies_to_other_type_creates_sibling(self):
+        self.client.force_login(self.admin)
+        resp = self._post(student_type='NEW', apply_to_other_type='on', name='Boarding Fee')
+        self.assertEqual(resp.status_code, 302)
+        new_fp = FeePrice.objects.get(
+            school=self.school, category=self.cat, student_type='NEW',
+        )
+        ret_fp = FeePrice.objects.get(
+            school=self.school, category=self.cat, student_type='RETURNING',
+        )
+        self.assertEqual(new_fp.amount, ret_fp.amount)
+        self.assertEqual(new_fp.name, 'Boarding Fee')
+        self.assertEqual(ret_fp.name, 'Boarding Fee')
+
+    def test_create_does_not_duplicate_existing_sibling(self):
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_SCHOOL_WIDE, school_class=None,
+            term=None, category=self.cat, amount=Decimal('28000.00'), student_type='RETURNING',
+        )
+        self.client.force_login(self.admin)
+        resp = self._post(student_type='NEW', apply_to_other_type='on')
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(
+            FeePrice.objects.filter(school=self.school, category=self.cat, student_type='RETURNING').count(),
+            1,
+        )
+
+    def test_bulk_copy_carries_name(self):
+        self.term2 = Term.objects.create(
+            school=self.school, session=self.session, name='Second Term',
+            start_date=date(2026, 1, 5), end_date=date(2026, 4, 15), is_current=False,
+        )
+        FeePrice.objects.create(
+            school=self.school, scope=FeePrice.SCOPE_SCHOOL_WIDE, school_class=None,
+            term=self.term, category=self.cat, amount=Decimal('30000.00'), student_type='ALL',
+            name='Boarding Fee',
+        )
+        self.client.force_login(self.admin)
+        resp = self.client.post(
+            reverse('school_admin:fee_pricing_bulk_copy'),
+            {'from_term_id': str(self.term.pk), 'to_term_id': str(self.term2.pk)},
+        )
+        self.assertEqual(resp.status_code, 302)
+        copied = FeePrice.objects.get(
+            school=self.school, term=self.term2, category=self.cat, student_type='ALL',
+        )
+        self.assertEqual(copied.name, 'Boarding Fee')
+        self.assertEqual(copied.amount, Decimal('30000.00'))

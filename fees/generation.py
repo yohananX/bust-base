@@ -66,9 +66,11 @@ def generate_invoice_for_student(student, term):
 
     line_items = []
     total = Decimal('0.00')
+    fee_items = {}
     for fs in fee_structures:
         line_items.append((fs.category, fs.amount, fs.category.billing_cycle))
         total += fs.amount
+        fee_items.setdefault(fs.category, fs.display_name)
 
     invoice = Invoice.objects.create(
         school=school,
@@ -80,6 +82,7 @@ def generate_invoice_for_student(student, term):
         InvoiceLineItem.objects.create(
             invoice=invoice,
             category=category,
+            item_name=fee_items.get(category, ''),
             amount=amount,
             term=term,
             session=term.session,
@@ -186,6 +189,7 @@ def sync_class_invoices(school_class, term):
             InvoiceLineItem.objects.create(
                 invoice=invoice,
                 category=fs.category,
+                item_name=fs.display_name,
                 amount=fs.amount,
                 term=term,
                 session=term.session,

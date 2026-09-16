@@ -357,16 +357,14 @@ class NewReturningBreakdownTest(TestCase):
         self.assertIsNone(data['total_pseudo'])
         names = {it['category_name'] for it in data['items']}
         self.assertIn('Tuition Fee', names)
-        self.assertIn('Uniforms', names)
         self.assertNotIn('Registration Form', names)
+        self.assertNotIn('Uniforms', names)
         self.assertNotIn('PTA', names)
         self.assertNotIn('File Jacket', names)
         self.assertNotIn('Maintenance', names)
         self.assertNotIn('Examination Fee', names)
         tuition = next(it for it in data['items'] if it['category_name'] == 'Tuition Fee')
         self.assertTrue(tuition['default_checked'])
-        uniforms = next(it for it in data['items'] if it['category_name'] == 'Uniforms')
-        self.assertFalse(uniforms['default_checked'])
 
     def test_override_student_type_query_param(self):
         url = reverse('fees:api-student-line-items', kwargs={'student_id': self.student.pk})
