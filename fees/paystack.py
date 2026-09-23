@@ -250,23 +250,26 @@ def confirm_payment_from_verify(payment, data):
     payment.confirmed_at = timezone.now()
     payment.webhook_processed = True
     payment.webhook_payload = {'verified': data}
-    payment.currency = data.get('currency') or _default_currency()
-    payment.fees_charged = Decimal(str(data.get('fees') or 0)) / Decimal('100')
+    # Single source for the Paystack field map — _payment_kwargs_from_webhook
+    # owns the authorization/customer derivation. The verify path keeps the
+    # existing row's student/invoice/amount/description and only fills in
+    # gateway-owned fields, preserving any value already stored.
+    gateway = _payment_kwargs_from_webhook(
+        data, payment.school, payment.invoice, payment.student, payment.reference,
+    )
+    payment.currency = gateway['currency']
+    payment.fees_charged = gateway['fees_charged']
     if not payment.paid_on:
-        payment.paid_on = timezone.now()
+        payment.paid_on = gateway['paid_on']
 
-    authorization = data.get('authorization') or {}
-    payment.channel = authorization.get('channel') or payment.channel
-    payment.card_last4 = str(authorization.get('last4') or '') or payment.card_last4
-    payment.card_brand = authorization.get('card_type') or payment.card_brand
-    payment.bank_name = authorization.get('bank') or payment.bank_name
+    payment.channel = gateway['channel'] or payment.channel
+    payment.card_last4 = gateway['card_last4'] or payment.card_last4
+    payment.card_brand = gateway['card_brand'] or payment.card_brand
+    payment.bank_name = gateway['bank_name'] or payment.bank_name
 
-    customer = data.get('customer') or {}
-    payment.paid_by_email = customer.get('email') or payment.paid_by_email
-    payment.paid_by_name = (
-        (customer.get('first_name') or '') + ' ' + (customer.get('last_name') or '')
-    ).strip() or payment.paid_by_name
-    payment.paid_by_phone = str(customer.get('phone') or '') or payment.paid_by_phone
+    payment.paid_by_email = gateway['paid_by_email'] or payment.paid_by_email
+    payment.paid_by_name = gateway['paid_by_name'] or payment.paid_by_name
+    payment.paid_by_phone = gateway['paid_by_phone'] or payment.paid_by_phone
 
     payment.save(update_fields=[
         'status', 'verified_at', 'confirmed_at', 'webhook_processed',
@@ -370,7 +373,6 @@ def _handle_charge_success(event, data, webhook_log):
     """Process a charge.success webhook event (idempotent, tamper-checked)."""
     reference = data.get('reference')
     amount_kobo = data.get('amount')  # Amount in kobo (currency * 100)
-    paid_at = data.get('paid_at')
 
     if not reference:
         logger.error('Webhook charge.success without reference')
@@ -447,9 +449,6 @@ def _handle_charge_success(event, data, webhook_log):
     if school is None:
         logger.error(f'Could not resolve school for webhook event {reference}')
         return JsonResponse({'status': 'school not found'}, status=400)
-
-    authorization = data.get('authorization') or {}
-    customer = data.get('customer') or {}
 
     # Create the payment as CONFIRMED (it's already been charged by Paystack)
     payment = Payment.objects.create(

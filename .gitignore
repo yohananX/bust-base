@@ -63,3 +63,15 @@ db.sqlite3
 # Logs
 logs/
 
+# Database backups (local artifacts, never commit)
+backups/
+*.sql.gz
+
+# Loose office exports at repo root
+*.docx
+
+# Agent / tool working dirs (local-only)
+.kilo/
+.spec/
+kilo.json
+
