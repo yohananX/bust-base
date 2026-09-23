@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.db import transaction
 from django.views.generic.base import View
 
 from accounts.mixins import RoleRequiredMixin
@@ -410,32 +411,12 @@ class FeePricingCreateView(RoleRequiredMixin, View):
             messages.error(request, 'A fee price already exists for this scope, class/level, term, category and student type.')
             return re_render()
 
-        fp = FeePrice.objects.create(
-            school=school,
-            scope=scope,
-            school_class=school_class,
-            level=level,
-            term=term,
-            category=category,
-            name=name,
-            amount=amount,
-            student_type=student_type,
-            effective_from=effective_from if effective_from else None,
-            effective_to=effective_to if effective_to else None,
-        )
-
-        other_type = _other_student_type(student_type)
-        sibling_added = False
-        if apply_to_other_type and other_type and not FeePrice.objects.filter(
-            school=school,
-            scope=scope,
-            school_class=school_class,
-            level=level,
-            term=term,
-            category=category,
-            student_type=other_type,
-        ).exists():
-            FeePrice.objects.create(
+        # Sibling lookup uses exactly the uniqueness dimensions
+        # (school, scope, school_class, level, term, category, student_type).
+        # NULLs (school_class=None, term=None) are preserved so IS NULL rows
+        # match. Name/amount are values, never part of the duplicate check.
+        with transaction.atomic():
+            fp = FeePrice.objects.create(
                 school=school,
                 scope=scope,
                 school_class=school_class,
@@ -444,11 +425,31 @@ class FeePricingCreateView(RoleRequiredMixin, View):
                 category=category,
                 name=name,
                 amount=amount,
-                student_type=other_type,
-                effective_from=fp.effective_from,
-                effective_to=fp.effective_to,
+                student_type=student_type,
+                effective_from=effective_from if effective_from else None,
+                effective_to=effective_to if effective_to else None,
             )
-            sibling_added = True
+
+            other_type = _other_student_type(student_type)
+            sibling_added = False
+            if apply_to_other_type and other_type:
+                _, sibling_created = FeePrice.objects.get_or_create(
+                    school=school,
+                    scope=scope,
+                    school_class=school_class,
+                    level=level,
+                    term=term,
+                    category=category,
+                    student_type=other_type,
+                    defaults={
+                        'name': name,
+                        'amount': amount,
+                        'is_active': True,
+                        'effective_from': fp.effective_from,
+                        'effective_to': fp.effective_to,
+                    },
+                )
+                sibling_added = sibling_created
 
         generated = 0
         re_priced = 0
@@ -615,29 +616,28 @@ class FeePricingEditView(RoleRequiredMixin, View):
 
         other_type = _other_student_type(student_type)
         sibling_added = False
-        if apply_to_other_type and other_type and not FeePrice.objects.filter(
-            school=school,
-            scope=scope,
-            school_class=school_class,
-            level=level,
-            term=term,
-            category=category,
-            student_type=other_type,
-        ).exclude(pk=pk).exists():
-            FeePrice.objects.create(
-                school=school,
-                scope=scope,
-                school_class=school_class,
-                level=level,
-                term=term,
-                category=category,
-                name=name,
-                amount=amount,
-                student_type=other_type,
-                effective_from=price.effective_from,
-                effective_to=price.effective_to,
-            )
-            sibling_added = True
+        if apply_to_other_type and other_type:
+            # price.pk can never match this lookup (different student_type),
+            # so no .exclude() needed. get_or_create reuses an existing
+            # sibling without overwriting its amount/name.
+            with transaction.atomic():
+                _, sibling_created = FeePrice.objects.get_or_create(
+                    school=school,
+                    scope=scope,
+                    school_class=school_class,
+                    level=level,
+                    term=term,
+                    category=category,
+                    student_type=other_type,
+                    defaults={
+                        'name': name,
+                        'amount': amount,
+                        'is_active': True,
+                        'effective_from': price.effective_from,
+                        'effective_to': price.effective_to,
+                    },
+                )
+                sibling_added = sibling_created
 
         generated = 0
         re_priced = 0
