@@ -123,12 +123,44 @@ class FeePricingListView(RoleRequiredMixin, View):
                 student_type=other_type,
             ).exists()
             if sibling_missing:
+                # What will the *other* group actually pay? A NEW-only price is
+                # invisible to RETURNING students (and vice versa) — they fall
+                # back to an ALL price at the same or broader scope when one
+                # exists, otherwise they are simply not billed for this category.
+                if price.term_id:
+                    has_all_fallback = FeePrice.objects.filter(
+                        school=school,
+                        category=price.category,
+                        term=price.term,
+                        student_type='ALL',
+                        is_active=True,
+                    ).exists()
+                else:
+                    has_all_fallback = FeePrice.objects.filter(
+                        school=school,
+                        category=price.category,
+                        term__isnull=True,
+                        student_type='ALL',
+                        is_active=True,
+                    ).exists()
+                if has_all_fallback:
+                    fallback_sentence = (
+                        f'{other_type.title()} students will ignore this price and '
+                        f'use the ALL price instead.'
+                    )
+                else:
+                    fallback_sentence = (
+                        f'{other_type.title()} students will not be billed for '
+                        f'"{price.category.name}" at all.'
+                    )
                 warnings.append({
                     'message': (
-                        f'"{price.category.name}" has a {price.student_type} price but no '
-                        f'{other_type} sibling for {price.get_scope_display()} '
-                        f'({price.term.name if price.term else "One-time"}). Returning students '
-                        f'will fall back to the ALL price.'
+                        f'"{price.category.name}" has a {price.student_type}-only price for '
+                        f'{price.get_scope_display()} '
+                        f'({price.term.name if price.term else "One-time"}) with no matching '
+                        f'{other_type} price. {fallback_sentence} If this fee is meant for '
+                        f'{price.student_type}-only students (e.g. Registration Pack for new '
+                        f'intake), you can safely ignore this warning.'
                     ),
                     'category_id': price.category_id,
                     'term_id': price.term_id,

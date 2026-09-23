@@ -14,7 +14,8 @@
           <i data-lucide="info" class="w-4.5 h-4.5 mt-0.5 flex-shrink-0"></i>
           <div>
             <p class="font-medium">How pricing works</p>
-            <p class="mt-1">Define prices at the broadest scope needed. School-wide fees apply to every student. Level fees apply to a grade band. Class fees apply to one class only. Leave term blank for one-time fees (e.g. registration package).</p>
+            <p class="mt-1">School-wide applies to everyone, Level to a grade band, Class to one class only. Leave term blank for one-time fees (e.g. Registration Pack).</p>
+            <p class="mt-1"><span class="font-medium">Student type:</span> ALL bills everyone with one row. NEW / RETURNING splits the fee so each group can pay a different amount — the price's type always wins over the category's type. A NEW-only price is invisible to returning students: they use the ALL price if one exists, otherwise they are not billed for that fee at all.</p>
           </div>
         </div>
       </div>
@@ -101,6 +102,7 @@
               <option value="NEW" {% if selected_student_type|default:'' == 'NEW' %}selected{% endif %}>New intake only</option>
               <option value="RETURNING" {% if selected_student_type|default:'' == 'RETURNING' %}selected{% endif %}>Returning pupils only</option>
             </select>
+            <p class="text-xs text-ink-faint mt-1" id="student_type_help">Use ALL unless new and returning genuinely pay different amounts.</p>
           </div>
           <div id="apply_other_wrap" class="{% if selected_student_type|default:'ALL' == 'ALL' %}hidden{% endif %}">
             <label class="block text-sm font-medium text-ink-muted mb-1.5">Also create for other type?</label>
@@ -109,7 +111,7 @@
                      class="w-4 h-4 rounded border-line text-primary focus:ring-primary/30">
               <span class="text-sm text-ink">Apply the same amount to the other student type</span>
             </label>
-            <p class="text-xs text-ink-faint mt-1">Keeps NEW and RETURNING pricing in step.</p>
+            <p class="text-xs text-ink-faint mt-1">Creates the matching pair (e.g. NEW + RETURNING) at this amount. Only tick when both groups pay the same. If the fee is for one group only — e.g. Registration Pack for new intake — leave unticked; the other group simply won't be billed.</p>
           </div>
         </div>
 
