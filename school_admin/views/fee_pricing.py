@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.db import transaction
 from django.views.generic.base import View
 
 from accounts.mixins import RoleRequiredMixin
@@ -123,12 +124,44 @@ class FeePricingListView(RoleRequiredMixin, View):
                 student_type=other_type,
             ).exists()
             if sibling_missing:
+                # What will the *other* group actually pay? A NEW-only price is
+                # invisible to RETURNING students (and vice versa) — they fall
+                # back to an ALL price at the same or broader scope when one
+                # exists, otherwise they are simply not billed for this category.
+                if price.term_id:
+                    has_all_fallback = FeePrice.objects.filter(
+                        school=school,
+                        category=price.category,
+                        term=price.term,
+                        student_type='ALL',
+                        is_active=True,
+                    ).exists()
+                else:
+                    has_all_fallback = FeePrice.objects.filter(
+                        school=school,
+                        category=price.category,
+                        term__isnull=True,
+                        student_type='ALL',
+                        is_active=True,
+                    ).exists()
+                if has_all_fallback:
+                    fallback_sentence = (
+                        f'{other_type.title()} students will ignore this price and '
+                        f'use the ALL price instead.'
+                    )
+                else:
+                    fallback_sentence = (
+                        f'{other_type.title()} students will not be billed for '
+                        f'"{price.category.name}" at all.'
+                    )
                 warnings.append({
                     'message': (
-                        f'"{price.category.name}" has a {price.student_type} price but no '
-                        f'{other_type} sibling for {price.get_scope_display()} '
-                        f'({price.term.name if price.term else "One-time"}). Returning students '
-                        f'will fall back to the ALL price.'
+                        f'"{price.category.name}" has a {price.student_type}-only price for '
+                        f'{price.get_scope_display()} '
+                        f'({price.term.name if price.term else "One-time"}) with no matching '
+                        f'{other_type} price. {fallback_sentence} If this fee is meant for '
+                        f'{price.student_type}-only students (e.g. Registration Pack for new '
+                        f'intake), you can safely ignore this warning.'
                     ),
                     'category_id': price.category_id,
                     'term_id': price.term_id,
@@ -378,32 +411,12 @@ class FeePricingCreateView(RoleRequiredMixin, View):
             messages.error(request, 'A fee price already exists for this scope, class/level, term, category and student type.')
             return re_render()
 
-        fp = FeePrice.objects.create(
-            school=school,
-            scope=scope,
-            school_class=school_class,
-            level=level,
-            term=term,
-            category=category,
-            name=name,
-            amount=amount,
-            student_type=student_type,
-            effective_from=effective_from if effective_from else None,
-            effective_to=effective_to if effective_to else None,
-        )
-
-        other_type = _other_student_type(student_type)
-        sibling_added = False
-        if apply_to_other_type and other_type and not FeePrice.objects.filter(
-            school=school,
-            scope=scope,
-            school_class=school_class,
-            level=level,
-            term=term,
-            category=category,
-            student_type=other_type,
-        ).exists():
-            FeePrice.objects.create(
+        # Sibling lookup uses exactly the uniqueness dimensions
+        # (school, scope, school_class, level, term, category, student_type).
+        # NULLs (school_class=None, term=None) are preserved so IS NULL rows
+        # match. Name/amount are values, never part of the duplicate check.
+        with transaction.atomic():
+            fp = FeePrice.objects.create(
                 school=school,
                 scope=scope,
                 school_class=school_class,
@@ -412,11 +425,31 @@ class FeePricingCreateView(RoleRequiredMixin, View):
                 category=category,
                 name=name,
                 amount=amount,
-                student_type=other_type,
-                effective_from=fp.effective_from,
-                effective_to=fp.effective_to,
+                student_type=student_type,
+                effective_from=effective_from if effective_from else None,
+                effective_to=effective_to if effective_to else None,
             )
-            sibling_added = True
+
+            other_type = _other_student_type(student_type)
+            sibling_added = False
+            if apply_to_other_type and other_type:
+                _, sibling_created = FeePrice.objects.get_or_create(
+                    school=school,
+                    scope=scope,
+                    school_class=school_class,
+                    level=level,
+                    term=term,
+                    category=category,
+                    student_type=other_type,
+                    defaults={
+                        'name': name,
+                        'amount': amount,
+                        'is_active': True,
+                        'effective_from': fp.effective_from,
+                        'effective_to': fp.effective_to,
+                    },
+                )
+                sibling_added = sibling_created
 
         generated = 0
         re_priced = 0
@@ -583,29 +616,28 @@ class FeePricingEditView(RoleRequiredMixin, View):
 
         other_type = _other_student_type(student_type)
         sibling_added = False
-        if apply_to_other_type and other_type and not FeePrice.objects.filter(
-            school=school,
-            scope=scope,
-            school_class=school_class,
-            level=level,
-            term=term,
-            category=category,
-            student_type=other_type,
-        ).exclude(pk=pk).exists():
-            FeePrice.objects.create(
-                school=school,
-                scope=scope,
-                school_class=school_class,
-                level=level,
-                term=term,
-                category=category,
-                name=name,
-                amount=amount,
-                student_type=other_type,
-                effective_from=price.effective_from,
-                effective_to=price.effective_to,
-            )
-            sibling_added = True
+        if apply_to_other_type and other_type:
+            # price.pk can never match this lookup (different student_type),
+            # so no .exclude() needed. get_or_create reuses an existing
+            # sibling without overwriting its amount/name.
+            with transaction.atomic():
+                _, sibling_created = FeePrice.objects.get_or_create(
+                    school=school,
+                    scope=scope,
+                    school_class=school_class,
+                    level=level,
+                    term=term,
+                    category=category,
+                    student_type=other_type,
+                    defaults={
+                        'name': name,
+                        'amount': amount,
+                        'is_active': True,
+                        'effective_from': price.effective_from,
+                        'effective_to': price.effective_to,
+                    },
+                )
+                sibling_added = sibling_created
 
         generated = 0
         re_priced = 0
