@@ -12,7 +12,7 @@
         <i data-lucide="alert-triangle" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-lg font-display font-semibold text-ink">Delete Pricing: {{ price.category.name }}</h3>
+        <h3 class="text-lg font-display font-semibold text-ink">Delete Pricing: {{ price.display_name }}</h3>
         <p class="text-sm text-ink-faint mt-1">This action cannot be undone.</p>
       </div>
     </div>
@@ -36,7 +36,7 @@
           </tr>
           <tr class="border-b border-line">
             <td class="px-5 py-3.5 font-medium text-ink-faint w-32">Category</td>
-            <td class="px-5 py-3.5 text-ink font-medium">{{ price.category.name }}</td>
+            <td class="px-5 py-3.5 text-ink font-medium">{{ price.display_name }}</td>
           </tr>
           <tr>
             <td class="px-5 py-3.5 font-medium text-ink-faint w-32">Amount</td>
@@ -51,7 +51,7 @@
         <i data-lucide="info" class="w-4.5 h-4.5 mt-0.5 flex-shrink-0"></i>
         <div>
           <p class="font-medium">Warning</p>
-          <p class="mt-1">This will remove the price for {{ price.category.name }} at {{ price.get_scope_display }} scope. Existing invoices are not changed.</p>
+          <p class="mt-1">This will remove the price for {{ price.display_name }} at {{ price.get_scope_display }} scope. Existing invoices are not changed.</p>
         </div>
       </div>
     </div>

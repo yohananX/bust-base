@@ -244,6 +244,21 @@
     if (evt.target.id === 'fee-breakdown') {
       syncSubmitState();
       recalcPaymentForm();
+      // Keep the outer NEW/RETURNING toggle in sync with the freshly
+      // resolved partial (server is source of truth for student_type).
+      const activeInner = evt.target.querySelector('.student-type-toggle.bg-primary');
+      if (activeInner && typeInput && typeInput.value !== activeInner.dataset.studentType) {
+        typeInput.value = activeInner.dataset.studentType;
+        window.__recordPaymentType = activeInner.dataset.studentType;
+        document.querySelectorAll('.record-payment-type-toggle').forEach(btn => {
+          const isActive = btn.dataset.studentType === activeInner.dataset.studentType;
+          btn.classList.toggle('bg-primary', isActive);
+          btn.classList.toggle('text-white', isActive);
+          btn.classList.toggle('bg-white', !isActive);
+          btn.classList.toggle('text-ink-muted', !isActive);
+          btn.classList.toggle('hover:bg-gray-50', !isActive);
+        });
+      }
       if (window.lucide) window.lucide.createIcons({}, evt.target);
     }
   });

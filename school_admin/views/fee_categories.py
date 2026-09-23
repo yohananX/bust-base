@@ -1,11 +1,11 @@
 """Fee category CRUD for school admin portal."""
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.views.generic.base import View
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
-from fees.models import FeeCategory, InvoiceLineItem
+from fees.models import FeeCategory, FeePrice, InvoiceLineItem
 from .mixins import AdminCreateView, AdminDeleteView, AdminUpdateView
 from .forms import FeeCategoryForm
 
@@ -92,4 +92,5 @@ class FeeCategoryDeleteView(AdminDeleteView):
             messages.error(request, 'Cannot delete — assigned to fee prices.')
             return redirect('school_admin:fee_category_list')
         messages.success(request, f'Category "{category.name}" deleted successfully.')
-        return category.delete() or redirect(self.get_success_url())
+        category.delete()
+        return redirect(self.get_success_url())

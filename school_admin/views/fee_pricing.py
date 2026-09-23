@@ -277,6 +277,7 @@ class FeePricingCreateView(RoleRequiredMixin, View):
         school = request.school
         preselect_category_id = request.GET.get('category_id')
         preselect_term_id = request.GET.get('term_id')
+        active_term = Term.objects.filter(school=school, is_current=True).first()
         return render(request, 'school_admin/fee_pricing_form.html', {
             'is_edit': False,
             'categories': FeeCategory.objects.filter(school=school),
@@ -286,6 +287,7 @@ class FeePricingCreateView(RoleRequiredMixin, View):
             'selected_category_id': int(preselect_category_id) if preselect_category_id and preselect_category_id.isdigit() else None,
             'selected_term_id': int(preselect_term_id) if preselect_term_id and preselect_term_id.isdigit() else None,
             'selected_scope': 'SCHOOL_WIDE',
+            'active_term': active_term,
         })
 
     def post(self, request):
@@ -326,6 +328,7 @@ class FeePricingCreateView(RoleRequiredMixin, View):
                 'selected_effective_to': effective_to,
                 'entered_amount': raw_amount,
                 'entered_name': name,
+                'active_term': Term.objects.filter(school=school, is_current=True).first(),
             })
 
         if not category_id or not raw_amount:
@@ -340,9 +343,18 @@ class FeePricingCreateView(RoleRequiredMixin, View):
             messages.error(request, 'Class must not be selected for school-wide or level-scoped prices.')
             return re_render()
 
-        term = None
-        if term_id:
-            term = get_object_or_404(Term, school=school, pk=term_id)
+        # NEW-intake prices are locked to the active term: a new student only
+        # pays them in the term they register. No term choice for admins.
+        if student_type == 'NEW' and category.billing_cycle == 'PER_TERM':
+            active_term = Term.objects.filter(school=school, is_current=True).first()
+            if not active_term:
+                messages.error(request, 'No active term set — new-intake prices need an active term.')
+                return re_render()
+            term = active_term
+        else:
+            term = None
+            if term_id:
+                term = get_object_or_404(Term, school=school, pk=term_id)
 
         try:
             amount = Decimal(raw_amount)
@@ -464,6 +476,7 @@ class FeePricingEditView(RoleRequiredMixin, View):
             'selected_effective_from': price.effective_from,
             'selected_effective_to': price.effective_to,
             'entered_name': price.name,
+            'active_term': Term.objects.filter(school=school, is_current=True).first(),
         })
 
     def post(self, request, pk):
@@ -507,6 +520,7 @@ class FeePricingEditView(RoleRequiredMixin, View):
                 'selected_effective_to': effective_to,
                 'entered_amount': raw_amount,
                 'entered_name': name,
+                'active_term': Term.objects.filter(school=school, is_current=True).first(),
             })
 
         if not category_id or not raw_amount:
@@ -521,9 +535,17 @@ class FeePricingEditView(RoleRequiredMixin, View):
             messages.error(request, 'Class must not be selected for school-wide or level-scoped prices.')
             return re_render()
 
-        term = None
-        if term_id:
-            term = get_object_or_404(Term, school=school, pk=term_id)
+        # NEW-intake prices are locked to the active term (see create view).
+        if student_type == 'NEW' and category.billing_cycle == 'PER_TERM':
+            active_term = Term.objects.filter(school=school, is_current=True).first()
+            if not active_term:
+                messages.error(request, 'No active term set — new-intake prices need an active term.')
+                return re_render()
+            term = active_term
+        else:
+            term = None
+            if term_id:
+                term = get_object_or_404(Term, school=school, pk=term_id)
 
         try:
             amount = Decimal(raw_amount)
