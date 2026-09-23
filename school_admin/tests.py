@@ -2136,9 +2136,12 @@ class FeePricingCreateViewTest(TestCase):
         self.assertEqual(ret_fp.name, 'Boarding Fee')
 
     def test_create_does_not_duplicate_existing_sibling(self):
+        # NEW per-term prices lock to the active term, so the pre-existing
+        # sibling must live on the same term (PER_TERM also requires a term).
         FeePrice.objects.create(
             school=self.school, scope=FeePrice.SCOPE_SCHOOL_WIDE, school_class=None,
-            term=None, category=self.cat, amount=Decimal('28000.00'), student_type='RETURNING',
+            level='', term=self.term, category=self.cat, amount=Decimal('28000.00'),
+            student_type='RETURNING',
         )
         self.client.force_login(self.admin)
         resp = self._post(student_type='NEW', apply_to_other_type='on')
