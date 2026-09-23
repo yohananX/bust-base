@@ -367,7 +367,7 @@
           </div>
           {% for item in receipt_line_items %}
           <div class="receipt-item">
-            <span class="receipt-value">{{ item.category.name }}</span>
+            <span class="receipt-value">{{ item.display_name }}</span>
             <span class="receipt-value mono">&#8358;{{ item.amount|floatformat:2|intcomma }}</span>
           </div>
           {% endfor %}

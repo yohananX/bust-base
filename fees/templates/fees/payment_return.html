@@ -15,7 +15,7 @@
       {% if invoice %}
       <h1 class="text-lg font-semibold text-gray-900 mb-1">Invoice #{{ invoice.id }}</h1>
       <p class="text-sm text-gray-500">{{ invoice.student }} &mdash; {{ invoice.term }}</p>
-      <p class="font-display text-2xl font-bold text-gray-900 mt-2">&#8358;{{ invoice.balance|floatformat:2 }}</p>
+      <p class="font-display text-2xl font-bold text-gray-900 mt-2">&#8358;{{ invoice.display_balance|floatformat:2 }}</p>
       {% else %}
       <h1 class="text-lg font-semibold text-gray-900 mb-1">Payment</h1>
       {% if payment and payment.description %}

@@ -49,7 +49,7 @@
     </div>
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
       <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Balance</p>
-      <p class="text-xl font-bold {% if invoice.balance > 0 %}text-amber-600{% else %}text-green-600{% endif %} tabular-nums">₦{{ invoice.balance|floatformat:2 }}</p>
+      <p class="text-xl font-bold {% if invoice.display_balance > 0 %}text-amber-600{% else %}text-green-600{% endif %} tabular-nums">₦{{ invoice.display_balance|floatformat:2 }}</p>
     </div>
   </div>
 
@@ -70,7 +70,7 @@
         <tbody>
           {% for item in line_items %}
           <tr class="border-t border-gray-100 hover:bg-gray-50/70 transition-colors">
-            <td class="px-5 py-3.5 text-gray-600">{{ item.category.name }}</td>
+            <td class="px-5 py-3.5 text-gray-600">{{ item.display_name }}</td>
             <td class="px-5 py-3.5 text-right tabular-nums text-gray-900">₦{{ item.amount|floatformat:2 }}</td>
           </tr>
           {% endfor %}

@@ -110,45 +110,31 @@ class StudentDetailView(RoleRequiredMixin, View):
         class_total_new_amount = Decimal('0.00')
         class_total_returning_amount = Decimal('0.00')
         student_type = 'NEW'
+        computed_student_type = 'NEW'
         if current_enrollment:
-            from fees.models import FeeCategory, FeePrice
             from fees.pricing import resolve_prices
             from fees.utils import resolve_student_type
 
             current_term = Term.objects.filter(school=school, is_current=True).first()
             if current_term:
-                student_type = resolve_student_type(student, current_term.session, current_term)
+                computed_student_type = resolve_student_type(student, current_term.session, current_term)
+                # Allow deep-link override (?student_type=NEW|RETURNING) so the
+                # NEW/RETURNING toggle can drive the initial display. The
+                # resolver is the single source of truth — no hardcoded
+                # category-name filtering here.
+                override = request.GET.get('student_type', '').upper()
+                student_type = override if override in ('NEW', 'RETURNING') else computed_student_type
 
-                ONBOARDING = {
-                    'Tuition Fee', 'Registration Form', 'Uniforms', 'PTA',
-                    'File Jacket', 'Maintenance', 'Examination Fee',
-                }
-                new_prices = resolve_prices(
-                    school, current_enrollment.school_class, current_term,
-                    student_type='NEW', student=student, session=current_term.session,
-                )
-                class_total_new_amount = sum(
-                    (Decimal(str(p.amount)) for p in new_prices
-                     if p.category.name in ONBOARDING and p.category.is_compulsory),
-                    Decimal('0.00'),
-                )
+                def _type_total(target_type):
+                    prices = resolve_prices(
+                        school, current_enrollment.school_class, current_term,
+                        student_type=target_type, student=student, session=current_term.session,
+                    )
+                    return sum((Decimal(str(p.amount)) for p in prices), Decimal('0.00'))
 
-                all_prices = resolve_prices(
-                    school, current_enrollment.school_class, current_term,
-                    student_type='ALL', student=student, session=current_term.session,
-                )
-                class_total_returning_amount = sum(
-                    (Decimal(str(p.amount)) for p in all_prices
-                     if p.category.name == 'Tuition Fee'),
-                    Decimal('0.00'),
-                )
-                per_term_for_class = sum(
-                    (Decimal(str(p.amount)) for p in all_prices
-                     if p.category.billing_cycle == 'PER_TERM'
-                     and p.category.name != 'Extension Class Fee'),
-                    Decimal('0.00'),
-                )
-                class_total_amount = class_total_new_amount if student_type == 'NEW' else per_term_for_class
+                class_total_new_amount = _type_total('NEW')
+                class_total_returning_amount = _type_total('RETURNING')
+                class_total_amount = class_total_new_amount if student_type == 'NEW' else class_total_returning_amount
 
         invoice_less_payments = Payment.objects.filter(
             student=student, invoice__isnull=True,
@@ -199,6 +185,7 @@ class StudentDetailView(RoleRequiredMixin, View):
             'class_total_new_amount': class_total_new_amount,
             'class_total_returning_amount': class_total_returning_amount,
             'student_type': student_type,
+            'computed_student_type': computed_student_type,
             'total_outstanding': total_outstanding,
             'total_billed': total_billed,
             'total_paid': total_paid,
