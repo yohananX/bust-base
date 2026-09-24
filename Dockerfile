@@ -23,7 +23,7 @@ COPY . .
 RUN DEBUG=True SECRET_KEY=build-only-not-a-runtime-secret ALLOWED_HOSTS=* \
     python manage.py collectstatic --noinput
 
-RUN addgroup --system --gid 1001 appgroup && adduser --system --uid 1001 --gid 1001 appuser && chown -R appuser:appgroup /app
+RUN mkdir -p /app/media /app/staticfiles && addgroup --system --gid 1001 appgroup && adduser --system --uid 1001 --gid 1001 appuser && chown -R appuser:appgroup /app
 USER appuser
 
 EXPOSE 8000
