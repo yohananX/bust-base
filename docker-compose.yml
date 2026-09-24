@@ -18,9 +18,12 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      # Named volumes preserve the image's appuser ownership (Docker copy-up).
+      # Do NOT bind-mount host paths here — that wipes the build-time
+      # collectstatic output and breaks WhiteNoise static serving.
+      # WhiteNoise serves /static/ from Django; no nginx volume needed.
       - media_data:/app/media
-      - /var/www/gracehouse/static:/app/staticfiles  # Host-mounted for nginx
-      - /var/www/gracehouse/media:/app/media
+      - static_data:/app/staticfiles
     depends_on:
       db:
         condition: service_healthy
@@ -63,4 +66,5 @@ services:
 volumes:
   postgres_data:
   media_data:
+  static_data:
   redis_data:
