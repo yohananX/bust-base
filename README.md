@@ -19,7 +19,7 @@ python manage.py runserver
 ```
 
 Optional demo data: `seed_data/populate.py`, `seed_data/curriculum.py`
-(see `FEE_REDESIGN_PLAN.md` for the fee-pricing seed).
+(see `docs/FEE_REDESIGN_PLAN.md` for the fee-pricing seed).
 
 Docker (prod-like): `docker compose up --build` — Postgres + Redis + web
 (gunicorn/waitress) + Django-Q2 worker. Copy `.env.production.example` to
@@ -76,13 +76,19 @@ tests live in `tests/test_tenancy.py` — keep them green.
 
 ## Docs
 
+All documentation lives in `docs/`:
+
 | File | What |
 |---|---|
-| `CONTEXT.md` | Domain glossary, notification rules, fee-redesign decisions |
+| `docs/AUDIT_STATUS.md` | Current-state audit (replaces obsolete `CODEBASE_AUDIT.md`) |
+| `docs/CONTEXT.md` | Domain glossary, notification rules, fee-redesign decisions |
+| `docs/DEPLOYMENT.md` | CI/CD, backups, production runbook |
+| `docs/FEE_REDESIGN_PLAN.md` | Fee pricing redesign implementation plan |
+| `docs/INVENTORY_USER_GUIDE.md` | Inventory workflows |
+| `docs/LAN_DEPLOYMENT.md` | Windows LAN deployment (Caddy + Waitress) |
+
+Contributor patterns remain at root:
 | `AGENTS.md` | Contributor patterns (scoping, roles, money, templates) |
-| `CODEBASE_AUDIT.md` | Audit findings + phased cleanup plan |
-| `DEPLOYMENT.md` | CI/CD, backups, production runbook |
-| `INVENTORY_USER_GUIDE.md` | Inventory workflows |
 
 ## Security notes
 
