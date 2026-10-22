@@ -8,15 +8,53 @@ from .utils import resolve_student_type
 
 
 def _is_one_time_already_billed(student, category, session):
-    """Return True if a ONE_TIME category was already billed to this student in a prior session."""
+    """Return True if a ONE_TIME category was already billed to this student.
+
+    Checks:
+    1. Prior sessions (original guard)
+    2. Current session - any terms already billed for this category
+    3. For Registration Form specifically: check student.registration_paid_term
+       as the canonical flag (set when registration fee is paid)
+    """
     if category.billing_cycle != 'ONE_TIME':
         return False
-    return InvoiceLineItem.objects.filter(
+
+    # 1. Check prior sessions (original guard)
+    if InvoiceLineItem.objects.filter(
         invoice__student=student,
         category=category,
         billing_cycle='ONE_TIME',
         invoice__term__session__start_date__lt=session.start_date,
-    ).exists()
+    ).exists():
+        return True
+
+    # 2. Check current session - any terms already billed for this category
+    # Get terms in the current session that start before or at the same time as the
+    # current term being billed. We need the current term to compare against.
+    # The session terms are ordered by start_date.
+    current_session_terms = Term.objects.filter(
+        school=student.school,
+        session=session,
+    ).order_by('start_date', 'id')
+
+    if current_session_terms.exists():
+        # Check if any term in this session has already been billed for this category
+        if InvoiceLineItem.objects.filter(
+            invoice__student=student,
+            category=category,
+            billing_cycle='ONE_TIME',
+            invoice__term__session=session,
+        ).exists():
+            return True
+
+    # 3. For Registration Form specifically, use registration_paid_term as canonical flag
+    # This field is set when the Registration Form fee is paid and serves as
+    # the authoritative record that the student has paid this onboarding fee.
+    if category.name == 'Registration Form':
+        if student.registration_paid_term_id is not None:
+            return True
+
+    return False
 
 
 def effective_fee_structures(school, school_class, term, student_type='ALL', student=None, session=None):

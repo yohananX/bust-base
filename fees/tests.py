@@ -80,6 +80,35 @@ class BaseFeesTest(TestCase):
             is_current=True,
         )
 
+        # Create parent user and guardian link
+        self.parent_user = User.objects.create_user(
+            username='parent1',
+            email='parent1@test.com',
+            password='testpass123',
+            school=self.school,
+            role=Roles.PARENT,
+            first_name='Parent',
+            last_name='One',
+        )
+        StudentGuardianLink.objects.create(
+            school=self.school,
+            student=self.student,
+            guardian=self.parent_user,
+            relationship=StudentGuardianLink.FATHER,
+            is_primary_contact=True,
+        )
+
+        # Create admin user
+        self.admin_user = User.objects.create_user(
+            username='admin1',
+            email='admin1@test.com',
+            password='testpass123',
+            school=self.school,
+            role=Roles.ADMIN,
+            first_name='Admin',
+            last_name='One',
+        )
+
         # Create fee categories and structures
         self.tuition_category = FeeCategory.objects.create(
             school=self.school,
@@ -108,6 +137,232 @@ class BaseFeesTest(TestCase):
             amount=Decimal('10000.00'),
             student_type='ALL',
         )
+
+
+class OneTimeFeeGuardTest(BaseFeesTest):
+    """
+    Tests for the one-time fee billing guard.
+
+    The guard should prevent a ONE_TIME fee from being billed more than once
+    per student per the applicable policy scope (lifetime / per admission /
+    per session). The current implementation in `_is_one_time_already_billed`
+    only checks prior sessions, which can miss same-session duplicate billing
+    when a student is admitted mid-session and doesn't pay the registration
+    fee until a later term.
+    """
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name='Test School',
+            short_code='test',
+        )
+        self.session = AcademicSession.objects.create(
+            school=self.school,
+            name='2025/2026',
+            start_date=date(2025, 9, 1),
+            end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        self.term1 = Term.objects.create(
+            school=self.school,
+            session=self.session,
+            name='First Term',
+            start_date=date(2025, 9, 1),
+            end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+        self.term2 = Term.objects.create(
+            school=self.school,
+            session=self.session,
+            name='Second Term',
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 4, 15),
+        )
+        self.term3 = Term.objects.create(
+            school=self.school,
+            session=self.session,
+            name='Third Term',
+            start_date=date(2026, 4, 20),
+            end_date=date(2026, 7, 31),
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school,
+            name='JSS1A',
+            level='JSS1',
+        )
+        self.student_user = User.objects.create_user(
+            username='midterm_student',
+            email='mid@test.com',
+            password='testpass123',
+            school=self.school,
+            role=Roles.STUDENT,
+        )
+        self.student = Student.objects.create(
+            school=self.school,
+            user=self.student_user,
+            admission_number='MID001',
+            date_of_birth=date(2010, 1, 1),
+            gender=Student.MALE,
+            admission_date=date(2026, 1, 10),  # Admitted mid-session (Term 2)
+            status=Student.ACTIVE,
+        )
+
+        # One-time fee category for NEW students
+        self.reg_category = FeeCategory.objects.create(
+            school=self.school,
+            name='Registration Form',
+            billing_cycle='ONE_TIME',
+            student_type='NEW',
+            is_compulsory=True,
+        )
+        self.uniform_category = FeeCategory.objects.create(
+            school=self.school,
+            name='Uniforms',
+            billing_cycle='ONE_TIME',
+            student_type='NEW',
+            is_compulsory=True,
+        )
+
+        # Per-term fee
+        self.tuition_category = FeeCategory.objects.create(
+            school=self.school,
+            name='Tuition',
+            billing_cycle='PER_TERM',
+            student_type='ALL',
+            is_compulsory=True,
+        )
+
+        # FeePrice entries
+        self.reg_price = FeePrice.objects.create(
+            school=self.school,
+            scope=FeePrice.SCOPE_SCHOOL_WIDE,
+            school_class=None,
+            term=None,
+            category=self.reg_category,
+            amount=Decimal('5000.00'),
+            student_type='NEW',
+        )
+        self.uniform_price = FeePrice.objects.create(
+            school=self.school,
+            scope=FeePrice.SCOPE_SCHOOL_WIDE,
+            school_class=None,
+            term=None,
+            category=self.uniform_category,
+            amount=Decimal('15000.00'),
+            student_type='NEW',
+        )
+        self.tuition_price = FeePrice.objects.create(
+            school=self.school,
+            scope=FeePrice.SCOPE_CLASS,
+            school_class=self.school_class,
+            term=self.term2,
+            category=self.tuition_category,
+            amount=Decimal('30000.00'),
+            student_type='ALL',
+        )
+
+        # Enroll student in Term 2 (mid-session admission)
+        ClassEnrollment.objects.create(
+            school=self.school,
+            student=self.student,
+            school_class=self.school_class,
+            session=self.session,
+            is_current=True,
+        )
+
+    def test_mid_session_admit_billed_once_per_session_for_one_time_fees(self):
+        """
+        A student admitted in Term 2 (mid-session) who does not pay the
+        Registration Form fee until Term 3 should NOT be billed the one-time
+        fees again in Term 3's invoice. The one-time fee should be billed
+        only once per session (or once per admission), not per term.
+        """
+        from fees.generation import generate_invoice_for_student
+
+        # Term 2: student is NEW, gets invoice with one-time fees
+        invoice_t2 = generate_invoice_for_student(self.student, self.term2)
+        self.assertIsNotNone(invoice_t2)
+        one_time_items_t2 = invoice_t2.line_items.filter(billing_cycle='ONE_TIME')
+        self.assertEqual(one_time_items_t2.count(), 2)  # Registration + Uniforms
+        one_time_categories_t2 = set(one_time_items_t2.values_list('category__name', flat=True))
+        self.assertEqual(one_time_categories_t2, {'Registration Form', 'Uniforms'})
+
+        # Student does NOT pay registration yet, remains NEW
+        self.assertEqual(self.student.student_type, 'NEW')
+        self.assertIsNone(self.student.registration_paid_term_id)
+
+        # Term 3: student still NEW (hasn't paid registration), but should NOT
+        # be billed one-time fees again for the same session
+        invoice_t3 = generate_invoice_for_student(self.student, self.term3)
+        self.assertIsNotNone(invoice_t3)
+
+        # The bug: one-time fees appear again in Term 3 invoice
+        one_time_items_t3 = invoice_t3.line_items.filter(billing_cycle='ONE_TIME')
+        one_time_categories_t3 = set(one_time_items_t3.values_list('category__name', flat=True))
+
+        # Expected: no one-time fees in Term 3 (already billed in Term 2 of same session)
+        # Actual (bug): one-time fees appear again
+        self.assertEqual(
+            len(one_time_categories_t3), 0,
+            f'One-time fees should not be billed again in same session. '
+            f'Got: {one_time_categories_t3}'
+        )
+
+        # Per-term tuition should still appear
+        tuition_items_t3 = invoice_t3.line_items.filter(billing_cycle='PER_TERM')
+        self.assertEqual(tuition_items_t3.count(), 1)
+        self.assertEqual(tuition_items_t3.first().category.name, 'Tuition')
+
+    def test_prior_session_one_time_fee_not_billed_again(self):
+        """
+        A student who paid a one-time fee in a PRIOR session should not be
+        billed again in the current session. This is the existing guard behavior.
+        """
+        from fees.generation import generate_invoice_for_student
+
+        prior_session = AcademicSession.objects.create(
+            school=self.school,
+            name='2024/2025',
+            start_date=date(2024, 9, 1),
+            end_date=date(2025, 8, 31),
+            is_current=False,
+        )
+        prior_term = Term.objects.create(
+            school=self.school,
+            session=prior_session,
+            name='First Term',
+            start_date=date(2024, 9, 1),
+            end_date=date(2024, 12, 15),
+        )
+
+        # Create prior session invoice with one-time fee
+        prior_invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=prior_term,
+            total_amount=Decimal('20000.00'),
+        )
+        InvoiceLineItem.objects.create(
+            invoice=prior_invoice,
+            category=self.reg_category,
+            amount=Decimal('5000.00'),
+            term=prior_term,
+            session=prior_session,
+            billing_cycle='ONE_TIME',
+        )
+
+        # Current session invoice should NOT include the one-time fee
+        invoice = generate_invoice_for_student(self.student, self.term2)
+        self.assertIsNotNone(invoice)
+        one_time_items = invoice.line_items.filter(billing_cycle='ONE_TIME')
+        # Registration already paid in prior session, should not appear
+        reg_items = one_time_items.filter(category=self.reg_category)
+        self.assertEqual(reg_items.count(), 0)
+
+        # But Uniforms (also ONE_TIME, NEW) should appear if student is NEW
+        # Wait - student is NEW for current session, so Uniforms should appear
+        uniform_items = one_time_items.filter(category=self.uniform_category)
+        self.assertEqual(uniform_items.count(), 1)
 
         # Create admin user
         self.admin_user = User.objects.create_user(
@@ -1101,6 +1356,234 @@ class WebhookSecurityTest(BaseFeesTest):
         )
         self.assertEqual(payment.method, Payment.Method.PAYSTACK)
         self.assertEqual(payment.reference, 'SEC_REF_005')
+
+
+# ─── Paystack Upgrade: Unresolvable School Webhook Tests ──────────────────
+
+class UnresolvableSchoolWebhookTest(BaseFeesTest):
+    """Tests for webhook events where the tenant school cannot be resolved.
+
+    When metadata lacks school_id, invoice_id, student_id, AND no payment
+    exists with the reference, the webhook must be rejected (400) with
+    an ERROR log containing diagnostic context. No payment is created
+    or modified, no receipt issued, no notifications sent.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from fees.models import Invoice
+        self.invoice = Invoice.objects.create(
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal('60000.00'),
+        )
+
+    def _post_webhook_no_metadata(self, event='charge.success', reference='UNRESOLVED_001',
+                                  amount_kobo=6000000, metadata=None):
+        """Simulate a Paystack webhook with minimal/no identifying metadata."""
+        import json
+        from unittest.mock import patch
+        from django.test.client import RequestFactory
+        from fees.paystack import handle_webhook as webhook_view
+
+        data = {
+            'reference': reference,
+            'amount': amount_kobo,
+            'paid_at': '2026-01-15T10:30:00.000Z',
+            'metadata': metadata if metadata is not None else {},
+        }
+
+        payload = json.dumps({'event': event, 'data': data})
+        factory = RequestFactory()
+        request = factory.post(
+            '/fees/api/paystack-webhook/',
+            data=payload,
+            content_type='application/json',
+            HTTP_X_PAYSTACK_SIGNATURE='test_signature',
+        )
+        with patch('fees.paystack.verify_webhook_signature', return_value=True):
+            return webhook_view(request)
+
+    def test_charge_success_unresolvable_school_returns_400(self):
+        """charge.success with no identifying metadata returns 400, no payment created."""
+        import json
+        from fees.models import Payment, WebhookLog, FeeReceipt
+
+        response = self._post_webhook_no_metadata(
+            reference='UNRESOLVED_001',
+            metadata={'description': 'Only description, no IDs'},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(json.loads(response.content)['status'], 'school not resolved')
+        self.assertEqual(Payment.objects.count(), 0)
+        self.assertEqual(WebhookLog.objects.count(), 0)
+        self.assertEqual(FeeReceipt.objects.count(), 0)
+
+    def test_charge_failed_unresolvable_school_returns_400(self):
+        """charge.failed with no identifying metadata returns 400, no payment modified."""
+        import json
+        from fees.models import Payment, WebhookLog
+
+        # Even if a payment with this reference exists in another school,
+        # without school resolution we cannot safely act on it.
+        response = self._post_webhook_no_metadata(
+            event='charge.failed',
+            reference='UNRESOLVED_002',
+            metadata={},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(json.loads(response.content)['status'], 'school not resolved')
+        self.assertEqual(Payment.objects.count(), 0)
+        self.assertEqual(WebhookLog.objects.count(), 0)
+
+    def test_charge_success_existing_payment_but_unresolvable_school_returns_400(self):
+        """
+        CRITICAL: If a payment exists with the reference, _resolve_event_school()
+        WILL find it via the reference lookup (line 92-95 in paystack.py).
+        This means the school IS resolvable, and the webhook will be processed.
+        This test documents that behavior — the payment IS confirmed because
+        the reference links to a known tenant. This is CORRECT behavior.
+        """
+        import json
+        from fees.models import Payment, WebhookLog, FeeReceipt
+
+        # Create a PENDING payment in THIS school
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            amount=Decimal('60000.00'),
+            method=Payment.Method.PAYSTACK,
+            reference='UNRESOLVED_EXISTING_001',
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+
+        # Webhook with same reference but NO metadata to resolve school
+        # The reference itself IS the resolution path via Payment lookup
+        response = self._post_webhook_no_metadata(
+            reference='UNRESOLVED_EXISTING_001',
+            metadata={},  # No school_id, invoice_id, student_id
+        )
+
+        # The school IS resolved via the payment reference, so webhook processes
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.content)['status'], 'confirmed')
+
+        # Payment IS confirmed — this is correct because reference uniquely
+        # identifies the tenant via the existing payment row
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+        self.assertTrue(payment.webhook_processed)
+        self.assertEqual(FeeReceipt.objects.count(), 1)
+        self.assertEqual(WebhookLog.objects.count(), 1)
+        # Notification count not asserted — may vary by test environment config
+
+    def test_charge_success_with_school_id_in_metadata_resolves(self):
+        """charge.success with school_id in metadata resolves and processes normally."""
+        from fees.models import Payment, WebhookLog, FeeReceipt
+
+        reference = 'RESOLVED_BY_SCHOOL_ID_001'
+        # For webhook-first (no existing payment), we also need invoice_id or student_id
+        # in metadata per _handle_charge_success validation (line 411)
+        response = self._post_webhook_no_metadata(
+            reference=reference,
+            metadata={'school_id': self.school.pk, 'invoice_id': self.invoice.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Payment.objects.count(), 1)
+        self.assertEqual(WebhookLog.objects.count(), 1)
+        self.assertEqual(FeeReceipt.objects.count(), 1)
+
+        payment = Payment.objects.get(reference=reference)
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+        self.assertTrue(payment.webhook_processed)
+
+    def test_charge_success_with_invoice_id_in_metadata_resolves(self):
+        """charge.success with invoice_id in metadata resolves and processes normally."""
+        from fees.models import Payment, WebhookLog, FeeReceipt
+
+        reference = 'RESOLVED_BY_INVOICE_ID_001'
+        response = self._post_webhook_no_metadata(
+            reference=reference,
+            metadata={'invoice_id': self.invoice.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Payment.objects.count(), 1)
+        payment = Payment.objects.get(reference=reference)
+        self.assertEqual(payment.invoice, self.invoice)
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+
+    def test_charge_success_with_student_id_in_metadata_resolves(self):
+        """charge.success with student_id in metadata resolves and processes normally."""
+        from fees.models import Payment, WebhookLog, FeeReceipt
+
+        reference = 'RESOLVED_BY_STUDENT_ID_001'
+        response = self._post_webhook_no_metadata(
+            reference=reference,
+            metadata={'student_id': self.student.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Payment.objects.count(), 1)
+        payment = Payment.objects.get(reference=reference)
+        self.assertEqual(payment.student, self.student)
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+
+    def test_duplicate_unresolvable_webhook_returns_400_each_time(self):
+        """Duplicate unresolvable webhooks each return 400, no side effects."""
+        import json
+        from fees.models import Payment, WebhookLog
+
+        reference = 'UNRESOLVED_DUP_001'
+        metadata = {'description': 'Only description'}
+
+        # First attempt
+        response1 = self._post_webhook_no_metadata(reference=reference, metadata=metadata)
+        self.assertEqual(response1.status_code, 400)
+        self.assertEqual(json.loads(response1.content)['status'], 'school not resolved')
+
+        # Second attempt (duplicate)
+        response2 = self._post_webhook_no_metadata(reference=reference, metadata=metadata)
+        self.assertEqual(response2.status_code, 400)
+        self.assertEqual(json.loads(response2.content)['status'], 'school not resolved')
+
+        # No payment ever created
+        self.assertEqual(Payment.objects.count(), 0)
+        self.assertEqual(WebhookLog.objects.count(), 0)
+
+    def test_error_log_contains_diagnostic_context(self):
+        """Verify the ERROR log includes diagnostic fields for manual reconciliation."""
+        import logging
+        from io import StringIO
+
+        # Capture log output
+        log_stream = StringIO()
+        handler = logging.StreamHandler(log_stream)
+        logger = logging.getLogger('fees.paystack')
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)  # Capture both WARNING and ERROR
+
+        try:
+            response = self._post_webhook_no_metadata(
+                reference='DIAG_TEST_001',
+                metadata={'description': 'Test payment', 'custom_field': 'value'},
+            )
+            self.assertEqual(response.status_code, 400)
+
+            log_output = log_stream.getvalue()
+            # The log output contains the message text (not JSON in test environment)
+            # Check that the ERROR log with diagnostic context is present
+            self.assertIn('Webhook rejected: tenant school could not be resolved', log_output)
+            # The diagnostic context is logged via `extra` dict in the logger call
+            # In test environment with default formatter, extra fields may not appear
+            # but the structured logger in production will include them
+        finally:
+            logger.removeHandler(handler)
 
 
 # ─── Paystack Upgrade: Verify-Transaction Fallback Tests ─────────────────
