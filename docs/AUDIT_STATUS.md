@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-22  
 **Branch:** main  
-**Commit:** d508220 (fix(docker): serve static out of the box via WhiteNoise)  
+**Commit:** ae56339 (repo: cleanup & documentation reconciliation)  
 **Test Suite:** 708 tests (passing)
 
 ---
@@ -126,9 +126,10 @@ This report replaces the obsolete `CODEBASE_AUDIT.md` which contained 30+ findin
 | `.spec/` (7 files) | Tracked in git | `git rm -r --cached .spec/` |
 | `kilo.json` | Tracked in git | `git rm --cached kilo.json` |
 | `scripts/*.log` (4 files) | Tracked in git | `git rm --cached scripts/*.log` + added to `.gitignore` |
-| `backups/*.sql.gz` (2 files) | **Tracked in git history** | ⚠️ **Requires `git-filter-repo` history rewrite** |
+| `backups/backup_20260909_154806.sql.gz` | **Purged from git history** | ✅ Already removed via prior `git-filter-repo` |
+| `backups/backup_20260909_161024.sql.gz` | **Purged from git history** | ✅ Already removed via prior `git-filter-repo` |
 
-> **Critical:** Two database dumps (`backup_20260909_154806.sql.gz`, `backup_20260909_161024.sql.gz`) exist in git history. Adding to `.gitignore` does **not** remove them from history. A separate `git-filter-repo` operation with force-push is required (see **Sensitive Data Removal Procedure** below).
+> ✅ **Complete:** The two sensitive database dumps (`backup_20260909_154806.sql.gz`, `backup_20260909_161024.sql.gz`) were **already purged from git history** prior to this cleanup. Confirmed via `git log --all --full-history` — no traces remain. Only `backup_20260922_082845.sql.gz` exists locally (gitignored).
 
 ---
 
@@ -180,36 +181,27 @@ The following are **code quality improvements**, not defects. They are documente
 
 ---
 
-## Sensitive Data Removal Procedure
+## Sensitive Data Removal — ✅ Already Completed
 
-**The following requires explicit approval and coordination — do NOT run as part of ordinary cleanup.**
+The following was **completed prior to this cleanup** (not part of this PR):
 
-### Database Dumps in Git History
-Two SQL dumps contain school records, user credentials, and payment data:
+### Database Dumps in Git History — Purged
+Two SQL dumps containing school records, user credentials, and payment data were **already removed from git history**:
 - `backups/backup_20260909_154806.sql.gz` (208 KB)
 - `backups/backup_20260909_161024.sql.gz` (210 KB)
 
-### Removal Steps
+### Verification
 ```bash
-# 1. Install git-filter-repo (if not present)
-pip install git-filter-repo
-
-# 2. Remove the files from ALL history
-git filter-repo --path backups/backup_20260909_154806.sql.gz --path backups/backup_20260909_161024.sql.gz --invert-paths
-
-# 3. Force-push (requires admin access + team coordination)
-git push origin main --force
-
-# 4. Verify removal
-git log --all --full-history -- backups/backup_20260909_154806.sql.gz
-# Should return no commits
+# Confirm no traces remain in history
+git log --all --full-history -- backups/backup_20260909_154806.sql.gz backups/backup_20260909_161024.sql.gz
+# Returns no commits — confirmed clean
 ```
 
-### Post-Removal Actions
-1. **Rotate any exposed credentials** (DB passwords, Paystack keys, Brevo API key, SECRET_KEY)
-2. **Contact GitHub Support** if dumps were in any pushed commits (purge from GitHub caches)
-3. **Notify stakeholders** of credential rotation
-4. **Update `.env.example`** with placeholder values only
+### Post-Removal Status
+- ✅ Files purged from git history
+- ✅ Force-push already completed
+- ⚠️ **Credential rotation recommended** if secrets were exposed in those dumps
+- ⚠️ **GitHub Support contact** recommended if dumps were in pushed commits (for cache purge)
 
 ---
 
@@ -241,13 +233,13 @@ OK
 - [x] Documentation consolidated into `docs/` folder
 - [x] `deploy/` folder removed (content moved to `docs/LAN_DEPLOYMENT.md`)
 - [x] Root level: only `README.md` + `AGENTS.md`
-- [ ] Sensitive data removal (separate `git-filter-repo` operation — requires approval)
-- [ ] Credential rotation (if sensitive data was exposed)
-- [ ] Final commit + push
+- [x] Sensitive data removal (already completed prior to this cleanup)
+- [ ] Credential rotation (if sensitive data was exposed in purged dumps)
+- [x] Final commit + push (commit ae56339)
 
 ---
 
-## Files Changed in This Cleanup
+## Files Changed in This Cleanup (Commit ae56339)
 
 | File | Change |
 |------|--------|
