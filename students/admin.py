@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.shortcuts import render, redirect
 from django.utils.translation import gettext_lazy as _
 
-from .models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from .models import AcademicStage, SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 
 
 # ---------------------------------------------------------------------------
@@ -28,14 +28,28 @@ class StudentGuardianLinkInline(admin.TabularInline):
 
 
 # ---------------------------------------------------------------------------
+# AcademicStage Admin
+# ---------------------------------------------------------------------------
+
+@admin.register(AcademicStage)
+class AcademicStageAdmin(admin.ModelAdmin):
+    list_display = ['name', 'display_order', 'is_active', 'school']
+    list_filter = ['is_active', 'school']
+    search_fields = ['name']
+    ordering = ['display_order', 'name']
+
+
+# ---------------------------------------------------------------------------
 # SchoolClass Admin
 # ---------------------------------------------------------------------------
 
 @admin.register(SchoolClass)
 class SchoolClassAdmin(admin.ModelAdmin):
-    list_display = ['name', 'level', 'is_active', 'school']
-    list_filter = ['level', 'is_active', 'school']
+    list_display = ['name', 'level', 'academic_stage', 'is_active', 'school']
+    list_filter = ['level', 'academic_stage', 'is_active', 'school']
     search_fields = ['name', 'level']
+    autocomplete_fields = ['academic_stage']
+    list_select_related = ['school', 'academic_stage']
 
 
 # ---------------------------------------------------------------------------

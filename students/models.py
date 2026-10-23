@@ -1,9 +1,58 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.functions import Lower, Trim
 from django.utils.translation import gettext_lazy as _
 
 from core.models import TenantScopedModel
 from accounts.models import Roles
+
+
+class AcademicStage(TenantScopedModel):
+    """School-defined academic stage (e.g. 'Pre-Nursery', 'Primary', 'JSS', 'SSS')."""
+
+    name = models.CharField(max_length=100, verbose_name=_('name'))
+    display_order = models.PositiveIntegerField(default=0, verbose_name=_('display order'))
+    is_active = models.BooleanField(default=True, verbose_name=_('active'))
+
+    class Meta:
+        verbose_name = _('academic stage')
+        verbose_name_plural = _('academic stages')
+        unique_together = ('school', 'name')
+        ordering = ['display_order', 'name']
+        constraints = [
+            # School-scoped, case-insensitive uniqueness after trimming outer
+            # whitespace. ``unique_together`` alone only catches exact matches.
+            models.UniqueConstraint(
+                Lower(Trim('name')),
+                'school',
+                name='uniq_academicstage_school_normalized_name',
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def normalize_name(name):
+        """Canonical display form: trim outer and collapse internal whitespace.
+
+        Case is preserved for display; uniqueness is case-insensitive.
+        """
+        return ' '.join((name or '').split())
+
+    def clean(self):
+        super().clean()
+        self.name = self.normalize_name(self.name)
+        if AcademicStage.objects.filter(
+            school=self.school,
+            name__iexact=self.name,
+        ).exclude(pk=self.pk).exists():
+            raise ValidationError({'name': _('An academic stage with this name already exists for this school.')})
+
+    def save(self, *args, **kwargs):
+        # Normalize on every write path, including ``objects.create()``.
+        self.name = self.normalize_name(self.name)
+        super().save(*args, **kwargs)
 
 
 class SchoolClass(TenantScopedModel):
@@ -13,7 +62,16 @@ class SchoolClass(TenantScopedModel):
     level = models.CharField(
         max_length=100,
         verbose_name=_('level'),
-        help_text=_('e.g. "JSS1", "Primary 3" — used for grouping/reporting'),
+        help_text=_('e.g. "JSS1", "Primary 3" — used for grouping/reporting (legacy field, will be replaced by academic_stage)'),
+    )
+    academic_stage = models.ForeignKey(
+        'AcademicStage',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='classes',
+        verbose_name=_('academic stage'),
+        help_text=_('The academic stage this class belongs to. Required after migration backfill.'),
     )
     is_active = models.BooleanField(default=True, verbose_name=_('active'))
 
@@ -21,10 +79,29 @@ class SchoolClass(TenantScopedModel):
         verbose_name = _('school class')
         verbose_name_plural = _('school classes')
         unique_together = ('school', 'name')
-        ordering = ['level', 'name']
+        ordering = ['academic_stage__display_order', 'level', 'name']
 
     def __str__(self):
         return self.name
+
+    def _validate_academic_stage_school(self):
+        """Reject a stage from another tenant.
+
+        ``clean()`` is not called by ``objects.create()``/``save()``, so the
+        same guard is applied on write. Bulk operations (``bulk_create``,
+        ``QuerySet.update``) still bypass it; cross-table tenant consistency
+        cannot be expressed as a single-table database constraint.
+        """
+        if self.academic_stage_id and self.academic_stage.school_id != self.school_id:
+            raise ValidationError({'academic_stage': _('Academic stage must belong to the same school as the class.')})
+
+    def clean(self):
+        super().clean()
+        self._validate_academic_stage_school()
+
+    def save(self, *args, **kwargs):
+        self._validate_academic_stage_school()
+        super().save(*args, **kwargs)
 
 
 class Student(TenantScopedModel):
