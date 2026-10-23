@@ -97,7 +97,7 @@ A full baseline record (status, diff, untracked hashes) was written to `/tmp/ope
 
 ### 1.3 What must not be assumed
 
-- The AcademicStage work is **uncommitted**. It is not merged, deployed, or present in production.
+- The AcademicStage work is **committed locally** on `feat/academic-structure-phase1` (see `git log`). It is **not pushed, merged, deployed, or present in production**.
 - `students.0008_add_academic_stage` is applied only in the local development database. That is not staging or production evidence.
 - No PostgreSQL test was executed in this task. SQLite results do not prove PostgreSQL compatibility.
 - The recovery investigation's “no production loss” / “loss confirmed” question remains unresolved.
@@ -108,7 +108,7 @@ A full baseline record (status, diff, untracked hashes) was written to `/tmp/ope
 
 | Area | State | Evidence | What remains |
 |---|---|---|---|
-| AcademicStage model | **Implemented, uncommitted, corrected in this task** | `students/models.py:10`; `students/migrations/0008_add_academic_stage.py`; `students/migrations/0009_academicstage_normalized_unique.py` | Review and commit; decide whether to add a school-admin stage selector |
+| AcademicStage model | **Implemented, committed locally, corrected in this task** | `students/models.py:10`; `students/migrations/0008_add_academic_stage.py`; `students/migrations/0009_academicstage_normalized_unique.py`; local branch commits | Push/merge; decide whether to add a school-admin stage selector |
 | AcademicStage school scoping | **Verified for model and class validation** | `TenantScopedModel`; `AcademicStage.clean()`; `SchoolClass._validate_academic_stage_school()` | Cross-table tenant rule is not DB-enforced; `bulk_create`/`update` bypass it |
 | AcademicStage normalized uniqueness | **Complete for SQLite; PostgreSQL unverified** | `UniqueConstraint(Lower(Trim('name')), 'school')`; 12 targeted tests pass | Run on PostgreSQL in a non-production environment |
 | Stage ordering / activation | **Implemented** | `display_order`, `is_active`, `Meta.ordering` | No default-stage seeding; no “one active stage per order” rule |
@@ -413,7 +413,8 @@ All queries remain `DRAFT` until executed against an authorized, restored, read-
 |---|---|---|
 | Targeted unit/model tests | New constraints, validation, ordering, tenant rules | 12 AcademicStage tests pass on SQLite |
 | App regression tests | `students`, `school_admin` behaviour after model/admin changes | `students`: 89 pass; `school_admin`: 103 pass (SQLite) |
-| Cross-app regression | Fees, academics, data import, notifications, tenancy | Full suite started; see final report for actual result |
+| Cross-app regression | Fees, academics, data import, notifications, tenancy | Full suite: **720 tests pass** (SQLite, 1076.365s, exit 0) |
+| Phase 0 harness | Audit schema, evidence, redaction, dialect matrix, fixtures | **25 tests pass** via `python -m unittest discover -s scripts/audit/tests` (not auto-discovered by Django) |
 | Migration-state check | `makemigrations --check`, `manage.py check` | Both pass |
 | Database-engine matrix | SQLite + PostgreSQL | SQLite only; PostgreSQL **NOT RUN** |
 | Staging verification | Realistic restored copy, read-only audit, then migration rehearsal | Blocked |
@@ -424,9 +425,22 @@ All queries remain `DRAFT` until executed against an authorized, restored, read-
 .venv/bin/python manage.py test students.tests.AcademicStageTests -v 2
 .venv/bin/python manage.py test students -v 1
 .venv/bin/python manage.py test school_admin -v 1
+.venv/bin/python manage.py test -v 1
 .venv/bin/python manage.py makemigrations --check --dry-run
 .venv/bin/python manage.py check
 ```
+
+Recorded results (2026-10-23, SQLite):
+
+- `students.tests.AcademicStageTests`: 12/12 pass.
+- `students`: 89 pass.
+- `school_admin`: 103 pass.
+- Full suite: **720 tests pass**, 1076.365s, exit 0.
+- Phase 0 harness: **25 tests pass** via `python -m unittest discover -s scripts/audit/tests`. Django's default discovery excludes them because `scripts/` is not a package; `manage.py test scripts.audit.tests` fails with `TypeError: expected str, bytes or os.PathLike object, not NoneType`.
+- `makemigrations --check --dry-run`: “No changes detected”.
+- `manage.py check`: “System check identified no issues (0 silenced)”.
+- `migrate --plan`: only `students.0009_academicstage_normalized_unique` pending.
+- PostgreSQL: **NOT RUN**.
 
 PostgreSQL and full-suite commands must be reported separately. A SQLite pass is not a PostgreSQL pass.
 

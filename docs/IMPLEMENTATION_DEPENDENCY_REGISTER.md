@@ -9,7 +9,7 @@
 **Status values:** `complete`, `verified`, `partially verified`, `unverified`, `blocked`.
 “Complete” means implemented and tested for the stated scope, not deployed.
 
-> **Repository-state warning.** `AcademicStage` and its migration were uncommitted at task start. `students/models.py`, `students/admin.py`, and `students/tests.py` also contained pre-existing uncommitted work. This register records the working tree, not a merged commit.
+> **Repository-state warning.** `AcademicStage` and its migration were uncommitted at task start. `students/models.py`, `students/admin.py`, and `students/tests.py` also contained pre-existing uncommitted work. They are now committed locally on `feat/academic-structure-phase1` (see `git log`) but are **not pushed or merged**. This register records the working tree at review time, not a merged or deployed commit.
 
 ---
 
