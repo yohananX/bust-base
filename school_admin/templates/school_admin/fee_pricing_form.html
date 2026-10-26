@@ -14,7 +14,7 @@
           <i data-lucide="info" class="w-4.5 h-4.5 mt-0.5 flex-shrink-0"></i>
           <div>
             <p class="font-medium">How pricing works</p>
-            <p class="mt-1">School-wide applies to everyone, Level to a grade band, Class to one class only. Leave term blank for one-time fees (e.g. Registration Pack).</p>
+            <p class="mt-1">School-wide applies to everyone, Academic Stage to every class of one stage, Class to one class only. Leave term blank for one-time fees (e.g. Registration Pack).</p>
             <p class="mt-1"><span class="font-medium">Student type:</span> ALL bills everyone with one row. NEW / RETURNING splits the fee so each group can pay a different amount — the price's type always wins over the category's type. A NEW-only price is invisible to returning students: they use the ALL price if one exists, otherwise they are not billed for that fee at all.</p>
           </div>
         </div>
@@ -56,10 +56,16 @@
               {% endfor %}
             </select>
           </div>
-          <div id="level_field" class="hidden">
-            <label class="block text-sm font-medium text-ink-muted mb-1.5">Level</label>
-            <input type="text" name="level" value="{{ selected_level|default_if_none:'' }}" placeholder="e.g. JSS, PRIMARY"
-                   class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
+          <div id="stage_field" class="hidden">
+            <label class="block text-sm font-medium text-ink-muted mb-1.5">Academic Stage</label>
+            <select name="academic_stage"
+                    class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-surface outline-none transition-all">
+              <option value="">— Select a stage —</option>
+              {% for stage in stages %}
+                <option value="{{ stage.pk }}" {% if selected_stage_id == stage.pk %}selected{% endif %}>{{ stage.name }}{% if not stage.is_active %} (inactive){% endif %}</option>
+              {% endfor %}
+            </select>
+            {% if not stages %}<p class="text-xs text-ink-faint mt-1">No stages configured yet — manage stages in Django admin.</p>{% endif %}
           </div>
           <div id="term_field">
             <label class="block text-sm font-medium text-ink-muted mb-1.5">Term</label>
@@ -144,7 +150,7 @@
 (function() {
   const scopeSelect = document.getElementById('id_scope');
   const classField = document.getElementById('class_field');
-  const levelField = document.getElementById('level_field');
+  const stageField = document.getElementById('stage_field');
   const typeSelect = document.getElementById('id_student_type');
   const applyOtherWrap = document.getElementById('apply_other_wrap');
   const categorySelect = document.getElementById('id_category');
@@ -157,13 +163,13 @@
     const scope = scopeSelect.value;
     if (scope === 'LEVEL') {
       classField.classList.add('hidden');
-      levelField.classList.remove('hidden');
+      stageField.classList.remove('hidden');
     } else if (scope === 'SCHOOL_WIDE') {
       classField.classList.add('hidden');
-      levelField.classList.add('hidden');
+      stageField.classList.add('hidden');
     } else {
       classField.classList.remove('hidden');
-      levelField.classList.add('hidden');
+      stageField.classList.add('hidden');
     }
   }
 

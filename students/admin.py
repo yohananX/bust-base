@@ -47,31 +47,13 @@ class AcademicStageAdmin(admin.ModelAdmin):
 class SchoolClassAdminForm(forms.ModelForm):
     """Stage-only class form.
 
-    The academic stage is the single classification field. The legacy
-    ``level`` snapshot (still read by admission-number mapping and LEVEL-scope
-    fee resolution) is derived from the stage instead of being editable, so
-    there is never a second independently editable classification input.
-    It is written only when the stage is first assigned or changed, or when
-    the snapshot is empty — a later stage rename does not rewrite it.
+    The academic stage is the single classification field — there is no
+    level input and no derived classification snapshot anywhere.
     """
 
     class Meta:
         model = SchoolClass
         fields = ['name', 'academic_stage', 'is_active', 'school']
-
-    def save(self, commit=True):
-        obj = super().save(commit=False)
-        stage = obj.academic_stage
-        changed = 'academic_stage' in self.changed_data
-        if stage is None:
-            if obj.pk and changed:
-                obj.level = ''
-        elif not obj.pk or changed or not obj.level:
-            obj.level = stage.name
-        if commit:
-            obj.save()
-            self.save_m2m()
-        return obj
 
 
 @admin.register(SchoolClass)

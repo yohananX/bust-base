@@ -38,7 +38,14 @@ def _map_class_to_header(school_class):
     """Map a SchoolClass to a compact class header for admission numbers."""
     if school_class is None:
         return 'XX'
-    level = (school_class.level or '').strip().upper()
+    # The academic stage is the authoritative classification; its name feeds
+    # the header map exactly the way the historical level snapshot did
+    # (the snapshot was written verbatim from the stage name).
+    try:
+        stage = school_class.academic_stage
+        level = (stage.name if stage else '').strip().upper()
+    except Exception:
+        level = ''
     name = (school_class.name or '').strip().upper()
 
     # Direct level match

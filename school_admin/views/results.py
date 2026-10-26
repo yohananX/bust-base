@@ -121,7 +121,7 @@ class ResultReviewView(RoleRequiredMixin, View):
             ).distinct()
             classes = SchoolClass.objects.filter(
                 pk__in=list(class_ids), is_active=True
-            ).order_by('level', 'name')
+            ).order_by('academic_stage__display_order', 'name')
 
             if class_id:
                 selected_class = get_object_or_404(SchoolClass, school=school, pk=class_id)

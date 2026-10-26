@@ -69,8 +69,11 @@ class BaseImporter:
 class ClassImporter(BaseImporter):
     """Import classes from CSV.
 
-    CSV columns: name, section
-    Maps section -> level.
+    CSV columns: name, section. ``section`` is the academic stage: an
+    existing stage of the same normalized name is linked; anything else
+    (missing section or no matching stage) imports unclassified and is
+    reported for review. Imports never create stages and never infer a
+    stage from the class name.
     """
 
     def import_csv(self, file_path):
@@ -96,9 +99,6 @@ class ClassImporter(BaseImporter):
                 errors.append({'row': i, 'message': 'Missing class name'})
                 continue
 
-            # Use section as level; fall back to class name
-            level = section if section else name
-
             if SchoolClass.objects.filter(school=self.school, name=name).exists():
                 skipped += 1
                 if self.verbose:
@@ -112,18 +112,17 @@ class ClassImporter(BaseImporter):
             if stage_map is None:
                 stage_map = _build_stage_map()
 
-            stage = stage_map.get(' '.join(level.split()).lower())
+            stage = stage_map.get(' '.join(section.split()).lower()) if section else None
 
             if not self.dry_run:
                 SchoolClass.objects.create(
                     school=self.school,
                     name=name,
-                    level=level,
                     academic_stage=stage,
                 )
             created += 1
             if self.verbose:
-                self._log(f"Row {i}: CREATED — {first_name} {last_name} ({username})")
+                self._log(f"Row {i}: CREATED — {name}")
 
         return {
             'total': total,

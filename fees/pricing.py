@@ -5,8 +5,8 @@ class, term, and student type.
 
 Resolution is deterministic (two-stage precedence, ties broken by `pk`):
 
-1. Scope precedence — most specific wins per category:
-   ``CLASS`` < ``LEVEL`` < ``SCHOOL_WIDE``.
+1. Scope precedence — most specific wins per category (``STAGE`` means one
+   ``AcademicStage``): ``CLASS`` < ``STAGE`` < ``SCHOOL_WIDE``.
 2. Student-type precedence within the same scope (target mode only):
    a price for the exact requested type wins over a price for ``ALL``.
 
@@ -30,7 +30,7 @@ CHRISTMAS_FEE = 'Christmas/End of Term Party Fee'
 
 _SCOPE_PRECEDENCE = {
     FeePrice.SCOPE_CLASS: 0,
-    FeePrice.SCOPE_LEVEL: 1,
+    FeePrice.SCOPE_STAGE: 1,
     FeePrice.SCOPE_SCHOOL_WIDE: 2,
 }
 
@@ -45,13 +45,13 @@ def _is_fee_price_active(price):
     return True
 
 
-def _is_applicable(price, school_class, class_level):
-    """Return whether a price's scope matches the given class/level."""
+def _is_applicable(price, school_class):
+    """Return whether a price's scope matches the given class."""
     if price.scope == FeePrice.SCOPE_CLASS and price.school_class_id == school_class.id:
         return True
-    if price.scope == FeePrice.SCOPE_LEVEL and price.level == class_level:
-        return True
-    if price.scope == FeePrice.SCOPE_SCHOOL_WIDE and not price.school_class_id and not price.level:
+    if price.scope == FeePrice.SCOPE_STAGE and school_class.academic_stage_id is not None:
+        return price.academic_stage_id == school_class.academic_stage_id
+    if price.scope == FeePrice.SCOPE_SCHOOL_WIDE and not price.school_class_id and price.academic_stage_id is None:
         return True
     return False
 
@@ -110,8 +110,6 @@ def _resolve_from_feeprice(school, school_class, term, student_type='ALL', stude
     if not school_class:
         return []
 
-    class_level = school_class.level or ''
-
     base_qs = FeePrice.objects.filter(
         school=school,
         is_active=True,
@@ -123,7 +121,7 @@ def _resolve_from_feeprice(school, school_class, term, student_type='ALL', stude
         )
 
     def is_applicable(price):
-        return _is_applicable(price, school_class, class_level)
+        return _is_applicable(price, school_class)
 
     if term is not None:
         explicit = list(base_qs.filter(term=term))

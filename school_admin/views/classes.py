@@ -55,29 +55,6 @@ def _school_has_active_stages(school):
     return AcademicStage.objects.filter(school=school, is_active=True).exists()
 
 
-def _apply_class_level(class_obj, stage, stage_is_new_assignment):
-    """Sync the transitional ``level`` snapshot from the chosen stage.
-
-    ``level`` is being replaced by ``academic_stage`` (AS-10). Until every
-    legacy consumer migrates (admission numbers, fee LEVEL pricing,
-    generation filters, CSV import/export), ``level`` must stay populated
-    with a value that reproduces the old behaviour. It is therefore written
-    only when the stage is first assigned or changed — a later stage rename
-    does NOT silently rewrite ``level``, so fee and admission behaviour
-    cannot drift without an explicit reassignment.
-    """
-    if stage is None:
-        if stage_is_new_assignment:
-            class_obj.level = ''
-    elif stage_is_new_assignment or not class_obj.level:
-        class_obj.level = stage.name
-
-
-def _stage_assignments_differ(class_obj, stage):
-    """Whether the submitted stage differs from the class's current one."""
-    return class_obj.academic_stage_id != (stage.pk if stage else None)
-
-
 def _class_form_context(school, class_obj=None):
     return {
         'class_obj': class_obj,
@@ -98,12 +75,11 @@ class ClassListView(RoleRequiredMixin, View):
         school = request.school
         classes = SchoolClass.objects.filter(school=school).select_related('academic_stage')
 
-        # Search by name, stage, or the transitional level snapshot
+        # Search by name or stage
         q = request.GET.get('q', '').strip()
         if q:
             classes = classes.filter(
                 Q(name__icontains=q)
-                | Q(level__icontains=q)
                 | Q(academic_stage__name__icontains=q)
             )
 
@@ -120,7 +96,7 @@ class ClassListView(RoleRequiredMixin, View):
                 'enrollments',
                 filter=Q(enrollments__is_current=True),
             ),
-        ).order_by('level', 'name')
+        ).order_by('academic_stage__display_order', 'name')
 
         context = {
             'classes': classes,
@@ -179,7 +155,6 @@ class ClassCreateView(RoleRequiredMixin, View):
                     academic_stage=stage,
                     is_active=is_active,
                 )
-                _apply_class_level(new_class, stage, stage_is_new_assignment=True)
                 new_class.save()
             messages.success(request, f'Class "{name}" created successfully.')
             return redirect('school_admin:class_list')
@@ -258,8 +233,6 @@ class ClassEditView(RoleRequiredMixin, View):
             with transaction.atomic():
                 class_obj.name = name
                 class_obj.is_active = is_active
-                stage_changed = _stage_assignments_differ(class_obj, stage)
-                _apply_class_level(class_obj, stage, stage_changed)
                 class_obj.academic_stage = stage
                 class_obj.save()
             messages.success(

@@ -436,7 +436,6 @@ class FinancialReportTest(BaseFinanceTest):
         self.school_class = SchoolClass.objects.create(
             school=self.school,
             name="JSS1A",
-            level="JSS1",
         )
         self.student_user = User.objects.create_user(
             username="student1",

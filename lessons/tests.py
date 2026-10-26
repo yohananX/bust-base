@@ -98,7 +98,7 @@ class ModelTests(LessonsBase):
     def test_lesson_class_can_link_school_class(self):
         from students.models import SchoolClass
         school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS 1", level="JSS",
+            school=self.school, name="JSS 1",
         )
         self.lesson_class.school_class = school_class
         self.lesson_class.save()

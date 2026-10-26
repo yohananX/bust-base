@@ -100,7 +100,7 @@ class ClassImporterCreatesClassesTest(BaseImportTestCase):
 
 class ClassImporterSkipsDuplicatesTest(BaseImportTestCase):
     def test_skips_duplicates(self):
-        SchoolClass.objects.create(school=self.school, name='Primary 1', level='Primary')
+        SchoolClass.objects.create(school=self.school, name='Primary 1')
 
         csv_path = _write_csv(
             ['name', 'section'],
@@ -118,7 +118,12 @@ class ClassImporterSkipsDuplicatesTest(BaseImportTestCase):
 
 
 class ClassImporterWithSectionTest(BaseImportTestCase):
-    def test_section_maps_to_level(self):
+    def test_section_links_existing_stage(self):
+        from students.models import AcademicStage
+
+        stage = AcademicStage.objects.create(
+            school=self.school, name='Junior', display_order=1,
+        )
         csv_path = _write_csv(
             ['name', 'section'],
             [{'name': 'JSS 2', 'section': 'Junior'}],
@@ -127,8 +132,9 @@ class ClassImporterWithSectionTest(BaseImportTestCase):
             importer = ClassImporter(school=self.school)
             result = importer.import_csv(csv_path)
 
+            self.assertEqual(result['created'], 1)
             cls = SchoolClass.objects.get(school=self.school, name='JSS 2')
-            self.assertEqual(cls.level, 'Junior')
+            self.assertEqual(cls.academic_stage, stage)
         finally:
             os.unlink(csv_path)
 
@@ -149,7 +155,6 @@ class ClassImporterWithSectionTest(BaseImportTestCase):
             importer.import_csv(csv_path)
 
             cls = SchoolClass.objects.get(school=self.school, name='JSS 2')
-            self.assertEqual(cls.level, 'junior')
             self.assertEqual(cls.academic_stage, stage)
         finally:
             os.unlink(csv_path)
@@ -167,7 +172,6 @@ class ClassImporterWithSectionTest(BaseImportTestCase):
             importer.import_csv(csv_path)
 
             cls = SchoolClass.objects.get(school=self.school, name='JSS 2')
-            self.assertEqual(cls.level, 'Mystery')
             self.assertIsNone(cls.academic_stage)
             self.assertFalse(AcademicStage.objects.filter(school=self.school).exists())
         finally:
@@ -192,7 +196,8 @@ class ClassImporterWithSectionTest(BaseImportTestCase):
         finally:
             os.unlink(csv_path)
 
-    def test_empty_section_uses_name(self):
+    def test_empty_section_leaves_class_unclassified(self):
+        """No section and no inference: the class imports unclassified."""
         csv_path = _write_csv(
             ['name', 'section'],
             [{'name': 'Reception', 'section': ''}],
@@ -201,8 +206,9 @@ class ClassImporterWithSectionTest(BaseImportTestCase):
             importer = ClassImporter(school=self.school)
             result = importer.import_csv(csv_path)
 
+            self.assertEqual(result['created'], 1)
             cls = SchoolClass.objects.get(school=self.school, name='Reception')
-            self.assertEqual(cls.level, 'Reception')
+            self.assertIsNone(cls.academic_stage)
         finally:
             os.unlink(csv_path)
 
@@ -211,7 +217,7 @@ class ClassImporterWithSectionTest(BaseImportTestCase):
 
 class SubjectImporterCreatesSubjectsTest(BaseImportTestCase):
     def test_creates_subjects(self):
-        SchoolClass.objects.create(school=self.school, name='Primary 1', level='Primary')
+        SchoolClass.objects.create(school=self.school, name='Primary 1')
 
         csv_path = _write_csv(
             ['class_name', 'subject_name'],
@@ -251,7 +257,7 @@ class SubjectImporterRequiresExistingClassTest(BaseImportTestCase):
 
 class SubjectImporterSkipsDuplicatesTest(BaseImportTestCase):
     def test_skips_duplicate_class_subject_link(self):
-        school_class = SchoolClass.objects.create(school=self.school, name='Primary 1', level='Primary')
+        school_class = SchoolClass.objects.create(school=self.school, name='Primary 1')
         subject = Subject.objects.create(school=self.school, name='English Studies', code='ES')
         ClassSubject.objects.create(school=self.school, subject=subject, school_class=school_class)
 
@@ -271,8 +277,8 @@ class SubjectImporterSkipsDuplicatesTest(BaseImportTestCase):
 
     def test_links_existing_subject_to_new_class(self):
         """Importing an existing subject for a new class should create the link."""
-        existing_class = SchoolClass.objects.create(school=self.school, name='Primary 1', level='Primary')
-        new_class = SchoolClass.objects.create(school=self.school, name='Primary 2', level='Primary')
+        existing_class = SchoolClass.objects.create(school=self.school, name='Primary 1')
+        new_class = SchoolClass.objects.create(school=self.school, name='Primary 2')
         subject = Subject.objects.create(school=self.school, name='English Studies', code='ES')
         ClassSubject.objects.create(school=self.school, subject=subject, school_class=existing_class)
 
@@ -295,7 +301,7 @@ class SubjectImporterSkipsDuplicatesTest(BaseImportTestCase):
 
 class StudentImporterCreatesStudentTest(BaseImportTestCase):
     def test_creates_student(self):
-        SchoolClass.objects.create(school=self.school, name='JSS 1', level='Junior')
+        SchoolClass.objects.create(school=self.school, name='JSS 1')
 
         csv_path = _write_csv(
             ['first_name', 'last_name', 'username', 'date_of_birth', 'gender', 'parent_name', 'parent_email', 'parent_phone', 'class_name'],
@@ -329,7 +335,7 @@ class StudentImporterAutoInvoiceTest(BaseImportTestCase):
             start_date='2025-09-01', end_date='2025-12-15', is_current=True,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS 1', level='Junior',
+            school=self.school, name='JSS 1',
         )
         category = FeeCategory.objects.create(
             school=self.school, name='Tuition',
@@ -390,7 +396,7 @@ class StudentImporterAutoInvoiceTest(BaseImportTestCase):
 
 class StudentImporterWithParentTest(BaseImportTestCase):
     def test_creates_parent_with_full_info(self):
-        SchoolClass.objects.create(school=self.school, name='JSS 1', level='Junior')
+        SchoolClass.objects.create(school=self.school, name='JSS 1')
 
         csv_path = _write_csv(
             ['first_name', 'last_name', 'username', 'date_of_birth', 'gender', 'parent_name', 'parent_email', 'parent_phone', 'class_name'],
@@ -415,7 +421,7 @@ class StudentImporterWithParentTest(BaseImportTestCase):
 
 class StudentImporterParentWithoutEmailTest(BaseImportTestCase):
     def test_parent_without_email(self):
-        SchoolClass.objects.create(school=self.school, name='JSS 1', level='Junior')
+        SchoolClass.objects.create(school=self.school, name='JSS 1')
 
         csv_path = _write_csv(
             ['first_name', 'last_name', 'username', 'date_of_birth', 'gender', 'parent_name', 'parent_email', 'parent_phone', 'class_name'],
@@ -438,7 +444,7 @@ class StudentImporterParentWithoutEmailTest(BaseImportTestCase):
 
 class StudentImporterParentWithoutPhoneTest(BaseImportTestCase):
     def test_parent_without_phone(self):
-        SchoolClass.objects.create(school=self.school, name='JSS 1', level='Junior')
+        SchoolClass.objects.create(school=self.school, name='JSS 1')
 
         csv_path = _write_csv(
             ['first_name', 'last_name', 'username', 'date_of_birth', 'gender', 'parent_name', 'parent_email', 'parent_phone', 'class_name'],
@@ -461,7 +467,7 @@ class StudentImporterParentWithoutPhoneTest(BaseImportTestCase):
 
 class StudentImporterParentWithoutEmailOrPhoneTest(BaseImportTestCase):
     def test_parent_without_email_or_phone(self):
-        SchoolClass.objects.create(school=self.school, name='JSS 1', level='Junior')
+        SchoolClass.objects.create(school=self.school, name='JSS 1')
 
         csv_path = _write_csv(
             ['first_name', 'last_name', 'username', 'date_of_birth', 'gender', 'parent_name', 'parent_email', 'parent_phone', 'class_name'],
@@ -485,7 +491,7 @@ class StudentImporterParentWithoutEmailOrPhoneTest(BaseImportTestCase):
 
 class StudentImporterWithoutParentNameTest(BaseImportTestCase):
     def test_no_parent_created(self):
-        SchoolClass.objects.create(school=self.school, name='JSS 1', level='Junior')
+        SchoolClass.objects.create(school=self.school, name='JSS 1')
 
         csv_path = _write_csv(
             ['first_name', 'last_name', 'username', 'date_of_birth', 'gender', 'parent_name', 'parent_email', 'parent_phone', 'class_name'],
@@ -733,7 +739,7 @@ class ImportDataCommandClassesTest(BaseImportTestCase):
 
 class ImportDataCommandStudentsTest(BaseImportTestCase):
     def test_import_students(self):
-        SchoolClass.objects.create(school=self.school, name='JSS 1', level='Junior')
+        SchoolClass.objects.create(school=self.school, name='JSS 1')
 
         csv_path = _write_csv(
             ['first_name', 'last_name', 'username', 'date_of_birth', 'gender', 'parent_name', 'parent_email', 'parent_phone', 'class_name'],
@@ -778,7 +784,7 @@ class ImportConfirmNotifiesAdminsTest(TestCase):
             username='import-admin', email='ia@test.com', password='testpass123',
             school=self.school, role=Roles.ADMIN,
         )
-        SchoolClass.objects.create(school=self.school, name='JSS 1', level='Junior')
+        SchoolClass.objects.create(school=self.school, name='JSS 1')
 
     def test_confirm_notifies_admins(self):
         from notifications.models import NotificationLog

@@ -52,7 +52,7 @@ def _applicable_fee_structures(school, school_class, term, student_type='ALL'):
         is_active=True,
     ).filter(
         Q(scope=FeePrice.SCOPE_CLASS, school_class=school_class) |
-        Q(scope=FeePrice.SCOPE_SCHOOL_WIDE, school_class__isnull=True, level='')
+        Q(scope=FeePrice.SCOPE_SCHOOL_WIDE, school_class__isnull=True, academic_stage__isnull=True)
     ).select_related('category')
     if student_type != 'ALL':
         optional = optional.filter(

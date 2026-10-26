@@ -73,7 +73,6 @@ class BaseNotificationTest(TestCase):
         self.school_class = SchoolClass.objects.create(
             school=self.school,
             name='JSS1A',
-            level='JSS1',
         )
 
         # Create student

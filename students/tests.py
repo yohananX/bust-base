@@ -46,7 +46,6 @@ class StudentModelTests(TestCase):
         self.school_class = SchoolClass.objects.create(
             school=self.school,
             name="JSS1A",
-            level="JSS1",
         )
         self.session = AcademicSession.objects.create(
             school=self.school,
@@ -60,7 +59,7 @@ class StudentModelTests(TestCase):
 
     def test_school_class_creation(self):
         self.assertEqual(str(self.school_class), "JSS1A")
-        self.assertEqual(self.school_class.level, "JSS1")
+        self.assertIsNone(self.school_class.academic_stage)
         self.assertTrue(self.school_class.is_active)
 
     def test_student_creation(self):
@@ -115,7 +114,7 @@ class StudentModelTests(TestCase):
             admission_date="2025-09-01",
         )
         class_b = SchoolClass.objects.create(
-            school=self.school, name="JSS1B", level="JSS1",
+            school=self.school, name="JSS1B",
         )
         session2 = AcademicSession.objects.create(
             school=self.school,
@@ -181,7 +180,7 @@ class StudentModelTests(TestCase):
             end_date="2027-07-31",
         )
         class_b = SchoolClass.objects.create(
-            school=self.school, name="SSS1A", level="SSS1",
+            school=self.school, name="SSS1A",
         )
 
         # Promote using the model method
@@ -347,10 +346,10 @@ class StudentModelTests(TestCase):
 
         # Note: 'JSS1A' already created in setUp, so use different class names
         class_a = SchoolClass.objects.create(
-            school=self.school, name="SSS1A", level="SSS1",
+            school=self.school, name="SSS1A",
         )
         class_b = SchoolClass.objects.create(
-            school=school2, name="SSS1A", level="SSS1",
+            school=school2, name="SSS1A",
         )
 
         # Classes from different schools should be isolated
@@ -657,7 +656,7 @@ class StudentSubjectsViewTest(TestCase):
             last_name="Okon",
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A", level="JSS1",
+            school=self.school, name="JSS1A",
         )
 
         self.session1 = AcademicSession.objects.create(
@@ -863,7 +862,7 @@ class ResultFeeLockTests(TestCase):
             name="Lockdown Academy", short_code="lockdown",
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A", level="JSS1",
+            school=self.school, name="JSS1A",
         )
         self.session = AcademicSession.objects.create(
             school=self.school,
@@ -1377,7 +1376,7 @@ class GenerateAdmissionNumberTest(TestCase):
             is_current=True,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A',
         )
 
     def test_basic_format(self):
@@ -1400,7 +1399,7 @@ class GenerateAdmissionNumberTest(TestCase):
 
     def test_different_class_different_sequence(self):
         from students.utils import generate_admission_number
-        class_b = SchoolClass.objects.create(school=self.school, name='JSS1B', level='JSS1')
+        class_b = SchoolClass.objects.create(school=self.school, name='JSS1B')
         adm_a = generate_admission_number(self.school, self.school_class, year=2026)
         adm_b = generate_admission_number(self.school, class_b, year=2026)
         self.assertEqual(adm_a, 'TES26J1001')
@@ -1408,13 +1407,15 @@ class GenerateAdmissionNumberTest(TestCase):
 
     def test_reception_class_header(self):
         from students.utils import generate_admission_number
-        reception = SchoolClass.objects.create(school=self.school, name='Reception', level='Reception')
+        from .models import AcademicStage
+        stage = AcademicStage.objects.create(school=self.school, name='Reception')
+        reception = SchoolClass.objects.create(school=self.school, name='Reception', academic_stage=stage)
         adm = generate_admission_number(self.school, reception, year=2026)
         self.assertEqual(adm, 'TES26R001')
 
     def test_primary_class_header(self):
         from students.utils import generate_admission_number
-        primary = SchoolClass.objects.create(school=self.school, name='Primary 1', level='Primary')
+        primary = SchoolClass.objects.create(school=self.school, name='Primary 1')
         adm = generate_admission_number(self.school, primary, year=2026)
         self.assertEqual(adm, 'TES26P1001')
 
@@ -1651,7 +1652,6 @@ class AcademicStageTests(TestCase):
         school_class = SchoolClass.objects.create(
             school=self.school,
             name="JSS1A",
-            level="JSS1",
             academic_stage=stage,
         )
         self.assertEqual(school_class.academic_stage, stage)
@@ -1663,7 +1663,6 @@ class AcademicStageTests(TestCase):
         school_class = SchoolClass(
             school=self.school2,
             name="JSS1A",
-            level="JSS1",
             academic_stage=stage,
         )
         with self.assertRaises(ValidationError):
@@ -1676,7 +1675,6 @@ class AcademicStageTests(TestCase):
             SchoolClass.objects.create(
                 school=self.school2,
                 name="JSS1A",
-                level="JSS1",
                 academic_stage=stage,
             )
 
@@ -1694,12 +1692,12 @@ class AcademicStageTests(TestCase):
         primary_stage = AcademicStage.objects.create(school=self.school, name="Primary", display_order=1)
         jss_stage = AcademicStage.objects.create(school=self.school, name="JSS", display_order=2)
 
-        SchoolClass.objects.create(school=self.school, name="JSS1A", level="JSS1", academic_stage=jss_stage)
-        SchoolClass.objects.create(school=self.school, name="Primary 1", level="Primary 1", academic_stage=primary_stage)
-        SchoolClass.objects.create(school=self.school, name="JSS2A", level="JSS2", academic_stage=jss_stage)
+        SchoolClass.objects.create(school=self.school, name="JSS1A", academic_stage=jss_stage)
+        SchoolClass.objects.create(school=self.school, name="Primary 1", academic_stage=primary_stage)
+        SchoolClass.objects.create(school=self.school, name="JSS2A", academic_stage=jss_stage)
 
         classes = list(SchoolClass.objects.for_school(self.school))
-        # Should be ordered by stage display_order, then level, then name
+        # Should be ordered by stage display_order, then name
         self.assertEqual([c.name for c in classes], ["Primary 1", "JSS1A", "JSS2A"])
 
     def test_school_class_missing_stage_rejected_on_save(self):
@@ -1707,7 +1705,6 @@ class AcademicStageTests(TestCase):
         school_class = SchoolClass(
             school=self.school,
             name="Missing Stage Class",
-            level="JSS1",
             academic_stage_id=999999999,
         )
         with self.assertRaises(ValidationError):
@@ -1720,13 +1717,13 @@ class AcademicStageTests(TestCase):
 
         # Can create class with active stage
         active_class = SchoolClass.objects.create(
-            school=self.school, name="Class A", level="A", academic_stage=active_stage
+            school=self.school, name="Class A", academic_stage=active_stage
         )
         self.assertEqual(active_class.academic_stage, active_stage)
 
         # Can create class with inactive stage (for backward compat), but it's discouraged
         inactive_class = SchoolClass.objects.create(
-            school=self.school, name="Class B", level="B", academic_stage=inactive_stage
+            school=self.school, name="Class B", academic_stage=inactive_stage
         )
         self.assertEqual(inactive_class.academic_stage, inactive_stage)
 
@@ -1740,10 +1737,8 @@ class AcademicStageTests(TestCase):
 class SchoolClassStageOnlyAdminFormTests(TestCase):
     """The Django admin class form presents one classification field.
 
-    ``level`` is a transitional snapshot derived from the academic stage, not a
-    second editable classification input. See the roadmap replacement sequence:
-    it is written only when the stage is first assigned or changed, so a stage
-    rename can never silently alter admission-number or fee-LEVEL behaviour.
+    The academic stage is the only classification — there is no level field
+    and no derived snapshot anywhere.
     """
 
     def setUp(self):
@@ -1768,13 +1763,14 @@ class SchoolClassStageOnlyAdminFormTests(TestCase):
         data.update(overrides)
         return data
 
-    def test_form_excludes_level_field(self):
+    def test_form_classification_fields(self):
         from students.admin import SchoolClassAdminForm
 
         form = SchoolClassAdminForm()
+        self.assertIn('academic_stage', form.fields)
         self.assertNotIn('level', form.fields)
 
-    def test_create_derives_level_from_stage(self):
+    def test_create_with_stage(self):
         from students.admin import SchoolClassAdminForm
 
         form = SchoolClassAdminForm(data=self._data())
@@ -1782,27 +1778,27 @@ class SchoolClassStageOnlyAdminFormTests(TestCase):
         obj = form.save()
 
         self.assertEqual(obj.academic_stage, self.jss)
-        self.assertEqual(obj.level, self.jss.name)
+        # The model has no classification snapshot any more.
+        with self.assertRaises(AttributeError):
+            obj.level
 
-    def test_stage_change_rewrites_snapshot(self):
+    def test_stage_change(self):
         from students.admin import SchoolClassAdminForm
 
         school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A', academic_stage=self.primary,
         )
         form = SchoolClassAdminForm(
             instance=school_class, data={**self._data()},  # name unchanged
         )
         self.assertTrue(form.is_valid(), form.errors)
         obj = form.save()
-        self.assertEqual(obj.level, self.jss.name)
+        self.assertEqual(obj.academic_stage, self.jss)
 
-    def test_stage_unchanged_preserves_snapshot(self):
-        """Re-saving without changing the stage must not touch ``level``:
-        that snapshot feeds admission numbers and LEVEL fee prices."""
+    def test_stage_unchanged(self):
+        """Re-saving without changing the stage keeps the classification."""
         school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
-            academic_stage=self.jss,
+            school=self.school, name='JSS1A', academic_stage=self.jss,
         )
         from students.admin import SchoolClassAdminForm
 
@@ -1811,14 +1807,13 @@ class SchoolClassStageOnlyAdminFormTests(TestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         obj = form.save()
-        self.assertEqual(obj.level, 'JSS1')
+        self.assertEqual(obj.academic_stage, self.jss)
 
-    def test_stage_clear_resets_snapshot(self):
+    def test_stage_clear(self):
         from students.admin import SchoolClassAdminForm
 
         school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
-            academic_stage=self.jss,
+            school=self.school, name='JSS1A', academic_stage=self.jss,
         )
         form = SchoolClassAdminForm(
             instance=school_class, data=self._data(academic_stage=''),
@@ -1826,17 +1821,14 @@ class SchoolClassStageOnlyAdminFormTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         obj = form.save()
         self.assertIsNone(obj.academic_stage)
-        self.assertEqual(obj.level, '')
 
-    def test_admission_header_uses_stage_derived_level(self):
-        """After classification flows through the stage, admission-number
-        header mapping is unchanged (level value preserved verbatim)."""
+    def test_admission_header_uses_stage_name(self):
+        """The stage name feeds the admission-number header map directly."""
         stage = AcademicStage.objects.create(
             school=self.school, name='JSS 1', display_order=3,
         )
         school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS 1 A', level='JSS 1',
-            academic_stage=stage,
+            school=self.school, name='JSS 1 A', academic_stage=stage,
         )
         from students.utils import _map_class_to_header
 

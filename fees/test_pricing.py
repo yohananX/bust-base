@@ -7,13 +7,13 @@ from django.db import IntegrityError
 from django.utils import timezone
 
 from core.models import School, AcademicSession, Term
-from students.models import SchoolClass, Student, ClassEnrollment
+from students.models import AcademicStage, SchoolClass, Student, ClassEnrollment
 from accounts.models import Roles, User
 from fees.models import FeeCategory, FeePrice, FeePriceOverride, Invoice
 from fees.pricing import resolve_prices, resolve_price_for_student
 from fees.generation import (
-    generate_invoices_for_level,
-    sync_level_invoices,
+    generate_invoices_for_stage,
+    sync_stage_invoices,
     generate_invoices_school_wide,
     sync_school_wide_invoices,
 )
@@ -30,8 +30,11 @@ class BasePricingTest(TestCase):
             school=self.school, session=self.session, name='First Term',
             start_date=date(2025, 9, 1), end_date=date(2025, 12, 15), is_current=True,
         )
+        self.stage = AcademicStage.objects.create(
+            school=self.school, name='JSS1', display_order=1,
+        )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A', academic_stage=self.stage,
         )
         self.student = Student.objects.create(
             school=self.school,
@@ -229,21 +232,21 @@ class FeePriceTest(BasePricingTest):
         self.assertEqual(fp.scope, FeePrice.SCOPE_CLASS)
         self.assertEqual(fp.school_class, self.school_class)
 
-    def test_feeprice_level_scope_creation(self):
+    def test_feeprice_stage_scope_creation(self):
         cat = FeeCategory.objects.create(
             school=self.school, name='Tuition', billing_cycle='PER_TERM', student_type='ALL'
         )
         fp = FeePrice.objects.create(
             school=self.school,
-            scope=FeePrice.SCOPE_LEVEL,
-            level='JSS',
+            scope=FeePrice.SCOPE_STAGE,
+            academic_stage=self.stage,
             term=self.term,
             category=cat,
             amount=Decimal('20000.00'),
             student_type='ALL',
         )
-        self.assertEqual(fp.scope, FeePrice.SCOPE_LEVEL)
-        self.assertEqual(fp.level, 'JSS')
+        self.assertEqual(fp.scope, FeePrice.SCOPE_STAGE)
+        self.assertEqual(fp.academic_stage, self.stage)
 
     def test_feeprice_school_wide_creation(self):
         cat = FeeCategory.objects.create(
@@ -259,7 +262,7 @@ class FeePriceTest(BasePricingTest):
         )
         self.assertEqual(fp.scope, FeePrice.SCOPE_SCHOOL_WIDE)
         self.assertIsNone(fp.school_class)
-        self.assertEqual(fp.level, '')
+        self.assertIsNone(fp.academic_stage)
 
     def test_resolve_prices_uses_feeprice_before_feestructure(self):
         cat = FeeCategory.objects.create(
@@ -295,7 +298,7 @@ class FeePriceTest(BasePricingTest):
         from other classes when resolving for a specific class.
         """
         jss2 = SchoolClass.objects.create(
-            school=self.school, name='JSS2', level='JSS',
+            school=self.school, name='JSS2',
         )
         cat = FeeCategory.objects.create(
             school=self.school, name='Tuition', billing_cycle='PER_TERM', student_type='ALL'
@@ -342,17 +345,20 @@ class FeePriceTest(BasePricingTest):
         self.assertEqual(result[0].scope, FeePrice.SCOPE_CLASS)
         self.assertEqual(result[0].amount, Decimal('2000.00'))
 
-    def test_resolve_prices_level_scope(self):
+    def test_resolve_prices_stage_scope(self):
+        jss_stage = AcademicStage.objects.create(
+            school=self.school, name='JSS', display_order=2,
+        )
         jss2 = SchoolClass.objects.create(
-            school=self.school, name='JSS2A', level='JSS',
+            school=self.school, name='JSS2A', academic_stage=jss_stage,
         )
         cat = FeeCategory.objects.create(
             school=self.school, name='Tuition', billing_cycle='PER_TERM', student_type='ALL'
         )
         FeePrice.objects.create(
             school=self.school,
-            scope=FeePrice.SCOPE_LEVEL,
-            level='JSS',
+            scope=FeePrice.SCOPE_STAGE,
+            academic_stage=jss_stage,
             term=self.term,
             category=cat,
             amount=Decimal('28000.00'),
@@ -362,7 +368,7 @@ class FeePriceTest(BasePricingTest):
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], FeePrice)
         self.assertEqual(result[0].amount, Decimal('28000.00'))
-        self.assertEqual(result[0].level, 'JSS')
+        self.assertEqual(result[0].academic_stage, jss_stage)
 
     def test_feeprice_effective_date_filtering(self):
         cat = FeeCategory.objects.create(
@@ -409,12 +415,12 @@ class FeePriceTest(BasePricingTest):
         with self.assertRaises(Exception):
             fp.full_clean()
 
-    def test_feeprice_school_wide_must_not_have_class_or_level(self):
+    def test_feeprice_school_wide_must_not_have_class_or_stage(self):
         fp = FeePrice(
             school=self.school,
             scope=FeePrice.SCOPE_SCHOOL_WIDE,
             school_class=self.school_class,
-            level='JSS',
+            academic_stage=self.stage,
             term=self.term,
             category=FeeCategory.objects.create(
                 school=self.school, name='PTA', billing_cycle='ONE_TIME'
@@ -494,13 +500,16 @@ class GenerationScopeTest(BasePricingTest):
             school=self.school, name='Tuition', billing_cycle='PER_TERM', student_type='ALL'
         )
 
-    def test_generate_invoices_for_level_creates_invoices(self):
-        """LEVEL scope creates invoices for all classes with matching level."""
+    def test_generate_invoices_for_stage_creates_invoices(self):
+        """STAGE scope creates invoices for all classes in the stage."""
+        jss_stage = AcademicStage.objects.create(
+            school=self.school, name='JSS', display_order=2,
+        )
         jss1b = SchoolClass.objects.create(
-            school=self.school, name='JSS1B', level='JSS1',
+            school=self.school, name='JSS1B', academic_stage=self.stage,
         )
         jss2 = SchoolClass.objects.create(
-            school=self.school, name='JSS2', level='JSS',
+            school=self.school, name='JSS2', academic_stage=jss_stage,
         )
         Student.objects.create(
             school=self.school,
@@ -524,21 +533,21 @@ class GenerationScopeTest(BasePricingTest):
         )
 
         FeePrice.objects.create(
-            school=self.school, scope=FeePrice.SCOPE_LEVEL, level='JSS1',
+            school=self.school, scope=FeePrice.SCOPE_STAGE, academic_stage=self.stage,
             term=self.term, category=self.cat, amount=Decimal('25000.00'), student_type='ALL'
         )
 
-        generated = generate_invoices_for_level(self.school, 'JSS1', self.term)
+        generated = generate_invoices_for_stage(self.school, self.stage, self.term)
         self.assertEqual(generated, 2)  # JSS1A and JSS1B
 
-        # JSS2 should not have invoice (different level)
+        # JSS2 should not have invoice (different stage)
         jss2_invoices = Invoice.objects.filter(student__enrollments__school_class=jss2, term=self.term)
         self.assertEqual(jss2_invoices.count(), 0)
 
     def test_generate_invoices_school_wide_creates_invoices(self):
         """SCHOOL_WIDE scope creates invoices for all active classes."""
         jss2 = SchoolClass.objects.create(
-            school=self.school, name='JSS2', level='JSS',
+            school=self.school, name='JSS2',
         )
         Student.objects.create(
             school=self.school,
@@ -559,10 +568,10 @@ class GenerationScopeTest(BasePricingTest):
         generated = generate_invoices_school_wide(self.school, self.term)
         self.assertEqual(generated, 2)  # JSS1A and JSS2
 
-    def test_sync_level_invoices_reprices_unpaid(self):
-        """sync_level_invoices only re-prices unpaid invoices."""
+    def test_sync_stage_invoices_reprices_unpaid(self):
+        """sync_stage_invoices only re-prices unpaid invoices."""
         jss1b = SchoolClass.objects.create(
-            school=self.school, name='JSS1B', level='JSS1',
+            school=self.school, name='JSS1B', academic_stage=self.stage,
         )
         Student.objects.create(
             school=self.school,
@@ -576,11 +585,11 @@ class GenerationScopeTest(BasePricingTest):
         )
 
         FeePrice.objects.create(
-            school=self.school, scope=FeePrice.SCOPE_LEVEL, level='JSS1',
+            school=self.school, scope=FeePrice.SCOPE_STAGE, academic_stage=self.stage,
             term=self.term, category=self.cat, amount=Decimal('25000.00'), student_type='ALL'
         )
 
-        generate_invoices_for_level(self.school, 'JSS1', self.term)
+        generate_invoices_for_stage(self.school, self.stage, self.term)
 
         # Confirm one payment on JSS1A student's invoice
         invoice1 = Invoice.objects.get(student=self.student, term=self.term)
@@ -594,8 +603,8 @@ class GenerationScopeTest(BasePricingTest):
         # Update price
         FeePrice.objects.filter(school=self.school, category=self.cat, term=self.term).update(amount=Decimal('30000.00'))
 
-        # Sync level - should only update unpaid invoice (JSS1B)
-        re_priced = sync_level_invoices(self.school, 'JSS1', self.term)
+        # Sync stage - should only update unpaid invoice (JSS1B)
+        re_priced = sync_stage_invoices(self.school, self.stage, self.term)
         self.assertEqual(re_priced, 1)
 
         invoice1.refresh_from_db()
@@ -610,7 +619,7 @@ class GenerationScopeTest(BasePricingTest):
     def test_sync_school_wide_invoices_reprices_unpaid(self):
         """sync_school_wide_invoices only re-prices unpaid invoices."""
         jss2 = SchoolClass.objects.create(
-            school=self.school, name='JSS2', level='JSS',
+            school=self.school, name='JSS2',
         )
         Student.objects.create(
             school=self.school,
@@ -657,10 +666,10 @@ class GenerationScopeTest(BasePricingTest):
 
 
 class SubScopingResolutionTest(BasePricingTest):
-    """Deterministic two-stage precedence for NEW/RETURNING sub-scoping.
+    """Deterministic two-step precedence for NEW/RETURNING sub-scoping.
 
-    Stage 1: scope (CLASS < LEVEL < SCHOOL_WIDE — most specific wins).
-    Stage 2: within the winning scope, target type beats a generic ALL row.
+    Step 1: scope (CLASS < STAGE < SCHOOL_WIDE — most specific wins).
+    Step 2: within the winning scope, target type beats a generic ALL row.
     """
 
     def _cat(self, name, **kwargs):
@@ -674,7 +683,7 @@ class SubScopingResolutionTest(BasePricingTest):
         return FeePrice.objects.create(
             school=self.school, scope=scope,
             school_class=self.school_class if scope == FeePrice.SCOPE_CLASS else None,
-            level=kwargs.pop('level', ''),
+            academic_stage=kwargs.pop('academic_stage', None),
             term=kwargs.pop('term', self.term),
             category=category, amount=Decimal(amount), student_type=kwargs.pop('student_type', 'ALL'),
         )
@@ -721,10 +730,10 @@ class SubScopingResolutionTest(BasePricingTest):
         further away, even though type has higher numeric priority."""
         cat = self._cat('Tuition')
         self._price(cat, '30000.00', scope=FeePrice.SCOPE_SCHOOL_WIDE, student_type='NEW')
-        self._price(cat, '25000.00', scope=FeePrice.SCOPE_LEVEL, level='JSS1', student_type='ALL')
+        self._price(cat, '25000.00', scope=FeePrice.SCOPE_STAGE, academic_stage=self.stage, student_type='ALL')
         result = resolve_prices(self.school, self.school_class, self.term, student_type='NEW')
         fp = next(fp for fp in result if fp.category == cat)
-        self.assertEqual(fp.scope, FeePrice.SCOPE_LEVEL)
+        self.assertEqual(fp.scope, FeePrice.SCOPE_STAGE)
         self.assertEqual(fp.amount, Decimal('25000.00'))
 
     def test_agg_scope_aggregate_mode_mixes_types(self):

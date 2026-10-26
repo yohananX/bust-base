@@ -55,11 +55,13 @@ class FeeCategory(TenantScopedModel):
 
 class FeePrice(TenantScopedModel):
     SCOPE_SCHOOL_WIDE = 'SCHOOL_WIDE'
-    SCOPE_LEVEL = 'LEVEL'
+    # Stored value 'LEVEL' is a legacy enum string; the concept and this
+    # constant now mean "a single AcademicStage".
+    SCOPE_STAGE = 'LEVEL'
     SCOPE_CLASS = 'CLASS'
     SCOPE_CHOICES = [
         (SCOPE_SCHOOL_WIDE, _('School-wide')),
-        (SCOPE_LEVEL, _('Level/Grade')),
+        (SCOPE_STAGE, _('Academic Stage')),
         (SCOPE_CLASS, _('Class-specific')),
     ]
 
@@ -111,11 +113,14 @@ class FeePrice(TenantScopedModel):
         blank=True,
         verbose_name=_('school class'),
     )
-    level = models.CharField(
-        max_length=100,
+    academic_stage = models.ForeignKey(
+        'students.AcademicStage',
+        on_delete=models.PROTECT,
+        null=True,
         blank=True,
-        verbose_name=_('level'),
-        help_text=_('Level code for LEVEL-scoped prices, e.g. JSS, PRIMARY.'),
+        related_name='fee_prices',
+        verbose_name=_('academic stage'),
+        help_text=_('Stage-scoped prices apply to every class of this academic stage.'),
     )
     is_active = models.BooleanField(
         default=True,
@@ -138,14 +143,14 @@ class FeePrice(TenantScopedModel):
     class Meta:
         verbose_name = _('fee price')
         verbose_name_plural = _('fee prices')
-        unique_together = ('school', 'scope', 'school_class', 'level', 'term', 'category', 'student_type')
-        ordering = ['scope', 'school_class', 'level', 'category']
+        unique_together = ('school', 'scope', 'school_class', 'academic_stage', 'term', 'category', 'student_type')
+        ordering = ['scope', 'school_class', 'academic_stage__name', 'category']
 
     def __str__(self):
         if self.scope == self.SCOPE_SCHOOL_WIDE:
             scope_label = 'School-wide'
-        elif self.scope == self.SCOPE_LEVEL:
-            scope_label = f'Level {self.level}'
+        elif self.scope == self.SCOPE_STAGE:
+            scope_label = f'Stage {self.academic_stage.name}'
         else:
             scope_label = str(self.school_class)
         return f'{scope_label} - {self.term or "One-time"} - {self.category}: {self.amount}'
@@ -158,10 +163,12 @@ class FeePrice(TenantScopedModel):
     def clean(self):
         if self.scope == self.SCOPE_CLASS and not self.school_class_id:
             raise ValidationError({'school_class': _('Class-specific prices require a class.')})
-        if self.scope == self.SCOPE_LEVEL and not self.level:
-            raise ValidationError({'level': _('Level-scoped prices require a level.')})
-        if self.scope == self.SCOPE_SCHOOL_WIDE and (self.school_class_id or self.level):
-            raise ValidationError(_('School-wide prices must not have a class or level.'))
+        if self.scope == self.SCOPE_STAGE and not self.academic_stage_id:
+            raise ValidationError({'academic_stage': _('Stage-scoped prices require an academic stage.')})
+        if self.scope == self.SCOPE_SCHOOL_WIDE and (self.school_class_id or self.academic_stage_id):
+            raise ValidationError(_('School-wide prices must not have a class or academic stage.'))
+        if self.academic_stage_id and self.academic_stage.school_id != self.school_id:
+            raise ValidationError({'academic_stage': _('Academic stage must belong to the same school as the price.')})
 
         category = self.category
         if category.billing_cycle == 'PER_TERM' and not self.term_id:
@@ -180,7 +187,7 @@ class FeePrice(TenantScopedModel):
             school=self.school,
             scope=self.scope,
             school_class=self.school_class,
-            level=self.level,
+            academic_stage=self.academic_stage,
             term=self.term,
             category=category,
             student_type=self.student_type,
@@ -189,7 +196,7 @@ class FeePrice(TenantScopedModel):
             qs = qs.exclude(pk=self.pk)
         if qs.exists():
             raise ValidationError(
-                _('A fee price already exists for this school, scope, class/level, term, category, and student type.')
+                _('A fee price already exists for this school, scope, class/academic stage, term, category, and student type.')
             )
 
 

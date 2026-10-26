@@ -171,7 +171,7 @@ class FixtureTests(unittest.TestCase):
             second = build_synthetic_database(path)
             self.assertEqual(first["fingerprint_sha256"], second["fingerprint_sha256"])
             self.assertEqual(first["row_counts"], second["row_counts"])
-            self.assertEqual(first["total_rows"], 112)
+            self.assertEqual(first["total_rows"], 115)
 
     def test_fixture_refuses_project_database_and_repo_paths(self):
         with self.assertRaises(ValueError):

@@ -182,7 +182,7 @@ class OutstandingFeesReportView(RoleRequiredMixin, View):
         terms = Term.for_current_session(school)
         classes = SchoolClass.objects.filter(
             school=school, is_active=True
-        ).order_by('level', 'name')
+        ).order_by('academic_stage__display_order', 'name')
 
         current_class_name = ClassEnrollment.objects.filter(
             student=OuterRef('student_id'),

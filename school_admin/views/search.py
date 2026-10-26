@@ -151,15 +151,15 @@ class ClassSearchAPIView(EntitySearchAPIView):
     def get_queryset(self, request):
         return SchoolClass.objects.filter(school=request.school).select_related(
             'academic_stage'
-        ).order_by('level', 'name')
+        ).order_by('academic_stage__display_order', 'name')
 
     def serialize(self, school_class):
-        # Academic stage is the authoritative classification; the legacy
-        # level snapshot is shown only while a class is still unclassified.
+        # Academic stage is the single classification; unclassified classes
+        # say so explicitly (same wording as the class list).
         stage_label = (
             school_class.academic_stage.name
             if school_class.academic_stage
-            else school_class.level
+            else 'Unclassified'
         )
         return {
             'id': school_class.pk,

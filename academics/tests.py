@@ -38,7 +38,7 @@ class BaseTest(TestCase):
             school=self.school, role=Roles.STUDENT,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A", level="JSS1",
+            school=self.school, name="JSS1A",
         )
         self.subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
@@ -77,7 +77,7 @@ class SubjectModelTests(TestCase):
             short_code="grace-house",
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A", level="JSS1",
+            school=self.school, name="JSS1A",
         )
 
     def test_subject_creation(self):
@@ -113,7 +113,7 @@ class SubjectModelTests(TestCase):
     def test_same_code_different_schools(self):
         """Two different schools can have subjects with the same code."""
         school2 = School.objects.create(name="Other School", short_code="other")
-        class2 = SchoolClass.objects.create(school=school2, name="JSS1A", level="JSS1")
+        class2 = SchoolClass.objects.create(school=school2, name="JSS1A")
 
         subject1 = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
@@ -134,7 +134,7 @@ class SubjectModelTests(TestCase):
     def test_cross_school_isolation(self):
         """Subjects from different schools should not interfere with each other."""
         school2 = School.objects.create(name="Other School", short_code="other")
-        class2 = SchoolClass.objects.create(school=school2, name="JSS1A", level="JSS1")
+        class2 = SchoolClass.objects.create(school=school2, name="JSS1A")
 
         subject1 = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
@@ -182,7 +182,7 @@ class TeacherAssignmentModelTests(TestCase):
             role=Roles.ADMIN,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A", level="JSS1",
+            school=self.school, name="JSS1A",
         )
         self.subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH",
@@ -431,7 +431,7 @@ class ScoreModelTests(BaseTest):
             is_current=True,
         )
         school_class2 = SchoolClass.objects.create(
-            school=school2, name="JSS1A", level="JSS1",
+            school=school2, name="JSS1A",
         )
         student_user2 = User.objects.create_user(
             username="student2", email="s2@s2.com", password="pass",
@@ -563,7 +563,7 @@ class RankingTests(TestCase):
             end_date=date(2025, 12, 20),
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A", level="JSS1",
+            school=self.school, name="JSS1A",
         )
         self.subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH", pass_mark=40,
@@ -851,7 +851,7 @@ class TermSummaryModerationTests(TestCase):
             end_date=date(2025, 12, 20),
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A", level="JSS1",
+            school=self.school, name="JSS1A",
         )
         self.subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MTH", pass_mark=40,

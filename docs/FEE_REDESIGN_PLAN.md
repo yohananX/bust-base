@@ -66,16 +66,16 @@ Constraints
 
 ### `SchoolClass` — extend existing model
 
-The current class model has `name`, a free-text `level`, and `is_active`; it is unique by `(school, name)`.
+The current class model has `name`, an `academic_stage` FK (nullable), and `is_active`; it is unique by `(school, name)`. The former free-text `level` field was removed on 2026-10-26 (migration `students.0010_remove_schoolclass_level`, roadmap §2.7).
 
 Target changes:
 
-- Add a required `academic_stage` FK after a staged backfill.
-- Replace `level` as the source of truth for stage membership.
-- Keep the existing `level` field during migration; remove it only after all consumers have been migrated and data reconciled.
+- ~~Add a required `academic_stage` FK after a staged backfill.~~ **Done 2026-10-26** — the FK exists (nullable by design: unclassified is valid only while a school has no active stages, a recorded owner decision).
+- ~~Replace `level` as the source of truth for stage membership.~~ **Done** — `AcademicStage` is the single classification.
+- ~~Keep the existing `level` field during migration; remove it only after all consumers have been migrated and data reconciled.~~ **Gate met and field removed 2026-10-26 (roadmap §2.7).**
 - Do not change class names or historical enrollment records as part of stage migration.
 
-**Status update (2026-10-26 — `AcademicStage` replaces `Level`, one concept).** The staged sequence above is now governed in `docs/IMPLEMENTATION_ROADMAP.md` §2.6, which is the authoritative execution order. In brief: the class form and Django admin now present **only** the academic stage (stage required whenever the school has active stages configured); `level` survives solely as a derived transitional snapshot written on stage assignment/change, never a second editable field. The design (not yet implemented) migration `students.0010` makes the existing level values authoritative as stages 1:1 with the same names and granularity — no grouping or reinterpretation. `SchoolClass.level` may be removed only when the roadmap §2.6 gate is met: LEVEL fee scope converted with row-by-row review, an explicit admission-header policy on stage names, CSV import/export via stages, and remaining `order_by('level')` orderings converted.
+**Status update (2026-10-26 — `AcademicStage` replaces `Level`, one concept).** The staged sequence above is now governed in `docs/IMPLEMENTATION_ROADMAP.md` §2.6, which is the authoritative execution order. In brief: the class form and Django admin now present **only** the academic stage (stage required whenever the school has active stages configured); `level` survives solely as a derived transitional snapshot written on stage assignment/change, never a second editable field. The design (not yet implemented) migration `students.0010` makes the existing level values authoritative as stages 1:1 with the same names and granularity — no grouping or reinterpretation. `SchoolClass.level` may be removed only when the roadmap §2.6 gate is met: LEVEL fee scope converted with row-by-row review, an explicit admission-header policy on stage names, CSV import/export via stages, and remaining `order_by('level')` orderings converted. **(Completion, same day — §2.7:** the gate was closed and the removal executed; the backfill was superseded because the development database holds no class, stage, student, or price rows to convert, and migration `students.0010` was reused for the removal itself.**)**
 
 The stage selector in class creation must list stages belonging to the current school. New stages are managed through the school's academic-structure settings.
 
@@ -180,7 +180,7 @@ The current model stores the amount, category, term, student type and scope/targ
 | `amount`           | Decimal, `max_digits=10`, `decimal_places=2` |
 | `is_active`        | Boolean, default true                        |
 
-This is the target shape. During migration, the existing `FeePrice` rows and fields remain available until data is mapped and the new resolver is verified. We should not simply drop `scope`, `level`, `school_class`, `term` or `student_type` in the first schema migration.
+This is the target shape. During migration, the existing `FeePrice` rows and fields remain available until data is mapped and the new resolver is verified. We should not simply drop `scope`, `level`, `school_class`, `term` or `student_type` in the first schema migration. (2026-10-26: the legacy `FeePrice.level` column was in fact dropped ahead of the `TermFeeItem` work — converted to the `academic_stage` FK in `fees/0023` — because the pre-production database holds zero price rows and the §2.6/§2.7 removal gate was met; the caution above still governs the **future** `TermFeeItem` migration.)
 
 Why this separation matters: an item can apply to both groups while having different prices for each group, and a class can override one group's amount without accidentally overriding the other group's price.
 
@@ -305,9 +305,9 @@ The migration should be additive first, with a controlled switch to the new reso
 2. Phase 1 — Add academic structure
    - Add `AcademicStage`.
    - Add nullable `SchoolClass.academic_stage_id`.
-   - Backfill stages from existing class `level` values only where a reliable mapping exists. (2026-10-26: the reliable mapping is name identity — each distinct non-empty level value becomes/reuses a stage of the same name and granularity, per roadmap §2.6 the design is recorded but implementation was deferred by owner decision.)
+   - Backfill stages from existing class `level` values only where a reliable mapping exists. (2026-10-26: the reliable mapping is name identity — each distinct non-empty level value becomes/reuses a stage of the same name and granularity, per roadmap §2.6 the design is recorded but implementation was deferred by owner decision. **Superseded by roadmap §2.7: the dev DB held no class/level rows, so the backfill was abandoned and `level` was removed outright.)
    - Flag ambiguous mappings for review. (2026-10-26: empty or blank levels stay unclassified and are reported, never guessed.)
-   - Keep `level` and existing enrollment fields intact.
+   - Keep `level` and existing enrollment fields intact. (2026-10-26: **superseded** — `level` removed in `students.0010`; enrollment fields intact.)
    - Validate school ownership and class/stage consistency. (2026-10-26: done on ordinary ORM writes; portal and admin workflow converge on the stage field — see §2.1 status update.)
 3. Phase 2 — Add classification support
    - Add the New intake admission indicator and review fields.

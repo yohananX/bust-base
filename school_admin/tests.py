@@ -61,10 +61,10 @@ class OutstandingFeesReportViewTest(TestCase):
         )
 
         self.class_a = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A',
         )
         self.class_b = SchoolClass.objects.create(
-            school=self.school, name='JSS2A', level='JSS2',
+            school=self.school, name='JSS2A',
         )
 
         # Student 1 (JSS1A) — partial payer in term1
@@ -227,7 +227,7 @@ class OutstandingFeesReportViewTest(TestCase):
             first_name='Other',
             last_name='Kid',
         )
-        class2 = SchoolClass.objects.create(school=school2, name='P1A', level='P1')
+        class2 = SchoolClass.objects.create(school=school2, name='P1A')
         student2 = Student.objects.create(
             school=school2,
             user=user2,
@@ -309,7 +309,7 @@ class FlowReproTest(TestCase):
             start_date=date(2026, 9, 1), end_date=date(2026, 12, 15), is_current=True,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1', level='JSS1',
+            school=self.school, name='JSS1',
         )
         self.tuition_cat = FeeCategory.objects.create(
             school=self.school, name='Tuition', is_compulsory=True,
@@ -679,7 +679,7 @@ class PaymentAdminTest(TestCase):
             school=self.school, role=Roles.ADMIN,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A',
         )
         self.student = self._make_student('student1', 'John', 'Doe', 'STU001')
         self.invoice = Invoice.objects.create(
@@ -872,7 +872,7 @@ class ResultModerationViewTests(TestCase):
             end_date=date(2025, 12, 15), is_current=True,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A',
         )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH', pass_mark=40,
@@ -1032,7 +1032,7 @@ class FirstLoginPasswordFlagTests(TestCase):
             start_date=date(2026, 9, 1), end_date=date(2026, 12, 15), is_current=True,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1', level='JSS1',
+            school=self.school, name='JSS1',
         )
         self.admin = User.objects.create_user(
             username='flagadmin', email='flagadmin@test.com', password='pass123',
@@ -1212,7 +1212,7 @@ class StudentMiddleNameTests(TestCase):
             start_date=date(2026, 9, 1), end_date=date(2027, 8, 31), is_current=True,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1', level='JSS1',
+            school=self.school, name='JSS1',
         )
         self.admin_user = User.objects.create_user(
             username='mnsadmin', email='mns@test.com', password='pass123',
@@ -1306,7 +1306,7 @@ class StudentOriginAndGuardianDetailsTests(TestCase):
             school=self.school, role=Roles.ADMIN,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A',
         )
         self.client.login(username='adminx', password='pass123')
 
@@ -1422,7 +1422,7 @@ class DashboardCollectedThisTermTest(TestCase):
             school=self.school, role=Roles.ADMIN,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A',
         )
         self.student_user = User.objects.create_user(
             username='student1', email='student1@test.com', password='testpass123',
@@ -1517,7 +1517,7 @@ class DashboardOnboardingTest(TestCase):
         self.school.email = 'school@test.com'
         self.school.principal_name = 'Principal'
         self.school.save()
-        SchoolClass.objects.create(school=self.school, name='JSS1', level='JSS1')
+        SchoolClass.objects.create(school=self.school, name='JSS1')
         Subject.objects.create(school=self.school, name='Maths', code='MTH')
         User.objects.create_user(
             username='teacher', email='teacher@test.com', password='testpass123',
@@ -1559,7 +1559,7 @@ class ClassFirstSubjectManagementTests(TestCase):
         )
         self.client.force_login(self.admin_user)
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS 1', level='Junior',
+            school=self.school, name='JSS 1',
         )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH',
@@ -1630,7 +1630,7 @@ class StaffDeleteViewTest(TestCase):
             school=self.school, session=self.session, name='First Term',
             start_date=date(2026, 9, 1), end_date=date(2026, 12, 15), is_current=True,
         )
-        self.school_class = SchoolClass.objects.create(school=self.school, name='JSS1', level='JSS1')
+        self.school_class = SchoolClass.objects.create(school=self.school, name='JSS1')
         self.superadmin = User.objects.create_user(
             username='super1', email='super1@test.com', password='pass123',
             school=None, role=Roles.ADMIN, first_name='Super', last_name='Admin',
@@ -1785,7 +1785,7 @@ class SetupChecksTest(TestCase):
             is_current=True,
         )
         school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A',
         )
         subject = Subject.objects.create(
             school=self.school, name='Math', code='MTH',
@@ -1890,7 +1890,7 @@ class SetupChecksTest(TestCase):
         """Classes check returns None once an active class exists."""
         from school_admin.setup_checks import check_active_classes
         self.assertIsNotNone(check_active_classes(self.school))
-        SchoolClass.objects.create(school=self.school, name='JSS1', level='JSS1', is_active=True)
+        SchoolClass.objects.create(school=self.school, name='JSS1', is_active=True)
         self.assertIsNone(check_active_classes(self.school))
 
     def test_subjects_alert_disappears_when_fixed(self):
@@ -1942,7 +1942,7 @@ class SetupChecksTest(TestCase):
             is_current=True,
         )
         self.assertIsNotNone(check_teacher_assignments(self.school))
-        school_class = SchoolClass.objects.create(school=self.school, name='JSS1', level='JSS1')
+        school_class = SchoolClass.objects.create(school=self.school, name='JSS1')
         subject = Subject.objects.create(school=self.school, name='Math', code='MTH')
         teacher = User.objects.create_user(
             username='t1', email='t@test.com', password='testpass123',
@@ -2015,8 +2015,8 @@ class SubjectListViewTests(TestCase):
         )
         self.client.force_login(self.admin_user)
 
-        self.cls_a = SchoolClass.objects.create(school=self.school, name='JSS1', level='JSS1')
-        self.cls_b = SchoolClass.objects.create(school=self.school, name='JSS2', level='JSS2')
+        self.cls_a = SchoolClass.objects.create(school=self.school, name='JSS1')
+        self.cls_b = SchoolClass.objects.create(school=self.school, name='JSS2')
 
         self.math = Subject.objects.create(school=self.school, name='Mathematics', code='MTH')
         self.eng = Subject.objects.create(school=self.school, name='English', code='ENG')
@@ -2140,7 +2140,7 @@ class FeePricingCreateViewTest(TestCase):
         # sibling must live on the same term (PER_TERM also requires a term).
         FeePrice.objects.create(
             school=self.school, scope=FeePrice.SCOPE_SCHOOL_WIDE, school_class=None,
-            level='', term=self.term, category=self.cat, amount=Decimal('28000.00'),
+            term=self.term, category=self.cat, amount=Decimal('28000.00'),
             student_type='RETURNING',
         )
         self.client.force_login(self.admin)
@@ -2199,7 +2199,7 @@ class SchoolClassStageSelectorTests(TestCase):
             school=self.other_school, name='Foreign Stage', display_order=1,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A',
         )
 
     def _create_data(self, **overrides):
@@ -2245,16 +2245,6 @@ class SchoolClassStageSelectorTests(TestCase):
         created = SchoolClass.objects.get(school=self.school, name='JSS2A')
         self.assertEqual(created.academic_stage, self.jss)
 
-    def test_create_class_derives_level_from_stage(self):
-        """The transitional level snapshot equals the stage name on create."""
-        response = self.client.post(
-            reverse('school_admin:class_create'), self._create_data(),
-        )
-
-        self.assertEqual(response.status_code, 302)
-        created = SchoolClass.objects.get(school=self.school, name='JSS2A')
-        self.assertEqual(created.level, self.jss.name)
-
     def test_create_form_renders_without_configured_stages(self):
         AcademicStage.objects.filter(school=self.school).delete()
 
@@ -2265,7 +2255,7 @@ class SchoolClassStageSelectorTests(TestCase):
 
     def test_create_without_stage_allowed_when_no_stages_configured(self):
         """Without stages there is nothing authoritative to select;
-        the class is stored unclassified with an empty legacy snapshot."""
+        the class is stored unclassified."""
         AcademicStage.objects.filter(school=self.school).delete()
 
         response = self.client.post(
@@ -2276,7 +2266,6 @@ class SchoolClassStageSelectorTests(TestCase):
         self.assertEqual(response.status_code, 302)
         created = SchoolClass.objects.get(school=self.school, name='JSS2A')
         self.assertIsNone(created.academic_stage)
-        self.assertEqual(created.level, '')
 
     def test_create_class_requires_stage_when_stages_configured(self):
         """The stage is the authoritative classification, so it is not
@@ -2350,35 +2339,6 @@ class SchoolClassStageSelectorTests(TestCase):
         self.school_class.refresh_from_db()
         self.assertEqual(self.school_class.academic_stage, self.primary)
 
-    def test_edit_class_stage_change_derives_level(self):
-        """Assigning a stage writes the snapshot; reassigning rewrites it."""
-        self.assertEqual(self.school_class.level, 'JSS1')
-
-        response = self.client.post(
-            reverse('school_admin:class_edit', args=[self.school_class.pk]),
-            self._edit_data(academic_stage=str(self.primary.pk)),
-        )
-
-        self.assertEqual(response.status_code, 302)
-        self.school_class.refresh_from_db()
-        self.assertEqual(self.school_class.level, self.primary.name)
-
-    def test_edit_class_keeps_level_when_stage_unchanged(self):
-        """Stage renames must not silently rewrite the snapshot, so an edit
-        that leaves the stage untouched leaves ``level`` alone."""
-        self.school_class.academic_stage = self.primary
-        self.school_class.level = 'JSS1'
-        self.school_class.save()
-
-        response = self.client.post(
-            reverse('school_admin:class_edit', args=[self.school_class.pk]),
-            self._edit_data(academic_stage=str(self.primary.pk)),
-        )
-
-        self.assertEqual(response.status_code, 302)
-        self.school_class.refresh_from_db()
-        self.assertEqual(self.school_class.level, 'JSS1')
-
     def test_edit_class_can_clear_stage(self):
         """Clearing is denied once stages exist; the class cannot drop its
         authoritative classification while one is selectable."""
@@ -2436,7 +2396,7 @@ class SchoolClassStageSelectorTests(TestCase):
 
     def test_class_list_shows_stage_and_unclassified_state(self):
         classified = SchoolClass.objects.create(
-            school=self.school, name='Primary 1', level='Primary 1',
+            school=self.school, name='Primary 1',
             academic_stage=self.primary,
         )
 

@@ -59,11 +59,6 @@ class SchoolClass(TenantScopedModel):
     """A class as a stable entity (e.g. 'JSS1A'), independent of academic year."""
 
     name = models.CharField(max_length=100, verbose_name=_('name'))
-    level = models.CharField(
-        max_length=100,
-        verbose_name=_('level'),
-        help_text=_('e.g. "JSS1", "Primary 3" — used for grouping/reporting (legacy field, will be replaced by academic_stage)'),
-    )
     academic_stage = models.ForeignKey(
         'AcademicStage',
         on_delete=models.PROTECT,
@@ -71,7 +66,9 @@ class SchoolClass(TenantScopedModel):
         blank=True,
         related_name='classes',
         verbose_name=_('academic stage'),
-        help_text=_('The academic stage this class belongs to. Required after migration backfill.'),
+        help_text=_('The academic stage this class belongs to. Academic Stage is the single '
+                    'classification for classes; a class may stay unclassified only while '
+                    'the school has no active stages configured.'),
     )
     is_active = models.BooleanField(default=True, verbose_name=_('active'))
 
@@ -79,7 +76,7 @@ class SchoolClass(TenantScopedModel):
         verbose_name = _('school class')
         verbose_name_plural = _('school classes')
         unique_together = ('school', 'name')
-        ordering = ['academic_stage__display_order', 'level', 'name']
+        ordering = ['academic_stage__display_order', 'name']
 
     def __str__(self):
         return self.name

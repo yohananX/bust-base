@@ -86,9 +86,9 @@ class FeeCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(FeePrice)
 class FeePriceAdmin(admin.ModelAdmin):
-    list_display = ['scope', 'school_class', 'level', 'term', 'category', 'amount', 'student_type', 'is_active', 'effective_from', 'effective_to', 'school']
-    list_filter = ['scope', 'school_class', 'level', 'term', 'category', 'student_type', 'is_active', 'school']
-    search_fields = ['school_class__name', 'level', 'category__name']
+    list_display = ['scope', 'school_class', 'academic_stage', 'term', 'category', 'amount', 'student_type', 'is_active', 'effective_from', 'effective_to', 'school']
+    list_filter = ['scope', 'school_class', 'academic_stage', 'term', 'category', 'student_type', 'is_active', 'school']
+    search_fields = ['school_class__name', 'academic_stage__name', 'category__name']
     readonly_fields = ['school']
     
     def get_readonly_fields(self, request, obj=None):

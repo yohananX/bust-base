@@ -113,8 +113,8 @@ A full baseline record (status, diff, untracked hashes) was written to `/tmp/ope
 | AcademicStage normalized uniqueness | **Complete for SQLite; PostgreSQL unverified** | `UniqueConstraint(Lower(Trim('name')), 'school')`; 14 targeted tests pass | Run on PostgreSQL in a non-production environment |
 | Stage ordering / activation | **Implemented** | `display_order`, `is_active`, `Meta.ordering` | No default-stage seeding; no “one active stage per order” rule |
 | Class stage selector (school admin portal) | **Implemented in the Phase 1 closure review** | `school_admin/views/classes.py:_stage_options`, `_resolve_academic_stage`; `class_form.html`; `class_list.html`; `class_detail.html`; 14 selector tests | Optional stage-management UI; no bulk backfill |
-| Stage backfill from `level` | **Designed only (§2.6); owner opted not to implement in this task** | §2.6 migration design; no `0010` migration written yet | Implement migration + backfill tests as a reviewed follow-up; IC-3 pre-check on target DB |
-| `SchoolClass.level` | **Transitional derived snapshot (§2.6)** — schema field untouched, no user-facing input | `school_admin/views/classes.py:_apply_class_level`; `students/admin.py:SchoolClassAdminForm.save` | Removal gated on §2.6 gate (fee scope conversion, admission policy, import/export, orderings) |
+| Stage backfill from `level` | **Superseded (§2.7)** — dev DB verified to hold zero class/stage/fee/student rows; nothing to backfill | §2.6 design; §2.7 supersession; audit recorded in §2.6 owner decisions | None — removal executed without backfill |
+| `SchoolClass.level` | **Removed (§2.7, 2026-10-26)** — stage is the single classification | `students/migrations/0010_remove_schoolclass_level.py`; consumers migrated per §2.7 gate-closure table | PostgreSQL schema verification still outstanding (§5.4 environment gap) |
 | `SchoolClass.is_active` | **Retained** | `students/models.py:76` | Must not be removed in this work |
 | Student classification fields | **Planned** | `docs/FEE_REDESIGN_PLAN.md` §2.2 | PD-02, schema, backfill, review queue |
 | `ClassEnrollment` term dimension | **Planned / undecided** | `students/models.py:254-291`; unique `(student, session)` | PD-03; no `enrolled_from_term` yet |
@@ -208,7 +208,34 @@ Until then, allocated consumers keep reading `level`; the field must remain popu
 - Acceptance criteria: distinct level values map 1:1 onto stages; no stage is created with a colliding normalized name; admission-number prefixes and LEVEL fee applicability for previously-unclassified classes are unchanged after backfill; empty-level classes stay unclassified.
 - Required tests: cross-school isolation, case/whitespace reuse, idempotency on re-run, unclassified preservation, and an end-to-end assertion that `_map_class_to_header` and `_is_applicable` return identical results for every fixture class before and after backfill.
 
-**Status: T0 and T1 implemented and tested; T2/T3 unchanged by design; 0010 designed only; removal blocked pending the gate.** Test evidence in §5.2.
+**Status: T0 and T1 implemented and tested; T2/T3 unchanged by design; 0010 designed only; removal blocked pending the gate.** Test evidence in §5.2. *(Superseded 2026-10-26: the gate was closed and the removal executed — see §2.7.)*
+
+### 2.7 Phase 2 execution: level removal complete (2026-10-26)
+
+The §2.6 removal gate was closed the same day it was authored, with owner approval for a pre-production database. `SchoolClass.level` and `FeePrice.level` are gone; `AcademicStage` is the single authoritative classification. No migration has been run against the real development database.
+
+**Gate closure evidence:**
+
+| §2.6 gate item | How it closed |
+|---|---|
+| 1. Fee `LEVEL` scope → `AcademicStage` reference | `FeePrice.academic_stage` nullable FK (`PROTECT`, same-school validation in `clean()`); scope constant renamed `SCOPE_STAGE` while the stored DB value stays `'LEVEL'` (no enum churn). Row-by-row review mooted: the dev DB contains zero `FeePrice` rows (verified read-only before any change). |
+| 2. Admission-header policy (AS-21) | `_map_class_to_header` feeds the stage name through `CLASS_HEADER_MAP` directly. Output is bit-identical to the transitional behaviour because the derived snapshot was always written verbatim from the stage name; unclassified classes fall through to the same name/fallback logic. |
+| 3. CSV import/export round-trip via stages (AS-22/AS-23) | `ClassImporter` links an existing stage by normalized-name identity and never creates or infers stages; `export_data` writes the stage name into the `section` column and orders by stage. |
+| 4. `order_by('level')` orderings converted | `school_admin/views/results.py`, `views/invoices.py`, `lessons/views.py`, `views/search.py`, plus `SchoolClass.Meta.ordering` → `academic_stage__display_order, name`; admin list/filter/search on the stage. |
+
+**Supersession of the designed backfill.** `students.0010_backfill_academic_stages_from_level` (§2.6) is **superseded, not shipped**: a read-only audit of the development database found no `SchoolClass`, `Student`, `AcademicStage`, or `FeePrice` rows to migrate (only 1 school, 1 session, 3 terms, 2 users), so there is no data to backfill and no row-by-row review to perform. The migration number was reused for the removal migration `students.0010_remove_schoolclass_level` (content is unrelated to the backfill design).
+
+**Schema changes (never applied to a real DB):**
+
+| Migration | Content |
+|---|---|
+| `students/0010_remove_schoolclass_level` | Drops `SchoolClass.level`; restates `Meta.ordering` and reworded `academic_stage` help text. Reverse migration restores a nullable `level` column with empty defaults (data-free by design). |
+| `fees/0023_feeprice_academic_stage` | Adds `FeePrice.academic_stage` FK, updates scope choices label, rebuilds uniqueness around the stage, drops `FeePrice.level`. Depends on `students/0010`. |
+| `fees/0024_feeprice_uniq_scope_row` | Replaces `unique_together` with a functional `UniqueConstraint` — `COALESCE(school_class, 0)`, `COALESCE(academic_stage, 0)`, school, scope, term, category, student_type — because nullable FK columns inside a plain unique constraint treat NULLs as distinct and would silently allow duplicate CLASS-scope rows. The COALESCE form preserves the exact uniqueness the old non-nullable `level` CharField provided and is enforced on SQLite and PostgreSQL alike (`nulls_distinct=False` was rejected as an alternative: Django skips it silently on SQLite). Pre-existing gap left as-is: SCHOOL_WIDE one-time rows (`term` NULL) were never DB-unique-protected under `unique_together` either; application-level dedup in `clean()` and the one-time billing guard still apply. |
+
+**Post-removal consumers of the term "level":** `payroll` level fields and `lessons.LessonClass.level_hint` are separate concepts, out of scope by owner instruction.
+
+**Verification state at execution:** recorded in §5.2 (SQLite: full suite green, `makemigrations --check --dry-run` clean, `manage.py check` clean). PostgreSQL remains unavailable in this environment (§5.4): `sqlmigrate` output for both new migrations was reviewed offline only.
 
 ### 2.3 Phase 1 closure review findings (2026-10-23)
 
@@ -250,7 +277,7 @@ Statuses: **PASS** (verified on the stated engine), **BLOCKED** (needs a decisio
 | 11 | Targeted, `students`, `school_admin`, full-suite, and harness tests pass on SQLite | **PASS** (SQLite) | See §5.2 recorded results |
 | 12 | PostgreSQL verification for `0009` | **NOT VERIFIED / BLOCKED** | §5.4; offline SQL generated only |
 | 13 | No stage backfill, no historical-data mutation, no fee/invoice change | **PASS** | `git diff` scope; `migrate --plan` unchanged |
-| 14 | `level` and `is_active` retained | **PASS**; **superseded 2026-10-26 by §2.6** — `level` retained only as a derived transitional snapshot, no longer user-editable; removal subject to the §2.6 gate | `students/models.py` unchanged fields; `school_admin/views/classes.py:_apply_class_level`; `students/admin.py:SchoolClassAdminForm` |
+| 14 | `level` and `is_active` retained | **PASS**; **superseded 2026-10-26 by §2.6** — `level` retained only as a derived transitional snapshot, no longer user-editable; removal subject to the §2.6 gate. **Superseded again by §2.7**: `level` removed; `is_active` retained. | `students/migrations/0010_remove_schoolclass_level.py`; §2.7 gate-closure table |
 | 15 | Roadmap and dependency register updated | **PASS** | This document; `IMPLEMENTATION_DEPENDENCY_REGISTER.md` |
 | 16 | Bulk/direct stage-write paths free of reachable tenant gaps | **PASS** (static audit) | AS-29; no bulk stage writer exists |
 | 17 | Migration `0009` applied to the real development database | **NOT APPLIED** (correct) | `migrate --plan`; 0 stage/class rows |
@@ -551,6 +578,19 @@ Recorded results (2026-10-26, single-concept convergence work, SQLite):
 - `migrate --plan`: still only `students.0009_academicstage_normalized_unique` pending on the real dev DB — no migration in this task was applied anywhere.
 - Full suite: **751 tests pass**, 480.413s, exit 0 (2026-10-26 convergence tree: 736 previous + 15 new/updated selector, admin-form, admission-stability and import tests).
 
+Recorded results (2026-10-26, Phase 2 level-removal work, SQLite):
+
+- Eight-app regression pass (`students`, `data_import`, `fees`, `academics`, `inventory`, `notifications`, `finance`, `lessons`): **483 tests, 1 failure** — `fees.tests.FeePriceModelTest.test_fee_price_unique_constraint` exposed that a nullable FK inside `unique_together` lets SQLite/PostgreSQL treat NULLs as distinct, so duplicate CLASS-scope rows were no longer rejected. Fixed by replacing `unique_together` with the COALESCE functional `UniqueConstraint` (`fees/0024`); see roadmap §2.7.
+- `fees.tests.FeePriceModelTest` + `fees.test_pricing` after the fix: **49 tests pass**.
+- `school_admin`: **120 tests pass**.
+- Root `tests/` package (five files carried `level` fixtures, migrated): **46 tests pass**.
+- Interim full suite: **748 ran, 41 errors** — every error in the five root test files, which were fixed after that run started; root re-run 46/46 green.
+- Phase 0 harness: **25/25 pass** (`python -m unittest discover -s scripts/audit/tests`); fixture manifest total-rows expectation updated 112 → 115 for the three synthetic stage rows added to the schema mirror.
+- `makemigrations --check --dry-run`: “No changes detected”.
+- `manage.py check`: “System check identified no issues (0 silenced)”.
+- `migrate --plan` (real dev DB; nothing applied): `students.0009` → `students.0010_remove_schoolclass_level` → `fees.0023_feeprice_academic_stage` → `fees.0024_feeprice_uniq_scope_row`.
+- PostgreSQL: **NOT RUN** (§5.4).
+
 PostgreSQL and full-suite commands must be reported separately. A SQLite pass is not a PostgreSQL pass.
 
 ### 5.3 Test data rules
@@ -600,6 +640,14 @@ SQLite generates and executes the equivalent functional unique index; the test d
 8. Drop the disposable database or leave it clearly labelled and empty.
 
 **Acceptance:** only a real PostgreSQL execution with captured output may change the status from **NOT VERIFIED** to **PASS**. Static SQL generation is not execution evidence.
+
+**Phase 2 migrations (2026-10-26) — same offline-only status.** PostgreSQL is unreachable in this environment (no client tools, Docker socket denied, documented credentials rejected, port 5433 process not accessible). The generated SQL for the new migrations was reviewed offline (`sqlmigrate`, SQLite dialect; **never executed against any real database**):
+
+- `students 0010`: `ALTER TABLE "students_schoolclass" DROP COLUMN "level";` plus two state-only no-ops.
+- `fees 0023`: `ADD COLUMN "academic_stage_id" bigint NULL REFERENCES "students_academicstage" ("id") DEFERRABLE INITIALLY DEFERRED;`, drop of the old `unique_together` index, creation of the stage-including unique index, `DROP COLUMN "level";`, and the new FK index.
+- `fees 0024`: `DROP INDEX` of the 0023 unique index and `CREATE UNIQUE INDEX "uniq_feeprice_scope_row" ON "fees_feeprice" ((COALESCE("school_class_id", 0)), (COALESCE("academic_stage_id", 0)), "school_id", "scope", "term_id", "category_id", "student_type");`. (Note: `sqlmigrate fees 0024` against the untouched dev DB fails by design — the command introspects the live DB for the index created by 0023, which is deliberately unapplied there; the statement above was generated from a throwaway scratch database migrated to `fees.0023` and then discarded.)
+
+PostgreSQL execution procedure for these three migrations is the same one documented above for `0009` (disposable `test_`/`bust_audit_` database, positive and negative cases, captured output). The COALESCE expression index is standard SQL; no PostgreSQL-specific caveat is known, but that is generated-SQL reasoning, not execution evidence.
 
 
 ## 6. Rollback and recovery

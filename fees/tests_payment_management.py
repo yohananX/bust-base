@@ -63,7 +63,6 @@ class BasePaymentManagementTest(TestCase):
         self.school_class = SchoolClass.objects.create(
             school=self.school,
             name='JSS1A',
-            level='JSS1',
         )
         self.student_user = self._create_user('student1', Roles.STUDENT)
         self.student = Student.objects.create(

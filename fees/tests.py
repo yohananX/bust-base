@@ -50,7 +50,6 @@ class BaseFeesTest(TestCase):
         self.school_class = SchoolClass.objects.create(
             school=self.school,
             name='JSS1A',
-            level='JSS1',
         )
 
         # Create student user and student
@@ -595,7 +594,6 @@ class CrossSchoolIsolationTest(BaseFeesTest):
         class2 = SchoolClass.objects.create(
             school=school2,
             name='JSS1A',
-            level='JSS1',
         )
 
         # Create category with same name in second school
@@ -2461,7 +2459,7 @@ class StudentTypeResolutionTest(BaseFeesTest):
             is_current=False,
         )
         prior_class = SchoolClass.objects.create(
-            school=self.school, name='PRE1A', level='Nursery 1',
+            school=self.school, name='PRE1A',
         )
         ClassEnrollment.objects.create(
             school=self.school,
@@ -2560,7 +2558,7 @@ class ProspectusFeeGenerationTest(BaseFeesTest):
             is_current=False,
         )
         prior_class = SchoolClass.objects.create(
-            school=self.school, name='PRE1A', level='Nursery 1',
+            school=self.school, name='PRE1A',
         )
         ClassEnrollment.objects.create(
             school=self.school,

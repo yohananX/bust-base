@@ -53,9 +53,11 @@ class Command(BaseCommand):
                 self.stdout.write("No data to export")
 
     def _export_classes(self, school):
-        classes = SchoolClass.objects.filter(school=school).order_by('level', 'name')
+        classes = SchoolClass.objects.filter(school=school).select_related(
+            'academic_stage'
+        ).order_by('academic_stage__display_order', 'name')
         return [
-            {'name': c.name, 'section': c.level}
+            {'name': c.name, 'section': c.academic_stage.name if c.academic_stage else ''}
             for c in classes
         ]
 

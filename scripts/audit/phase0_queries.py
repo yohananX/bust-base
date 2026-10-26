@@ -445,7 +445,7 @@ QUERIES: Tuple[QuerySpec, ...] = (
         title="Duplicate fee-price scopes",
         purpose=(
             "Find FeePrice rows that share every scope key, including nullable "
-            "class/level/term values."
+            "class/stage/term values."
         ),
         requirement="FINAL_GO_NOGO_CORRECTIONS.md §3, Q-06; PHASE0_READINESS_PLAN V19",
         sql="""
@@ -455,7 +455,7 @@ QUERIES: Tuple[QuerySpec, ...] = (
                 p.category_id,
                 p.student_type,
                 p.school_class_id,
-                p.level,
+                p.academic_stage_id,
                 p.term_id,
                 COUNT(*) AS duplicate_count,
                 MIN(p.id) AS min_price_id,
@@ -467,7 +467,7 @@ QUERIES: Tuple[QuerySpec, ...] = (
                 p.category_id,
                 p.student_type,
                 p.school_class_id,
-                p.level,
+                p.academic_stage_id,
                 p.term_id
             HAVING COUNT(*) > 1
             ORDER BY duplicate_count DESC, p.school_id, p.category_id
@@ -480,7 +480,7 @@ QUERIES: Tuple[QuerySpec, ...] = (
                 "category_id",
                 "student_type",
                 "school_class_id",
-                "level",
+                "academic_stage_id",
                 "term_id",
             ),
         },
@@ -491,7 +491,7 @@ QUERIES: Tuple[QuerySpec, ...] = (
             "category_id",
             "student_type",
             "school_class_id",
-            "level",
+            "academic_stage_id",
             "term_id",
             "duplicate_count",
             "min_price_id",
@@ -499,7 +499,7 @@ QUERIES: Tuple[QuerySpec, ...] = (
         ),
         interpretation=(
             "GROUP BY treats NULLs as equal, so a school-wide or one-time price "
-            "with NULL class/level/term is compared correctly. This is exactly "
+            "with NULL class/stage/term is compared correctly. This is exactly "
             "where the database unique constraint does **not** protect "
             "PostgreSQL: NULLs are distinct in a unique index. Any row is a "
             "resolution ambiguity and blocks cutover."

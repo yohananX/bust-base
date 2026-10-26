@@ -38,7 +38,7 @@ class BaseInventoryTest(TestCase):
             is_current=True,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A',
         )
         self.student_user = User.objects.create_user(
             username='student1', email='stu@test.com', password='testpass123',
@@ -116,7 +116,7 @@ class FeeCategoryInventoryItemTest(BaseInventoryTest):
     def test_cross_school_link_raises_validation_error(self):
         other_school = School.objects.create(name='Other', short_code='other')
         other_class = SchoolClass.objects.create(
-            school=other_school, name='JSS1A', level='JSS1',
+            school=other_school, name='JSS1A',
         )
         other_item = InventoryItem.objects.create(
             school=other_school, name='Other Book',
@@ -285,7 +285,7 @@ class CrossSchoolIsolationTest(BaseInventoryTest):
     def test_two_schools_with_same_data_dont_leak(self):
         school2 = School.objects.create(name='Second', short_code='second')
         class2 = SchoolClass.objects.create(
-            school=school2, name='JSS1A', level='JSS1',
+            school=school2, name='JSS1A',
         )
 
         item1 = InventoryItem.objects.create(

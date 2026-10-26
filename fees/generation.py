@@ -25,7 +25,7 @@ def effective_fee_structures(school, school_class, term, student_type='ALL', stu
     Backward-compat shim that delegates to pricing.resolve_prices.
     Kept for callers that still import this name. The actual resolution
     logic lives in fees.pricing and supports FeePrice + FeePriceOverride
-    with school-wide, level, and class scopes.
+    with school-wide, academic-stage, and class scopes.
     """
     from .pricing import resolve_prices
     return resolve_prices(
@@ -221,18 +221,18 @@ def _notify_primary_guardian(student, term, invoice):
     )
 
 
-def generate_invoices_for_level(school, level, term):
-    """Generate invoices for all students in classes matching a level."""
-    classes = SchoolClass.objects.filter(school=school, level=level, is_active=True)
+def generate_invoices_for_stage(school, stage, term):
+    """Generate invoices for all students in classes of one academic stage."""
+    classes = SchoolClass.objects.filter(school=school, academic_stage=stage, is_active=True)
     total = 0
     for cls in classes:
         total += generate_invoices_for_class(cls, term)
     return total
 
 
-def sync_level_invoices(school, level, term):
-    """Re-price unpaid invoices for all students in classes matching a level."""
-    classes = SchoolClass.objects.filter(school=school, level=level, is_active=True)
+def sync_stage_invoices(school, stage, term):
+    """Re-price unpaid invoices for all students in classes of one academic stage."""
+    classes = SchoolClass.objects.filter(school=school, academic_stage=stage, is_active=True)
     total = 0
     for cls in classes:
         total += sync_class_invoices(cls, term)
