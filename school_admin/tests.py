@@ -11,7 +11,7 @@ from decimal import Decimal
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from academics.models import Score, Subject, ClassSubject, TeacherAssignment, TermResult
-from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from students.models import AcademicStage, SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from fees.models import FeeCategory, FeePrice, Invoice, Payment
 from payroll.models import StaffProfile
 
@@ -2172,3 +2172,207 @@ class FeePricingCreateViewTest(TestCase):
         )
         self.assertEqual(copied.name, 'Boarding Fee')
         self.assertEqual(copied.amount, Decimal('30000.00'))
+
+
+class SchoolClassStageSelectorTests(TestCase):
+    """Phase 1: assign an AcademicStage through the school-admin class form."""
+
+    def setUp(self):
+        self.school = School.objects.create(name='School A', short_code='school-a')
+        self.other_school = School.objects.create(name='School B', short_code='school-b')
+        self.admin = User.objects.create_user(
+            username='stageadmin', email='stageadmin@test.com',
+            password='testpass123', school=self.school, role=Roles.ADMIN,
+        )
+        self.client.force_login(self.admin)
+
+        self.primary = AcademicStage.objects.create(
+            school=self.school, name='Primary', display_order=1,
+        )
+        self.jss = AcademicStage.objects.create(
+            school=self.school, name='JSS', display_order=2,
+        )
+        self.archived = AcademicStage.objects.create(
+            school=self.school, name='Archived Stage', display_order=3, is_active=False,
+        )
+        self.foreign = AcademicStage.objects.create(
+            school=self.other_school, name='Foreign Stage', display_order=1,
+        )
+        self.school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', level='JSS1',
+        )
+
+    def _create_data(self, **overrides):
+        data = {
+            'name': 'JSS2A',
+            'level': 'JSS2',
+            'is_active': 'on',
+            'academic_stage': str(self.jss.pk),
+        }
+        data.update(overrides)
+        return data
+
+    def _edit_data(self, **overrides):
+        data = {
+            'name': self.school_class.name,
+            'level': self.school_class.level,
+            'is_active': 'on',
+            'academic_stage': str(self.jss.pk),
+        }
+        data.update(overrides)
+        return data
+
+    def test_create_form_lists_only_current_school_active_stages(self):
+        response = self.client.get(reverse('school_admin:class_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Primary')
+        self.assertContains(response, 'JSS')
+        self.assertNotContains(response, 'Foreign Stage')
+        self.assertNotContains(response, 'Archived Stage')
+
+    def test_create_class_with_stage(self):
+        response = self.client.post(
+            reverse('school_admin:class_create'), self._create_data(),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        created = SchoolClass.objects.get(school=self.school, name='JSS2A')
+        self.assertEqual(created.academic_stage, self.jss)
+
+    def test_create_form_renders_without_configured_stages(self):
+        AcademicStage.objects.filter(school=self.school).delete()
+
+        response = self.client.get(reverse('school_admin:class_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No active stages are configured yet')
+
+    def test_create_class_rejects_non_integer_stage(self):
+        response = self.client.post(
+            reverse('school_admin:class_create'),
+            self._create_data(academic_stage='not-an-id'),
+            follow=True,
+        )
+
+        self.assertContains(response, 'valid academic stage')
+        self.assertFalse(
+            SchoolClass.objects.filter(school=self.school, name='JSS2A').exists()
+        )
+
+    def test_create_class_without_stage_is_allowed(self):
+        response = self.client.post(
+            reverse('school_admin:class_create'),
+            self._create_data(academic_stage=''),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        created = SchoolClass.objects.get(school=self.school, name='JSS2A')
+        self.assertIsNone(created.academic_stage)
+
+    def test_create_class_rejects_foreign_school_stage(self):
+        response = self.client.post(
+            reverse('school_admin:class_create'),
+            self._create_data(academic_stage=str(self.foreign.pk)),
+            follow=True,
+        )
+
+        self.assertContains(response, 'belongs to this school')
+        self.assertFalse(
+            SchoolClass.objects.filter(school=self.school, name='JSS2A').exists()
+        )
+
+    def test_create_class_rejects_inactive_stage(self):
+        response = self.client.post(
+            reverse('school_admin:class_create'),
+            self._create_data(academic_stage=str(self.archived.pk)),
+            follow=True,
+        )
+
+        self.assertContains(response, 'active academic stage')
+        self.assertFalse(
+            SchoolClass.objects.filter(school=self.school, name='JSS2A').exists()
+        )
+
+    def test_edit_form_lists_current_inactive_stage(self):
+        self.school_class.academic_stage = self.archived
+        self.school_class.save()
+
+        response = self.client.get(
+            reverse('school_admin:class_edit', args=[self.school_class.pk]),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Archived Stage')
+        self.assertContains(response, 'Archived Stage (inactive)')
+
+    def test_edit_class_assigns_stage(self):
+        response = self.client.post(
+            reverse('school_admin:class_edit', args=[self.school_class.pk]),
+            self._edit_data(academic_stage=str(self.primary.pk)),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.school_class.refresh_from_db()
+        self.assertEqual(self.school_class.academic_stage, self.primary)
+
+    def test_edit_class_can_clear_stage(self):
+        self.school_class.academic_stage = self.primary
+        self.school_class.save()
+
+        response = self.client.post(
+            reverse('school_admin:class_edit', args=[self.school_class.pk]),
+            self._edit_data(academic_stage=''),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.school_class.refresh_from_db()
+        self.assertIsNone(self.school_class.academic_stage)
+
+    def test_edit_class_rejects_foreign_school_stage(self):
+        self.school_class.academic_stage = self.primary
+        self.school_class.save()
+
+        response = self.client.post(
+            reverse('school_admin:class_edit', args=[self.school_class.pk]),
+            self._edit_data(academic_stage=str(self.foreign.pk)),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'belongs to this school')
+        self.school_class.refresh_from_db()
+        self.assertEqual(self.school_class.academic_stage, self.primary)
+
+    def test_edit_class_preserves_assigned_inactive_stage(self):
+        self.school_class.academic_stage = self.archived
+        self.school_class.save()
+
+        response = self.client.post(
+            reverse('school_admin:class_edit', args=[self.school_class.pk]),
+            self._edit_data(academic_stage=str(self.archived.pk)),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.school_class.refresh_from_db()
+        self.assertEqual(self.school_class.academic_stage, self.archived)
+
+    def test_class_list_shows_stage_and_unclassified_state(self):
+        classified = SchoolClass.objects.create(
+            school=self.school, name='Primary 1', level='Primary 1',
+            academic_stage=self.primary,
+        )
+
+        response = self.client.get(reverse('school_admin:class_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.primary.name)
+        self.assertContains(response, 'Unclassified')
+        self.assertContains(response, classified.name)
+
+    def test_edit_unclassified_class_renders(self):
+        response = self.client.get(
+            reverse('school_admin:class_edit', args=[self.school_class.pk]),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(self.school_class.academic_stage)

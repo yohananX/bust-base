@@ -8,8 +8,55 @@ from django.http import JsonResponse
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from academics.models import Subject, ClassSubject
-from students.models import SchoolClass, ClassEnrollment
+from students.models import AcademicStage, SchoolClass, ClassEnrollment
 from django.db.models import Q, Count
+
+
+def _stage_options(school, current_stage_id=None):
+    """Active stages for a school, plus the current stage if it is inactive.
+
+    Keeping the currently assigned stage in the queryset means editing a class
+    never silently drops an archived stage assignment.
+    """
+    stages = AcademicStage.objects.filter(school=school)
+    if current_stage_id:
+        stages = stages.filter(Q(is_active=True) | Q(pk=current_stage_id))
+    else:
+        stages = stages.filter(is_active=True)
+    return stages.order_by('display_order', 'name')
+
+
+def _resolve_academic_stage(request, school, current_stage_id=None):
+    """Return ``(stage, error)`` for the submitted stage.
+
+    An empty value means "unclassified" and returns ``(None, None)``.
+    A non-empty value must reference an active stage in the current school;
+    an already-assigned inactive stage may be kept on edit.
+    """
+    raw = (request.POST.get('academic_stage') or '').strip()
+    if not raw:
+        return None, None
+    try:
+        stage_id = int(raw)
+    except (TypeError, ValueError):
+        return None, 'Select a valid academic stage.'
+    stage = AcademicStage.objects.filter(school=school, pk=stage_id).first()
+    if stage is None:
+        return None, 'Select an academic stage that belongs to this school.'
+    if not stage.is_active and stage.pk != current_stage_id:
+        return None, 'Select an active academic stage.'
+    return stage, None
+
+
+def _class_form_context(school, class_obj=None):
+    return {
+        'class_obj': class_obj,
+        'is_edit': class_obj is not None,
+        'stages': _stage_options(
+            school,
+            class_obj.academic_stage_id if class_obj else None,
+        ),
+    }
 
 
 class ClassListView(RoleRequiredMixin, View):
@@ -19,13 +66,15 @@ class ClassListView(RoleRequiredMixin, View):
 
     def get(self, request):
         school = request.school
-        classes = SchoolClass.objects.filter(school=school)
+        classes = SchoolClass.objects.filter(school=school).select_related('academic_stage')
 
-        # Search by name or level
+        # Search by name, level, or stage
         q = request.GET.get('q', '').strip()
         if q:
             classes = classes.filter(
-                Q(name__icontains=q) | Q(level__icontains=q)
+                Q(name__icontains=q)
+                | Q(level__icontains=q)
+                | Q(academic_stage__name__icontains=q)
             )
 
         # Filter by active status (active / inactive / all)
@@ -57,10 +106,12 @@ class ClassCreateView(RoleRequiredMixin, View):
     allowed_roles = [Roles.ADMIN]
 
     def get(self, request):
-        context = {
-            'is_edit': False,
-        }
-        return render(request, 'school_admin/class_form.html', context)
+        school = request.school
+        return render(
+            request,
+            'school_admin/class_form.html',
+            _class_form_context(school),
+        )
 
     def post(self, request):
         school = request.school
@@ -70,6 +121,11 @@ class ClassCreateView(RoleRequiredMixin, View):
 
         if not name or not level:
             messages.error(request, 'Both name and level are required.')
+            return redirect('school_admin:class_create')
+
+        stage, stage_error = _resolve_academic_stage(request, school)
+        if stage_error:
+            messages.error(request, stage_error)
             return redirect('school_admin:class_create')
 
         if SchoolClass.objects.filter(school=school, name=name).exists():
@@ -85,6 +141,7 @@ class ClassCreateView(RoleRequiredMixin, View):
                     school=school,
                     name=name,
                     level=level,
+                    academic_stage=stage,
                     is_active=is_active,
                 )
             messages.success(request, f'Class "{name}" created successfully.')
@@ -105,11 +162,11 @@ class ClassEditView(RoleRequiredMixin, View):
     def get(self, request, pk):
         school = request.school
         class_obj = get_object_or_404(SchoolClass, school=school, pk=pk)
-        context = {
-            'class_obj': class_obj,
-            'is_edit': True,
-        }
-        return render(request, 'school_admin/class_form.html', context)
+        return render(
+            request,
+            'school_admin/class_form.html',
+            _class_form_context(school, class_obj),
+        )
 
     def post(self, request, pk):
         school = request.school
@@ -121,10 +178,22 @@ class ClassEditView(RoleRequiredMixin, View):
 
         if not name or not level:
             messages.error(request, 'Both name and level are required.')
-            return render(request, 'school_admin/class_form.html', {
-                'class_obj': class_obj,
-                'is_edit': True,
-            })
+            return render(
+                request,
+                'school_admin/class_form.html',
+                _class_form_context(school, class_obj),
+            )
+
+        stage, stage_error = _resolve_academic_stage(
+            request, school, class_obj.academic_stage_id,
+        )
+        if stage_error:
+            messages.error(request, stage_error)
+            return render(
+                request,
+                'school_admin/class_form.html',
+                _class_form_context(school, class_obj),
+            )
 
         # If the name changed, check uniqueness against other classes
         if name != class_obj.name:
@@ -133,15 +202,17 @@ class ClassEditView(RoleRequiredMixin, View):
                     request,
                     f'A class named "{name}" already exists in this school.',
                 )
-                return render(request, 'school_admin/class_form.html', {
-                    'class_obj': class_obj,
-                    'is_edit': True,
-                })
+                return render(
+                    request,
+                    'school_admin/class_form.html',
+                    _class_form_context(school, class_obj),
+                )
 
         try:
             with transaction.atomic():
                 class_obj.name = name
                 class_obj.level = level
+                class_obj.academic_stage = stage
                 class_obj.is_active = is_active
                 class_obj.save()
             messages.success(
@@ -154,10 +225,11 @@ class ClassEditView(RoleRequiredMixin, View):
                 request,
                 f'A class named "{name}" already exists in this school.',
             )
-            return render(request, 'school_admin/class_form.html', {
-                'class_obj': class_obj,
-                'is_edit': True,
-            })
+            return render(
+                request,
+                'school_admin/class_form.html',
+                _class_form_context(school, class_obj),
+            )
 
 
 class ClassDeleteView(RoleRequiredMixin, View):

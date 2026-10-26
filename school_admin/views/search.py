@@ -149,13 +149,18 @@ class InvoiceSearchAPIView(EntitySearchAPIView):
 
 class ClassSearchAPIView(EntitySearchAPIView):
     def get_queryset(self, request):
-        return SchoolClass.objects.filter(school=request.school).order_by('level', 'name')
+        return SchoolClass.objects.filter(school=request.school).select_related(
+            'academic_stage'
+        ).order_by('level', 'name')
 
     def serialize(self, school_class):
         return {
             'id': school_class.pk,
             'name': school_class.name,
-            'subtitle': school_class.level,
+            'subtitle': ' · '.join(filter(None, [
+                school_class.level,
+                school_class.academic_stage.name if school_class.academic_stage else '',
+            ])),
         }
 
 
