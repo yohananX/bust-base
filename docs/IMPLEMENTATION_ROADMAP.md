@@ -89,11 +89,11 @@ Pre-existing untracked files:
 
 `docs/FINAL_GO_NOGO_CORRECTIONS.md`, `docs/PHASE0_READINESS_PLAN.md`, `docs/audit/*`, `fee_redesign.md`, `scripts/audit/*`, `students/migrations/0008_add_academic_stage.py`.
 
-A full baseline record (status, diff, untracked hashes) was written to `/tmp/opencode/bustbase-baseline/baseline.txt`; its SHA-256 is `9e25437052db7c0981a72ccbde1d26d1af7e228171ce6ca2df89c2c854f9ce91`.
+A full baseline record (status, diff, untracked hashes) was written to `/tmp/opencode/bustbase-baseline/baseline.txt`; its SHA-256 is `9e25437052db7c0981a72ccbde1d26d1af7e228171ce6ca2df89c2c854f9ce91`. The temporary file was later cleared by an environment restart; the pre-existing files were committed unchanged in substance.
 
 ### 1.2 Branch decision
 
-`feat/academic-structure-phase1` did not exist locally or remotely. It was created from `8a1bdcc` with `git switch -c`. No file was stashed, reset, cleaned, overwritten, staged, or committed. All pre-existing modifications and untracked files were preserved byte-for-byte (hashes re-checked after branch creation).
+`feat/academic-structure-phase1` did not exist locally or remotely. It was created from `8a1bdcc` with `git switch -c`. At branch creation, no file was stashed, reset, cleaned, overwritten, staged, or committed. All pre-existing modifications and untracked files were preserved byte-for-byte (hashes re-checked after branch creation). The reviewed work was committed later; see §1.3 and `git log`.
 
 ### 1.3 What must not be assumed
 
@@ -108,11 +108,11 @@ A full baseline record (status, diff, untracked hashes) was written to `/tmp/ope
 
 | Area | State | Evidence | What remains |
 |---|---|---|---|
-| AcademicStage model | **Implemented, committed locally, corrected in this task** | `students/models.py:10`; `students/migrations/0008_add_academic_stage.py`; `students/migrations/0009_academicstage_normalized_unique.py`; local branch commits | Push/merge; decide whether to add a school-admin stage selector |
+| AcademicStage model | **Implemented, committed locally, corrected in this task** | `students/models.py:10`; `students/migrations/0008_add_academic_stage.py`; `students/migrations/0009_academicstage_normalized_unique.py`; local branch commits | Push/merge; decide whether stage management belongs in the portal |
 | AcademicStage school scoping | **Verified for model and class validation** | `TenantScopedModel`; `AcademicStage.clean()`; `SchoolClass._validate_academic_stage_school()` | Cross-table tenant rule is not DB-enforced; `bulk_create`/`update` bypass it |
-| AcademicStage normalized uniqueness | **Complete for SQLite; PostgreSQL unverified** | `UniqueConstraint(Lower(Trim('name')), 'school')`; 12 targeted tests pass | Run on PostgreSQL in a non-production environment |
+| AcademicStage normalized uniqueness | **Complete for SQLite; PostgreSQL unverified** | `UniqueConstraint(Lower(Trim('name')), 'school')`; 14 targeted tests pass | Run on PostgreSQL in a non-production environment |
 | Stage ordering / activation | **Implemented** | `display_order`, `is_active`, `Meta.ordering` | No default-stage seeding; no “one active stage per order” rule |
-| Class stage selector (school admin portal) | **Not implemented** | `school_admin/views/classes.py:54-160`; `school_admin/templates/school_admin/class_form.html` only posts `name`, `level`, `is_active` | Add stage dropdown scoped to `request.school`, or explicitly defer |
+| Class stage selector (school admin portal) | **Implemented in the Phase 1 closure review** | `school_admin/views/classes.py:_stage_options`, `_resolve_academic_stage`; `class_form.html`; `class_list.html`; `class_detail.html`; 14 selector tests | Optional stage-management UI; no bulk backfill |
 | Stage backfill from `level` | **Not implemented** | No data migration | Needs IC-3 evidence and per-row approval (PD-05) |
 | `SchoolClass.level` | **Retained** | `students/models.py:62`; migration 0008 only changes help text | Must remain until every consumer is migrated and removal is approved |
 | `SchoolClass.is_active` | **Retained** | `students/models.py:76` | Must not be removed in this work |
@@ -137,28 +137,79 @@ A full baseline record (status, diff, untracked hashes) was written to `/tmp/ope
 - Admin registration for both models; stage autocomplete on class admin.
 - School-scoped exact uniqueness plus normalized case/whitespace uniqueness.
 - Model-level and write-path validation that a class's stage belongs to the same school.
+- A school-admin class form selector scoped to the current school, with cross-school and inactive-stage rejection on the server.
+- Stage display in the class list, class detail, and class search API.
 - Ordering by `display_order`, then `level`, then `name`.
-- Tests for creation, exact/case/whitespace duplicates, cross-school isolation, normalization, ordering, and inactive-stage preservation.
+- Tests for creation, exact/case/whitespace duplicates, cross-school isolation, normalization, ordering, inactive-stage preservation, selector selection/clearing, and unclassified compatibility.
 
 **Verified limitations:**
 
-- `SchoolClass.clean()`/`save()` cannot prevent `QuerySet.update()` or `bulk_create()` from setting a cross-school stage. No single-table DB constraint can express this.
-- The normalized uniqueness constraint is a functional unique index. It was exercised on SQLite 3.45.1 only.
-- There is no school-admin class form selector, so classes created through `school_admin` have `academic_stage = NULL`.
+- `SchoolClass.clean()`/`save()` cannot prevent `QuerySet.update()` or `bulk_create()` from setting a cross-school stage. No single-table DB constraint can express this. No current production path assigns a stage through a bulk operation (see §2.3).
+- The normalized uniqueness constraint is a functional unique index. It was exercised on SQLite 3.45.1 only. Django 6.0.7 generates `CREATE UNIQUE INDEX ... ((LOWER(TRIM("name"))), "school_id")` for PostgreSQL, but that statement was **not executed**.
+- New classes remain unclassified unless an administrator selects a stage; there is no automatic inference from `level` or class name, by design.
 - No stage backfill exists. That is correct for this task: current `level` values are not reliable historical stage evidence.
+- There is no school-admin UI to create or edit `AcademicStage` records; stages are managed through Django admin. This is a workflow gap, not a Phase 1 blocker.
 - `AcademicStage` has no timestamp fields. This follows the existing `TenantScopedModel` convention but differs from models that define `created_at`; not a correctness defect.
 
 ### 2.2 Bounded Phase 1 corrections applied in this task
 
 | # | Defect (file / symbol) | Expected behaviour and why in scope | Regression test | Smallest change | Result |
 |---|---|---|---|---|---|
-| C1 | `students/models.py:AcademicStage.Meta` had only exact `unique_together ('school','name')`; `clean()` used `iexact` but was bypassed by `objects.create()`. Case/whitespace variants could exist in one school. | School-scoped uniqueness must include the documented case/whitespace policy. This is an explicit P1 acceptance criterion. | `test_academic_stage_case_insensitive_unique_per_school`, `test_academic_stage_whitespace_insensitive_unique_per_school`, `test_academic_stage_name_is_normalized_on_save` | Add `UniqueConstraint(Lower(Trim('name')), 'school')`; normalize on `save()`; call `super().clean()`. Additive migration `0009`. | 12 targeted tests pass on SQLite; PostgreSQL unverified |
+| C1 | `students/models.py:AcademicStage.Meta` had only exact `unique_together ('school','name')`; `clean()` used `iexact` but was bypassed by `objects.create()`. Case/whitespace variants could exist in one school. | School-scoped uniqueness must include the documented case/whitespace policy. This is an explicit P1 acceptance criterion. | `test_academic_stage_case_insensitive_unique_per_school`, `test_academic_stage_whitespace_insensitive_unique_per_school`, `test_academic_stage_name_is_normalized_on_save` | Add `UniqueConstraint(Lower(Trim('name')), 'school')`; normalize on `save()`; call `super().clean()`. Additive migration `0009`. | 14 targeted tests pass on SQLite; PostgreSQL unverified |
 | C2 | `students/models.py:SchoolClass.clean()` enforced same-school stage, but `objects.create()`/`save()` did not. | A class must not reference another tenant's stage on ordinary writes. Tenant isolation is a critical project pattern; the requirement explicitly warns not to assume `clean()` protects every ORM path. | `test_school_class_cross_school_stage_rejected_on_orm_create` | Extract `_validate_academic_stage_school()` and call it from both `clean()` and `save()`. | Targeted and `students` suites pass |
-| C3 | `students/admin.py:SchoolClassAdmin.list_filter` replaced the existing `level` filter with `academic_stage`. | Existing class filtering must not break; `level` remains a live field and consumer input. | Existing `school_admin` suite; admin behaviour smoke | Add `level` back alongside `academic_stage`; add `list_select_related`. | `school_admin`: 103 tests pass |
+| C3 | `students/admin.py:SchoolClassAdmin.list_filter` replaced the existing `level` filter with `academic_stage`. | Existing class filtering must not break; `level` remains a live field and consumer input. | Existing `school_admin` suite; admin behaviour smoke | Add `level` back alongside `academic_stage`; add `list_select_related`. | `school_admin`: 117 tests pass after the closure review |
+| C4 | `students/models.py:SchoolClass._validate_academic_stage_school()` raised `RelatedObjectDoesNotExist` when `academic_stage_id` referenced a missing row. | A validation failure must be a `ValidationError`, not a model `DoesNotExist` leaking from `save()`. | `test_school_class_missing_stage_rejected_on_save` | Catch `AcademicStage.DoesNotExist` and raise a field `ValidationError`; return early when unclassified. | Targeted tests pass |
+| C5 | The school-admin class form had no stage input, so portal-created classes were always `NULL`. | Administrators need to assign and change a stage in the normal workflow without making it mandatory. | `SchoolClassStageSelectorTests` (14 tests) | Add school-scoped selector, server-side resolution, inactive-stage policy, list/detail/search rendering. | 14 selector tests pass |
 
-**Why these are in scope:** each is a narrow correction to an existing Phase 1 implementation, not a new phase. C1 and C2 enforce stated P1 invariants; C3 prevents a regression in existing class filtering. None touches historical financial or academic records, deletion policy, or a broad schema redesign.
+**Why these are in scope:** each is a narrow correction to an existing Phase 1 implementation, not a new phase. C1 and C2 enforce stated P1 invariants; C3 prevents a regression in existing class filtering; C4 tightens validation; C5 completes the P1 portal workflow. None touches historical financial or academic records, deletion policy, or a broad schema redesign.
 
-**What was deliberately not changed:** stage backfill, school-admin stage selector, `level` removal, `is_active` removal, historical snapshots, enrollment, fees, scores, results, deletion policy, and production configuration.
+**What was deliberately not changed:** stage backfill, `level` removal, `is_active` removal, historical snapshots, enrollment, fees, scores, results, deletion policy, stage-management UI, and production configuration.
+
+### 2.3 Phase 1 closure review findings (2026-10-23)
+
+**Fixed in this review:**
+
+- C4 (invalid stage id now raises `ValidationError`).
+- C5 (school-admin stage selector, list/detail/search rendering, inactive-stage policy).
+- A database-constraint regression test that uses `bulk_create()` to bypass `save()` and proves the functional unique index rejects `"  PRIMARY  "` (SQLite).
+
+**Genuine risks that remain open:**
+
+| Severity | Finding | Evidence | Control / next step |
+|---|---|---|---|
+| **High** | Migration `0009` will fail on a database that already contains normalized duplicate stage names (case or outer whitespace). | No stage rows exist in the local SQLite DB; PostgreSQL not reachable. The constraint is `UNIQUE (LOWER(TRIM(name)), school_id)`. | Run a read-only duplicate pre-check on the target database before applying `0009`; merge/rename duplicates with owner approval. Do not auto-delete. |
+| **Medium** | Bulk/direct writes bypass model validation. | No production `bulk_create`/`bulk_update`/`update()` on `SchoolClass` assigns a stage today. The only stage writers are the class form (`objects.create`/`save`) and Django admin (`full_clean` + `save`). | If a bulk stage writer is introduced, add a manager/queryset guard or a composite `(school_id, academic_stage_id)` FK. Not needed for the current reachable paths. |
+| **Low** | `SchoolClass.Meta.ordering` joins a nullable FK, and NULL ordering differs by engine. | SQLite sorts NULLs first; PostgreSQL defaults to NULLS LAST for ascending order. The class list overrides ordering with `level, name`. | Do not rely on default `SchoolClass` ordering for user-visible unclassified groups; specify `NULLS FIRST/LAST` if needed. |
+| **Low** | Django admin's `academic_stage` autocomplete is not school-scoped. | `AcademicStageAdmin` has no `get_queryset`/`get_search_results` scoping. The model `save()`/`full_clean()` guard rejects a cross-school stage. | Scope the admin autocomplete in a later admin-hardening task if school-level staff use Django admin. |
+| **Low** | The functional index (`LOWER(TRIM(name))`) trims SQL spaces and lowercases, while `save()` also collapses internal whitespace and tabs/newlines. A `bulk_create` could therefore store `"JSS  1"` or `"\tJSS"` alongside `"JSS 1"`/`"JSS"` without violating the index. | Constraint SQL generated from Django; Python `normalize_name` uses `.split()`. No production bulk stage writer exists. | Keep `save()`/admin as the write path; if a bulk stage importer is added, normalize before insert or strengthen the constraint/trigger. |
+| **Info** | No portal UI to create/edit stages. | Stages are available only through Django admin. | Decide in P2/P4 whether stage management belongs in the school-admin settings area. |
+
+**Review conclusion:** no reachable cross-tenant stage-assignment vulnerability was found in current application paths. The remaining tenant gap is limited to future bulk operations, which do not exist for `academic_stage` today.
+
+### 2.4 Phase 1 acceptance table
+
+Statuses: **PASS** (verified on the stated engine), **BLOCKED** (needs a decision or access), **NOT VERIFIED** (not executed).
+
+| # | P1 acceptance criterion | Status | Evidence |
+|---|---|---|---|
+| 1 | School can create, rename, reorder, and deactivate stages | **PASS** (SQLite) | Model fields; `AcademicStageAdmin`; ordering tests; deactivate test |
+| 2 | Duplicate stage names rejected regardless of case and outer whitespace | **PASS** (SQLite); **NOT VERIFIED** (PostgreSQL) | 14 `AcademicStageTests` incl. bulk-write constraint test; `students.0009` applied in test DB |
+| 3 | Same stage name allowed in another school | **PASS** (SQLite) | `test_academic_stage_unique_per_school` |
+| 4 | Class cannot reference another school's stage via `full_clean()` or ordinary `save()`/`create()` | **PASS** (SQLite) | C2 tests; `objects.create`/`save` guard |
+| 5 | A nonexistent stage id raises `ValidationError` on `save()` | **PASS** (SQLite) | `test_school_class_missing_stage_rejected_on_save` (C4) |
+| 6 | Administrator can assign, change, or clear a stage from the class form; unclassified remains valid | **PASS** (SQLite) | 14 `SchoolClassStageSelectorTests` |
+| 7 | Cross-school stage rejected by form and server | **PASS** (SQLite) | `test_create_class_rejects_foreign_school_stage`; `test_edit_class_rejects_foreign_school_stage`; `_resolve_academic_stage` |
+| 8 | Inactive stage: not offered for new assignments, preserved when already assigned | **PASS** (SQLite) | `test_create_class_rejects_inactive_stage`; `test_edit_class_preserves_assigned_inactive_stage` |
+| 9 | Existing class creation/editing/filtering/rendering keeps working | **PASS** (SQLite) | `school_admin`: 117 pass; full suite 736 pass |
+| 10 | `makemigrations --check` reports no missing migration | **PASS** | “No changes detected” |
+| 11 | Targeted, `students`, `school_admin`, full-suite, and harness tests pass on SQLite | **PASS** (SQLite) | See §5.2 recorded results |
+| 12 | PostgreSQL verification for `0009` | **NOT VERIFIED / BLOCKED** | §5.4; offline SQL generated only |
+| 13 | No stage backfill, no historical-data mutation, no fee/invoice change | **PASS** | `git diff` scope; `migrate --plan` unchanged |
+| 14 | `level` and `is_active` retained | **PASS** | `students/models.py` unchanged fields |
+| 15 | Roadmap and dependency register updated | **PASS** | This document; `IMPLEMENTATION_DEPENDENCY_REGISTER.md` |
+| 16 | Bulk/direct stage-write paths free of reachable tenant gaps | **PASS** (static audit) | AS-29; no bulk stage writer exists |
+| 17 | Migration `0009` applied to the real development database | **NOT APPLIED** (correct) | `migrate --plan`; 0 stage/class rows |
+
 
 ---
 
@@ -195,7 +246,7 @@ The ordering rule is strict: a phase may not begin until its prerequisites are c
 
 **Purpose:** introduce `AcademicStage` without changing historical enrollment, result, or fee behaviour.
 
-**Prerequisites:** P0 baseline; P1 decision on whether the school-admin class form must expose the stage selector in this phase.
+**Prerequisites:** P0 baseline. The school-admin selector decision is resolved (implemented in the closure review).
 
 **Scope:**
 
@@ -220,11 +271,13 @@ The ordering rule is strict: a phase may not begin until its prerequisites are c
 - Duplicate names within a school are rejected regardless of case and outer whitespace.
 - The same name in another school is allowed.
 - A class cannot reference another school's stage through `full_clean()` or ordinary `save()`/`create()`.
+- An authorized administrator can assign, change, or clear a stage from the class form; unclassified classes remain valid.
+- The form and server both reject a stage from another school.
 - Existing class creation/editing/filtering/rendering still works.
 - `makemigrations --check` reports no missing migration.
 - Targeted and broader SQLite tests pass; PostgreSQL compatibility is separately verified or explicitly unverified.
 
-**Current status:** **Substantially complete for the model/admin/test scope.** The school-admin stage selector and PostgreSQL verification remain open.
+**Current status:** **Complete for the model/admin/portal/test scope on SQLite.** PostgreSQL verification remains **BLOCKED** (no reachable credentials; see §5.4). Stage-management UI and backfill remain out of scope.
 
 ### P2 — Student classification
 
@@ -412,8 +465,8 @@ All queries remain `DRAFT` until executed against an authorized, restored, read-
 | Layer | Purpose | Current state |
 |---|---|---|
 | Targeted unit/model tests | New constraints, validation, ordering, tenant rules | 12 AcademicStage tests pass on SQLite |
-| App regression tests | `students`, `school_admin` behaviour after model/admin changes | `students`: 89 pass; `school_admin`: 103 pass (SQLite) |
-| Cross-app regression | Fees, academics, data import, notifications, tenancy | Full suite: **720 tests pass** (SQLite, 1076.365s, exit 0) |
+| App regression tests | `students`, `school_admin` behaviour after model/admin changes | `students`: 91 pass; `school_admin`: 117 pass (SQLite) |
+| Cross-app regression | Fees, academics, data import, notifications, tenancy | Full suite: **736 tests pass** (SQLite, 743.836s, exit 0) |
 | Phase 0 harness | Audit schema, evidence, redaction, dialect matrix, fixtures | **25 tests pass** via `python -m unittest discover -s scripts/audit/tests` (not auto-discovered by Django) |
 | Migration-state check | `makemigrations --check`, `manage.py check` | Both pass |
 | Database-engine matrix | SQLite + PostgreSQL | SQLite only; PostgreSQL **NOT RUN** |
@@ -426,16 +479,18 @@ All queries remain `DRAFT` until executed against an authorized, restored, read-
 .venv/bin/python manage.py test students -v 1
 .venv/bin/python manage.py test school_admin -v 1
 .venv/bin/python manage.py test -v 1
+python -m unittest discover -s scripts/audit/tests
 .venv/bin/python manage.py makemigrations --check --dry-run
 .venv/bin/python manage.py check
 ```
 
 Recorded results (2026-10-23, SQLite):
 
-- `students.tests.AcademicStageTests`: 12/12 pass.
-- `students`: 89 pass.
-- `school_admin`: 103 pass.
-- Full suite: **720 tests pass**, 1076.365s, exit 0.
+- `students.tests.AcademicStageTests`: 14/14 pass.
+- `students`: 91 pass.
+- `school_admin`: 117 pass.
+- Full suite: **736 tests pass**, 743.836s, exit 0 (run on the final closure tree).
+- Phase 0 harness: 25/25 pass (34.848s), rerun after the closure review.
 - Phase 0 harness: **25 tests pass** via `python -m unittest discover -s scripts/audit/tests`. Django's default discovery excludes them because `scripts/` is not a package; `manage.py test scripts.audit.tests` fails with `TypeError: expected str, bytes or os.PathLike object, not NoneType`.
 - `makemigrations --check --dry-run`: “No changes detected”.
 - `manage.py check`: “System check identified no issues (0 silenced)”.
@@ -451,7 +506,47 @@ PostgreSQL and full-suite commands must be reported separately. A SQLite pass is
 - Do not run destructive management commands.
 - Do not assert a cascade was executed unless it was executed; static `on_delete` inspection is labelled as such.
 
----
+### 5.4 PostgreSQL verification for migration `0009` — BLOCKED
+
+**What was available:**
+
+- A local PostgreSQL process listens on `127.0.0.1:5433` and requires password authentication.
+- `psql`, `pg_isready`, `pg_ctl`, and `initdb` are not installed.
+- The Docker socket is not accessible to this user (`permission denied`).
+- No `DATABASE_URL`/`AUDIT_POSTGRES_DSN` is configured; `.env` points to SQLite.
+- The repository's documented development credentials (`ghss_user`/`ghss_pass`, `ghss_test`/`ghss_test`) were rejected by the running server. They were not brute-forced further.
+- The PostgreSQL process environment and configuration are unreadable to this user.
+
+**What was verified without connecting:**
+
+Django 6.0.7 generates this PostgreSQL statement for the constraint (offline `collect_sql`, **not executed**):
+
+```sql
+CREATE UNIQUE INDEX "uniq_academicstage_school_normalized_name"
+ON "students_academicstage" ((LOWER(TRIM("name"))), "school_id");
+```
+
+SQLite generates and executes the equivalent functional unique index; the test database applies `students.0009` successfully.
+
+**Exact procedure required later:**
+
+1. Provision a disposable database whose name starts with `test_` or `bust_audit_` on a non-production server. Confirm it holds no valuable data.
+2. Record `SELECT version();`, the database name, and the collation.
+3. Point a throwaway Django process at it:
+   `DATABASE_URL=postgres://USER:PASS@HOST:PORT/DB .venv/bin/python manage.py migrate students 0008`
+4. Capture the SQL: `.venv/bin/python manage.py sqlmigrate students 0009` and confirm it matches the generated statement above.
+5. Negative case (pre-existing duplicates): from `0008`, insert two rows in the same school whose names differ only by case or outer whitespace using raw SQL (bypassing `save()`), then run `migrate students 0009`. Expect the migration to fail with a unique-violation error. Record the exact error. Drop/recreate the disposable database afterward.
+6. Positive case: from a clean `0008`, run `migrate students 0009`. Expect success. Record the index definition:
+   `SELECT indexdef FROM pg_indexes WHERE indexname = 'uniq_academicstage_school_normalized_name';`
+7. Post-migration behaviour:
+   - `objects.create(name='Primary')` then `objects.create(name='primary')` in the same school → `IntegrityError`.
+   - `objects.create(name='Primary')` then `bulk_create(name='  PRIMARY  ')` → `IntegrityError` (proves the functional index, not `save()` normalization).
+   - Same name in two different schools → both succeed.
+   - A class with a stage from another school via `save()` → `ValidationError` (application guard, not the index).
+8. Drop the disposable database or leave it clearly labelled and empty.
+
+**Acceptance:** only a real PostgreSQL execution with captured output may change the status from **NOT VERIFIED** to **PASS**. Static SQL generation is not execution evidence.
+
 
 ## 6. Rollback and recovery
 
@@ -634,20 +729,26 @@ The following is a faithful summary of `docs/audit/RECOVERY_EVIDENCE_INVESTIGATI
 
 ## 11. Recommended next task
 
-**Task:** Complete Phase 1 review and close the remaining P1 gaps without starting Phase 2.
+**Task:** Verify migration `0009` on a disposable PostgreSQL database and decide whether to merge the Phase 1 branch. Do not start Phase 2.
+
+**Status of the closure review:**
+
+- Phase 1 model, admin, portal selector, and tests are complete on SQLite.
+- The school-admin selector decision is resolved: it is implemented.
+- PostgreSQL execution remains **BLOCKED**; the exact procedure is in §5.4.
 
 **Prerequisites:**
 
 - Review and approve the Phase 1 diff, including `students/0009_academicstage_normalized_unique.py`.
-- Decide whether the school-admin class form must expose an active-stage selector in P1 or in a later P1 follow-up.
-- Provide a non-production PostgreSQL environment for the functional unique constraint test.
+- Provide a disposable non-production PostgreSQL database and credentials.
+- Run the read-only duplicate pre-check before applying `0009`.
 
 **Acceptance criteria:**
 
 - `git diff` review confirms only intended files changed.
 - `makemigrations --check` and `manage.py check` pass.
-- Targeted, `students`, and `school_admin` tests pass on SQLite.
-- PostgreSQL migration + targeted tests pass, or the limitation is explicitly recorded as unverified.
+- Targeted, `students`, `school_admin`, full-suite, and audit-harness tests pass on SQLite.
+- PostgreSQL migration plus the negative/positive duplicate cases pass, or the limitation remains explicitly recorded as unverified.
 - No stage backfill, no historical data mutation, and no fee/invoice behavior change.
 - Dependency register and roadmap statuses are updated.
 
