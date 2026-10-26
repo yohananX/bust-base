@@ -1,5 +1,7 @@
 from decimal import Decimal
 from django.db import models
+from django.db.models.functions import Coalesce
+from django.db.models import Value
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -143,8 +145,24 @@ class FeePrice(TenantScopedModel):
     class Meta:
         verbose_name = _('fee price')
         verbose_name_plural = _('fee prices')
-        unique_together = ('school', 'scope', 'school_class', 'academic_stage', 'term', 'category', 'student_type')
         ordering = ['scope', 'school_class', 'academic_stage__name', 'category']
+        constraints = [
+            # One price row per (school, scope, class/stage, term, category,
+            # student_type). ``school_class`` and ``academic_stage`` are
+            # nullable, and SQL unique constraints treat NULLs as distinct —
+            # so a plain column list would silently allow exact duplicates
+            # for CLASS/SCHOOL_WIDE rows. COALESCE maps NULL to a sentinel so
+            # NULL compares equal, preserving the uniqueness the old
+            # non-nullable ``level`` CharField provided on every backend
+            # (``nulls_distinct=False`` is PostgreSQL-only and would be
+            # silently skipped on SQLite).
+            models.UniqueConstraint(
+                Coalesce('school_class', Value(0)),
+                Coalesce('academic_stage', Value(0)),
+                'school', 'scope', 'term', 'category', 'student_type',
+                name='uniq_feeprice_scope_row',
+            ),
+        ]
 
     def __str__(self):
         if self.scope == self.SCOPE_SCHOOL_WIDE:
