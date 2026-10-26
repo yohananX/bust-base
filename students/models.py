@@ -92,7 +92,15 @@ class SchoolClass(TenantScopedModel):
         ``QuerySet.update``) still bypass it; cross-table tenant consistency
         cannot be expressed as a single-table database constraint.
         """
-        if self.academic_stage_id and self.academic_stage.school_id != self.school_id:
+        if not self.academic_stage_id:
+            return
+        try:
+            stage_school_id = self.academic_stage.school_id
+        except AcademicStage.DoesNotExist:
+            raise ValidationError(
+                {'academic_stage': _('Select a valid academic stage.')}
+            )
+        if stage_school_id != self.school_id:
             raise ValidationError({'academic_stage': _('Academic stage must belong to the same school as the class.')})
 
     def clean(self):

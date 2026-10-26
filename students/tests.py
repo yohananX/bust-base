@@ -1616,6 +1616,20 @@ class AcademicStageTests(TestCase):
             with transaction.atomic():
                 AcademicStage.objects.create(school=self.school, name="  Primary  ", display_order=2)
 
+    def test_academic_stage_constraint_blocks_unnormalized_bulk_write(self):
+        """The database constraint must catch writes that bypass save()."""
+        AcademicStage.objects.create(school=self.school, name="Primary", display_order=1)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                AcademicStage.objects.bulk_create([
+                    AcademicStage(
+                        school=self.school,
+                        name="  PRIMARY  ",
+                        display_order=2,
+                    ),
+                ])
+
     def test_academic_stage_name_is_normalized_on_save(self):
         stage = AcademicStage.objects.create(
             school=self.school,
@@ -1687,6 +1701,17 @@ class AcademicStageTests(TestCase):
         classes = list(SchoolClass.objects.for_school(self.school))
         # Should be ordered by stage display_order, then level, then name
         self.assertEqual([c.name for c in classes], ["Primary 1", "JSS1A", "JSS2A"])
+
+    def test_school_class_missing_stage_rejected_on_save(self):
+        """A nonexistent stage id must raise ValidationError, not DoesNotExist."""
+        school_class = SchoolClass(
+            school=self.school,
+            name="Missing Stage Class",
+            level="JSS1",
+            academic_stage_id=999999999,
+        )
+        with self.assertRaises(ValidationError):
+            school_class.save()
 
     def test_inactive_stage_preserves_existing_class_links(self):
         """Deactivating a stage must not detach or delete existing classes."""
