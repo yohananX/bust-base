@@ -132,6 +132,66 @@ class ClassImporterWithSectionTest(BaseImportTestCase):
         finally:
             os.unlink(csv_path)
 
+    def test_section_reuses_existing_stage_by_name_identity(self):
+        """An existing stage with the same (case-insensitive,
+        whitespace-collapsed) name is linked — no inference, no creation."""
+        from students.models import AcademicStage
+
+        stage = AcademicStage.objects.create(
+            school=self.school, name='Junior', display_order=1,
+        )
+        csv_path = _write_csv(
+            ['name', 'section'],
+            [{'name': 'JSS 2', 'section': ' junior '}],
+        )
+        try:
+            importer = ClassImporter(school=self.school)
+            importer.import_csv(csv_path)
+
+            cls = SchoolClass.objects.get(school=self.school, name='JSS 2')
+            self.assertEqual(cls.level, 'junior')
+            self.assertEqual(cls.academic_stage, stage)
+        finally:
+            os.unlink(csv_path)
+
+    def test_section_without_matching_stage_leaves_class_unclassified(self):
+        """Unknown sections are flagged for review, never guessed (AS-22)."""
+        from students.models import AcademicStage
+
+        csv_path = _write_csv(
+            ['name', 'section'],
+            [{'name': 'JSS 2', 'section': 'Mystery'}],
+        )
+        try:
+            importer = ClassImporter(school=self.school)
+            importer.import_csv(csv_path)
+
+            cls = SchoolClass.objects.get(school=self.school, name='JSS 2')
+            self.assertEqual(cls.level, 'Mystery')
+            self.assertIsNone(cls.academic_stage)
+            self.assertFalse(AcademicStage.objects.filter(school=self.school).exists())
+        finally:
+            os.unlink(csv_path)
+
+    def test_stage_reuse_is_school_scoped(self):
+        from students.models import AcademicStage
+
+        other_school = School.objects.create(name='Other', short_code='other-2')
+        AcademicStage.objects.create(school=other_school, name='Junior', display_order=1)
+
+        csv_path = _write_csv(
+            ['name', 'section'],
+            [{'name': 'JSS 2', 'section': 'Junior'}],
+        )
+        try:
+            importer = ClassImporter(school=self.school)
+            importer.import_csv(csv_path)
+
+            cls = SchoolClass.objects.get(school=self.school, name='JSS 2')
+            self.assertIsNone(cls.academic_stage)
+        finally:
+            os.unlink(csv_path)
+
     def test_empty_section_uses_name(self):
         csv_path = _write_csv(
             ['name', 'section'],

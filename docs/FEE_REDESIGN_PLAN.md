@@ -75,6 +75,8 @@ Target changes:
 - Keep the existing `level` field during migration; remove it only after all consumers have been migrated and data reconciled.
 - Do not change class names or historical enrollment records as part of stage migration.
 
+**Status update (2026-10-26 — `AcademicStage` replaces `Level`, one concept).** The staged sequence above is now governed in `docs/IMPLEMENTATION_ROADMAP.md` §2.6, which is the authoritative execution order. In brief: the class form and Django admin now present **only** the academic stage (stage required whenever the school has active stages configured); `level` survives solely as a derived transitional snapshot written on stage assignment/change, never a second editable field. The design (not yet implemented) migration `students.0010` makes the existing level values authoritative as stages 1:1 with the same names and granularity — no grouping or reinterpretation. `SchoolClass.level` may be removed only when the roadmap §2.6 gate is met: LEVEL fee scope converted with row-by-row review, an explicit admission-header policy on stage names, CSV import/export via stages, and remaining `order_by('level')` orderings converted.
+
 The stage selector in class creation must list stages belonging to the current school. New stages are managed through the school's academic-structure settings.
 
 ## 2.2 Enrollment and admission classification
@@ -303,10 +305,10 @@ The migration should be additive first, with a controlled switch to the new reso
 2. Phase 1 — Add academic structure
    - Add `AcademicStage`.
    - Add nullable `SchoolClass.academic_stage_id`.
-   - Backfill stages from existing class `level` values only where a reliable mapping exists.
-   - Flag ambiguous mappings for review.
+   - Backfill stages from existing class `level` values only where a reliable mapping exists. (2026-10-26: the reliable mapping is name identity — each distinct non-empty level value becomes/reuses a stage of the same name and granularity, per roadmap §2.6 the design is recorded but implementation was deferred by owner decision.)
+   - Flag ambiguous mappings for review. (2026-10-26: empty or blank levels stay unclassified and are reported, never guessed.)
    - Keep `level` and existing enrollment fields intact.
-   - Validate school ownership and class/stage consistency.
+   - Validate school ownership and class/stage consistency. (2026-10-26: done on ordinary ORM writes; portal and admin workflow converge on the stage field — see §2.1 status update.)
 3. Phase 2 — Add classification support
    - Add the New intake admission indicator and review fields.
    - Add `ClassEnrollment.enrolled_from_term` if the enrollment workflow confirms the session-level model is sufficient.

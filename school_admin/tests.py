@@ -2205,7 +2205,6 @@ class SchoolClassStageSelectorTests(TestCase):
     def _create_data(self, **overrides):
         data = {
             'name': 'JSS2A',
-            'level': 'JSS2',
             'is_active': 'on',
             'academic_stage': str(self.jss.pk),
         }
@@ -2215,7 +2214,6 @@ class SchoolClassStageSelectorTests(TestCase):
     def _edit_data(self, **overrides):
         data = {
             'name': self.school_class.name,
-            'level': self.school_class.level,
             'is_active': 'on',
             'academic_stage': str(self.jss.pk),
         }
@@ -2231,6 +2229,13 @@ class SchoolClassStageSelectorTests(TestCase):
         self.assertNotContains(response, 'Foreign Stage')
         self.assertNotContains(response, 'Archived Stage')
 
+    def test_create_form_has_no_level_field(self):
+        """One classification field: the legacy Level input is gone."""
+        response = self.client.get(reverse('school_admin:class_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'name="level"')
+
     def test_create_class_with_stage(self):
         response = self.client.post(
             reverse('school_admin:class_create'), self._create_data(),
@@ -2240,6 +2245,16 @@ class SchoolClassStageSelectorTests(TestCase):
         created = SchoolClass.objects.get(school=self.school, name='JSS2A')
         self.assertEqual(created.academic_stage, self.jss)
 
+    def test_create_class_derives_level_from_stage(self):
+        """The transitional level snapshot equals the stage name on create."""
+        response = self.client.post(
+            reverse('school_admin:class_create'), self._create_data(),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        created = SchoolClass.objects.get(school=self.school, name='JSS2A')
+        self.assertEqual(created.level, self.jss.name)
+
     def test_create_form_renders_without_configured_stages(self):
         AcademicStage.objects.filter(school=self.school).delete()
 
@@ -2247,6 +2262,35 @@ class SchoolClassStageSelectorTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'No active stages are configured yet')
+
+    def test_create_without_stage_allowed_when_no_stages_configured(self):
+        """Without stages there is nothing authoritative to select;
+        the class is stored unclassified with an empty legacy snapshot."""
+        AcademicStage.objects.filter(school=self.school).delete()
+
+        response = self.client.post(
+            reverse('school_admin:class_create'),
+            self._create_data(academic_stage=''),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        created = SchoolClass.objects.get(school=self.school, name='JSS2A')
+        self.assertIsNone(created.academic_stage)
+        self.assertEqual(created.level, '')
+
+    def test_create_class_requires_stage_when_stages_configured(self):
+        """The stage is the authoritative classification, so it is not
+        optional once the school has stages configured."""
+        response = self.client.post(
+            reverse('school_admin:class_create'),
+            self._create_data(academic_stage=''),
+            follow=True,
+        )
+
+        self.assertContains(response, 'Select an academic stage for this class')
+        self.assertFalse(
+            SchoolClass.objects.filter(school=self.school, name='JSS2A').exists()
+        )
 
     def test_create_class_rejects_non_integer_stage(self):
         response = self.client.post(
@@ -2259,16 +2303,6 @@ class SchoolClassStageSelectorTests(TestCase):
         self.assertFalse(
             SchoolClass.objects.filter(school=self.school, name='JSS2A').exists()
         )
-
-    def test_create_class_without_stage_is_allowed(self):
-        response = self.client.post(
-            reverse('school_admin:class_create'),
-            self._create_data(academic_stage=''),
-        )
-
-        self.assertEqual(response.status_code, 302)
-        created = SchoolClass.objects.get(school=self.school, name='JSS2A')
-        self.assertIsNone(created.academic_stage)
 
     def test_create_class_rejects_foreign_school_stage(self):
         response = self.client.post(
@@ -2316,9 +2350,53 @@ class SchoolClassStageSelectorTests(TestCase):
         self.school_class.refresh_from_db()
         self.assertEqual(self.school_class.academic_stage, self.primary)
 
+    def test_edit_class_stage_change_derives_level(self):
+        """Assigning a stage writes the snapshot; reassigning rewrites it."""
+        self.assertEqual(self.school_class.level, 'JSS1')
+
+        response = self.client.post(
+            reverse('school_admin:class_edit', args=[self.school_class.pk]),
+            self._edit_data(academic_stage=str(self.primary.pk)),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.school_class.refresh_from_db()
+        self.assertEqual(self.school_class.level, self.primary.name)
+
+    def test_edit_class_keeps_level_when_stage_unchanged(self):
+        """Stage renames must not silently rewrite the snapshot, so an edit
+        that leaves the stage untouched leaves ``level`` alone."""
+        self.school_class.academic_stage = self.primary
+        self.school_class.level = 'JSS1'
+        self.school_class.save()
+
+        response = self.client.post(
+            reverse('school_admin:class_edit', args=[self.school_class.pk]),
+            self._edit_data(academic_stage=str(self.primary.pk)),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.school_class.refresh_from_db()
+        self.assertEqual(self.school_class.level, 'JSS1')
+
     def test_edit_class_can_clear_stage(self):
+        """Clearing is denied once stages exist; the class cannot drop its
+        authoritative classification while one is selectable."""
         self.school_class.academic_stage = self.primary
         self.school_class.save()
+
+        response = self.client.post(
+            reverse('school_admin:class_edit', args=[self.school_class.pk]),
+            self._edit_data(academic_stage=''),
+            follow=True,
+        )
+
+        self.assertContains(response, 'Select an academic stage for this class')
+        self.school_class.refresh_from_db()
+        self.assertEqual(self.school_class.academic_stage, self.primary)
+
+    def test_edit_class_clears_stage_when_no_stages_configured(self):
+        AcademicStage.objects.filter(school=self.school).delete()
 
         response = self.client.post(
             reverse('school_admin:class_edit', args=[self.school_class.pk]),

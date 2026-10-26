@@ -165,7 +165,7 @@
         <thead>
           <tr class="bg-gray-50 text-left text-gray-500 uppercase text-xs tracking-wider">
             <th class="px-5 py-3.5 font-semibold">Class</th>
-            <th class="px-5 py-3.5 font-semibold">Level</th>
+            <th class="px-5 py-3.5 font-semibold">Stage</th>
             <th class="px-5 py-3.5 font-semibold text-center">Total</th>
             <th class="px-5 py-3.5 font-semibold text-center">Pending</th>
             <th class="px-5 py-3.5 font-semibold text-center">Approved</th>
@@ -186,7 +186,7 @@
                 <div class="text-[11px] font-normal text-gray-300 italic mt-0.5">No teacher assigned</div>
               {% endif %}
             </td>
-            <td class="px-5 py-3.5 text-gray-500">{{ item.class.level }}</td>
+            <td class="px-5 py-3.5 text-gray-500">{% if item.class.academic_stage %}{{ item.class.academic_stage.name }}{% elif item.class.level %}{{ item.class.level }}{% else %}—{% endif %}</td>
             <td class="px-5 py-3.5 text-center text-gray-600">{{ item.total_scores }}</td>
             <td class="px-5 py-3.5 text-center">
               <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">{{ item.pending_count }}</span>

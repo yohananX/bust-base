@@ -29,9 +29,11 @@ def _stage_options(school, current_stage_id=None):
 def _resolve_academic_stage(request, school, current_stage_id=None):
     """Return ``(stage, error)`` for the submitted stage.
 
-    An empty value means "unclassified" and returns ``(None, None)``.
-    A non-empty value must reference an active stage in the current school;
-    an already-assigned inactive stage may be kept on edit.
+    A non-empty value must reference a stage in the current school; an
+    already-assigned inactive stage may be kept on edit. Whether an empty
+    value is allowed is decided by the caller, using
+    ``_school_has_active_stages`` (the academic stage is the single
+    classification field for classes).
     """
     raw = (request.POST.get('academic_stage') or '').strip()
     if not raw:
@@ -46,6 +48,34 @@ def _resolve_academic_stage(request, school, current_stage_id=None):
     if not stage.is_active and stage.pk != current_stage_id:
         return None, 'Select an active academic stage.'
     return stage, None
+
+
+def _school_has_active_stages(school):
+    """True when the school has any active academic stage configured."""
+    return AcademicStage.objects.filter(school=school, is_active=True).exists()
+
+
+def _apply_class_level(class_obj, stage, stage_is_new_assignment):
+    """Sync the transitional ``level`` snapshot from the chosen stage.
+
+    ``level`` is being replaced by ``academic_stage`` (AS-10). Until every
+    legacy consumer migrates (admission numbers, fee LEVEL pricing,
+    generation filters, CSV import/export), ``level`` must stay populated
+    with a value that reproduces the old behaviour. It is therefore written
+    only when the stage is first assigned or changed — a later stage rename
+    does NOT silently rewrite ``level``, so fee and admission behaviour
+    cannot drift without an explicit reassignment.
+    """
+    if stage is None:
+        if stage_is_new_assignment:
+            class_obj.level = ''
+    elif stage_is_new_assignment or not class_obj.level:
+        class_obj.level = stage.name
+
+
+def _stage_assignments_differ(class_obj, stage):
+    """Whether the submitted stage differs from the class's current one."""
+    return class_obj.academic_stage_id != (stage.pk if stage else None)
 
 
 def _class_form_context(school, class_obj=None):
@@ -68,7 +98,7 @@ class ClassListView(RoleRequiredMixin, View):
         school = request.school
         classes = SchoolClass.objects.filter(school=school).select_related('academic_stage')
 
-        # Search by name, level, or stage
+        # Search by name, stage, or the transitional level snapshot
         q = request.GET.get('q', '').strip()
         if q:
             classes = classes.filter(
@@ -116,16 +146,22 @@ class ClassCreateView(RoleRequiredMixin, View):
     def post(self, request):
         school = request.school
         name = request.POST.get('name', '').strip()
-        level = request.POST.get('level', '').strip()
         is_active = request.POST.get('is_active') == 'on'
 
-        if not name or not level:
-            messages.error(request, 'Both name and level are required.')
+        if not name:
+            messages.error(request, 'Class name is required.')
             return redirect('school_admin:class_create')
 
         stage, stage_error = _resolve_academic_stage(request, school)
         if stage_error:
             messages.error(request, stage_error)
+            return redirect('school_admin:class_create')
+
+        # The academic stage is the single classification field for classes.
+        # It is only optional while the school has no stages configured yet;
+        # administrators create stages in Django admin.
+        if stage is None and _school_has_active_stages(school):
+            messages.error(request, 'Select an academic stage for this class.')
             return redirect('school_admin:class_create')
 
         if SchoolClass.objects.filter(school=school, name=name).exists():
@@ -137,13 +173,14 @@ class ClassCreateView(RoleRequiredMixin, View):
 
         try:
             with transaction.atomic():
-                SchoolClass.objects.create(
+                new_class = SchoolClass(
                     school=school,
                     name=name,
-                    level=level,
                     academic_stage=stage,
                     is_active=is_active,
                 )
+                _apply_class_level(new_class, stage, stage_is_new_assignment=True)
+                new_class.save()
             messages.success(request, f'Class "{name}" created successfully.')
             return redirect('school_admin:class_list')
         except IntegrityError:
@@ -173,11 +210,10 @@ class ClassEditView(RoleRequiredMixin, View):
         class_obj = get_object_or_404(SchoolClass, school=school, pk=pk)
 
         name = request.POST.get('name', '').strip()
-        level = request.POST.get('level', '').strip()
         is_active = request.POST.get('is_active') == 'on'
 
-        if not name or not level:
-            messages.error(request, 'Both name and level are required.')
+        if not name:
+            messages.error(request, 'Class name is required.')
             return render(
                 request,
                 'school_admin/class_form.html',
@@ -189,6 +225,16 @@ class ClassEditView(RoleRequiredMixin, View):
         )
         if stage_error:
             messages.error(request, stage_error)
+            return render(
+                request,
+                'school_admin/class_form.html',
+                _class_form_context(school, class_obj),
+            )
+
+        # The academic stage is the single classification field for classes.
+        # Clearing it is only allowed while no active stages are configured.
+        if stage is None and _school_has_active_stages(school):
+            messages.error(request, 'Select an academic stage for this class.')
             return render(
                 request,
                 'school_admin/class_form.html',
@@ -211,9 +257,10 @@ class ClassEditView(RoleRequiredMixin, View):
         try:
             with transaction.atomic():
                 class_obj.name = name
-                class_obj.level = level
-                class_obj.academic_stage = stage
                 class_obj.is_active = is_active
+                stage_changed = _stage_assignments_differ(class_obj, stage)
+                _apply_class_level(class_obj, stage, stage_changed)
+                class_obj.academic_stage = stage
                 class_obj.save()
             messages.success(
                 request,

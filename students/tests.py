@@ -1735,3 +1735,109 @@ class AcademicStageTests(TestCase):
         active_stage.save()
         active_class.refresh_from_db()
         self.assertEqual(active_class.academic_stage, active_stage)
+
+
+class SchoolClassStageOnlyAdminFormTests(TestCase):
+    """The Django admin class form presents one classification field.
+
+    ``level`` is a transitional snapshot derived from the academic stage, not a
+    second editable classification input. See the roadmap replacement sequence:
+    it is written only when the stage is first assigned or changed, so a stage
+    rename can never silently alter admission-number or fee-LEVEL behaviour.
+    """
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Grace House School",
+            short_code="grace-house",
+        )
+        self.primary = AcademicStage.objects.create(
+            school=self.school, name="Primary", display_order=1,
+        )
+        self.jss = AcademicStage.objects.create(
+            school=self.school, name="JSS", display_order=2,
+        )
+
+    def _data(self, **overrides):
+        data = {
+            'name': 'JSS1A',
+            'academic_stage': str(self.jss.pk),
+            'is_active': 'on',
+            'school': self.school.pk,
+        }
+        data.update(overrides)
+        return data
+
+    def test_form_excludes_level_field(self):
+        from students.admin import SchoolClassAdminForm
+
+        form = SchoolClassAdminForm()
+        self.assertNotIn('level', form.fields)
+
+    def test_create_derives_level_from_stage(self):
+        from students.admin import SchoolClassAdminForm
+
+        form = SchoolClassAdminForm(data=self._data())
+        self.assertTrue(form.is_valid(), form.errors)
+        obj = form.save()
+
+        self.assertEqual(obj.academic_stage, self.jss)
+        self.assertEqual(obj.level, self.jss.name)
+
+    def test_stage_change_rewrites_snapshot(self):
+        from students.admin import SchoolClassAdminForm
+
+        school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', level='JSS1',
+        )
+        form = SchoolClassAdminForm(
+            instance=school_class, data={**self._data()},  # name unchanged
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        obj = form.save()
+        self.assertEqual(obj.level, self.jss.name)
+
+    def test_stage_unchanged_preserves_snapshot(self):
+        """Re-saving without changing the stage must not touch ``level``:
+        that snapshot feeds admission numbers and LEVEL fee prices."""
+        school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', level='JSS1',
+            academic_stage=self.jss,
+        )
+        from students.admin import SchoolClassAdminForm
+
+        form = SchoolClassAdminForm(
+            instance=school_class, data=self._data(),
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        obj = form.save()
+        self.assertEqual(obj.level, 'JSS1')
+
+    def test_stage_clear_resets_snapshot(self):
+        from students.admin import SchoolClassAdminForm
+
+        school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', level='JSS1',
+            academic_stage=self.jss,
+        )
+        form = SchoolClassAdminForm(
+            instance=school_class, data=self._data(academic_stage=''),
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        obj = form.save()
+        self.assertIsNone(obj.academic_stage)
+        self.assertEqual(obj.level, '')
+
+    def test_admission_header_uses_stage_derived_level(self):
+        """After classification flows through the stage, admission-number
+        header mapping is unchanged (level value preserved verbatim)."""
+        stage = AcademicStage.objects.create(
+            school=self.school, name='JSS 1', display_order=3,
+        )
+        school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS 1 A', level='JSS 1',
+            academic_stage=stage,
+        )
+        from students.utils import _map_class_to_header
+
+        self.assertEqual(_map_class_to_header(school_class), 'J1')

@@ -154,13 +154,17 @@ class ClassSearchAPIView(EntitySearchAPIView):
         ).order_by('level', 'name')
 
     def serialize(self, school_class):
+        # Academic stage is the authoritative classification; the legacy
+        # level snapshot is shown only while a class is still unclassified.
+        stage_label = (
+            school_class.academic_stage.name
+            if school_class.academic_stage
+            else school_class.level
+        )
         return {
             'id': school_class.pk,
             'name': school_class.name,
-            'subtitle': ' · '.join(filter(None, [
-                school_class.level,
-                school_class.academic_stage.name if school_class.academic_stage else '',
-            ])),
+            'subtitle': stage_label,
         }
 
 

@@ -10,7 +10,7 @@ from accounts.models import User, Roles
 from accounts.utils import generate_username
 from academics.models import Subject, ClassSubject
 from core.models import AcademicSession
-from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from students.models import AcademicStage, SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from students.utils import generate_admission_number, find_or_create_parent
 
 
@@ -79,6 +79,14 @@ class ClassImporter(BaseImporter):
         created = 0
         skipped = 0
         errors = []
+        stage_map = None
+
+        def _build_stage_map():
+            """Key existing stages by normalized name for identity reuse."""
+            mapping = {}
+            for s in AcademicStage.objects.filter(school=self.school).only('name'):
+                mapping.setdefault(' '.join(s.name.split()).lower(), s)
+            return mapping
 
         for i, row in enumerate(rows, start=1):
             name = row.get('name', '').strip()
@@ -97,11 +105,21 @@ class ClassImporter(BaseImporter):
                     self._log(f"Row {i}: SKIP — class '{name}' already exists")
                 continue
 
+            # Link an existing stage by exact (case-insensitive,
+            # whitespace-collapsed) name identity. Imported sections are never
+            # reinterpreted into broader stages, and no stage is created here;
+            # unmatched imports stay unclassified for review (AS-22).
+            if stage_map is None:
+                stage_map = _build_stage_map()
+
+            stage = stage_map.get(' '.join(level.split()).lower())
+
             if not self.dry_run:
                 SchoolClass.objects.create(
                     school=self.school,
                     name=name,
                     level=level,
+                    academic_stage=stage,
                 )
             created += 1
             if self.verbose:

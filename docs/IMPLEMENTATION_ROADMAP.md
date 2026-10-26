@@ -1,8 +1,8 @@
 # BUST-BASE — Authoritative Implementation Roadmap
 
 **Status:** Planning and Phase 1 review. No production access, no production migration, no restore, no deletion-policy change.
-**Date:** 2026-10-23
-**Branch:** `feat/academic-structure-phase1`
+**Date:** 2026-10-23 (updated 2026-10-26: single-concept convergence recorded in §2.6)
+**Branch:** `feat/academic-structure-phase1` (pushed to origin; not merged, not deployed)
 **Baseline commit:** `8a1bdcc287826253ee51bf9d2e3619706ee15546` (`main`)
 **Companion register:** [`docs/IMPLEMENTATION_DEPENDENCY_REGISTER.md`](IMPLEMENTATION_DEPENDENCY_REGISTER.md)
 
@@ -97,7 +97,7 @@ A full baseline record (status, diff, untracked hashes) was written to `/tmp/ope
 
 ### 1.3 What must not be assumed
 
-- The AcademicStage work is **committed locally** on `feat/academic-structure-phase1` (see `git log`). It is **not pushed, merged, deployed, or present in production**.
+- The AcademicStage work is committed on `feat/academic-structure-phase1` and the branch **is pushed** to origin as of 2026-10-26. It is **not merged into `main`, not deployed, and not present in production**. (Original statement, 2026-10-23: "not pushed, merged, deployed" — the push happened later and is recorded here so the state is not re-inferred.)
 - `students.0008_add_academic_stage` is applied only in the local development database. That is not staging or production evidence.
 - No PostgreSQL test was executed in this task. SQLite results do not prove PostgreSQL compatibility.
 - The recovery investigation's “no production loss” / “loss confirmed” question remains unresolved.
@@ -113,8 +113,8 @@ A full baseline record (status, diff, untracked hashes) was written to `/tmp/ope
 | AcademicStage normalized uniqueness | **Complete for SQLite; PostgreSQL unverified** | `UniqueConstraint(Lower(Trim('name')), 'school')`; 14 targeted tests pass | Run on PostgreSQL in a non-production environment |
 | Stage ordering / activation | **Implemented** | `display_order`, `is_active`, `Meta.ordering` | No default-stage seeding; no “one active stage per order” rule |
 | Class stage selector (school admin portal) | **Implemented in the Phase 1 closure review** | `school_admin/views/classes.py:_stage_options`, `_resolve_academic_stage`; `class_form.html`; `class_list.html`; `class_detail.html`; 14 selector tests | Optional stage-management UI; no bulk backfill |
-| Stage backfill from `level` | **Not implemented** | No data migration | Needs IC-3 evidence and per-row approval (PD-05) |
-| `SchoolClass.level` | **Retained** | `students/models.py:62`; migration 0008 only changes help text | Must remain until every consumer is migrated and removal is approved |
+| Stage backfill from `level` | **Designed only (§2.6); owner opted not to implement in this task** | §2.6 migration design; no `0010` migration written yet | Implement migration + backfill tests as a reviewed follow-up; IC-3 pre-check on target DB |
+| `SchoolClass.level` | **Transitional derived snapshot (§2.6)** — schema field untouched, no user-facing input | `school_admin/views/classes.py:_apply_class_level`; `students/admin.py:SchoolClassAdminForm.save` | Removal gated on §2.6 gate (fee scope conversion, admission policy, import/export, orderings) |
 | `SchoolClass.is_active` | **Retained** | `students/models.py:76` | Must not be removed in this work |
 | Student classification fields | **Planned** | `docs/FEE_REDESIGN_PLAN.md` §2.2 | PD-02, schema, backfill, review queue |
 | `ClassEnrollment` term dimension | **Planned / undecided** | `students/models.py:254-291`; unique `(student, session)` | PD-03; no `enrolled_from_term` yet |
@@ -163,7 +163,52 @@ A full baseline record (status, diff, untracked hashes) was written to `/tmp/ope
 
 **Why these are in scope:** each is a narrow correction to an existing Phase 1 implementation, not a new phase. C1 and C2 enforce stated P1 invariants; C3 prevents a regression in existing class filtering; C4 tightens validation; C5 completes the P1 portal workflow. None touches historical financial or academic records, deletion policy, or a broad schema redesign.
 
-**What was deliberately not changed:** stage backfill, `level` removal, `is_active` removal, historical snapshots, enrollment, fees, scores, results, deletion policy, stage-management UI, and production configuration.
+**What was deliberately not changed:** stage backfill, `level` removal, `is_active` removal, historical snapshots, enrollment, fees, scores, results, deletion policy, stage-management UI, and production configuration. (The stage backfill and the `level` field's status are superseded on 2026-10-26 by §2.6, which directs the convergence; `level` remains until the removal gate there is met.)
+
+### 2.6 Single-concept convergence: Academic Stage replaces Level (2026-10-26)
+
+**Product statement (authoritative).** `AcademicStage` does **not** sit beside `SchoolClass.level` as a second classification concept — it **replaces** it. The target state is one authoritative academic-stage representation, one user-facing field ("Academic Stage"), existing class data preserved through a controlled migration, and no permanent duplicate classification fields. Existing `level` values are preserved verbatim in granularity; they are never reinterpreted into broader groupings without evidence.
+
+**Owner decisions recorded 2026-10-26:**
+
+1. Portal class form: a stage **must** be selected when the school has active stages configured; saving unclassified remains possible only while no stages exist (level snapshot then stays empty).
+2. Django admin presents the **same** one-field policy (stage-only form); the legacy `level` field is derived, not editable.
+3. The backfill data migration (`students.0010`) is **designed and documented below but intentionally not implemented in this task**; it ships as a reviewed follow-up. Nothing in this task runs migrations against any real database.
+
+**The transitional role of `SchoolClass.level`.** Until every legacy consumer migrates, `level` stays in the schema but is demoted to a **derived, non-editable snapshot** (`students/models.py:level`, change-labeled in field help text since migration 0008). It is written only when a stage is first assigned or changed (`school_admin/views/classes.py:_apply_class_level`; `students/admin.py:SchoolClassAdminForm.save`). Because of this write rule:
+
+- Stage **renames** never rewrite `level`, so admission numbers and LEVEL-scope fee prices cannot drift without an explicit reassignment.
+- The field is not a second source of truth: no form, portal, or admin surface accepts a `level` value anymore.
+
+**Consumer migration table (dependency-ordered):**
+
+| Step | What moves | Consumer(s) | Behaviour during transition |
+|---|---|---|---|
+| T0 (done 2026-10-26) | User-facing field becomes stage-only | `school_admin/templates/school_admin/class_form.html`, `class_list.html`, `class_detail.html`, `class_confirm_delete.html`, `_review_results.html`; `students/admin.py` `SchoolClassAdmin`/`SchoolClassAdminForm` | `level` derived from the chosen stage on create/assignment-change; list/detail/delete/search show one stage column/field |
+| T1 (done 2026-10-26) | Import classified by identity | `data_import/importers.py:ClassImporter` | An existing stage whose normalized name matches the CSV section is linked; unknown sections stay unclassified and reported (no inference, no stage creation). `level` still written from `section` |
+| T2 (unchanged, governed) | Admission numbers | `students/utils.py:_map_class_to_header` | Still reads `level`, which preserves the value admins previously typed (class-by-class stage assignment derives it). Keys in `CLASS_HEADER_MAP` must therefore equal the stage names a school uses. Changing the mapping to stage-name keys is an explicit later decision (AS-21) |
+| T3 (unchanged, governed) | Fee LEVEL pricing + level invoice generation/sync | `fees/pricing.py:_is_applicable`, `fees/generation.py:generate_invoices_for_level`/`sync_level_invoices` | No change. `FeePrice.level` is the fee-side twin concept; its conversion to an `AcademicStage` FK is the P4 work and is the **primary removal gate** below |
+| T4 | Removal of `SchoolClass.level` | schema + remaining readers (`Meta.ordering`, export, `order_by('level')` dropdowns) | Only after the removal gate |
+
+**Removal gate for `SchoolClass.level` (all must be true):**
+
+1. Fee scope `LEVEL` is converted to an `AcademicStage` reference with row-by-row review (P4, PD-05; `FINAL_GO_NOGO_CORRECTIONS.md` forbids auto-mapping).
+2. An explicit admission-header policy on stage names is adopted (AS-21).
+3. CSV import/export round-trip via stages (export columns decided, AS-22/AS-23).
+4. Remaining `order_by('level')` orderings (`school_admin/views/results.py`, `views/invoices.py`, `lessons/views.py`, `school_admin/views/search.py`) are converted to stage orderings, and `SchoolClass.Meta.ordering` drops the term.
+
+Until then, allocated consumers keep reading `level`; the field must remain populated (derived writes) and **must not be removed**.
+
+**Designed backfill migration `students.0010_backfill_academic_stages_from_level` (not implemented here):**
+
+- Load per school: normalized (`' '.join(value.split())`) distinct non-empty `level` values.
+- Stage reuse: if a stage whose normalized name matches case-insensitively exists (lowest pk wins among duplicates), reuse it; otherwise create one with `display_order` = deterministic alphabetical enumeration over the school's newly created stages only (existing stages keep their order). No pedagogical order is inferred.
+- Class assignment: each class with a non-empty `level` links to the stage whose normalized name equals its own level value. Empty-string levels remain unclassified and are reported, never guessed.
+- Idempotent; deterministic; runs **after** `students.0009` (whose normalized-duplicate pre-check requirement still applies). Reverse operation is a deliberate `noop` (un-mapping would lose classification evidence).
+- Acceptance criteria: distinct level values map 1:1 onto stages; no stage is created with a colliding normalized name; admission-number prefixes and LEVEL fee applicability for previously-unclassified classes are unchanged after backfill; empty-level classes stay unclassified.
+- Required tests: cross-school isolation, case/whitespace reuse, idempotency on re-run, unclassified preservation, and an end-to-end assertion that `_map_class_to_header` and `_is_applicable` return identical results for every fixture class before and after backfill.
+
+**Status: T0 and T1 implemented and tested; T2/T3 unchanged by design; 0010 designed only; removal blocked pending the gate.** Test evidence in §5.2.
 
 ### 2.3 Phase 1 closure review findings (2026-10-23)
 
@@ -197,7 +242,7 @@ Statuses: **PASS** (verified on the stated engine), **BLOCKED** (needs a decisio
 | 3 | Same stage name allowed in another school | **PASS** (SQLite) | `test_academic_stage_unique_per_school` |
 | 4 | Class cannot reference another school's stage via `full_clean()` or ordinary `save()`/`create()` | **PASS** (SQLite) | C2 tests; `objects.create`/`save` guard |
 | 5 | A nonexistent stage id raises `ValidationError` on `save()` | **PASS** (SQLite) | `test_school_class_missing_stage_rejected_on_save` (C4) |
-| 6 | Administrator can assign, change, or clear a stage from the class form; unclassified remains valid | **PASS** (SQLite) | 14 `SchoolClassStageSelectorTests` |
+| 6 | Administrator can assign, change, or clear a stage from the class form; unclassified remains valid | **PASS** (SQLite); **superseded 2026-10-26 by §2.6** — stage is now required when configured; clearing denied while stages exist | Updated `SchoolClassStageSelectorTests` |
 | 7 | Cross-school stage rejected by form and server | **PASS** (SQLite) | `test_create_class_rejects_foreign_school_stage`; `test_edit_class_rejects_foreign_school_stage`; `_resolve_academic_stage` |
 | 8 | Inactive stage: not offered for new assignments, preserved when already assigned | **PASS** (SQLite) | `test_create_class_rejects_inactive_stage`; `test_edit_class_preserves_assigned_inactive_stage` |
 | 9 | Existing class creation/editing/filtering/rendering keeps working | **PASS** (SQLite) | `school_admin`: 117 pass; full suite 736 pass |
@@ -205,7 +250,7 @@ Statuses: **PASS** (verified on the stated engine), **BLOCKED** (needs a decisio
 | 11 | Targeted, `students`, `school_admin`, full-suite, and harness tests pass on SQLite | **PASS** (SQLite) | See §5.2 recorded results |
 | 12 | PostgreSQL verification for `0009` | **NOT VERIFIED / BLOCKED** | §5.4; offline SQL generated only |
 | 13 | No stage backfill, no historical-data mutation, no fee/invoice change | **PASS** | `git diff` scope; `migrate --plan` unchanged |
-| 14 | `level` and `is_active` retained | **PASS** | `students/models.py` unchanged fields |
+| 14 | `level` and `is_active` retained | **PASS**; **superseded 2026-10-26 by §2.6** — `level` retained only as a derived transitional snapshot, no longer user-editable; removal subject to the §2.6 gate | `students/models.py` unchanged fields; `school_admin/views/classes.py:_apply_class_level`; `students/admin.py:SchoolClassAdminForm` |
 | 15 | Roadmap and dependency register updated | **PASS** | This document; `IMPLEMENTATION_DEPENDENCY_REGISTER.md` |
 | 16 | Bulk/direct stage-write paths free of reachable tenant gaps | **PASS** (static audit) | AS-29; no bulk stage writer exists |
 | 17 | Migration `0009` applied to the real development database | **NOT APPLIED** (correct) | `migrate --plan`; 0 stage/class rows |
@@ -433,7 +478,7 @@ The ordering rule is strict: a phase may not begin until its prerequisites are c
 
 ### 4.3 Data migrations not authorized here
 
-- Stage backfill from `SchoolClass.level`.
+- Stage backfill from `SchoolClass.level` — designed in §2.6; the owner deferred implementing it in the convergence task, so it remains unauthorized to execute until that reviewed migration ships.
 - `ClassEnrollment.enrolled_from_term` backfill.
 - Student classification backfill or review flagging.
 - `TermFeeItem` / price conversion.
@@ -496,6 +541,15 @@ Recorded results (2026-10-23, SQLite):
 - `manage.py check`: “System check identified no issues (0 silenced)”.
 - `migrate --plan`: only `students.0009_academicstage_normalized_unique` pending.
 - PostgreSQL: **NOT RUN**.
+
+Recorded results (2026-10-26, single-concept convergence work, SQLite):
+
+- `students.tests.SchoolClassStageOnlyAdminFormTests` + `school_admin.tests.SchoolClassStageSelectorTests` + `data_import` (targeted): **66 tests pass**.
+- `students` + `school_admin` + `data_import` apps: **260 tests pass** (142.296s).
+- `makemigrations --check --dry-run`: “No changes detected” (no schema change in the convergence work; migration 0010 is designed in §2.6 but deliberately not written).
+- `manage.py check`: “System check identified no issues (0 silenced)”.
+- `migrate --plan`: still only `students.0009_academicstage_normalized_unique` pending on the real dev DB — no migration in this task was applied anywhere.
+- Full suite: **751 tests pass**, 480.413s, exit 0 (2026-10-26 convergence tree: 736 previous + 15 new/updated selector, admin-form, admission-stability and import tests).
 
 PostgreSQL and full-suite commands must be reported separately. A SQLite pass is not a PostgreSQL pass.
 

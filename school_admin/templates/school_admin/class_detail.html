@@ -14,7 +14,7 @@
       </div>
       <div>
         <h2 class="text-lg font-display font-semibold text-ink">{{ class_obj.name }}</h2>
-        <p class="text-sm text-ink-muted">Level: {{ class_obj.level }} &middot; Stage: {% if class_obj.academic_stage %}{{ class_obj.academic_stage.name }}{% else %}Unclassified{% endif %} &middot; Status: {% if class_obj.is_active %}Active{% else %}Inactive{% endif %}</p>
+        <p class="text-sm text-ink-muted">Stage: {% if class_obj.academic_stage %}{{ class_obj.academic_stage.name }}{% else %}Unclassified{% endif %} &middot; Status: {% if class_obj.is_active %}Active{% else %}Inactive{% endif %}</p>
       </div>
       <div class="ml-auto flex gap-2">
         <a href="{% url 'school_admin:class_edit' class_obj.pk %}"

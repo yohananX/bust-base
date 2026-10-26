@@ -25,8 +25,8 @@
             <td class="px-5 py-3.5 text-gray-900 font-medium">{{ class_obj.name }}</td>
           </tr>
           <tr class="border-b border-gray-100">
-            <td class="px-5 py-3.5 font-medium text-gray-500">Level</td>
-            <td class="px-5 py-3.5 text-gray-900">{{ class_obj.level }}</td>
+            <td class="px-5 py-3.5 font-medium text-gray-500">Academic Stage</td>
+            <td class="px-5 py-3.5 text-gray-900">{% if class_obj.academic_stage %}{{ class_obj.academic_stage.name }}{% else %}Unclassified{% endif %}</td>
           </tr>
           <tr>
             <td class="px-5 py-3.5 font-medium text-gray-500">Status</td>
