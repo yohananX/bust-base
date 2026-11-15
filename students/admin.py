@@ -3,7 +3,7 @@ from django import forms
 from django.shortcuts import render, redirect
 from django.utils.translation import gettext_lazy as _
 
-from .models import AcademicStage, SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from .models import AcademicStage, SchoolClass, Student, ClassEnrollment, ClassOffering, StudentGuardianLink
 
 
 # ---------------------------------------------------------------------------
@@ -14,7 +14,10 @@ class ClassEnrollmentInline(admin.TabularInline):
     """Read-only inline showing enrollment history."""
     model = ClassEnrollment
     extra = 0
-    readonly_fields = ['student', 'school_class', 'session', 'enrolled_on', 'is_current']
+    readonly_fields = [
+        'student', 'school_class', 'session', 'class_offering',
+        'enrolled_on', 'is_current',
+    ]
     can_delete = False
     max_num = 0  # prevent adding new ones from inline
 
@@ -64,6 +67,15 @@ class SchoolClassAdmin(admin.ModelAdmin):
     autocomplete_fields = ['academic_stage']
     list_select_related = ['school', 'academic_stage']
     form = SchoolClassAdminForm
+
+
+@admin.register(ClassOffering)
+class ClassOfferingAdmin(admin.ModelAdmin):
+    list_display = ['school_class', 'academic_session', 'school']
+    list_filter = ['academic_session', 'school']
+    search_fields = ['school_class__name', 'academic_session__name']
+    autocomplete_fields = ['school_class', 'academic_session']
+    list_select_related = ['school', 'school_class', 'academic_session']
 
 
 # ---------------------------------------------------------------------------

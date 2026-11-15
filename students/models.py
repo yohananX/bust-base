@@ -3,7 +3,7 @@ from django.db import models
 from django.db.models.functions import Lower, Trim
 from django.utils.translation import gettext_lazy as _
 
-from core.models import TenantScopedModel
+from core.models import AcademicSession, TenantScopedModel
 from accounts.models import Roles
 
 
@@ -106,6 +106,92 @@ class SchoolClass(TenantScopedModel):
 
     def save(self, *args, **kwargs):
         self._validate_academic_stage_school()
+        super().save(*args, **kwargs)
+
+
+class ClassOffering(TenantScopedModel):
+    """A class offered in a particular academic session.
+
+    An offering exists when a class is offered in a particular session.
+    Historical offerings remain available; there is no ``is_active`` or status
+    field. Both the class and the session must belong to the same school as the
+    offering itself.
+    """
+
+    school_class = models.ForeignKey(
+        SchoolClass,
+        on_delete=models.PROTECT,
+        related_name='offerings',
+        verbose_name=_('class'),
+    )
+    academic_session = models.ForeignKey(
+        'core.AcademicSession',
+        on_delete=models.PROTECT,
+        related_name='offerings',
+        verbose_name=_('academic session'),
+    )
+
+    class Meta:
+        verbose_name = _('class offering')
+        verbose_name_plural = _('class offerings')
+        unique_together = ('school_class', 'academic_session')
+        ordering = ['-academic_session__start_date', 'school_class__name']
+
+    def __str__(self):
+        return f"{self.school_class.name} – {self.academic_session.name}"
+
+    def _validate_same_school(self):
+        """Ensure the class, session and offering all belong to one school."""
+        errors = {}
+        class_school_id = None
+        session_school_id = None
+
+        if self.school_class_id:
+            try:
+                class_school_id = SchoolClass.objects.values_list(
+                    'school_id', flat=True
+                ).get(pk=self.school_class_id)
+            except SchoolClass.DoesNotExist:
+                pass
+
+        if self.academic_session_id:
+            try:
+                session_school_id = AcademicSession.objects.values_list(
+                    'school_id', flat=True
+                ).get(pk=self.academic_session_id)
+            except AcademicSession.DoesNotExist:
+                pass
+
+        if class_school_id is not None and session_school_id is not None:
+            if class_school_id != session_school_id:
+                errors['school_class'] = _(
+                    'Class and academic session must belong to the same school.'
+                )
+                errors['academic_session'] = _(
+                    'Class and academic session must belong to the same school.'
+                )
+
+        if self.school_id:
+            if class_school_id is not None and self.school_id != class_school_id:
+                errors['school_class'] = _(
+                    'Class must belong to the same school as the offering.'
+                )
+            if session_school_id is not None and self.school_id != session_school_id:
+                errors['academic_session'] = _(
+                    'Academic session must belong to the same school as the offering.'
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def clean(self):
+        super().clean()
+        self._validate_same_school()
+
+    def save(self, *args, **kwargs):
+        # Validate tenant consistency on every write path. ``objects.create()``
+        # and ``save()`` do not invoke ``full_clean()`` automatically.
+        self._validate_same_school()
         super().save(*args, **kwargs)
 
 
@@ -244,16 +330,20 @@ class Student(TenantScopedModel):
     def promote_to(self, session, school_class):
         """Create a new ClassEnrollment for this student in the given session and class.
 
+        Routes through :meth:`students.services.confirm_enrolment` so the
+        enrolment is backed by an existing ClassOffering and the single current
+        enrolment invariant is honoured transactionally.
+
         Returns the new ClassEnrollment instance.
         """
-        enrollment = ClassEnrollment.objects.create(
+        from .services import confirm_enrolment
+
+        ClassOffering.objects.get_or_create(
             school=self.school,
-            student=self,
             school_class=school_class,
-            session=session,
-            is_current=True,
+            academic_session=session,
         )
-        return enrollment
+        return confirm_enrolment(student=self, school_class=school_class, session=session)
 
 
 class ClassEnrollment(TenantScopedModel):
@@ -276,6 +366,19 @@ class ClassEnrollment(TenantScopedModel):
         on_delete=models.CASCADE,
         verbose_name=_('academic session'),
     )
+    class_offering = models.ForeignKey(
+        'ClassOffering',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='enrollments',
+        verbose_name=_('class offering'),
+        help_text=(
+            'The class offering this enrolment belongs to. Nullable during the '
+            'transition period; new enrolments created via the enrolment service '
+            'always resolve an existing offering.'
+        ),
+    )
     enrolled_on = models.DateField(auto_now_add=True, verbose_name=_('enrolled on'))
     is_current = models.BooleanField(default=True, verbose_name=_('current'))
 
@@ -288,12 +391,85 @@ class ClassEnrollment(TenantScopedModel):
     def __str__(self):
         return f"{self.student} → {self.school_class.name} ({self.session.name})"
 
+    def _validate_enrolment_invariants(self):
+        """Enforce cross-field tenant/session/class consistency.
+
+        These invariants cannot be expressed as single-table database
+        constraints (offering/session and tenant equality span multiple tables),
+        so they are validated here on every write path. ``bulk_create`` and
+        ``QuerySet.update`` still bypass this validation; callers must use the
+        enrolment service or ``full_clean()``.
+        """
+        errors = {}
+
+        if self.student_id and self.school_id:
+            try:
+                student_school_id = Student.objects.values_list(
+                    'school_id', flat=True
+                ).get(pk=self.student_id)
+            except Student.DoesNotExist:
+                student_school_id = None
+            if student_school_id is not None and student_school_id != self.school_id:
+                errors['student'] = _(
+                    'Student must belong to the same school as the enrolment.'
+                )
+
+        if self.school_class_id and self.school_id:
+            try:
+                class_school_id = SchoolClass.objects.values_list(
+                    'school_id', flat=True
+                ).get(pk=self.school_class_id)
+            except SchoolClass.DoesNotExist:
+                class_school_id = None
+            if class_school_id is not None and class_school_id != self.school_id:
+                errors['school_class'] = _(
+                    'Class must belong to the same school as the enrolment.'
+                )
+
+        if self.session_id and self.school_id:
+            try:
+                session_school_id = AcademicSession.objects.values_list(
+                    'school_id', flat=True
+                ).get(pk=self.session_id)
+            except AcademicSession.DoesNotExist:
+                session_school_id = None
+            if session_school_id is not None and session_school_id != self.school_id:
+                errors['session'] = _(
+                    'Session must belong to the same school as the enrolment.'
+                )
+
+        # Offering invariants (only enforced when an offering is assigned).
+        if self.class_offering_id:
+            offering = self.class_offering
+            if self.student_id and offering.school_id != self.student.school_id:
+                errors['class_offering'] = _(
+                    'Offering must belong to the same school as the student.'
+                )
+            if offering.academic_session_id != self.session_id:
+                errors['class_offering'] = _(
+                    'Offering must belong to the same session as the enrolment.'
+                )
+            if offering.school_class_id != self.school_class_id:
+                errors['class_offering'] = _(
+                    'Offering class must match the enrolment class.'
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def clean(self):
+        super().clean()
+        self._validate_enrolment_invariants()
+
     def save(self, *args, **kwargs):
+        # Constraint validation happens on every write path because
+        # ``objects.create()``/``save()`` do not invoke ``full_clean()``.
+        self._validate_enrolment_invariants()
+        super().save(*args, **kwargs)
         if self.is_current:
             ClassEnrollment.objects.filter(
                 student=self.student, is_current=True
             ).exclude(pk=self.pk).update(is_current=False)
-        super().save(*args, **kwargs)
 
 
 class StudentGuardianLink(TenantScopedModel):

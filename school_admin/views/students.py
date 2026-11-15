@@ -14,8 +14,9 @@ from django.utils.dateparse import parse_date
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
 from accounts.utils import generate_password, generate_username, unique_username
-from students.models import Student, SchoolClass, ClassEnrollment, StudentGuardianLink
+from students.models import Student, SchoolClass, ClassEnrollment, ClassOffering, StudentGuardianLink
 from students.utils import generate_admission_number, find_or_create_parent
+from students.services import confirm_enrolment
 from core.models import AcademicSession, Term
 from fees.models import Invoice, Payment
 
@@ -321,17 +322,20 @@ class StudentCreateView(RoleRequiredMixin, View):
                     student.user.passport = uploaded
                     student.user.save(update_fields=['passport'])
 
-                # Auto-enroll if class and session provided
+                # Auto-enrol if class and session provided
                 if class_id and session_id:
                     if school_class is None:
                         school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
                     session = get_object_or_404(AcademicSession, school=school, pk=session_id)
-                    ClassEnrollment.objects.create(
+                    # Ensure the class is offered in this session, then create the
+                    # enrolment through the transactional, idempotent service.
+                    ClassOffering.objects.get_or_create(
                         school=school,
-                        student=student,
                         school_class=school_class,
-                        session=session,
-                        is_current=True,
+                        academic_session=session,
+                    )
+                    confirm_enrolment(
+                        student=student, school_class=school_class, session=session
                     )
                     from fees.generation import generate_invoice_for_current_term
                     generate_invoice_for_current_term(student)
@@ -440,20 +444,32 @@ class StudentEditView(RoleRequiredMixin, View):
                     )
 
                     if should_enroll:
+                        # Ensure an offering exists for the target class/session.
+                        ClassOffering.objects.get_or_create(
+                            school=school,
+                            school_class=new_class,
+                            academic_session=new_session,
+                        )
                         enrollment = ClassEnrollment.objects.filter(
                             student=student, session=new_session
                         ).first()
                         if enrollment:
+                            # Explicit change operation on an existing enrolment.
                             enrollment.school_class = new_class
+                            enrollment.session = new_session
+                            enrollment.class_offering = ClassOffering.objects.get(
+                                school_class=new_class,
+                                academic_session=new_session,
+                                school=school,
+                            )
                             enrollment.is_current = True
                             enrollment.save()
                         else:
-                            ClassEnrollment.objects.create(
-                                school=school,
+                            # New enrolment creation — route through the service.
+                            confirm_enrolment(
                                 student=student,
                                 school_class=new_class,
                                 session=new_session,
-                                is_current=True,
                             )
                         from fees.generation import generate_invoice_for_current_term
                         generate_invoice_for_current_term(student)
@@ -532,17 +548,29 @@ class StudentChangeClassView(RoleRequiredMixin, View):
                 enrollment = ClassEnrollment.objects.filter(
                     student=student, session=session
                 ).first()
+                # Ensure an offering exists for the target class/session.
+                ClassOffering.objects.get_or_create(
+                    school=school,
+                    school_class=school_class,
+                    academic_session=session,
+                )
                 if enrollment:
+                    # Explicit change operation on an existing enrolment.
                     enrollment.school_class = school_class
+                    enrollment.session = session
+                    enrollment.class_offering = ClassOffering.objects.get(
+                        school_class=school_class,
+                        academic_session=session,
+                        school=school,
+                    )
                     enrollment.is_current = True
                     enrollment.save()
                 else:
-                    ClassEnrollment.objects.create(
-                        school=school,
+                    # New enrolment creation — route through the service.
+                    confirm_enrolment(
                         student=student,
                         school_class=school_class,
                         session=session,
-                        is_current=True,
                     )
 
                 from fees.generation import generate_invoice_for_current_term

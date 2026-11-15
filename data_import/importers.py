@@ -10,7 +10,8 @@ from accounts.models import User, Roles
 from accounts.utils import generate_username
 from academics.models import Subject, ClassSubject
 from core.models import AcademicSession
-from students.models import AcademicStage, SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from students.models import AcademicStage, ClassOffering, SchoolClass, Student, StudentGuardianLink
+from students.services import confirm_enrolment
 from students.utils import generate_admission_number, find_or_create_parent
 
 
@@ -317,8 +318,12 @@ class StudentImporter(BaseImporter):
 
                     # Enroll in class if class found and session exists
                     if school_class and current_session:
-                        ClassEnrollment.objects.create(
+                        ClassOffering.objects.get_or_create(
                             school=self.school,
+                            school_class=school_class,
+                            academic_session=current_session,
+                        )
+                        confirm_enrolment(
                             student=student,
                             school_class=school_class,
                             session=current_session,
