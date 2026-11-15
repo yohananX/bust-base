@@ -98,7 +98,7 @@
         <thead>
           <tr class="text-left text-xs text-ink-faint border-b border-line bg-surface-muted/70">
             <th class="px-6 py-3 font-medium">Scope</th>
-            <th class="px-6 py-3 font-medium">Class / Level</th>
+            <th class="px-6 py-3 font-medium">Class / Stage</th>
             <th class="px-6 py-3 font-medium">Term</th>
             <th class="px-6 py-3 font-medium">Category</th>
             <th class="px-6 py-3 font-medium">Type</th>
@@ -111,7 +111,7 @@
           <tr class="hover:bg-surface-muted/70 transition-colors">
             <td class="px-6 py-3.5 text-sm text-ink-muted">{{ p.get_scope_display }}</td>
             <td class="px-6 py-3.5 text-sm font-medium text-ink">
-              {% if p.school_class %}{{ p.school_class.name }}{% elif p.level %}{{ p.level }}{% else %}All Classes{% endif %}
+              {% if p.school_class %}{{ p.school_class.name }}{% elif p.academic_stage %}{{ p.academic_stage.name }}{% else %}All Classes{% endif %}
             </td>
             <td class="px-6 py-3.5 text-sm text-ink-muted">{{ p.term.name|default:'One-time' }}</td>
             <td class="px-6 py-3.5">
@@ -131,23 +131,26 @@
             <td class="px-6 py-3.5">
               <div class="flex items-center justify-end gap-1">
                 {% if p.scope == 'SCHOOL_WIDE' %}
-                <form method="post" action="{% url 'school_admin:fee_pricing_promote' %}" class="inline">
+                <form method="post" action="{% url 'school_admin:fee_pricing_promote' %}" class="inline fee-pricing-promote" data-price-id="{{ p.pk }}">
                   {% csrf_token %}
                   <input type="hidden" name="price_id" value="{{ p.pk }}">
-                  <select name="target_scope" onchange="this.form.submit()" class="text-xs border border-line rounded-xl px-2 py-1 bg-surface">
+                  <select name="target_scope" onchange="togglePromoteTargets(this)" class="text-xs border border-line rounded-xl px-2 py-1 bg-surface">
                     <option value="">Promote to...</option>
-                    <option value="LEVEL">Level</option>
+                    <option value="LEVEL">Academic Stage</option>
                     <option value="CLASS">Class</option>
                   </select>
-                  {% if p.scope == 'SCHOOL_WIDE' %}
-                    <input type="text" name="target_level" placeholder="Level" class="text-xs border border-line rounded-xl px-2 py-1 bg-surface hidden">
-                    <select name="target_class_id" class="text-xs border border-line rounded-xl px-2 py-1 bg-surface hidden">
-                      <option value="">Class</option>
-                      {% for c in classes %}
-                        <option value="{{ c.id }}">{{ c.name }}</option>
-                      {% endfor %}
-                    </select>
-                  {% endif %}
+                  <select name="academic_stage" onchange="this.form.submit()" class="text-xs border border-line rounded-xl px-2 py-1 bg-surface hidden">
+                    <option value="">— Select a stage —</option>
+                    {% for s in stages %}
+                      <option value="{{ s.pk }}">{{ s.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <select name="target_class_id" onchange="this.form.submit()" class="text-xs border border-line rounded-xl px-2 py-1 bg-surface hidden">
+                    <option value="">— Select a class —</option>
+                    {% for c in classes %}
+                      <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                  </select>
                 </form>
                 {% endif %}
                 <a href="{% url 'school_admin:fee_pricing_edit' p.pk %}"
@@ -175,7 +178,7 @@
       <i data-lucide="receipt" class="w-5 h-5 text-ink-faint"></i>
     </div>
     <h3 class="text-base font-display font-semibold text-ink">No pricing set yet</h3>
-    <p class="text-sm text-ink-faint mt-1">Add a price for a category, scope, class/level, term and student type to get started.</p>
+    <p class="text-sm text-ink-faint mt-1">Add a price for a category, scope, class/academic stage, term and student type to get started.</p>
     <a href="{% url 'school_admin:fee_pricing_create' %}"
        class="inline-flex items-center mt-4 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-none">
       <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Pricing
@@ -183,4 +186,22 @@
   </div>
   {% endif %}
 </div>
+
+<script>
+function togglePromoteTargets(scopeSelect) {
+  const form = scopeSelect.closest('form');
+  if (!form) return;
+  const stageSelect = form.querySelector('select[name="academic_stage"]');
+  const classSelect = form.querySelector('select[name="target_class_id"]');
+  const scope = scopeSelect.value;
+  if (stageSelect) {
+    stageSelect.classList.toggle('hidden', scope !== 'LEVEL');
+    if (scope !== 'LEVEL') stageSelect.value = '';
+  }
+  if (classSelect) {
+    classSelect.classList.toggle('hidden', scope !== 'CLASS');
+    if (scope !== 'CLASS') classSelect.value = '';
+  }
+}
+</script>
 {% endblock %}

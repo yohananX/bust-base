@@ -149,13 +149,22 @@ class InvoiceSearchAPIView(EntitySearchAPIView):
 
 class ClassSearchAPIView(EntitySearchAPIView):
     def get_queryset(self, request):
-        return SchoolClass.objects.filter(school=request.school).order_by('level', 'name')
+        return SchoolClass.objects.filter(school=request.school).select_related(
+            'academic_stage'
+        ).order_by('academic_stage__display_order', 'name')
 
     def serialize(self, school_class):
+        # Academic stage is the single classification; unclassified classes
+        # say so explicitly (same wording as the class list).
+        stage_label = (
+            school_class.academic_stage.name
+            if school_class.academic_stage
+            else 'Unclassified'
+        )
         return {
             'id': school_class.pk,
             'name': school_class.name,
-            'subtitle': school_class.level,
+            'subtitle': stage_label,
         }
 
 

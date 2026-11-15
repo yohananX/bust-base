@@ -37,7 +37,7 @@ class CredentialEndToEndTest(TestCase):
         )
 
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1', level='JSS1',
+            school=self.school, name='JSS1',
         )
 
         self.admin = User.objects.create_user(

@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -9,7 +10,7 @@ from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from academics.models import Subject, ClassSubject, TeacherAssignment, TermResult, Score
 from fees.models import Invoice, Payment
-from .models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from .models import AcademicStage, SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from lessons.models import LessonPeriod, LessonClass, LessonEnrollment
 
 User = get_user_model()
@@ -45,7 +46,6 @@ class StudentModelTests(TestCase):
         self.school_class = SchoolClass.objects.create(
             school=self.school,
             name="JSS1A",
-            level="JSS1",
         )
         self.session = AcademicSession.objects.create(
             school=self.school,
@@ -59,7 +59,7 @@ class StudentModelTests(TestCase):
 
     def test_school_class_creation(self):
         self.assertEqual(str(self.school_class), "JSS1A")
-        self.assertEqual(self.school_class.level, "JSS1")
+        self.assertIsNone(self.school_class.academic_stage)
         self.assertTrue(self.school_class.is_active)
 
     def test_student_creation(self):
@@ -114,7 +114,7 @@ class StudentModelTests(TestCase):
             admission_date="2025-09-01",
         )
         class_b = SchoolClass.objects.create(
-            school=self.school, name="JSS1B", level="JSS1",
+            school=self.school, name="JSS1B",
         )
         session2 = AcademicSession.objects.create(
             school=self.school,
@@ -180,7 +180,7 @@ class StudentModelTests(TestCase):
             end_date="2027-07-31",
         )
         class_b = SchoolClass.objects.create(
-            school=self.school, name="SSS1A", level="SSS1",
+            school=self.school, name="SSS1A",
         )
 
         # Promote using the model method
@@ -346,10 +346,10 @@ class StudentModelTests(TestCase):
 
         # Note: 'JSS1A' already created in setUp, so use different class names
         class_a = SchoolClass.objects.create(
-            school=self.school, name="SSS1A", level="SSS1",
+            school=self.school, name="SSS1A",
         )
         class_b = SchoolClass.objects.create(
-            school=school2, name="SSS1A", level="SSS1",
+            school=school2, name="SSS1A",
         )
 
         # Classes from different schools should be isolated
@@ -656,7 +656,7 @@ class StudentSubjectsViewTest(TestCase):
             last_name="Okon",
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A", level="JSS1",
+            school=self.school, name="JSS1A",
         )
 
         self.session1 = AcademicSession.objects.create(
@@ -862,7 +862,7 @@ class ResultFeeLockTests(TestCase):
             name="Lockdown Academy", short_code="lockdown",
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A", level="JSS1",
+            school=self.school, name="JSS1A",
         )
         self.session = AcademicSession.objects.create(
             school=self.school,
@@ -1376,7 +1376,7 @@ class GenerateAdmissionNumberTest(TestCase):
             is_current=True,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A',
         )
 
     def test_basic_format(self):
@@ -1399,7 +1399,7 @@ class GenerateAdmissionNumberTest(TestCase):
 
     def test_different_class_different_sequence(self):
         from students.utils import generate_admission_number
-        class_b = SchoolClass.objects.create(school=self.school, name='JSS1B', level='JSS1')
+        class_b = SchoolClass.objects.create(school=self.school, name='JSS1B')
         adm_a = generate_admission_number(self.school, self.school_class, year=2026)
         adm_b = generate_admission_number(self.school, class_b, year=2026)
         self.assertEqual(adm_a, 'TES26J1001')
@@ -1407,13 +1407,15 @@ class GenerateAdmissionNumberTest(TestCase):
 
     def test_reception_class_header(self):
         from students.utils import generate_admission_number
-        reception = SchoolClass.objects.create(school=self.school, name='Reception', level='Reception')
+        from .models import AcademicStage
+        stage = AcademicStage.objects.create(school=self.school, name='Reception')
+        reception = SchoolClass.objects.create(school=self.school, name='Reception', academic_stage=stage)
         adm = generate_admission_number(self.school, reception, year=2026)
         self.assertEqual(adm, 'TES26R001')
 
     def test_primary_class_header(self):
         from students.utils import generate_admission_number
-        primary = SchoolClass.objects.create(school=self.school, name='Primary 1', level='Primary')
+        primary = SchoolClass.objects.create(school=self.school, name='Primary 1')
         adm = generate_admission_number(self.school, primary, year=2026)
         self.assertEqual(adm, 'TES26P1001')
 
@@ -1562,3 +1564,272 @@ class ValidateGuardianFormTests(TestCase):
         }
         errors = validate_guardian_form(post_data)
         self.assertEqual(len(errors), 1)
+
+
+class AcademicStageTests(TestCase):
+    """Tests for AcademicStage model and SchoolClass integration."""
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Grace House School",
+            short_code="grace-house",
+        )
+        self.school2 = School.objects.create(
+            name="Other School",
+            short_code="other",
+        )
+
+    def test_academic_stage_creation(self):
+        stage = AcademicStage.objects.create(
+            school=self.school,
+            name="Primary",
+            display_order=1,
+        )
+        self.assertEqual(str(stage), "Primary")
+        self.assertTrue(stage.is_active)
+        self.assertEqual(stage.display_order, 1)
+
+    def test_academic_stage_unique_per_school(self):
+        AcademicStage.objects.create(school=self.school, name="Primary", display_order=1)
+
+        # Exact duplicate in the same school must be rejected by the database.
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                AcademicStage.objects.create(school=self.school, name="Primary", display_order=2)
+
+        # Same name in a different school is allowed.
+        stage2 = AcademicStage.objects.create(school=self.school2, name="Primary", display_order=1)
+        self.assertEqual(stage2.name, "Primary")
+
+    def test_academic_stage_case_insensitive_unique_per_school(self):
+        """Uniqueness is case-insensitive even on the ORM write path."""
+        AcademicStage.objects.create(school=self.school, name="Primary", display_order=1)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                AcademicStage.objects.create(school=self.school, name="primary", display_order=2)
+
+    def test_academic_stage_whitespace_insensitive_unique_per_school(self):
+        """Outer whitespace does not create a second stage."""
+        AcademicStage.objects.create(school=self.school, name="Primary", display_order=1)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                AcademicStage.objects.create(school=self.school, name="  Primary  ", display_order=2)
+
+    def test_academic_stage_constraint_blocks_unnormalized_bulk_write(self):
+        """The database constraint must catch writes that bypass save()."""
+        AcademicStage.objects.create(school=self.school, name="Primary", display_order=1)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                AcademicStage.objects.bulk_create([
+                    AcademicStage(
+                        school=self.school,
+                        name="  PRIMARY  ",
+                        display_order=2,
+                    ),
+                ])
+
+    def test_academic_stage_name_is_normalized_on_save(self):
+        stage = AcademicStage.objects.create(
+            school=self.school,
+            name="  Primary   1  ",
+            display_order=1,
+        )
+        stage.refresh_from_db()
+        self.assertEqual(stage.name, "Primary 1")
+
+    def test_academic_stage_name_normalization(self):
+        """Stage names should be normalized for uniqueness (case/whitespace)."""
+        AcademicStage.objects.create(school=self.school, name="Primary", display_order=1)
+        with self.assertRaises(ValidationError):
+            stage = AcademicStage(school=self.school, name="  primary  ", display_order=2)
+            stage.full_clean()
+
+    def test_school_class_with_academic_stage(self):
+        stage = AcademicStage.objects.create(school=self.school, name="JSS", display_order=2)
+        school_class = SchoolClass.objects.create(
+            school=self.school,
+            name="JSS1A",
+            academic_stage=stage,
+        )
+        self.assertEqual(school_class.academic_stage, stage)
+        self.assertIn(school_class, stage.classes.all())
+
+    def test_school_class_academic_stage_cross_school_validation(self):
+        """A class cannot reference an academic stage from a different school."""
+        stage = AcademicStage.objects.create(school=self.school, name="JSS", display_order=2)
+        school_class = SchoolClass(
+            school=self.school2,
+            name="JSS1A",
+            academic_stage=stage,
+        )
+        with self.assertRaises(ValidationError):
+            school_class.full_clean()
+
+    def test_school_class_cross_school_stage_rejected_on_orm_create(self):
+        """The write path, not only full_clean(), rejects a cross-tenant stage."""
+        stage = AcademicStage.objects.create(school=self.school, name="JSS", display_order=2)
+        with self.assertRaises(ValidationError):
+            SchoolClass.objects.create(
+                school=self.school2,
+                name="JSS1A",
+                academic_stage=stage,
+            )
+
+    def test_academic_stage_ordering(self):
+        """Stages should order by display_order then name."""
+        AcademicStage.objects.create(school=self.school, name="SSS", display_order=3)
+        AcademicStage.objects.create(school=self.school, name="Primary", display_order=1)
+        AcademicStage.objects.create(school=self.school, name="JSS", display_order=2)
+
+        stages = list(AcademicStage.objects.for_school(self.school))
+        self.assertEqual([s.name for s in stages], ["Primary", "JSS", "SSS"])
+
+    def test_school_class_ordering_by_stage(self):
+        """SchoolClass ordering should respect academic_stage display_order."""
+        primary_stage = AcademicStage.objects.create(school=self.school, name="Primary", display_order=1)
+        jss_stage = AcademicStage.objects.create(school=self.school, name="JSS", display_order=2)
+
+        SchoolClass.objects.create(school=self.school, name="JSS1A", academic_stage=jss_stage)
+        SchoolClass.objects.create(school=self.school, name="Primary 1", academic_stage=primary_stage)
+        SchoolClass.objects.create(school=self.school, name="JSS2A", academic_stage=jss_stage)
+
+        classes = list(SchoolClass.objects.for_school(self.school))
+        # Should be ordered by stage display_order, then name
+        self.assertEqual([c.name for c in classes], ["Primary 1", "JSS1A", "JSS2A"])
+
+    def test_school_class_missing_stage_rejected_on_save(self):
+        """A nonexistent stage id must raise ValidationError, not DoesNotExist."""
+        school_class = SchoolClass(
+            school=self.school,
+            name="Missing Stage Class",
+            academic_stage_id=999999999,
+        )
+        with self.assertRaises(ValidationError):
+            school_class.save()
+
+    def test_inactive_stage_preserves_existing_class_links(self):
+        """Deactivating a stage must not detach or delete existing classes."""
+        active_stage = AcademicStage.objects.create(school=self.school, name="Active", display_order=1, is_active=True)
+        inactive_stage = AcademicStage.objects.create(school=self.school, name="Inactive", display_order=2, is_active=False)
+
+        # Can create class with active stage
+        active_class = SchoolClass.objects.create(
+            school=self.school, name="Class A", academic_stage=active_stage
+        )
+        self.assertEqual(active_class.academic_stage, active_stage)
+
+        # Can create class with inactive stage (for backward compat), but it's discouraged
+        inactive_class = SchoolClass.objects.create(
+            school=self.school, name="Class B", academic_stage=inactive_stage
+        )
+        self.assertEqual(inactive_class.academic_stage, inactive_stage)
+
+        # Deactivating a stage doesn't cascade delete classes
+        active_stage.is_active = False
+        active_stage.save()
+        active_class.refresh_from_db()
+        self.assertEqual(active_class.academic_stage, active_stage)
+
+
+class SchoolClassStageOnlyAdminFormTests(TestCase):
+    """The Django admin class form presents one classification field.
+
+    The academic stage is the only classification — there is no level field
+    and no derived snapshot anywhere.
+    """
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Grace House School",
+            short_code="grace-house",
+        )
+        self.primary = AcademicStage.objects.create(
+            school=self.school, name="Primary", display_order=1,
+        )
+        self.jss = AcademicStage.objects.create(
+            school=self.school, name="JSS", display_order=2,
+        )
+
+    def _data(self, **overrides):
+        data = {
+            'name': 'JSS1A',
+            'academic_stage': str(self.jss.pk),
+            'is_active': 'on',
+            'school': self.school.pk,
+        }
+        data.update(overrides)
+        return data
+
+    def test_form_classification_fields(self):
+        from students.admin import SchoolClassAdminForm
+
+        form = SchoolClassAdminForm()
+        self.assertIn('academic_stage', form.fields)
+        self.assertNotIn('level', form.fields)
+
+    def test_create_with_stage(self):
+        from students.admin import SchoolClassAdminForm
+
+        form = SchoolClassAdminForm(data=self._data())
+        self.assertTrue(form.is_valid(), form.errors)
+        obj = form.save()
+
+        self.assertEqual(obj.academic_stage, self.jss)
+        # The model has no classification snapshot any more.
+        with self.assertRaises(AttributeError):
+            obj.level
+
+    def test_stage_change(self):
+        from students.admin import SchoolClassAdminForm
+
+        school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', academic_stage=self.primary,
+        )
+        form = SchoolClassAdminForm(
+            instance=school_class, data={**self._data()},  # name unchanged
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        obj = form.save()
+        self.assertEqual(obj.academic_stage, self.jss)
+
+    def test_stage_unchanged(self):
+        """Re-saving without changing the stage keeps the classification."""
+        school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', academic_stage=self.jss,
+        )
+        from students.admin import SchoolClassAdminForm
+
+        form = SchoolClassAdminForm(
+            instance=school_class, data=self._data(),
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        obj = form.save()
+        self.assertEqual(obj.academic_stage, self.jss)
+
+    def test_stage_clear(self):
+        from students.admin import SchoolClassAdminForm
+
+        school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A', academic_stage=self.jss,
+        )
+        form = SchoolClassAdminForm(
+            instance=school_class, data=self._data(academic_stage=''),
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        obj = form.save()
+        self.assertIsNone(obj.academic_stage)
+
+    def test_admission_header_uses_stage_name(self):
+        """The stage name feeds the admission-number header map directly."""
+        stage = AcademicStage.objects.create(
+            school=self.school, name='JSS 1', display_order=3,
+        )
+        school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS 1 A', academic_stage=stage,
+        )
+        from students.utils import _map_class_to_header
+
+        self.assertEqual(_map_class_to_header(school_class), 'J1')

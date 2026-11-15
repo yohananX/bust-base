@@ -14,12 +14,14 @@ from fees.pricing import resolve_price_for_student
 from fees.generation import (
     generate_invoices_for_class,
     sync_class_invoices,
-    generate_invoices_for_level,
-    sync_level_invoices,
+    generate_invoices_for_stage,
+    sync_stage_invoices,
     generate_invoices_school_wide,
     sync_school_wide_invoices,
 )
 from students.models import SchoolClass
+
+from .classes import _resolve_academic_stage, _stage_options
 
 
 def _other_student_type(student_type):
@@ -31,6 +33,39 @@ def _other_student_type(student_type):
     return None
 
 
+def _pricing_form_context(school, *, is_edit=False, price=None, categories=None,
+                          classes=None, terms=None, selected_category_id=None,
+                          selected_scope='SCHOOL_WIDE', selected_class_id=None,
+                          selected_stage_id=None, selected_term_id=None,
+                          selected_student_type='ALL', effective_from=None,
+                          effective_to=None, entered_amount=None, entered_name=None):
+    """Build the fee-pricing form context with school-scoped stage options.
+
+    ``selected_stage_id`` keeps an inactive already-assigned stage selectable,
+    mirroring the class form behaviour.
+    """
+    return {
+        'is_edit': is_edit,
+        'price': price,
+        'categories': categories if categories is not None else FeeCategory.objects.filter(school=school),
+        'classes': classes if classes is not None else SchoolClass.objects.filter(school=school, is_active=True),
+        'stages': _stage_options(school, selected_stage_id),
+        'terms': terms if terms is not None else Term.for_current_session(school),
+        'scopes': FeePrice.SCOPE_CHOICES,
+        'selected_category_id': selected_category_id,
+        'selected_scope': selected_scope,
+        'selected_class_id': selected_class_id,
+        'selected_stage_id': selected_stage_id,
+        'selected_term_id': selected_term_id,
+        'selected_student_type': selected_student_type,
+        'selected_effective_from': effective_from,
+        'selected_effective_to': effective_to,
+        'entered_amount': entered_amount,
+        'entered_name': entered_name,
+        'active_term': Term.objects.filter(school=school, is_current=True).first(),
+    }
+
+
 class FeePricingListView(RoleRequiredMixin, View):
     """List fee prices with scope, class, and term filters."""
 
@@ -40,7 +75,7 @@ class FeePricingListView(RoleRequiredMixin, View):
         school = request.school
         scope = request.GET.get('scope', '')
 
-        fee_prices = FeePrice.objects.filter(school=school).select_related('school_class', 'term', 'category')
+        fee_prices = FeePrice.objects.filter(school=school).select_related('school_class', 'academic_stage', 'term', 'category')
 
         if scope:
             fee_prices = fee_prices.filter(scope=scope)
@@ -64,6 +99,7 @@ class FeePricingListView(RoleRequiredMixin, View):
         return render(request, 'school_admin/fee_pricing_list.html', {
             'pricing': pricing,
             'classes': classes,
+            'stages': _stage_options(school),
             'terms': terms,
             'filter_class': class_id,
             'filter_term': term_id,
@@ -111,14 +147,14 @@ class FeePricingListView(RoleRequiredMixin, View):
             school=school,
             is_active=True,
             student_type__in=['NEW', 'RETURNING'],
-        ).select_related('category', 'term', 'school_class')
+        ).select_related('category', 'term', 'school_class', 'academic_stage')
         for price in type_specific:
             other_type = _other_student_type(price.student_type)
             sibling_missing = not FeePrice.objects.filter(
                 school=school,
                 scope=price.scope,
                 school_class=price.school_class,
-                level=price.level,
+                academic_stage=price.academic_stage,
                 term=price.term,
                 category=price.category,
                 student_type=other_type,
@@ -207,7 +243,7 @@ class FeePricingBulkCopyView(RoleRequiredMixin, View):
                 school=school,
                 scope=price.scope,
                 school_class=price.school_class,
-                level=price.level,
+                academic_stage=price.academic_stage,
                 term=to_term,
                 category=price.category,
                 student_type=price.student_type,
@@ -220,7 +256,7 @@ class FeePricingBulkCopyView(RoleRequiredMixin, View):
                 school=school,
                 scope=price.scope,
                 school_class=price.school_class,
-                level=price.level,
+                academic_stage=price.academic_stage,
                 term=to_term,
                 category=price.category,
                 name=price.name,
@@ -240,7 +276,7 @@ class FeePricingBulkCopyView(RoleRequiredMixin, View):
 
 
 class FeePricingPromoteView(RoleRequiredMixin, View):
-    """Promote school-wide prices to level or class prices."""
+    """Promote school-wide prices to academic-stage or class prices."""
 
     allowed_roles = [Roles.ADMIN]
 
@@ -249,7 +285,6 @@ class FeePricingPromoteView(RoleRequiredMixin, View):
         price_id = request.POST.get('price_id')
         target_scope = request.POST.get('target_scope')
         target_class_id = request.POST.get('target_class_id')
-        target_level = request.POST.get('target_level')
 
         price = get_object_or_404(FeePrice, school=school, pk=price_id)
 
@@ -261,15 +296,19 @@ class FeePricingPromoteView(RoleRequiredMixin, View):
             messages.error(request, 'Target class is required for class scope.')
             return redirect('school_admin:fee_pricing_list')
 
-        if target_scope == FeePrice.SCOPE_LEVEL and not target_level:
-            messages.error(request, 'Target level is required for level scope.')
+        target_stage, stage_error = _resolve_academic_stage(request, school)
+        if stage_error:
+            messages.error(request, stage_error)
+            return redirect('school_admin:fee_pricing_list')
+        if target_scope == FeePrice.SCOPE_STAGE and target_stage is None:
+            messages.error(request, 'Target academic stage is required for stage scope.')
             return redirect('school_admin:fee_pricing_list')
 
         exists = FeePrice.objects.filter(
             school=school,
             scope=target_scope,
             school_class_id=target_class_id or None,
-            level=target_level or '',
+            academic_stage=target_stage,
             term=price.term,
             category=price.category,
             student_type=price.student_type,
@@ -283,7 +322,7 @@ class FeePricingPromoteView(RoleRequiredMixin, View):
             school=school,
             scope=target_scope,
             school_class_id=target_class_id or None,
-            level=target_level or '',
+            academic_stage=target_stage,
             term=price.term,
             category=price.category,
             name=price.name,
@@ -302,7 +341,7 @@ class FeePricingPromoteView(RoleRequiredMixin, View):
 
 
 class FeePricingCreateView(RoleRequiredMixin, View):
-    """Add a fee price with scope selection (school-wide, level, or class-specific)."""
+    """Add a fee price with scope selection (school-wide, academic stage, or class-specific)."""
 
     allowed_roles = [Roles.ADMIN]
 
@@ -311,24 +350,19 @@ class FeePricingCreateView(RoleRequiredMixin, View):
         preselect_category_id = request.GET.get('category_id')
         preselect_term_id = request.GET.get('term_id')
         active_term = Term.objects.filter(school=school, is_current=True).first()
-        return render(request, 'school_admin/fee_pricing_form.html', {
-            'is_edit': False,
-            'categories': FeeCategory.objects.filter(school=school),
-            'classes': SchoolClass.objects.filter(school=school, is_active=True),
-            'terms': Term.for_current_session(school),
-            'scopes': FeePrice.SCOPE_CHOICES,
-            'selected_category_id': int(preselect_category_id) if preselect_category_id and preselect_category_id.isdigit() else None,
-            'selected_term_id': int(preselect_term_id) if preselect_term_id and preselect_term_id.isdigit() else None,
-            'selected_scope': 'SCHOOL_WIDE',
-            'active_term': active_term,
-        })
+        return render(request, 'school_admin/fee_pricing_form.html', _pricing_form_context(
+            school,
+            is_edit=False,
+            selected_category_id=int(preselect_category_id) if preselect_category_id and preselect_category_id.isdigit() else None,
+            selected_term_id=int(preselect_term_id) if preselect_term_id and preselect_term_id.isdigit() else None,
+            selected_scope='SCHOOL_WIDE',
+        ))
 
     def post(self, request):
         school = request.school
         category_id = request.POST.get('category_id', '')
         scope = request.POST.get('scope', FeePrice.SCOPE_CLASS)
         class_id = request.POST.get('class_id', '')
-        level = request.POST.get('level', '')
         term_id = request.POST.get('term_id', '')
         raw_amount = request.POST.get('amount', '').strip()
         name = request.POST.get('name', '').strip()
@@ -340,29 +374,38 @@ class FeePricingCreateView(RoleRequiredMixin, View):
         if student_type not in dict(FeeCategory.STUDENT_TYPE_CHOICES):
             student_type = 'ALL'
 
-        categories = FeeCategory.objects.filter(school=school)
-        classes = SchoolClass.objects.filter(school=school, is_active=True)
-        terms = Term.for_current_session(school)
+        stage, stage_error = _resolve_academic_stage(request, school)
+        if stage_error:
+            messages.error(request, stage_error)
+            return render(request, 'school_admin/fee_pricing_form.html', _pricing_form_context(
+                school,
+                is_edit=False,
+                selected_category_id=category_id,
+                selected_scope=scope,
+                selected_class_id=class_id,
+                selected_term_id=term_id,
+                selected_student_type=student_type,
+                effective_from=effective_from,
+                effective_to=effective_to,
+                entered_amount=raw_amount,
+                entered_name=name,
+            ))
 
         def re_render():
-            return render(request, 'school_admin/fee_pricing_form.html', {
-                'is_edit': False,
-                'categories': categories,
-                'classes': classes,
-                'terms': terms,
-                'scopes': FeePrice.SCOPE_CHOICES,
-                'selected_category_id': category_id,
-                'selected_scope': scope,
-                'selected_class_id': class_id,
-                'selected_level': level,
-                'selected_term_id': term_id,
-                'selected_student_type': student_type,
-                'selected_effective_from': effective_from,
-                'selected_effective_to': effective_to,
-                'entered_amount': raw_amount,
-                'entered_name': name,
-                'active_term': Term.objects.filter(school=school, is_current=True).first(),
-            })
+            return render(request, 'school_admin/fee_pricing_form.html', _pricing_form_context(
+                school,
+                is_edit=False,
+                selected_category_id=category_id,
+                selected_scope=scope,
+                selected_class_id=class_id,
+                selected_stage_id=stage.pk if stage else None,
+                selected_term_id=term_id,
+                selected_student_type=student_type,
+                effective_from=effective_from,
+                effective_to=effective_to,
+                entered_amount=raw_amount,
+                entered_name=name,
+            ))
 
         if not category_id or not raw_amount:
             messages.error(request, 'Category and amount are required.')
@@ -373,7 +416,7 @@ class FeePricingCreateView(RoleRequiredMixin, View):
         if class_id and scope == FeePrice.SCOPE_CLASS:
             school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
         elif class_id and scope != FeePrice.SCOPE_CLASS:
-            messages.error(request, 'Class must not be selected for school-wide or level-scoped prices.')
+            messages.error(request, 'Class must not be selected for school-wide or stage-scoped prices.')
             return re_render()
 
         # NEW-intake prices are locked to the active term: a new student only
@@ -403,16 +446,16 @@ class FeePricingCreateView(RoleRequiredMixin, View):
             school=school,
             scope=scope,
             school_class=school_class,
-            level=level,
+            academic_stage=stage,
             term=term,
             category=category,
             student_type=student_type,
         ).exists():
-            messages.error(request, 'A fee price already exists for this scope, class/level, term, category and student type.')
+            messages.error(request, 'A fee price already exists for this scope, class/academic stage, term, category and student type.')
             return re_render()
 
         # Sibling lookup uses exactly the uniqueness dimensions
-        # (school, scope, school_class, level, term, category, student_type).
+        # (school, scope, school_class, academic_stage, term, category, student_type).
         # NULLs (school_class=None, term=None) are preserved so IS NULL rows
         # match. Name/amount are values, never part of the duplicate check.
         with transaction.atomic():
@@ -420,7 +463,7 @@ class FeePricingCreateView(RoleRequiredMixin, View):
                 school=school,
                 scope=scope,
                 school_class=school_class,
-                level=level,
+                academic_stage=stage,
                 term=term,
                 category=category,
                 name=name,
@@ -437,7 +480,7 @@ class FeePricingCreateView(RoleRequiredMixin, View):
                     school=school,
                     scope=scope,
                     school_class=school_class,
-                    level=level,
+                    academic_stage=stage,
                     term=term,
                     category=category,
                     student_type=other_type,
@@ -460,10 +503,10 @@ class FeePricingCreateView(RoleRequiredMixin, View):
                 generated = generate_invoices_for_class(school_class, term)
                 re_priced = sync_class_invoices(school_class, term)
                 scope_desc = f"{school_class.name}"
-            elif scope == FeePrice.SCOPE_LEVEL and level:
-                generated = generate_invoices_for_level(school, level, term)
-                re_priced = sync_level_invoices(school, level, term)
-                scope_desc = f"Level {level}"
+            elif scope == FeePrice.SCOPE_STAGE and stage:
+                generated = generate_invoices_for_stage(school, stage, term)
+                re_priced = sync_stage_invoices(school, stage, term)
+                scope_desc = f"{stage.name}"
             elif scope == FeePrice.SCOPE_SCHOOL_WIDE:
                 generated = generate_invoices_school_wide(school, term)
                 re_priced = sync_school_wide_invoices(school, term)
@@ -493,24 +536,21 @@ class FeePricingEditView(RoleRequiredMixin, View):
     def get(self, request, pk):
         school = request.school
         price = get_object_or_404(FeePrice, school=school, pk=pk)
-        return render(request, 'school_admin/fee_pricing_form.html', {
-            'is_edit': True,
-            'price': price,
-            'categories': FeeCategory.objects.filter(school=school),
-            'classes': SchoolClass.objects.filter(school=school, is_active=True),
-            'terms': Term.objects.filter(school=school).order_by('-start_date'),
-            'scopes': FeePrice.SCOPE_CHOICES,
-            'selected_category_id': price.category_id,
-            'selected_scope': price.scope,
-            'selected_class_id': price.school_class_id,
-            'selected_level': price.level,
-            'selected_term_id': price.term_id,
-            'selected_student_type': price.student_type,
-            'selected_effective_from': price.effective_from,
-            'selected_effective_to': price.effective_to,
-            'entered_name': price.name,
-            'active_term': Term.objects.filter(school=school, is_current=True).first(),
-        })
+        return render(request, 'school_admin/fee_pricing_form.html', _pricing_form_context(
+            school,
+            is_edit=True,
+            price=price,
+            terms=Term.objects.filter(school=school).order_by('-start_date'),
+            selected_category_id=price.category_id,
+            selected_scope=price.scope,
+            selected_class_id=price.school_class_id,
+            selected_stage_id=price.academic_stage_id,
+            selected_term_id=price.term_id,
+            selected_student_type=price.student_type,
+            effective_from=price.effective_from,
+            effective_to=price.effective_to,
+            entered_name=price.name,
+        ))
 
     def post(self, request, pk):
         school = request.school
@@ -519,7 +559,6 @@ class FeePricingEditView(RoleRequiredMixin, View):
         category_id = request.POST.get('category_id', '')
         scope = request.POST.get('scope', price.scope)
         class_id = request.POST.get('class_id', '')
-        level = request.POST.get('level', '')
         term_id = request.POST.get('term_id', '')
         raw_amount = request.POST.get('amount', '').strip()
         name = request.POST.get('name', '').strip()
@@ -531,30 +570,43 @@ class FeePricingEditView(RoleRequiredMixin, View):
         if student_type not in dict(FeeCategory.STUDENT_TYPE_CHOICES):
             student_type = price.student_type
 
-        categories = FeeCategory.objects.filter(school=school)
-        classes = SchoolClass.objects.filter(school=school, is_active=True)
-        terms = Term.for_current_session(school)
+        stage, stage_error = _resolve_academic_stage(
+            request, school, price.academic_stage_id,
+        )
+        if stage_error:
+            messages.error(request, stage_error)
+            return render(request, 'school_admin/fee_pricing_form.html', _pricing_form_context(
+                school,
+                is_edit=True,
+                price=price,
+                selected_category_id=category_id,
+                selected_scope=scope,
+                selected_class_id=class_id,
+                selected_stage_id=price.academic_stage_id,
+                selected_term_id=term_id,
+                selected_student_type=student_type,
+                effective_from=effective_from,
+                effective_to=effective_to,
+                entered_amount=raw_amount,
+                entered_name=name,
+            ))
 
         def re_render():
-            return render(request, 'school_admin/fee_pricing_form.html', {
-                'is_edit': True,
-                'price': price,
-                'categories': categories,
-                'classes': classes,
-                'terms': terms,
-                'scopes': FeePrice.SCOPE_CHOICES,
-                'selected_category_id': category_id,
-                'selected_scope': scope,
-                'selected_class_id': class_id,
-                'selected_level': level,
-                'selected_term_id': term_id,
-                'selected_student_type': student_type,
-                'selected_effective_from': effective_from,
-                'selected_effective_to': effective_to,
-                'entered_amount': raw_amount,
-                'entered_name': name,
-                'active_term': Term.objects.filter(school=school, is_current=True).first(),
-            })
+            return render(request, 'school_admin/fee_pricing_form.html', _pricing_form_context(
+                school,
+                is_edit=True,
+                price=price,
+                selected_category_id=category_id,
+                selected_scope=scope,
+                selected_class_id=class_id,
+                selected_stage_id=stage.pk if stage else None,
+                selected_term_id=term_id,
+                selected_student_type=student_type,
+                effective_from=effective_from,
+                effective_to=effective_to,
+                entered_amount=raw_amount,
+                entered_name=name,
+            ))
 
         if not category_id or not raw_amount:
             messages.error(request, 'Category and amount are required.')
@@ -565,7 +617,7 @@ class FeePricingEditView(RoleRequiredMixin, View):
         if class_id and scope == FeePrice.SCOPE_CLASS:
             school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
         elif class_id and scope != FeePrice.SCOPE_CLASS:
-            messages.error(request, 'Class must not be selected for school-wide or level-scoped prices.')
+            messages.error(request, 'Class must not be selected for school-wide or stage-scoped prices.')
             return re_render()
 
         # NEW-intake prices are locked to the active term (see create view).
@@ -594,17 +646,17 @@ class FeePricingEditView(RoleRequiredMixin, View):
             school=school,
             scope=scope,
             school_class=school_class,
-            level=level,
+            academic_stage=stage,
             term=term,
             category=category,
             student_type=student_type,
         ).exclude(pk=pk).exists():
-            messages.error(request, 'A fee price already exists for this scope, class/level, term, category and student type.')
+            messages.error(request, 'A fee price already exists for this scope, class/academic stage, term, category and student type.')
             return re_render()
 
         price.scope = scope
         price.school_class = school_class
-        price.level = level
+        price.academic_stage = stage
         price.term = term
         price.category = category
         price.name = name
@@ -625,7 +677,7 @@ class FeePricingEditView(RoleRequiredMixin, View):
                     school=school,
                     scope=scope,
                     school_class=school_class,
-                    level=level,
+                    academic_stage=stage,
                     term=term,
                     category=category,
                     student_type=other_type,
@@ -648,10 +700,10 @@ class FeePricingEditView(RoleRequiredMixin, View):
                 generated = generate_invoices_for_class(school_class, term)
                 re_priced = sync_class_invoices(school_class, term)
                 scope_desc = f"{school_class.name}"
-            elif scope == FeePrice.SCOPE_LEVEL and level:
-                generated = generate_invoices_for_level(school, level, term)
-                re_priced = sync_level_invoices(school, level, term)
-                scope_desc = f"Level {level}"
+            elif scope == FeePrice.SCOPE_STAGE and stage:
+                generated = generate_invoices_for_stage(school, stage, term)
+                re_priced = sync_stage_invoices(school, stage, term)
+                scope_desc = f"{stage.name}"
             elif scope == FeePrice.SCOPE_SCHOOL_WIDE:
                 generated = generate_invoices_school_wide(school, term)
                 re_priced = sync_school_wide_invoices(school, term)

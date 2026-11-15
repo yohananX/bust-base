@@ -29,7 +29,7 @@ class PaymentRecordingFlowTest(TestCase):
             start_date=date(2025, 9, 1), end_date=date(2025, 12, 15), is_current=True,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1', level='JSS',
+            school=self.school, name='JSS1',
         )
         self.admin_user = User.objects.create_user(
             username='admin', school=self.school, role=Roles.ADMIN,
@@ -239,7 +239,7 @@ class NewReturningBreakdownTest(TestCase):
             start_date=date(2026, 9, 1), end_date=date(2026, 12, 15), is_current=True,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1', level='JSS',
+            school=self.school, name='JSS1',
         )
         self.admin_user = User.objects.create_user(
             username='admin2', school=self.school, role=Roles.ADMIN,

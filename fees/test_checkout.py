@@ -88,7 +88,6 @@ class FeeCheckoutTest(TestCase):
         cls.school_class = SchoolClass.objects.create(
             school=cls.school,
             name='JSS1A',
-            level='JSS1',
         )
 
         cls.student_user = User.objects.create_user(

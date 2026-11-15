@@ -25,7 +25,7 @@ class Command(BaseCommand):
         if not school_class:
             self.stdout.write(self.style.ERROR(f'Class {class_name} not found'))
             return
-        self.stdout.write(f'Class: {school_class.name} (level={school_class.level})')
+        self.stdout.write(f'Class: {school_class.name} (stage={school_class.academic_stage})')
 
         enrollments = ClassEnrollment.objects.filter(
             school=school, school_class=school_class, is_current=True
@@ -45,12 +45,13 @@ class Command(BaseCommand):
         for p in sw_prices:
             self.stdout.write(f'  {p.category.name}: {p.amount} (term={p.term})')
 
-        level_prices = FeePrice.objects.filter(
-            school=school, scope='LEVEL', level=school_class.level, is_active=True
-        )
-        self.stdout.write(f'\n{school_class.level} level prices: {level_prices.count()}')
-        for p in level_prices:
-            self.stdout.write(f'  {p.category.name}: {p.amount}')
+        if school_class.academic_stage:
+            stage_prices = FeePrice.objects.filter(
+                school=school, scope='LEVEL', academic_stage=school_class.academic_stage, is_active=True
+            )
+            self.stdout.write(f'\n{school_class.academic_stage} stage prices: {stage_prices.count()}')
+            for p in stage_prices:
+                self.stdout.write(f'  {p.category.name}: {p.amount}')
 
         # Resolve for a specific student
         if options['student_id']:

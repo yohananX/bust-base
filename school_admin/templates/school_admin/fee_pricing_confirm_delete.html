@@ -27,7 +27,7 @@
           <tr class="border-b border-line">
             <td class="px-5 py-3.5 font-medium text-ink-faint w-32">Class / Level</td>
             <td class="px-5 py-3.5 text-ink font-medium">
-              {% if price.school_class %}{{ price.school_class.name }}{% elif price.level %}{{ price.level }}{% else %}All Classes{% endif %}
+              {% if price.school_class %}{{ price.school_class.name }}{% elif price.academic_stage %}{{ price.academic_stage.name }}{% else %}All Classes{% endif %}
             </td>
           </tr>
           <tr class="border-b border-line">

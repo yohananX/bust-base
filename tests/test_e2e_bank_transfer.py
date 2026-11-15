@@ -44,7 +44,7 @@ class BankTransferEndToEndTest(TestCase):
         )
 
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name='JSS1A', level='JSS1',
+            school=self.school, name='JSS1A',
         )
 
         self.admin_user = User.objects.create_user(

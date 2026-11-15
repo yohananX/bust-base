@@ -143,7 +143,7 @@ class ClassFormView(RoleRequiredMixin, View):
         if pk:
             lesson_class = get_object_or_404(LessonClass, school=request.school, pk=pk)
         periods = LessonPeriod.objects.filter(school=request.school).order_by('-start_date')
-        school_classes = SchoolClass.objects.filter(school=request.school).order_by('level', 'name')
+        school_classes = SchoolClass.objects.filter(school=request.school).order_by('academic_stage__display_order', 'name')
         context = {
             'lesson_class': lesson_class,
             'is_edit': pk is not None,

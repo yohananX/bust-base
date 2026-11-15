@@ -11,7 +11,7 @@
     <form method="GET" class="mobile-form-stack">
       <div class="flex-1 min-w-0">
         <label class="block text-xs font-medium text-ink-muted mb-1.5">Search</label>
-        {% include 'components/search_autocomplete.html' with cache_key='classes' api_path='/school-admin/api/classes/' item_url='/school-admin/classes/{id}/edit/' placeholder='Name or level' %}
+        {% include 'components/search_autocomplete.html' with cache_key='classes' api_path='/school-admin/api/classes/' item_url='/school-admin/classes/{id}/edit/' placeholder='Name or stage' %}
       </div>
       <div>
         <label class="block text-xs font-medium text-ink-muted mb-1.5">Status</label>
@@ -47,7 +47,7 @@
       <thead>
         <tr class="bg-surface-muted text-left text-ink-muted uppercase text-xs tracking-wider">
           <th scope="col" class="px-5 py-3.5 font-semibold">Name</th>
-          <th scope="col" class="px-5 py-3.5 font-semibold">Level</th>
+          <th scope="col" class="px-5 py-3.5 font-semibold">Academic Stage</th>
           <th scope="col" class="px-5 py-3.5 font-semibold">Active Status</th>
           <th scope="col" class="px-5 py-3.5 font-semibold">Student Count</th>
           <th scope="col" class="px-5 py-3.5 font-semibold text-right">Actions</th>
@@ -64,7 +64,9 @@
               <span class="font-medium text-ink">{{ c.name }}</span>
             </div>
           </td>
-          <td class="px-5 py-3.5 text-ink-muted">{{ c.level }}</td>
+          <td class="px-5 py-3.5 text-ink-muted">
+            {% if c.academic_stage %}{{ c.academic_stage.name }}{% else %}<span class="text-ink-faint">Unclassified</span>{% endif %}
+          </td>
           <td class="px-5 py-3.5">
             {% if c.is_active %}
               {% include 'components/badge.html' with status='success' text='Active' %}
