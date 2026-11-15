@@ -5,9 +5,9 @@ from django.test import TestCase
 from django.urls import reverse
 
 from accounts.models import Roles
-from core.models import School
+from core.models import AcademicSession, School
 from fees.models import Payment
-from students.models import SchoolClass, Student
+from students.models import ClassEnrollment, ClassOffering, SchoolClass, Student
 
 from .models import (
     LessonClass,
@@ -357,3 +357,61 @@ class EnrollmentRegisterStudentViewTests(LessonsBase):
         self.assertEqual(enrollment.student.user.middle_name, "Ini")
         self.assertEqual(enrollment.student.user.first_name, "Enoima")
         self.assertEqual(enrollment.student.user.last_name, "Jackson")
+
+    def test_post_with_class_uses_class_offering(self):
+        school_class = SchoolClass.objects.create(
+            school=self.school, name='JSS1A'
+        )
+        session = AcademicSession.objects.create(
+            school=self.school,
+            name='2026/2027',
+            start_date='2026-09-01',
+            end_date='2027-07-31',
+            is_current=True,
+        )
+        lesson_enrollment = LessonEnrollment.objects.create(
+            school=self.school,
+            lesson_class=self.lesson_class,
+            external_name='Ada Obi',
+            parent_name='Nneka Obi',
+            parent_phones=['08022222222'],
+        )
+
+        response = self.client.post(
+            reverse(
+                'lessons:enrollment_register_student',
+                args=[lesson_enrollment.pk],
+            ),
+            {
+                'first_name': 'Ada',
+                'middle_name': '',
+                'last_name': 'Obi',
+                'new_email': 'ada.obi@example.com',
+                'new_phone_number': '08011111111',
+                'date_of_birth': '2015-06-01',
+                'gender': 'FEMALE',
+                'admission_date': '2026-08-28',
+                'status': 'ACTIVE',
+                'class_id': str(school_class.pk),
+                'session_id': str(session.pk),
+                'guardian_0_name': 'Nneka Obi',
+                'guardian_0_phone': '08022222222',
+                'guardian_0_relationship': 'MOTHER',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        lesson_enrollment.refresh_from_db()
+        enrollment = ClassEnrollment.objects.get(
+            student=lesson_enrollment.student,
+            session=session,
+        )
+        self.assertEqual(enrollment.school_class, school_class)
+        self.assertEqual(
+            enrollment.class_offering,
+            ClassOffering.objects.get(
+                school=self.school,
+                school_class=school_class,
+                academic_session=session,
+            ),
+        )

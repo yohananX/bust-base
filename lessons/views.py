@@ -13,8 +13,9 @@ from django.views.generic.base import View
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
 from accounts.utils import generate_password, generate_username, unique_username, parse_full_name
-from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from students.models import SchoolClass, Student, ClassOffering, StudentGuardianLink
 from students.utils import generate_admission_number, create_guardians_from_form
+from students.services import confirm_enrolment
 from core.models import AcademicSession
 
 from .models import (
@@ -652,12 +653,15 @@ class EnrollmentRegisterStudentView(RoleRequiredMixin, View):
                     if school_class is None:
                         school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
                     session = get_object_or_404(AcademicSession, school=school, pk=session_id)
-                    ClassEnrollment.objects.create(
+                    ClassOffering.objects.get_or_create(
                         school=school,
+                        school_class=school_class,
+                        academic_session=session,
+                    )
+                    confirm_enrolment(
                         student=student,
                         school_class=school_class,
                         session=session,
-                        is_current=True,
                     )
                     from fees.generation import generate_invoice_for_current_term
                     generate_invoice_for_current_term(student)

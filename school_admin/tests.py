@@ -11,7 +11,14 @@ from decimal import Decimal
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from academics.models import Score, Subject, ClassSubject, TeacherAssignment, TermResult
-from students.models import AcademicStage, SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from students.models import (
+    AcademicStage,
+    ClassEnrollment,
+    ClassOffering,
+    SchoolClass,
+    Student,
+    StudentGuardianLink,
+)
 from fees.models import FeeCategory, FeePrice, Invoice, Payment
 from payroll.models import StaffProfile
 
@@ -228,6 +235,21 @@ class OutstandingFeesReportViewTest(TestCase):
             last_name='Kid',
         )
         class2 = SchoolClass.objects.create(school=school2, name='P1A')
+        session2 = AcademicSession.objects.create(
+            school=school2,
+            name='2025/2026',
+            start_date=date(2025, 9, 1),
+            end_date=date(2026, 7, 31),
+            is_current=True,
+        )
+        term2 = Term.objects.create(
+            school=school2,
+            session=session2,
+            name='First Term',
+            start_date=date(2025, 9, 1),
+            end_date=date(2025, 12, 15),
+            is_current=True,
+        )
         student2 = Student.objects.create(
             school=school2,
             user=user2,
@@ -241,13 +263,13 @@ class OutstandingFeesReportViewTest(TestCase):
             school=school2,
             student=student2,
             school_class=class2,
-            session=self.session,
+            session=session2,
             is_current=True,
         )
         Invoice.objects.create(
             school=school2,
             student=student2,
-            term=self.term1,
+            term=term2,
             total_amount=Decimal('999999.00'),
         )
 
@@ -484,8 +506,18 @@ class FlowReproTest(TestCase):
         student = Student.objects.get(user__first_name='New', user__last_name='Kid')
         self.assertEqual(student.user.first_name, 'New')
         self.assertEqual(student.user.role, Roles.STUDENT)
-        self.assertTrue(
-            ClassEnrollment.objects.filter(student=student, is_current=True).exists()
+        enrollment = ClassEnrollment.objects.get(
+            student=student, is_current=True
+        )
+        self.assertEqual(enrollment.school_class, self.school_class)
+        self.assertEqual(enrollment.session, self.session)
+        self.assertEqual(
+            enrollment.class_offering,
+            ClassOffering.objects.get(
+                school=self.school,
+                school_class=self.school_class,
+                academic_session=self.session,
+            ),
         )
         invoice = Invoice.objects.filter(student=student).first()
         self.assertIsNotNone(invoice, 'expected an auto-generated invoice')

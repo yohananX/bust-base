@@ -8,7 +8,13 @@ from django.core.management import call_command
 
 from core.models import School, AcademicSession
 from accounts.models import User, Roles
-from students.models import SchoolClass, Student, StudentGuardianLink
+from students.models import (
+    ClassEnrollment,
+    ClassOffering,
+    SchoolClass,
+    Student,
+    StudentGuardianLink,
+)
 from academics.models import Subject, ClassSubject
 from data_import.importers import (
     ClassImporter, SubjectImporter, StudentImporter, StaffImporter,
@@ -363,6 +369,20 @@ class StudentImporterAutoInvoiceTest(BaseImportTestCase):
             self.assertEqual(result['created'], 1)
 
             student = Student.objects.get(user__username='johndoe')
+            enrollment = ClassEnrollment.objects.get(
+                school=self.school,
+                student=student,
+                session=self.session,
+            )
+            self.assertEqual(enrollment.school_class, self.school_class)
+            self.assertEqual(
+                enrollment.class_offering,
+                ClassOffering.objects.get(
+                    school=self.school,
+                    school_class=self.school_class,
+                    academic_session=self.session,
+                ),
+            )
             invoice = Invoice.objects.filter(
                 school=self.school, student=student, term=self.term,
             ).first()
