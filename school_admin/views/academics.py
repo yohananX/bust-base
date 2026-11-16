@@ -3,13 +3,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic.base import View
 from django.db.models import Q
 from django.contrib import messages
-from django.db import transaction
+from django.db.models.deletion import ProtectedError
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles, User
 from academics.models import ClassSubject, Subject, TeacherAssignment, Score
-from students.models import SchoolClass
-from core.models import AcademicSession
+from students.models import ClassOffering, SchoolClass
 
 
 class SubjectListView(RoleRequiredMixin, View):
@@ -19,24 +18,29 @@ class SubjectListView(RoleRequiredMixin, View):
 
     def get(self, request):
         school = request.school
-        subjects = Subject.objects.filter(school=school).prefetch_related('school_classes').order_by('name')
+        subjects = Subject.objects.filter(school=school).prefetch_related(
+            'class_offerings__school_class',
+            'class_offerings__academic_session',
+        ).order_by('name')
 
         q = request.GET.get('q', '')
-        class_id = request.GET.get('class_id', '')
+        offering_id = request.GET.get('offering_id', '')
         if q:
             subjects = subjects.filter(
                 Q(name__icontains=q) | Q(code__icontains=q)
             )
-        if class_id:
-            subjects = subjects.filter(school_classes__id=class_id)
+        if offering_id:
+            subjects = subjects.filter(class_offerings__id=offering_id)
 
-        classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
+        offerings = ClassOffering.objects.filter(school=school).select_related(
+            'school_class', 'academic_session'
+        ).order_by('-academic_session__start_date', 'school_class__name')
 
         context = {
             'subjects': subjects,
             'q': q,
-            'classes': classes,
-            'filter_class': class_id,
+            'offerings': offerings,
+            'filter_offering': offering_id,
         }
         return render(request, 'school_admin/subject_list.html', context)
 
@@ -47,24 +51,17 @@ class SubjectCreateView(RoleRequiredMixin, View):
     allowed_roles = [Roles.ADMIN]
 
     def get(self, request):
-        school = request.school
-        classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
-        context = {'is_edit': False, 'classes': classes, 'subject_class_ids': []}
+        context = {'is_edit': False}
         return render(request, 'school_admin/subject_form.html', context)
 
     def post(self, request):
         school = request.school
         name = request.POST.get('name', '').strip()
         code = request.POST.get('code', '').strip()
-        pass_mark = request.POST.get('pass_mark', 40)
-        school_class_ids = request.POST.getlist('school_classes')
+        pass_mark = request.POST.get('pass_mark', '').strip()
 
         if not name or not code:
             messages.error(request, 'Name and code are required.')
-            return redirect('school_admin:subject_create')
-
-        if not school_class_ids:
-            messages.error(request, 'At least one class is required.')
             return redirect('school_admin:subject_create')
 
         if Subject.objects.filter(school=school, code__iexact=code).exists():
@@ -72,27 +69,25 @@ class SubjectCreateView(RoleRequiredMixin, View):
             return redirect('school_admin:subject_create')
 
         try:
-            pass_mark = int(pass_mark)
+            pass_mark = int(pass_mark) if pass_mark else None
         except (ValueError, TypeError):
-            pass_mark = 40
+            messages.error(request, 'Default pass mark must be a whole number.')
+            return redirect('school_admin:subject_create')
+        if pass_mark is not None and not 0 <= pass_mark <= 32767:
+            messages.error(request, 'Default pass mark must be between 0 and 32767.')
+            return redirect('school_admin:subject_create')
 
-        with transaction.atomic():
-            subject = Subject.objects.create(
-                school=school,
-                name=name,
-                code=code,
-                pass_mark=pass_mark,
-            )
-            for class_id in school_class_ids:
-                school_class = get_object_or_404(SchoolClass, pk=class_id, school=school)
-                ClassSubject.objects.create(
-                    school=school,
-                    subject=subject,
-                    school_class=school_class,
-                    pass_mark=pass_mark,
-                )
+        Subject.objects.create(
+            school=school,
+            name=name,
+            code=code,
+            pass_mark=pass_mark,
+        )
 
-        messages.success(request, f'Subject "{name}" created successfully.')
+        messages.success(
+            request,
+            f'Subject "{name}" created. Configure it from a specific class offering.',
+        )
         return redirect('school_admin:subject_list')
 
 
@@ -104,14 +99,10 @@ class SubjectEditView(RoleRequiredMixin, View):
     def get(self, request, pk):
         school = request.school
         subject_obj = get_object_or_404(Subject, pk=pk, school=school)
-        classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
-        subject_class_ids = list(subject_obj.school_classes.values_list('id', flat=True))
 
         context = {
             'is_edit': True,
             'subject': subject_obj,
-            'classes': classes,
-            'subject_class_ids': subject_class_ids,
         }
         return render(request, 'school_admin/subject_form.html', context)
 
@@ -121,15 +112,10 @@ class SubjectEditView(RoleRequiredMixin, View):
 
         name = request.POST.get('name', '').strip()
         code = request.POST.get('code', '').strip()
-        pass_mark = request.POST.get('pass_mark', 40)
-        school_class_ids = request.POST.getlist('school_classes')
+        pass_mark = request.POST.get('pass_mark', '').strip()
 
         if not name or not code:
             messages.error(request, 'Name and code are required.')
-            return redirect('school_admin:subject_edit', pk=pk)
-
-        if not school_class_ids:
-            messages.error(request, 'At least one class is required.')
             return redirect('school_admin:subject_edit', pk=pk)
 
         if Subject.objects.filter(school=school, code__iexact=code).exclude(pk=pk).exists():
@@ -137,27 +123,23 @@ class SubjectEditView(RoleRequiredMixin, View):
             return redirect('school_admin:subject_edit', pk=pk)
 
         try:
-            pass_mark = int(pass_mark)
+            pass_mark = int(pass_mark) if pass_mark else None
         except (ValueError, TypeError):
-            pass_mark = 40
+            messages.error(request, 'Default pass mark must be a whole number.')
+            return redirect('school_admin:subject_edit', pk=pk)
+        if pass_mark is not None and not 0 <= pass_mark <= 32767:
+            messages.error(request, 'Default pass mark must be between 0 and 32767.')
+            return redirect('school_admin:subject_edit', pk=pk)
 
-        with transaction.atomic():
-            subject_obj.name = name
-            subject_obj.code = code
-            subject_obj.pass_mark = pass_mark
-            subject_obj.save()
+        subject_obj.name = name
+        subject_obj.code = code
+        subject_obj.pass_mark = pass_mark
+        subject_obj.save(update_fields=['name', 'code', 'pass_mark'])
 
-            ClassSubject.objects.filter(subject=subject_obj).delete()
-            for class_id in school_class_ids:
-                school_class = get_object_or_404(SchoolClass, pk=class_id, school=school)
-                ClassSubject.objects.create(
-                    school=school,
-                    subject=subject_obj,
-                    school_class=school_class,
-                    pass_mark=pass_mark,
-                )
-
-        messages.success(request, f'Subject "{name}" updated successfully.')
+        messages.success(
+            request,
+            f'Subject "{name}" updated. Existing offering configurations were unchanged.',
+        )
         return redirect('school_admin:subject_list')
 
 
@@ -170,13 +152,19 @@ class SubjectDeleteView(RoleRequiredMixin, View):
         school = request.school
         subject_obj = get_object_or_404(Subject, pk=pk, school=school)
 
-        has_assignments = TeacherAssignment.objects.filter(subject=subject_obj).exists()
-        has_scores = Score.objects.filter(subject=subject_obj).exists()
+        has_assignments = TeacherAssignment.objects.filter(
+            class_subject__subject=subject_obj
+        ).exists()
+        has_scores = Score.objects.filter(
+            class_subject__subject=subject_obj
+        ).exists()
+        has_configurations = ClassSubject.objects.filter(subject=subject_obj).exists()
 
         context = {
             'subject': subject_obj,
             'has_assignments': has_assignments,
             'has_scores': has_scores,
+            'has_configurations': has_configurations,
         }
         return render(request, 'school_admin/subject_confirm_delete.html', context)
 
@@ -185,22 +173,19 @@ class SubjectDeleteView(RoleRequiredMixin, View):
         subject_obj = get_object_or_404(Subject, pk=pk, school=school)
         name = subject_obj.name
 
-        # Related records are cascaded; warn but proceed
-        assignment_count = TeacherAssignment.objects.filter(subject=subject_obj).count()
-        score_count = Score.objects.filter(subject=subject_obj).count()
-
-        with transaction.atomic():
+        if ClassSubject.objects.filter(subject=subject_obj).exists():
+            messages.error(
+                request,
+                'This subject has class-offering configurations. Remove only '
+                'unused configurations; historical configurations are protected.',
+            )
+            return redirect('school_admin:subject_list')
+        try:
             subject_obj.delete()
-
-        msg = f'Subject "{name}" deleted successfully.'
-        if assignment_count or score_count:
-            parts = []
-            if assignment_count:
-                parts.append(f'{assignment_count} assignment(s)')
-            if score_count:
-                parts.append(f'{score_count} score record(s)')
-            msg += f' Also removed {", ".join(parts)}.'
-        messages.success(request, msg)
+        except ProtectedError:
+            messages.error(request, 'This subject is protected by academic history.')
+        else:
+            messages.success(request, f'Subject "{name}" deleted successfully.')
         return redirect('school_admin:subject_list')
 
 
@@ -214,9 +199,9 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
         teachers = User.objects.filter(
             school=school, role=Roles.TEACHER, is_active=True
         ).order_by('first_name', 'last_name')
-        classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
-        subjects = Subject.objects.filter(school=school).order_by('name')
-        sessions = AcademicSession.objects.filter(school=school).order_by('-start_date')
+        offerings = ClassOffering.objects.filter(school=school).select_related(
+            'school_class', 'academic_session'
+        ).order_by('-academic_session__start_date', 'school_class__name')
 
         teacher_id = request.GET.get('teacher_id', '')
         selected_teacher = None
@@ -227,15 +212,17 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
             )
             assignments = TeacherAssignment.objects.filter(
                 school=school, teacher=selected_teacher
-            ).select_related('subject', 'school_class', 'session')
+            ).select_related(
+                'class_subject__subject',
+                'class_subject__class_offering__school_class',
+                'class_subject__class_offering__academic_session',
+            )
 
         context = {
             'teachers': teachers,
             'selected_teacher': selected_teacher,
             'assignments': assignments,
-            'classes': classes,
-            'subjects': subjects,
-            'sessions': sessions,
+            'offerings': offerings,
         }
         return render(request, 'school_admin/assignment_list.html', context)
 
@@ -256,7 +243,11 @@ class AssignmentDeleteView(RoleRequiredMixin, View):
             from core.toasts import attach_toast
             assignments = TeacherAssignment.objects.filter(
                 school=school, teacher_id=teacher_pk
-            ).select_related('subject', 'school_class', 'session')
+            ).select_related(
+                'class_subject__subject',
+                'class_subject__class_offering__school_class',
+                'class_subject__class_offering__academic_session',
+            )
             return attach_toast(
                 render(request, 'school_admin/_assignment_rows.html', {'assignments': assignments}),
                 msg,
@@ -272,12 +263,11 @@ class AssignmentAddView(RoleRequiredMixin, View):
     def post(self, request):
         school = request.school
         teacher_id = request.POST.get('teacher_id')
-        class_id = request.POST.get('class_id')
-        session_id = request.POST.get('session_id')
-        subject_ids = request.POST.getlist('subject_ids')
+        offering_id = request.POST.get('offering_id')
+        class_subject_ids = request.POST.getlist('class_subject_ids')
 
-        if not all([teacher_id, class_id, session_id, subject_ids]):
-            msg = 'Teacher, class, session, and at least one subject are required.'
+        if not all([teacher_id, offering_id, class_subject_ids]):
+            msg = 'Teacher, class offering, and at least one configured subject are required.'
             messages.error(request, msg)
             if request.headers.get('HX-Request'):
                 from core.toasts import attach_toast
@@ -286,19 +276,23 @@ class AssignmentAddView(RoleRequiredMixin, View):
             return redirect('school_admin:assignment_list')
 
         teacher = get_object_or_404(User, school=school, pk=teacher_id, role=Roles.TEACHER)
-        school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
-        session = get_object_or_404(AcademicSession, school=school, pk=session_id)
+        offering = get_object_or_404(
+            ClassOffering, school=school, pk=offering_id
+        )
 
         created_count = 0
         skipped_count = 0
-        for subject_id in subject_ids:
-            subject = get_object_or_404(Subject, school=school, pk=subject_id)
+        for class_subject_id in class_subject_ids:
+            class_subject = get_object_or_404(
+                ClassSubject,
+                school=school,
+                pk=class_subject_id,
+                class_offering=offering,
+            )
             _, created = TeacherAssignment.objects.get_or_create(
                 school=school,
                 teacher=teacher,
-                subject=subject,
-                school_class=school_class,
-                session=session,
+                class_subject=class_subject,
             )
             if created:
                 created_count += 1
@@ -314,7 +308,11 @@ class AssignmentAddView(RoleRequiredMixin, View):
             from core.toasts import attach_toast
             assignments = TeacherAssignment.objects.filter(
                 school=school, teacher=teacher
-            ).select_related('subject', 'school_class', 'session')
+            ).select_related(
+                'class_subject__subject',
+                'class_subject__class_offering__school_class',
+                'class_subject__class_offering__academic_session',
+            )
             return attach_toast(
                 render(request, 'school_admin/_assignment_rows.html', {'assignments': assignments}),
                 msg,
@@ -323,31 +321,36 @@ class AssignmentAddView(RoleRequiredMixin, View):
 
 
 class AssignmentSubjectsPartialView(RoleRequiredMixin, View):
-    """Return subject pills for a given class (HTMX partial)."""
+    """Return configured subject pills for one explicit class offering."""
 
     allowed_roles = [Roles.ADMIN]
 
     def get(self, request):
         school = request.school
-        class_id = request.GET.get('class_id', '')
+        offering_id = request.GET.get('offering_id', '')
         teacher_id = request.GET.get('teacher_id', '')
 
-        subjects = Subject.objects.filter(school=school)
-        if class_id:
-            subjects = subjects.filter(school_class_id=class_id)
-        subjects = subjects.order_by('name')
+        class_subjects = ClassSubject.objects.none()
+        if offering_id:
+            class_subjects = ClassSubject.objects.filter(
+                school=school,
+                class_offering_id=offering_id,
+                class_offering__school=school,
+            ).select_related('subject').order_by('subject__name')
 
-        assigned_subject_ids = set()
-        if teacher_id and class_id:
-            assigned_subject_ids = set(
+        assigned_class_subject_ids = set()
+        if teacher_id and offering_id:
+            assigned_class_subject_ids = set(
                 TeacherAssignment.objects.filter(
-                    school=school, teacher_id=teacher_id, school_class_id=class_id
-                ).values_list('subject_id', flat=True)
+                    school=school,
+                    teacher_id=teacher_id,
+                    class_subject__class_offering_id=offering_id,
+                ).values_list('class_subject_id', flat=True)
             )
 
         context = {
-            'subjects': subjects,
-            'assigned_subject_ids': assigned_subject_ids,
+            'class_subjects': class_subjects,
+            'assigned_class_subject_ids': assigned_class_subject_ids,
         }
         return render(request, 'school_admin/_subject_pills.html', context)
 
@@ -359,7 +362,7 @@ class ScoreAdminView(RoleRequiredMixin, View):
 
     def get(self, request):
         school = request.school
-        from core.models import Term, AcademicSession
+        from core.models import Term
 
         # Filters
         term_id = request.GET.get('term_id', '')
@@ -370,19 +373,23 @@ class ScoreAdminView(RoleRequiredMixin, View):
 
         if term_id:
             scores = scores.filter(term_id=term_id)
-        if class_id:
-            scores = scores.filter(
-                student__enrollments__school_class_id=class_id,
-                student__enrollments__is_current=True,
-            )
+        if class_id and term_id:
+            scores = scores.filter(class_subject__class_offering__school_class_id=class_id)
+        elif class_id:
+            # A stable class alone spans sessions; require the term to select
+            # the exact offering rather than guessing a current session.
+            scores = scores.none()
         if subject_id:
-            scores = scores.filter(subject_id=subject_id)
+            scores = scores.filter(class_subject__subject_id=subject_id)
 
         scores = scores.select_related(
-            'student', 'student__user', 'subject', 'term'
+            'student', 'student__user', 'class_subject__subject',
+            'class_subject__class_offering', 'term'
         ).order_by('student__admission_number')
 
-        terms = Term.for_current_session(school)
+        terms = Term.objects.filter(school=school).select_related(
+            'session'
+        ).order_by('-session__start_date', 'start_date')
         classes = SchoolClass.objects.filter(school=school, is_active=True)
         subjects = Subject.objects.filter(school=school).order_by('name')
 

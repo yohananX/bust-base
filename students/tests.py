@@ -10,7 +10,7 @@ from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from academics.models import Subject, ClassSubject, TeacherAssignment, TermResult, Score
 from fees.models import Invoice, Payment
-from .models import AcademicStage, SchoolClass, Student, ClassEnrollment, StudentGuardianLink
+from .models import AcademicStage, SchoolClass, Student, ClassEnrollment, StudentGuardianLink, ClassOffering
 from lessons.models import LessonPeriod, LessonClass, LessonEnrollment
 
 User = get_user_model()
@@ -671,29 +671,55 @@ class StudentSubjectsViewTest(TestCase):
             school=self.school, session=self.session2, name="First Term",
             start_date="2025-09-01", end_date="2025-12-19", is_current=True,
         )
+        self.offering1 = ClassOffering.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            academic_session=self.session1,
+        )
+        self.offering2 = ClassOffering.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            academic_session=self.session2,
+        )
 
         # Same class for both sessions — only current-term assignments show.
         ClassEnrollment.objects.create(
             school=self.school, student=self.student,
-            school_class=self.school_class, session=self.session1, is_current=False,
+            school_class=self.school_class, session=self.session1,
+            class_offering=self.offering1, is_current=False,
         )
         ClassEnrollment.objects.create(
             school=self.school, student=self.student,
-            school_class=self.school_class, session=self.session2, is_current=True,
+            school_class=self.school_class, session=self.session2,
+            class_offering=self.offering2, is_current=True,
         )
 
         self.maths = Subject.objects.create(school=self.school, name="Mathematics", code="MAT")
         self.english = Subject.objects.create(school=self.school, name="English", code="ENG")
-        ClassSubject.objects.create(school=self.school, subject=self.maths, school_class=self.school_class)
-        ClassSubject.objects.create(school=self.school, subject=self.english, school_class=self.school_class)
+        ClassSubject.objects.create(
+            school=self.school, subject=self.maths, class_offering=self.offering1,
+            pass_mark=40,
+        )
+        ClassSubject.objects.create(
+            school=self.school, subject=self.maths, class_offering=self.offering2,
+            pass_mark=40,
+        )
+        ClassSubject.objects.create(
+            school=self.school, subject=self.english, class_offering=self.offering1,
+            pass_mark=40,
+        )
+        ClassSubject.objects.create(
+            school=self.school, subject=self.english, class_offering=self.offering2,
+            pass_mark=40,
+        )
 
     def _assign(self, session, subject):
+        offering = self.offering1 if session == self.session1 else self.offering2
+        config = ClassSubject.objects.get(
+            school=self.school, class_offering=offering, subject=subject,
+        )
         TeacherAssignment.objects.create(
-            school=self.school,
-            teacher=self.teacher,
-            subject=subject,
-            school_class=self.school_class,
-            session=session,
+            school=self.school, teacher=self.teacher, class_subject=config,
         )
 
     def _get(self):
@@ -871,6 +897,11 @@ class ResultFeeLockTests(TestCase):
             end_date="2026-07-31",
             is_current=True,
         )
+        self.offering = ClassOffering.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            academic_session=self.session,
+        )
         self.term = Term.objects.create(
             school=self.school,
             session=self.session,
@@ -890,7 +921,10 @@ class ResultFeeLockTests(TestCase):
         self.subject = Subject.objects.create(
             school=self.school, name="Mathematics", code="MATH",
         )
-        ClassSubject.objects.create(school=self.school, subject=self.subject, school_class=self.school_class)
+        self.class_subject = ClassSubject.objects.create(
+            school=self.school, subject=self.subject, class_offering=self.offering,
+            pass_mark=40,
+        )
         for tag, first in [("owing", "Owing"), ("paid", "Paid"), ("free", "Free")]:
             user = User.objects.create_user(
                 username=f"{tag}_student", email=f"{tag}@lock.edu",
@@ -906,6 +940,7 @@ class ResultFeeLockTests(TestCase):
             ClassEnrollment.objects.create(
                 school=self.school, student=student,
                 school_class=self.school_class, session=self.session,
+                class_offering=self.offering,
             )
             TermResult.objects.create(
                 school=self.school, student=student, term=self.term,
@@ -913,8 +948,9 @@ class ResultFeeLockTests(TestCase):
                 overall_position=1, total_subjects=5,
             )
             Score.objects.create(
-                school=self.school, student=student, term=self.term,
-                subject=self.subject, test_1=8, test_2=9, test_3=7,
+                school=self.school, student=student,
+                class_subject=self.class_subject, term=self.term,
+                test_1=8, test_2=9, test_3=7,
                 exam_score=50,
             )
             StudentGuardianLink.objects.create(
@@ -993,7 +1029,7 @@ class ResultFeeLockTests(TestCase):
         )
         Score.objects.create(
             school=self.school, student=self.students["paid"],
-            subject=self.subject, term=unpublished,
+            class_subject=self.class_subject, term=unpublished,
             test_1=8, test_2=9, test_3=7, exam_score=50,
             moderation_status=Score.MODERATION_APPROVED,
         )
@@ -1045,13 +1081,16 @@ class ResultFeeLockTests(TestCase):
         english = Subject.objects.create(
             school=self.school, name="English Language", code="ENG",
         )
-        ClassSubject.objects.create(school=self.school, subject=english, school_class=self.school_class)
+        english_config = ClassSubject.objects.create(
+            school=self.school, subject=english, class_offering=self.offering,
+            pass_mark=40,
+        )
         Score.objects.filter(student=self.students["paid"], term=self.term).update(
             moderation_status=Score.MODERATION_APPROVED,
         )
         Score.objects.create(
             school=self.school, student=self.students["paid"],
-            subject=english, term=self.term,
+            class_subject=english_config, term=self.term,
             test_1=10, test_2=10, test_3=10, exam_score=60,
             moderation_status=Score.MODERATION_REJECTED,
         )
@@ -1068,13 +1107,16 @@ class ResultFeeLockTests(TestCase):
         english = Subject.objects.create(
             school=self.school, name="English Language", code="ENG",
         )
-        ClassSubject.objects.create(school=self.school, subject=english, school_class=self.school_class)
+        english_config = ClassSubject.objects.create(
+            school=self.school, subject=english, class_offering=self.offering,
+            pass_mark=40,
+        )
         Score.objects.filter(student=self.students["paid"], term=self.term).update(
             moderation_status=Score.MODERATION_APPROVED,
         )
         Score.objects.create(
             school=self.school, student=self.students["paid"],
-            subject=english, term=self.term,
+            class_subject=english_config, term=self.term,
             test_1=10, test_2=10, test_3=10, exam_score=60,
             moderation_status=Score.MODERATION_REJECTED,
         )

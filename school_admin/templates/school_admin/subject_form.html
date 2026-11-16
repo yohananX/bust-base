@@ -11,21 +11,10 @@
       <div class="w-10 h-10 rounded-xl bg-primary-tint text-primary flex items-center justify-center">
         <i data-lucide="book-open" class="w-5 h-5"></i>
       </div>
-      <p class="text-sm text-ink-muted">Define the subject name, code and pass mark.</p>
+      <p class="text-sm text-ink-muted">Define the reusable subject catalogue entry. Configure classes and sessions from a class offering.</p>
     </div>
     <form method="post" class="space-y-5">
       {% csrf_token %}
-
-      <div>
-        <label class="block text-sm font-medium text-ink mb-1.5">Classes <span class="text-red-500">*</span></label>
-        <select name="school_classes" multiple required
-                class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-          {% for c in classes %}
-            <option value="{{ c.id }}" {% if c.id in subject_class_ids %}selected{% endif %}>{{ c.name }}</option>
-          {% endfor %}
-        </select>
-        <p class="text-xs text-ink-faint mt-1.5">Hold Ctrl/Cmd to select multiple classes.</p>
-      </div>
 
       <div>
         <label class="block text-sm font-medium text-ink mb-1.5">Name <span class="text-red-500">*</span></label>
@@ -40,10 +29,10 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-ink mb-1.5">Pass Mark</label>
-        <input type="number" name="pass_mark" value="{{ subject.pass_mark|default:'40' }}" min="0" max="100"
-               class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-        <p class="text-xs text-ink-faint mt-1.5">Score a student must reach to pass this subject.</p>
+        <label class="block text-sm font-medium text-ink mb-1.5">Default Pass Mark</label>
+        <input type="number" name="pass_mark" value="{{ subject.pass_mark|default:'' }}" min="0" max="32767"
+                class="w-full px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+        <p class="text-xs text-ink-faint mt-1.5">Copied only when a new offering configuration is created. Editing this default never changes historical configurations.</p>
       </div>
 
       <div class="flex items-center gap-4 pt-2">

@@ -16,7 +16,7 @@ from academics.models import (
     ClassSubject, Subject, TeacherAssignment, Score, TermResult, GradeScale,
 )
 from students.models import (
-    SchoolClass, Student, ClassEnrollment, StudentGuardianLink,
+    ClassOffering, SchoolClass, Student, ClassEnrollment, StudentGuardianLink,
 )
 from notifications.models import NotificationLog
 from accounts.models import User
@@ -49,10 +49,19 @@ class ScorePipelineEndToEndTest(TestCase):
         self.school_class = SchoolClass.objects.create(
             school=self.school, name='JSS1A',
         )
+        self.offering = ClassOffering.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            academic_session=self.session,
+        )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH', pass_mark=40,
         )
-        ClassSubject.objects.create(school=self.school, subject=self.subject, school_class=self.school_class)
+        self.class_subject = ClassSubject.objects.create(
+            school=self.school,
+            subject=self.subject,
+            class_offering=self.offering,
+        )
 
         # Teacher
         self.teacher_user = User.objects.create_user(
@@ -61,8 +70,7 @@ class ScorePipelineEndToEndTest(TestCase):
         )
         self.assignment = TeacherAssignment.objects.create(
             school=self.school, teacher=self.teacher_user,
-            subject=self.subject, school_class=self.school_class,
-            session=self.session,
+            class_subject=self.class_subject,
         )
 
         # Admin
@@ -85,6 +93,7 @@ class ScorePipelineEndToEndTest(TestCase):
         ClassEnrollment.objects.create(
             school=self.school, student=self.student_a,
             school_class=self.school_class, session=self.session,
+            class_offering=self.offering,
             is_current=True,
         )
         self.guardian_a = User.objects.create_user(
@@ -110,6 +119,7 @@ class ScorePipelineEndToEndTest(TestCase):
         ClassEnrollment.objects.create(
             school=self.school, student=self.student_b,
             school_class=self.school_class, session=self.session,
+            class_offering=self.offering,
             is_current=True,
         )
         self.guardian_b = User.objects.create_user(
@@ -146,7 +156,8 @@ class ScorePipelineEndToEndTest(TestCase):
         # ------------------------------------------------------------------
         # Student A: total = 8+7+9+60 = 84
         Score.objects.create(
-            school=self.school, student=self.student_a, subject=self.subject,
+            school=self.school, student=self.student_a,
+            class_subject=self.class_subject,
             term=self.term,
             test_1=8, test_2=7, test_3=9, exam_score=60,
             entered_by=self.teacher_user,
@@ -154,7 +165,8 @@ class ScorePipelineEndToEndTest(TestCase):
 
         # Student B: total = 10+9+8+65 = 92
         Score.objects.create(
-            school=self.school, student=self.student_b, subject=self.subject,
+            school=self.school, student=self.student_b,
+            class_subject=self.class_subject,
             term=self.term,
             test_1=10, test_2=9, test_3=8, exam_score=65,
             entered_by=self.teacher_user,

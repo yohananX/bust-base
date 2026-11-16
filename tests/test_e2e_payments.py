@@ -23,7 +23,7 @@ from fees.paystack import (
 )
 from notifications.models import NotificationLog
 from students.models import (
-    SchoolClass, Student, ClassEnrollment, StudentGuardianLink,
+    ClassOffering, SchoolClass, Student, ClassEnrollment, StudentGuardianLink,
 )
 from academics.models import ClassSubject, Subject, TeacherAssignment
 from accounts.models import User
@@ -58,10 +58,19 @@ class PaymentEndToEndTest(TestCase):
         self.school_class = SchoolClass.objects.create(
             school=self.school, name='JSS1A',
         )
+        self.offering = ClassOffering.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            academic_session=self.session,
+        )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH',
         )
-        ClassSubject.objects.create(school=self.school, subject=self.subject, school_class=self.school_class)
+        self.class_subject = ClassSubject.objects.create(
+            school=self.school,
+            subject=self.subject,
+            class_offering=self.offering,
+        )
 
         # Users
         self.admin_user = User.objects.create_user(
@@ -91,6 +100,7 @@ class PaymentEndToEndTest(TestCase):
         ClassEnrollment.objects.create(
             school=self.school, student=self.student,
             school_class=self.school_class, session=self.session,
+            class_offering=self.offering,
             is_current=True,
         )
         StudentGuardianLink.objects.create(
@@ -101,8 +111,7 @@ class PaymentEndToEndTest(TestCase):
         # Teacher assignment
         TeacherAssignment.objects.create(
             school=self.school, teacher=self.teacher_user,
-            subject=self.subject, school_class=self.school_class,
-            session=self.session,
+            class_subject=self.class_subject,
         )
 
         # Fee structure and invoice

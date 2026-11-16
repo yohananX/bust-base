@@ -1,9 +1,9 @@
 from django.core.management.base import BaseCommand, CommandError
 
-from academics.models import Score, Subject
+from academics.models import ClassSubject, Score, Subject
 from academics.ranking import compute_positions, compute_term_summary
 from core.models import School, Term
-from students.models import SchoolClass
+from students.models import ClassOffering, SchoolClass
 
 
 class Command(BaseCommand):
@@ -37,14 +37,24 @@ class Command(BaseCommand):
             school_class = SchoolClass.objects.get(pk=school_class_id)
             subject = Subject.objects.get(pk=subject_id)
             term = Term.objects.get(pk=term_id)
-            updated = compute_positions(school_class, subject, term)
+            offering = ClassOffering.objects.get(
+                school=school_class.school,
+                school_class=school_class,
+                academic_session=term.session,
+            )
+            class_subject = ClassSubject.objects.get(
+                school=school_class.school,
+                class_offering=offering,
+                subject=subject,
+            )
+            updated = compute_positions(class_subject, term)
             total_positions += updated
             self.stdout.write(
                 self.style.SUCCESS(
                     f"Positions for {subject.name} / {school_class.name} / {term.name}: {updated}"
                 )
             )
-            summaries = compute_term_summary(school_class, term)
+            summaries = compute_term_summary(offering, term)
             total_summaries += summaries
             self.stdout.write(
                 self.style.SUCCESS(
@@ -55,7 +65,11 @@ class Command(BaseCommand):
             # Get all unique (school_class, subject, term) combos from scores.
             # The class is taken from the enrollment for the score's own session,
             # so historical terms are ranked against their original class roster.
-            scores = Score.objects.select_related("subject", "term", "student").all()
+            scores = Score.objects.select_related(
+                "class_subject__subject",
+                "class_subject__class_offering__school_class",
+                "term",
+            ).all()
             if school_id:
                 school = School.objects.filter(pk=school_id).first()
                 if not school:
@@ -63,28 +77,41 @@ class Command(BaseCommand):
                 scores = scores.filter(school=school)
             combos = set()
             for score in scores:
-                enrollment = score.student.enrollments.filter(
-                    session=score.term.session
-                ).first()
-                if enrollment:
-                    combos.add((enrollment.school_class_id, score.subject_id, score.term_id))
+                combos.add((score.class_subject_id, score.term_id))
 
-            for sc_id, sub_id, t_id in combos:
-                school_class = SchoolClass.objects.get(pk=sc_id)
-                subject = Subject.objects.get(pk=sub_id)
+            for class_subject_id, t_id in combos:
+                class_subject = ClassSubject.objects.select_related(
+                    'subject', 'class_offering__school_class'
+                ).get(pk=class_subject_id)
                 term = Term.objects.get(pk=t_id)
-                updated = compute_positions(school_class, subject, term)
+                updated = compute_positions(class_subject, term)
                 total_positions += updated
-                self.stdout.write(f"  Positions {subject.name} / {school_class.name} / {term.name}: {updated}")
+                self.stdout.write(
+                    f"  Positions {class_subject.subject.name} / "
+                    f"{class_subject.school_class.name} / {term.name}: {updated}"
+                )
 
-            # Term summaries: one pass per (class, term)
-            summary_pairs = {(sc_id, t_id) for sc_id, sub_id, t_id in combos}
-            for sc_id, t_id in summary_pairs:
-                school_class = SchoolClass.objects.get(pk=sc_id)
+            # Term summaries: one pass per (offering, term)
+            summary_pairs = {
+                (
+                    ClassSubject.objects.values_list(
+                        'class_offering_id', flat=True
+                    ).get(pk=class_subject_id),
+                    t_id,
+                )
+                for class_subject_id, t_id in combos
+            }
+            for offering_id, t_id in summary_pairs:
+                offering = ClassOffering.objects.select_related('school_class').get(
+                    pk=offering_id
+                )
                 term = Term.objects.get(pk=t_id)
-                summaries = compute_term_summary(school_class, term)
+                summaries = compute_term_summary(offering, term)
                 total_summaries += summaries
-                self.stdout.write(f"  Summaries {school_class.name} / {term.name}: {summaries}")
+                self.stdout.write(
+                    f"  Summaries {offering.school_class.name} / "
+                    f"{term.name}: {summaries}"
+                )
 
             self.stdout.write(self.style.SUCCESS(
                 f"Total: {total_positions} positions, {total_summaries} term summaries updated"

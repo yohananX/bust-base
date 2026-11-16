@@ -36,21 +36,18 @@
       </table>
     </div>
 
-    {% if assignment_count > 0 or score_count > 0 %}
+    {% if has_configurations or has_assignments or has_scores %}
     <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-700">
       <div class="flex items-start gap-3">
         <i data-lucide="info" class="w-4.5 h-4.5 mt-0.5 flex-shrink-0"></i>
         <div>
-          <p class="font-medium">Warning: This subject has associated records</p>
+          <p class="font-medium">This subject is protected by academic history</p>
           <ul class="mt-1 list-disc list-inside">
-            {% if assignment_count > 0 %}
-              <li>{{ assignment_count }} assignment{{ assignment_count|pluralize }}</li>
-            {% endif %}
-            {% if score_count > 0 %}
-              <li>{{ score_count }} score{{ score_count|pluralize }}</li>
-            {% endif %}
+            {% if has_configurations %}<li>Class-offering configurations exist</li>{% endif %}
+            {% if has_assignments %}<li>Teacher assignments exist</li>{% endif %}
+            {% if has_scores %}<li>Score records exist</li>{% endif %}
           </ul>
-          <p class="mt-1">Deleting this subject will also remove these associated records.</p>
+          <p class="mt-1">Deletion will be refused. Historical configurations are never cascaded.</p>
         </div>
       </div>
     </div>

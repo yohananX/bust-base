@@ -136,10 +136,20 @@ class ClassImporter(BaseImporter):
 class SubjectImporter(BaseImporter):
     """Import subjects from CSV.
 
-    CSV columns: class_name, subject_name
-    Looks up SchoolClass by name (case-insensitive), auto-generates code.
-    Reuses existing subjects by code/name and links classes via ClassSubject.
+    CSV columns: class_name, session_name, subject_name, pass_mark (optional).
+    The session must be explicit in each row or supplied to the importer.
+    Existing ClassOfferings are required; this importer never guesses the
+    current session or creates offerings implicitly.
     """
+
+    def __init__(self, *args, academic_session=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if (
+            academic_session is not None
+            and academic_session.school_id != self.school.pk
+        ):
+            raise ValueError('Academic session must belong to the import school.')
+        self.academic_session = academic_session
 
     def import_csv(self, file_path):
         rows = self._read_csv(file_path)
@@ -150,13 +160,34 @@ class SubjectImporter(BaseImporter):
 
         for i, row in enumerate(rows, start=1):
             class_name = row.get('class_name', '').strip()
+            session_name = row.get('session_name', '').strip()
             subject_name = row.get('subject_name', '').strip()
+            pass_mark_raw = row.get('pass_mark', '').strip()
 
             if not class_name:
                 errors.append({'row': i, 'message': 'Missing class_name'})
                 continue
             if not subject_name:
                 errors.append({'row': i, 'message': 'Missing subject_name'})
+                continue
+
+            session = self.academic_session
+            if session_name:
+                session = AcademicSession.objects.filter(
+                    school=self.school,
+                    name__iexact=session_name,
+                ).first()
+                if session is None:
+                    errors.append({
+                        'row': i,
+                        'message': f"Academic session '{session_name}' not found",
+                    })
+                    continue
+            if session is None:
+                errors.append({
+                    'row': i,
+                    'message': 'Missing session_name; subject configuration requires an explicit session',
+                })
                 continue
 
             school_class = SchoolClass.objects.filter(
@@ -168,6 +199,29 @@ class SubjectImporter(BaseImporter):
                 errors.append({'row': i, 'message': f"Class '{class_name}' not found"})
                 continue
 
+            offering = ClassOffering.objects.filter(
+                school=self.school,
+                school_class=school_class,
+                academic_session=session,
+            ).first()
+            if offering is None:
+                errors.append({
+                    'row': i,
+                    'message': (
+                        f"Class offering for '{class_name}' in '{session.name}' not found"
+                    ),
+                })
+                continue
+
+            try:
+                pass_mark = int(pass_mark_raw) if pass_mark_raw else None
+            except (TypeError, ValueError):
+                errors.append({'row': i, 'message': 'pass_mark must be a whole number'})
+                continue
+            if pass_mark is not None and not 0 <= pass_mark <= 32767:
+                errors.append({'row': i, 'message': 'pass_mark must be between 0 and 32767'})
+                continue
+
             code = _generate_code(subject_name)
 
             subject = Subject.objects.filter(school=self.school, code=code).first()
@@ -175,20 +229,32 @@ class SubjectImporter(BaseImporter):
                 subject = Subject.objects.filter(school=self.school, name__iexact=subject_name).first()
 
             if subject:
-                link, link_created = ClassSubject.objects.get_or_create(
+                link_exists = ClassSubject.objects.filter(
                     school=self.school,
                     subject=subject,
-                    school_class=school_class,
-                    defaults={'pass_mark': None},
-                )
-                if link_created:
+                    class_offering=offering,
+                ).exists()
+                if not link_exists:
+                    if not self.dry_run:
+                        ClassSubject.objects.create(
+                            school=self.school,
+                            subject=subject,
+                            class_offering=offering,
+                            pass_mark=pass_mark,
+                        )
                     created += 1
                     if self.verbose:
-                        self._log(f"Row {i}: LINKED — '{subject_name}' to '{class_name}'")
+                        self._log(
+                            f"Row {i}: LINKED — '{subject_name}' to "
+                            f"'{class_name}' ({session.name})"
+                        )
                 else:
                     skipped += 1
                     if self.verbose:
-                        self._log(f"Row {i}: SKIP — '{subject_name}' already linked to '{class_name}'")
+                        self._log(
+                            f"Row {i}: SKIP — '{subject_name}' already configured "
+                            f"for '{class_name}' ({session.name})"
+                        )
             else:
                 base_code = code
                 suffix = 1
@@ -205,12 +271,15 @@ class SubjectImporter(BaseImporter):
                     ClassSubject.objects.create(
                         school=self.school,
                         subject=subject,
-                        school_class=school_class,
-                        pass_mark=None,
+                        class_offering=offering,
+                        pass_mark=pass_mark,
                     )
                 created += 1
                 if self.verbose:
-                    self._log(f"Row {i}: CREATED — '{subject_name}' (code: {code}) linked to '{class_name}'")
+                    self._log(
+                        f"Row {i}: CREATED — '{subject_name}' (code: {code}) "
+                        f"configured for '{class_name}' ({session.name})"
+                    )
 
         return {
             'total': total,
@@ -487,7 +556,7 @@ IMPORTERS = {
 
 TEMPLATES = {
     'classes': 'name,section\nReception,\nPrimary 1,Primary\nPrimary 2,Primary\nJSS 1,Junior\nJSS 2,Junior\nSS 1,Senior',
-    'subjects': 'class_name,subject_name\nReception,Literacy\nReception,Numeracy\nPrimary 1,English Studies\nPrimary 1,Mathematics\nJSS 1,Basic Science',
+    'subjects': 'class_name,session_name,subject_name,pass_mark\nReception,2025/2026,Literacy,40\nReception,2025/2026,Numeracy,40\nPrimary 1,2025/2026,English Studies,40\nPrimary 1,2025/2026,Mathematics,40\nJSS 1,2025/2026,Basic Science,40',
     'students': 'first_name,last_name,date_of_birth,gender,parent_name,parent_email,parent_phone,class_name\nJohn,Doe,2010-01-15,M,Jane Doe,jane@example.com,08012345678,JSS 1',
     'staff': 'first_name,last_name,username,email,phone_number,role\nEmeka,Teacher,emekat,emeka@school.com,08011112222,TEACHER',
 }

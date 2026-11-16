@@ -21,6 +21,7 @@ from finance.models import Expenditure, ExpenditureCategory, Project
 from payroll.models import AllowanceDefinition, PayGrade
 from students.models import (
     ClassEnrollment,
+    ClassOffering,
     SchoolClass,
     Student,
     StudentGuardianLink,
@@ -93,10 +94,17 @@ class TwoSchoolsFixture(TestCase):
         school_class = SchoolClass.objects.create(
             school=school, name=f'JSS1-{tag.upper()}',
         )
+        offering = ClassOffering.objects.create(
+            school=school,
+            school_class=school_class,
+            academic_session=session,
+        )
         subject = Subject.objects.create(
             school=school, name=f'Maths {tag.upper()}', code=f'MTH-{tag.upper()}',
         )
-        ClassSubject.objects.create(school=school, subject=subject, school_class=school_class)
+        class_subject = ClassSubject.objects.create(
+            school=school, subject=subject, class_offering=offering
+        )
 
         student = Student.objects.create(
             school=school, user=student_user,
@@ -106,7 +114,7 @@ class TwoSchoolsFixture(TestCase):
         )
         ClassEnrollment.objects.create(
             school=school, student=student, school_class=school_class,
-            session=session, is_current=True,
+            session=session, class_offering=offering, is_current=True,
         )
         StudentGuardianLink.objects.create(
             school=school, student=student, guardian=parent,
@@ -114,8 +122,7 @@ class TwoSchoolsFixture(TestCase):
         )
 
         assignment = TeacherAssignment.objects.create(
-            school=school, teacher=teacher, subject=subject,
-            school_class=school_class, session=session,
+            school=school, teacher=teacher, class_subject=class_subject,
         )
         invoice = Invoice.objects.create(
             school=school, student=student, term=term,

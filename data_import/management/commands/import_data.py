@@ -1,8 +1,8 @@
 import os
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
-from core.models import School
+from core.models import AcademicSession, School
 from data_import.importers import ClassImporter, SubjectImporter, StudentImporter, StaffImporter
 from data_import.models import ImportLog
 
@@ -24,6 +24,10 @@ class Command(BaseCommand):
         parser.add_argument('--school', required=True, help='School name or short_code')
         parser.add_argument('--dry-run', action='store_true', help='Preview without committing')
         parser.add_argument('--verbose', action='store_true', help='Show each row')
+        parser.add_argument(
+            '--session',
+            help='Academic session name for subject rows that omit session_name',
+        )
 
     def handle(self, *args, **opts):
         # Resolve school by name or short_code
@@ -44,7 +48,22 @@ class Command(BaseCommand):
         verbose = opts['verbose']
 
         importer_class = IMPORTERS[import_type]
-        importer = importer_class(school=school, dry_run=dry_run, verbose=verbose)
+        importer_kwargs = {
+            'school': school,
+            'dry_run': dry_run,
+            'verbose': verbose,
+        }
+        if import_type == 'subjects' and opts.get('session'):
+            try:
+                importer_kwargs['academic_session'] = AcademicSession.objects.get(
+                    school=school,
+                    name__iexact=opts['session'],
+                )
+            except AcademicSession.DoesNotExist as exc:
+                raise CommandError(
+                    f"Academic session '{opts['session']}' not found for {school.name}"
+                ) from exc
+        importer = importer_class(**importer_kwargs)
 
         self.stdout.write(f"Importing {import_type} from {file_path} for school '{school.name}'...")
         if dry_run:

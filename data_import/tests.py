@@ -50,6 +50,13 @@ class BaseImportTestCase(TestCase):
             is_current=True,
         )
 
+    def create_offering(self, school_class):
+        return ClassOffering.objects.create(
+            school=self.school,
+            school_class=school_class,
+            academic_session=self.session,
+        )
+
 
 # ─── Helper unit tests ───────────────────────────────────────────────────
 
@@ -223,7 +230,10 @@ class ClassImporterWithSectionTest(BaseImportTestCase):
 
 class SubjectImporterCreatesSubjectsTest(BaseImportTestCase):
     def test_creates_subjects(self):
-        SchoolClass.objects.create(school=self.school, name='Primary 1')
+        school_class = SchoolClass.objects.create(
+            school=self.school, name='Primary 1'
+        )
+        self.create_offering(school_class)
 
         csv_path = _write_csv(
             ['class_name', 'subject_name'],
@@ -233,7 +243,9 @@ class SubjectImporterCreatesSubjectsTest(BaseImportTestCase):
             ],
         )
         try:
-            importer = SubjectImporter(school=self.school)
+            importer = SubjectImporter(
+                school=self.school, academic_session=self.session
+            )
             result = importer.import_csv(csv_path)
 
             self.assertEqual(result['total'], 2)
@@ -251,7 +263,9 @@ class SubjectImporterRequiresExistingClassTest(BaseImportTestCase):
             [{'class_name': 'Nonexistent', 'subject_name': 'History'}],
         )
         try:
-            importer = SubjectImporter(school=self.school)
+            importer = SubjectImporter(
+                school=self.school, academic_session=self.session
+            )
             result = importer.import_csv(csv_path)
 
             self.assertEqual(result['created'], 0)
@@ -264,15 +278,20 @@ class SubjectImporterRequiresExistingClassTest(BaseImportTestCase):
 class SubjectImporterSkipsDuplicatesTest(BaseImportTestCase):
     def test_skips_duplicate_class_subject_link(self):
         school_class = SchoolClass.objects.create(school=self.school, name='Primary 1')
+        offering = self.create_offering(school_class)
         subject = Subject.objects.create(school=self.school, name='English Studies', code='ES')
-        ClassSubject.objects.create(school=self.school, subject=subject, school_class=school_class)
+        ClassSubject.objects.create(
+            school=self.school, subject=subject, class_offering=offering
+        )
 
         csv_path = _write_csv(
             ['class_name', 'subject_name'],
             [{'class_name': 'Primary 1', 'subject_name': 'English Studies'}],
         )
         try:
-            importer = SubjectImporter(school=self.school)
+            importer = SubjectImporter(
+                school=self.school, academic_session=self.session
+            )
             result = importer.import_csv(csv_path)
 
             self.assertEqual(result['skipped'], 1)
@@ -285,15 +304,23 @@ class SubjectImporterSkipsDuplicatesTest(BaseImportTestCase):
         """Importing an existing subject for a new class should create the link."""
         existing_class = SchoolClass.objects.create(school=self.school, name='Primary 1')
         new_class = SchoolClass.objects.create(school=self.school, name='Primary 2')
+        existing_offering = self.create_offering(existing_class)
+        self.create_offering(new_class)
         subject = Subject.objects.create(school=self.school, name='English Studies', code='ES')
-        ClassSubject.objects.create(school=self.school, subject=subject, school_class=existing_class)
+        ClassSubject.objects.create(
+            school=self.school,
+            subject=subject,
+            class_offering=existing_offering,
+        )
 
         csv_path = _write_csv(
             ['class_name', 'subject_name'],
             [{'class_name': 'Primary 2', 'subject_name': 'English Studies'}],
         )
         try:
-            importer = SubjectImporter(school=self.school)
+            importer = SubjectImporter(
+                school=self.school, academic_session=self.session
+            )
             result = importer.import_csv(csv_path)
 
             self.assertEqual(result['created'], 1)

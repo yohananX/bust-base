@@ -14,12 +14,12 @@
         {% include 'components/search_autocomplete.html' with cache_key='subjects' api_path='/school-admin/api/subjects/' item_url='/school-admin/subjects/{id}/edit/' placeholder='Subject name or code' %}
       </div>
       <div>
-        <label class="block text-xs font-medium text-ink-muted mb-1.5">Class</label>
-        <select name="class_id" onchange="this.form.submit()"
+        <label class="block text-xs font-medium text-ink-muted mb-1.5">Class offering</label>
+        <select name="offering_id" onchange="this.form.submit()"
                 class="px-4 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-          <option value="">All Classes</option>
-          {% for c in classes %}
-            <option value="{{ c.id }}" {% if filter_class == c.id|stringformat:'d' %}selected{% endif %}>{{ c.name }}</option>
+          <option value="">All Offerings</option>
+          {% for offering in offerings %}
+            <option value="{{ offering.id }}" {% if filter_offering == offering.id|stringformat:'d' %}selected{% endif %}>{{ offering.school_class.name }} — {{ offering.academic_session.name }}</option>
           {% endfor %}
         </select>
       </div>
@@ -48,7 +48,7 @@
         <tr class="bg-surface-muted text-left text-ink-muted uppercase text-xs tracking-wider">
           <th scope="col" class="px-5 py-3.5 font-semibold">Name</th>
           <th scope="col" class="px-5 py-3.5 font-semibold">Code</th>
-          <th scope="col" class="px-5 py-3.5 font-semibold">Classes</th>
+          <th scope="col" class="px-5 py-3.5 font-semibold">Configured Offerings</th>
           <th scope="col" class="px-5 py-3.5 font-semibold text-right">Actions</th>
         </tr>
       </thead>
@@ -67,9 +67,9 @@
             <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-surface-muted text-ink-muted text-xs font-medium">{{ subj.code }}</span>
           </td>
           <td class="px-5 py-3.5 text-ink">
-            {% with classes=subj.school_classes.all %}
-              {% if classes %}
-                {{ classes|join:", " }}
+            {% with offerings=subj.class_offerings.all %}
+              {% if offerings %}
+                {{ offerings|join:", " }}
               {% else %}
                 <span class="text-ink-faint">—</span>
               {% endif %}

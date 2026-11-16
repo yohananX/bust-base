@@ -90,38 +90,26 @@
 
             <input type="hidden" name="teacher_id" value="{{ selected_teacher.pk }}">
 
-            {# Class select #}
+            {# Class offering select: class and session are one identity #}
             <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1.5">Class <span class="text-red-500">*</span></label>
-              <select name="class_id" id="assign-class" required
+              <label class="block text-xs font-medium text-gray-500 mb-1.5">Class offering <span class="text-red-500">*</span></label>
+              <select name="offering_id" id="assign-offering" required
                       class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all"
                       hx-get="{% url 'school_admin:assignment_subjects' %}"
                       hx-trigger="change"
                       hx-target="#subject-pills"
                       hx-include="[name='teacher_id']"
-                      hx-vals='js:{"class_id": document.getElementById("assign-class").value, "teacher_id": "{{ selected_teacher.pk }}"}'>
-                <option value="">— Select Class —</option>
-                {% for c in classes %}
-                  <option value="{{ c.id }}">{{ c.name }}</option>
+                      hx-vals='js:{"offering_id": document.getElementById("assign-offering").value, "teacher_id": "{{ selected_teacher.pk }}"}'>
+                <option value="">— Select class and session —</option>
+                {% for offering in offerings %}
+                  <option value="{{ offering.id }}">{{ offering.school_class.name }} — {{ offering.academic_session.name }}</option>
                 {% endfor %}
               </select>
             </div>
 
             {# Subject pills (loaded via HTMX when class is selected) #}
             <div id="subject-pills">
-              <p class="text-xs text-gray-400 italic">Select a class to see subjects.</p>
-            </div>
-
-            {# Session select #}
-            <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1.5">Session <span class="text-red-500">*</span></label>
-              <select name="session_id" required
-                      class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-                <option value="">— Select Session —</option>
-                {% for s in sessions %}
-                  <option value="{{ s.id }}" {% if s.is_current %}selected{% endif %}>{{ s.name }}</option>
-                {% endfor %}
-              </select>
+              <p class="text-xs text-gray-400 italic">Select a class offering to see its configured subjects.</p>
             </div>
 
             {# Submit button #}
@@ -159,8 +147,8 @@
 <script>
   // Update submit button label with selected subject count
   document.addEventListener('change', function(e) {
-    if (e.target.name === 'subject_ids' || e.target.closest('#subject-pills')) {
-      const checked = document.querySelectorAll('#subject-pills input[name="subject_ids"]:checked');
+    if (e.target.name === 'class_subject_ids' || e.target.closest('#subject-pills')) {
+      const checked = document.querySelectorAll('#subject-pills input[name="class_subject_ids"]:checked');
       const btn = document.getElementById('assign-submit-btn');
       const label = document.getElementById('assign-btn-label');
       const count = document.getElementById('assign-count');

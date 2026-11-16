@@ -14,20 +14,14 @@ from students.models import ClassEnrollment
 VALID_SCORE_FIELDS = {'exam_score'}
 
 
-def _score_owned_by_teacher(score, user):
-    """Return True when the user is the teacher assigned to this score's class+subject."""
-    enrollment = ClassEnrollment.objects.filter(
-        student=score.student,
-        session=score.term.session,
-        is_current=True,
-    ).first()
-    if not enrollment:
-        return False
+def _score_owned_by_teacher(score, user, assignment_pk=None):
+    """Return True for the exact teacher/configuration assignment."""
     return TeacherAssignment.objects.filter(
+        pk=assignment_pk,
+        school=score.school,
         teacher=user,
-        subject=score.subject,
-        school_class=enrollment.school_class,
-        session=score.term.session,
+        class_subject=score.class_subject,
+        class_subject__class_offering__academic_session=score.term.session,
     ).exists()
 
 
@@ -45,48 +39,57 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
     allowed_roles = [Roles.TEACHER]
 
     def get(self, request):
-        assignments = TeacherAssignment.objects.filter(
-            teacher=request.user,
-            session__is_current=True,
-        ).select_related('subject', 'school_class', 'session')
+        current_term = Term.objects.filter(
+            school=request.school, is_current=True,
+        ).select_related('session').first()
+
+        assignments = TeacherAssignment.objects.none()
+        if current_term:
+            assignments = TeacherAssignment.objects.filter(
+                school=request.school,
+                teacher=request.user,
+                class_subject__class_offering__academic_session=current_term.session,
+            ).select_related(
+                'class_subject__subject',
+                'class_subject__class_offering__school_class',
+                'class_subject__class_offering__academic_session',
+            )
 
         subject_count = len(set(a.subject_id for a in assignments))
         class_count = len(set(a.school_class_id for a in assignments))
 
-        class_ids = [a.school_class_id for a in assignments]
-
-        current_term = Term.objects.filter(
-            school=request.school, is_current=True,
-        ).first()
+        offering_ids = [a.class_offering_id for a in assignments]
 
         # Per-assignment progress + term-aware aggregates for the current term
         assignment_progress = []
         if current_term and assignments:
-            subject_ids = list({a.subject_id for a in assignments})
+            class_subject_ids = list({a.class_subject_id for a in assignments})
 
-            # Map each student to their class in the current session
-            student_class = {}
+            # Map each student to their exact class offering.
+            student_offering = {}
             for student_id, class_id in ClassEnrollment.objects.filter(
-                school_class_id__in=class_ids,
-                session__is_current=True,
-                is_current=True,
-            ).values_list('student_id', 'school_class_id'):
-                student_class.setdefault(student_id, class_id)
+                school=request.school,
+                class_offering_id__in=offering_ids,
+            ).values_list('student_id', 'class_offering_id'):
+                student_offering.setdefault(student_id, class_id)
 
             term_scores = list(Score.objects.filter(
-                subject_id__in=subject_ids, term=current_term,
-            ).select_related('subject', 'student'))
+                school=request.school,
+                class_subject_id__in=class_subject_ids,
+                term=current_term,
+            ).select_related('class_subject__subject', 'student'))
 
             for a in assignments:
                 total = ClassEnrollment.objects.filter(
-                    school_class=a.school_class, session=a.session, is_current=True,
+                    school=request.school,
+                    class_offering_id=a.class_offering_id,
                 ).count()
                 complete = 0
                 entered = 0
                 for sc in term_scores:
-                    if sc.subject_id != a.subject_id:
+                    if sc.class_subject_id != a.class_subject_id:
                         continue
-                    if student_class.get(sc.student_id) != a.school_class_id:
+                    if student_offering.get(sc.student_id) != a.class_offering_id:
                         continue
                     entered += 1
                     if sc.is_complete:
@@ -108,7 +111,7 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
             # "X of Y students fully graded this term": a student counts as
             # fully graded when every score for their class+subject this term
             # is complete.
-            students_total = len(set(student_class.keys()))
+            students_total = len(set(student_offering.keys()))
             all_students_scored = 0
             if students_total:
                 complete_per_student = {}
@@ -116,23 +119,27 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
                     if not sc.is_complete:
                         continue
                     sid = sc.student_id
-                    if sid not in student_class:
+                    if sid not in student_offering:
                         continue
-                    class_id = student_class[sid]
-                    # Only count scores for subjects the teacher owns in this class
+                    offering_id = student_offering[sid]
+                    # Only count scores for configurations the teacher owns in
+                    # this exact offering.
                     if not any(
-                        a.school_class_id == class_id and a.subject_id == sc.subject_id
+                        a.class_offering_id == offering_id
+                        and a.class_subject_id == sc.class_subject_id
                         for a in assignments
                     ):
                         continue
                     complete_per_student.setdefault(sid, 0)
                     complete_per_student[sid] += 1
                 # Expected score count per student = subjects taught in their class
-                subjects_per_class = {}
+                subjects_per_offering = {}
                 for a in assignments:
-                    subjects_per_class.setdefault(a.school_class_id, set()).add(a.subject_id)
-                for sid, class_id in student_class.items():
-                    expected = len(subjects_per_class.get(class_id, set()))
+                    subjects_per_offering.setdefault(
+                        a.class_offering_id, set()
+                    ).add(a.class_subject_id)
+                for sid, offering_id in student_offering.items():
+                    expected = len(subjects_per_offering.get(offering_id, set()))
                     if expected and complete_per_student.get(sid, 0) >= expected:
                         all_students_scored += 1
         else:
@@ -154,15 +161,15 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
         # Most recently entered scores
         recent_scores = []
         for sc in Score.objects.filter(
-            entered_by=request.user,
-        ).select_related('student', 'student__user', 'subject').order_by('-updated_at')[:5]:
-            enrollment = ClassEnrollment.objects.filter(
-                student=sc.student, session=sc.term.session, is_current=True,
-            ).select_related('school_class').first()
+            school=request.school, entered_by=request.user,
+        ).select_related(
+            'student', 'student__user', 'class_subject__subject',
+            'class_subject__class_offering__school_class',
+        ).order_by('-updated_at')[:5]:
             recent_scores.append({
                 'student_name': sc.student.user.get_full_name() or sc.student.user.username,
                 'subject': sc.subject.name,
-                'class_name': enrollment.school_class.name if enrollment else '',
+                'class_name': sc.class_subject.school_class.name,
                 'total': sc.total_score if sc.is_complete else None,
                 'complete': sc.is_complete,
                 'passed': sc.passed,
@@ -189,10 +196,23 @@ class TeacherAssignmentsView(RoleRequiredMixin, View):
     allowed_roles = [Roles.TEACHER]
 
     def get(self, request):
-        assignments = TeacherAssignment.objects.filter(
-            teacher=request.user,
-            session__is_current=True,
-        ).select_related('subject', 'school_class', 'session').order_by('school_class__name', 'subject__name')
+        current_term = Term.objects.filter(
+            school=request.school, is_current=True,
+        ).select_related('session').first()
+        assignments = TeacherAssignment.objects.none()
+        if current_term:
+            assignments = TeacherAssignment.objects.filter(
+                school=request.school,
+                teacher=request.user,
+                class_subject__class_offering__academic_session=current_term.session,
+            ).select_related(
+                'class_subject__subject',
+                'class_subject__class_offering__school_class',
+                'class_subject__class_offering__academic_session',
+            ).order_by(
+                'class_subject__class_offering__school_class__name',
+                'class_subject__subject__name',
+            )
         return render(request, 'academics/teacher/assignments.html', {
             'assignments': assignments,
         })
@@ -204,26 +224,37 @@ class TeacherScoreGridView(RoleRequiredMixin, View):
     allowed_roles = [Roles.TEACHER]
 
     def get(self, request, pk):
-        assignment = get_object_or_404(TeacherAssignment, pk=pk)
-        if assignment.teacher != request.user:
+        assignment = get_object_or_404(
+            TeacherAssignment.objects.select_related(
+                'class_subject__subject',
+                'class_subject__class_offering__school_class',
+                'class_subject__class_offering__academic_session',
+            ),
+            pk=pk,
+        )
+        if (
+            assignment.school_id != request.school.pk
+            or assignment.teacher_id != request.user.pk
+        ):
             return HttpResponseForbidden("Not your assignment")
 
-        current_term = Term.objects.filter(
+        current_term = get_object_or_404(
+            Term,
             school=request.school,
             is_current=True,
-        ).first()
+            session=assignment.session,
+        )
 
         enrollments = ClassEnrollment.objects.filter(
-            school_class=assignment.school_class,
-            session=assignment.session,
-            is_current=True,
+            school=request.school,
+            class_offering=assignment.class_offering,
         ).select_related('student', 'student__user')
 
         scores = []
         for enrollment in enrollments:
             score, created = Score.objects.get_or_create(
                 student=enrollment.student,
-                subject=assignment.subject,
+                class_subject=assignment.class_subject,
                 term=current_term,
                 defaults={
                     'school': request.school,
@@ -259,9 +290,15 @@ class TeacherScoreUpdateView(RoleRequiredMixin, View):
     def post(self, request, pk, score_pk):
         from core.toasts import attach_toast
 
-        score = get_object_or_404(Score, pk=score_pk)
+        score = get_object_or_404(
+            Score.objects.select_related(
+                'student', 'term__session', 'class_subject__class_offering',
+            ),
+            pk=score_pk,
+            school=request.school,
+        )
 
-        if not _score_owned_by_teacher(score, request.user):
+        if not _score_owned_by_teacher(score, request.user, assignment_pk=pk):
             resp = HttpResponseForbidden("Not your assignment")
             return attach_toast(resp, "Not your assignment", "error")
 

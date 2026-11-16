@@ -19,15 +19,18 @@ def build_booklet_context(student, term, school):
 
     enrollment = ClassEnrollment.objects.filter(
         student=student, session=term.session
-    ).select_related('school_class').first()
+    ).select_related('school_class', 'class_offering').first()
 
-    if not enrollment:
+    if not enrollment or not enrollment.class_offering_id:
         return None, None
 
     scores = Score.objects.filter(
         student=student, term=term,
+        class_subject__class_offering=enrollment.class_offering,
         moderation_status=Score.MODERATION_APPROVED,
-    ).select_related('subject').order_by('subject__name')
+    ).select_related(
+        'class_subject__subject', 'class_subject__class_offering'
+    ).order_by('class_subject__subject__name')
 
     term_result = TermResult.objects.filter(
         student=student, term=term
@@ -52,10 +55,12 @@ def build_booklet_context(student, term, school):
             'grade': grade_label or '-',
             'position': score.position,
             'remark': grade_obj.remark if grade_obj else '-',
+            'pass_mark': score.class_subject.effective_pass_mark(),
+            'passed': score.passed,
         })
 
     class_size = ClassEnrollment.objects.filter(
-        school_class=enrollment.school_class, session=term.session, is_current=True
+        class_offering=enrollment.class_offering,
     ).count()
 
     context = {
