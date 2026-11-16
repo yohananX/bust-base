@@ -7,7 +7,12 @@ from .students import (
 )
 from .staff import StaffListView, StaffCreateView, StaffEditView, StaffToggleActiveView, StaffDeleteView
 from .parents import ParentListView
-from .classes import ClassListView, ClassCreateView, ClassEditView, ClassDeleteView, ClassDetailView, ClassSubjectAddView, ClassSubjectCreateView, ClassSubjectRemoveView, ClassSubjectBulkAddView
+from .classes import (
+    ClassListView, ClassCreateView, ClassEditView, ClassDeleteView,
+    ClassDetailView, ClassSubjectAddView, ClassSubjectCreateView,
+    ClassSubjectRemoveView, ClassSubjectBulkAddView,
+    ClassSubjectUpdateView, ClassSubjectCopyView,
+)
 from .academics import (
     SubjectListView, SubjectCreateView, SubjectEditView, SubjectDeleteView,
     TeacherAssignmentListView, AssignmentDeleteView, AssignmentAddView, AssignmentSubjectsPartialView,

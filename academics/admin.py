@@ -13,9 +13,21 @@ from .models import ClassSubject, GradeScale, Score, Subject, TeacherAssignment,
 
 @admin.register(ClassSubject)
 class ClassSubjectAdmin(admin.ModelAdmin):
-    list_display = ['subject', 'school_class', 'pass_mark', 'school']
-    list_filter = ['school', 'school_class', 'subject']
-    search_fields = ['subject__name', 'subject__code', 'school_class__name']
+    list_display = ['subject', 'class_offering', 'pass_mark', 'school']
+    list_filter = [
+        'school', 'class_offering__academic_session',
+        'class_offering__school_class', 'subject',
+    ]
+    search_fields = [
+        'subject__name', 'subject__code',
+        'class_offering__school_class__name',
+        'class_offering__academic_session__name',
+    ]
+    autocomplete_fields = ['class_offering', 'subject']
+    list_select_related = [
+        'school', 'subject', 'class_offering__school_class',
+        'class_offering__academic_session',
+    ]
     list_editable = ['pass_mark']
 
 
@@ -24,7 +36,7 @@ class SubjectAdmin(admin.ModelAdmin):
     list_display = ['name', 'code', 'school']
     list_filter = ['school']
     search_fields = ['name', 'code']
-    raw_id_fields = ['school_classes']
+    raw_id_fields = ['class_offerings']
 
 
 # ---------------------------------------------------------------------------
@@ -34,12 +46,23 @@ class SubjectAdmin(admin.ModelAdmin):
 @admin.register(TeacherAssignment)
 class TeacherAssignmentAdmin(admin.ModelAdmin):
     list_display = ['teacher', 'subject', 'school_class', 'session', 'school']
-    list_filter = ['session', 'subject', 'school_class', 'school']
+    list_filter = [
+        'class_subject__class_offering__academic_session',
+        'class_subject__subject',
+        'class_subject__class_offering__school_class',
+        'school',
+    ]
     search_fields = [
         'teacher__username',
         'teacher__first_name',
         'teacher__last_name',
-        'subject__name',
+        'class_subject__subject__name',
+    ]
+    autocomplete_fields = ['teacher', 'class_subject']
+    list_select_related = [
+        'school', 'teacher', 'class_subject__subject',
+        'class_subject__class_offering__school_class',
+        'class_subject__class_offering__academic_session',
     ]
 
 
@@ -53,7 +76,10 @@ class ScoreAdmin(admin.ModelAdmin):
         'student', 'subject', 'term', 'test_1', 'test_2', 'test_3',
         'exam_score', 'total_score', 'passed', 'position', 'school',
     ]
-    list_filter = ['term', 'subject', 'student__enrollments__school_class', 'school']
+    list_filter = [
+        'term', 'class_subject__subject',
+        'class_subject__class_offering__school_class', 'school',
+    ]
     search_fields = [
         'student__user__username', 'student__user__first_name',
         'student__user__last_name', 'student__admission_number',
@@ -87,23 +113,15 @@ class ScoreAdmin(admin.ModelAdmin):
 
         updated = 0
         processed = set()
-        for score in queryset.select_related('student', 'subject', 'term'):
-            # Get the student's class enrollment for the score's own session,
-            # so historical terms rank against their original class roster.
-            current_enrollment = score.student.enrollments.filter(
-                session=score.term.session
-            ).first()
-            if not current_enrollment:
-                continue
-            key = (current_enrollment.school_class_id, score.subject_id, score.term_id)
+        for score in queryset.select_related(
+            'student', 'class_subject__subject',
+            'class_subject__class_offering', 'term',
+        ):
+            key = (score.class_subject_id, score.term_id)
             if key in processed:
                 continue
             processed.add(key)
-            updated += compute_positions(
-                current_enrollment.school_class,
-                score.subject,
-                score.term,
-            )
+            updated += compute_positions(score.class_subject, score.term)
 
         self.message_user(
             request,
@@ -220,15 +238,16 @@ class TermResultAdmin(admin.ModelAdmin):
         """Compute term summaries for selected term results."""
         from .ranking import compute_term_summary
 
-        # Get unique (school_class, term) pairs
+        # Get unique (class offering, term) pairs.
         pairs = set()
-        for tr in queryset.select_related('term', 'student__enrollments__school_class'):
+        for tr in queryset.select_related('term'):
             for enrollment in tr.student.enrollments.filter(session=tr.term.session):
-                pairs.add((enrollment.school_class, tr.term))
+                if enrollment.class_offering_id:
+                    pairs.add((enrollment.class_offering, tr.term))
 
         total = 0
-        for school_class, term in pairs:
-            total += compute_term_summary(school_class, term)
+        for class_offering, term in pairs:
+            total += compute_term_summary(class_offering, term)
 
         self.message_user(
             request,

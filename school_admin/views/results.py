@@ -9,8 +9,8 @@ from django.utils import timezone
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from core.models import Term
-from academics.models import Score, Subject, TeacherAssignment
-from students.models import SchoolClass
+from academics.models import ClassSubject, Score, Subject, TeacherAssignment
+from students.models import ClassOffering, SchoolClass
 
 
 class PublishResultsView(RoleRequiredMixin, View):
@@ -117,21 +117,28 @@ class ResultReviewView(RoleRequiredMixin, View):
             class_ids = Score.objects.filter(
                 school=school, term=selected_term
             ).values_list(
-                'student__enrollments__school_class', flat=True
+                'class_subject__class_offering__school_class_id', flat=True
             ).distinct()
             classes = SchoolClass.objects.filter(
-                pk__in=list(class_ids), is_active=True
+                school=school, pk__in=list(class_ids)
             ).order_by('academic_stage__display_order', 'name')
 
             if class_id:
                 selected_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
-
-                # Teachers assigned to this class (and subject) for the session
-                # the selected term belongs to.
-                class_assignments = TeacherAssignment.objects.filter(
+                selected_offering = get_object_or_404(
+                    ClassOffering.objects.select_related(
+                        'school_class', 'academic_session'
+                    ),
+                    school=school,
                     school_class=selected_class,
-                    session=selected_term.session,
-                ).select_related('teacher')
+                    academic_session=selected_term.session,
+                )
+
+                # Teachers assigned to the exact offering and configuration.
+                class_assignments = TeacherAssignment.objects.filter(
+                    school=school,
+                    class_subject__class_offering=selected_offering,
+                ).select_related('teacher', 'class_subject__subject')
                 teacher_by_subject = {}
                 for assignment in class_assignments:
                     teacher_by_subject.setdefault(
@@ -147,9 +154,8 @@ class ResultReviewView(RoleRequiredMixin, View):
                 subject_options = list(
                     Subject.objects.filter(
                         school=school,
-                        scores__term=selected_term,
-                        scores__student__enrollments__school_class=selected_class,
-                        scores__student__enrollments__is_current=True,
+                        class_subjects__class_offering=selected_offering,
+                        class_subjects__scores__term=selected_term,
                     ).distinct().order_by('name')
                 )
 
@@ -157,14 +163,16 @@ class ResultReviewView(RoleRequiredMixin, View):
                 scores = Score.objects.filter(
                     school=school,
                     term=selected_term,
-                    student__enrollments__school_class=selected_class,
-                    student__enrollments__is_current=True,
+                    class_subject__class_offering=selected_offering,
                 ).select_related(
-                    'student__user', 'subject', 'entered_by', 'moderated_by'
-                ).order_by('student__admission_number', 'subject__name')
+                    'student__user', 'class_subject__subject',
+                    'entered_by', 'moderated_by'
+                ).order_by(
+                    'student__admission_number', 'class_subject__subject__name'
+                )
 
                 if subject_id:
-                    scores = scores.filter(subject_id=subject_id)
+                    scores = scores.filter(class_subject__subject_id=subject_id)
 
                 # Student search: split into tokens so "Adaeze Adewale" works
                 if q:
@@ -224,9 +232,12 @@ class ResultReviewView(RoleRequiredMixin, View):
             else:
                 # Show summary per class
                 assignments = TeacherAssignment.objects.filter(
-                    school_class__in=classes,
-                    session=selected_term.session,
-                ).select_related('teacher')
+                    school=school,
+                    class_subject__class_offering__school_class__in=classes,
+                    class_subject__class_offering__academic_session=selected_term.session,
+                ).select_related(
+                    'teacher', 'class_subject__class_offering__school_class'
+                )
                 teachers_by_class = {}
                 for assignment in assignments:
                     teachers_by_class.setdefault(
@@ -237,8 +248,8 @@ class ResultReviewView(RoleRequiredMixin, View):
                     counts = Score.objects.filter(
                         school=school,
                         term=selected_term,
-                        student__enrollments__school_class=cls,
-                        student__enrollments__is_current=True,
+                        class_subject__class_offering__school_class=cls,
+                        class_subject__class_offering__academic_session=selected_term.session,
                     ).aggregate(
                         total=Count('id'),
                         pending=Count('id', filter=Q(moderation_status=Score.MODERATION_PENDING)),
@@ -291,7 +302,7 @@ class ResultReviewView(RoleRequiredMixin, View):
         subject_id = request.POST.get('subject_id')
         student_id = request.POST.get('student_id')
 
-        def _recompute(school_class, term):
+        def _recompute(class_offering, term):
             """Rebuild positions + term summaries for a class/term.
 
             Called after any moderation mutation so rejected scores drop out
@@ -299,15 +310,16 @@ class ResultReviewView(RoleRequiredMixin, View):
             """
             from academics.ranking import compute_positions, compute_term_summary
 
-            subject_ids = Score.objects.filter(
+            class_subject_ids = Score.objects.filter(
                 school=school,
                 term=term,
-                student__enrollments__school_class=school_class,
-                student__enrollments__session=term.session,
-            ).values_list('subject', flat=True).distinct()
-            for subject_id in subject_ids:
-                compute_positions(school_class, subject_id, term)
-            compute_term_summary(school_class, term)
+                class_subject__class_offering=class_offering,
+            ).values_list('class_subject_id', flat=True).distinct()
+            for class_subject in ClassSubject.objects.filter(
+                pk__in=class_subject_ids
+            ).select_related('class_offering'):
+                compute_positions(class_subject, term)
+            compute_term_summary(class_offering, term)
 
         def _redirect():
             redirect_url = reverse('school_admin:review_results')
@@ -325,7 +337,14 @@ class ResultReviewView(RoleRequiredMixin, View):
             return redirect(f"{redirect_url}?{urlencode(params)}" if params else redirect_url)
 
         if action in ('approve', 'reject') and score_id:
-            score = get_object_or_404(Score, school=school, pk=score_id)
+            score = get_object_or_404(
+                Score.objects.select_related(
+                    'class_subject__subject',
+                    'class_subject__class_offering',
+                ),
+                school=school,
+                pk=score_id,
+            )
 
             if action == 'approve':
                 score.moderation_status = Score.MODERATION_APPROVED
@@ -338,22 +357,22 @@ class ResultReviewView(RoleRequiredMixin, View):
             score.moderated_at = timezone.now()
             score.save(update_fields=['moderation_status', 'moderated_by', 'moderated_at'])
 
-            from students.models import ClassEnrollment
-            enrollment = ClassEnrollment.objects.filter(
-                student=score.student, session=score.term.session
-            ).select_related('school_class').first()
-            if enrollment:
-                _recompute(enrollment.school_class, score.term)
+            _recompute(score.class_subject.class_offering, score.term)
 
         elif action == 'approve_all':
             if term_id and class_id:
                 school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
                 term = get_object_or_404(Term, school=school, pk=term_id)
+                offering = get_object_or_404(
+                    ClassOffering,
+                    school=school,
+                    school_class=school_class,
+                    academic_session=term.session,
+                )
                 updated = Score.objects.filter(
                     school=school,
                     term_id=term_id,
-                    student__enrollments__school_class_id=class_id,
-                    student__enrollments__is_current=True,
+                    class_subject__class_offering=offering,
                     moderation_status=Score.MODERATION_PENDING,
                 ).update(
                     moderation_status=Score.MODERATION_APPROVED,
@@ -361,7 +380,7 @@ class ResultReviewView(RoleRequiredMixin, View):
                     moderated_at=timezone.now(),
                 )
                 if updated:
-                    _recompute(school_class, term)
+                    _recompute(offering, term)
                 messages.success(request, f'{updated} pending scores approved.')
             else:
                 messages.error(request, 'Missing term or class information.')
@@ -370,12 +389,17 @@ class ResultReviewView(RoleRequiredMixin, View):
             if term_id and class_id and subject_id:
                 school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
                 term = get_object_or_404(Term, school=school, pk=term_id)
+                offering = get_object_or_404(
+                    ClassOffering,
+                    school=school,
+                    school_class=school_class,
+                    academic_session=term.session,
+                )
                 updated = Score.objects.filter(
                     school=school,
                     term_id=term_id,
-                    subject_id=subject_id,
-                    student__enrollments__school_class_id=class_id,
-                    student__enrollments__is_current=True,
+                    class_subject__subject_id=subject_id,
+                    class_subject__class_offering=offering,
                     moderation_status=Score.MODERATION_PENDING,
                 ).update(
                     moderation_status=(
@@ -386,7 +410,7 @@ class ResultReviewView(RoleRequiredMixin, View):
                     moderated_at=timezone.now(),
                 )
                 if updated:
-                    _recompute(school_class, term)
+                    _recompute(offering, term)
                 verb = 'approved' if action == 'approve_subject' else 'rejected'
                 messages.success(request, f'{updated} pending scores {verb} for this subject.')
             else:
@@ -396,12 +420,17 @@ class ResultReviewView(RoleRequiredMixin, View):
             if term_id and class_id and student_id:
                 school_class = get_object_or_404(SchoolClass, school=school, pk=class_id)
                 term = get_object_or_404(Term, school=school, pk=term_id)
+                offering = get_object_or_404(
+                    ClassOffering,
+                    school=school,
+                    school_class=school_class,
+                    academic_session=term.session,
+                )
                 updated = Score.objects.filter(
                     school=school,
                     term_id=term_id,
                     student_id=student_id,
-                    student__enrollments__school_class_id=class_id,
-                    student__enrollments__is_current=True,
+                    class_subject__class_offering=offering,
                     moderation_status=Score.MODERATION_PENDING,
                 ).update(
                     moderation_status=(
@@ -412,7 +441,7 @@ class ResultReviewView(RoleRequiredMixin, View):
                     moderated_at=timezone.now(),
                 )
                 if updated:
-                    _recompute(school_class, term)
+                    _recompute(offering, term)
                 verb = 'approved' if action == 'approve_student' else 'rejected'
                 messages.success(request, f'{updated} pending scores {verb} for this student.')
             else:

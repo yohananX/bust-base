@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand
 from core.models import School
 from accounts.models import User, Roles
 from students.models import SchoolClass, Student
-from academics.models import Subject
+from academics.models import ClassSubject, Subject
 
 
 EXPORTERS = {
@@ -62,10 +62,24 @@ class Command(BaseCommand):
         ]
 
     def _export_subjects(self, school):
-        subjects = Subject.objects.filter(school=school).order_by('name')
+        configurations = ClassSubject.objects.filter(school=school).select_related(
+            'subject',
+            'class_offering__school_class',
+            'class_offering__academic_session',
+        ).order_by(
+            'class_offering__academic_session__start_date',
+            'class_offering__school_class__name',
+            'subject__name',
+        )
         return [
-            {'class_name': '', 'subject_name': s.name, 'code': s.code}
-            for s in subjects
+            {
+                'class_name': config.class_offering.school_class.name,
+                'session_name': config.class_offering.academic_session.name,
+                'subject_name': config.subject.name,
+                'code': config.subject.code,
+                'pass_mark': config.pass_mark if config.pass_mark is not None else '',
+            }
+            for config in configurations
         ]
 
     def _export_students(self, school):

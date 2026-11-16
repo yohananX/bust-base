@@ -180,7 +180,10 @@ def check_teacher_assignments(school):
     if current_session is None:
         # The session check already covers this situation.
         return None
-    if not TeacherAssignment.objects.filter(school=school, session=current_session).exists():
+    if not TeacherAssignment.objects.filter(
+        school=school,
+        class_subject__class_offering__academic_session=current_session,
+    ).exists():
         return _alert(
             key='no_teacher_assignments',
             title='No teacher assignments',

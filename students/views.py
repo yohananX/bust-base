@@ -15,7 +15,7 @@ from fees.models import Invoice, Payment
 from fees.selectors import owed_term_ids as owed_term_ids_for
 from fees.selectors import owed_term_ids_from
 
-from academics.models import Score, TermResult, TeacherAssignment
+from academics.models import ClassSubject, Score, TermResult, TeacherAssignment
 from lessons.models import LessonEnrollment
 
 
@@ -259,7 +259,9 @@ class ParentChildDetailView(RoleRequiredMixin, View):
 
         scores = Score.objects.visible_to_user(request.user).filter(
             student=student,
-        ).select_related('subject', 'term').order_by('subject__name')
+        ).select_related('class_subject__subject', 'term').order_by(
+            'class_subject__subject__name'
+        )
 
         published_term_qs = Term.for_current_session(request.school).filter(
             results_published=True, scores__student=student,
@@ -607,7 +609,9 @@ class StudentOverviewView(RoleRequiredMixin, View):
 
         scores = Score.objects.visible_to_user(request.user).filter(
             student__user=request.user,
-        ).select_related('subject', 'term').order_by('subject__name')
+        ).select_related('class_subject__subject', 'term').order_by(
+            'class_subject__subject__name'
+        )
 
         # Published terms with scores for this student
         published_terms = Term.for_current_session(request.school).filter(
@@ -644,12 +648,14 @@ class StudentOverviewView(RoleRequiredMixin, View):
 
         # Subject count for current term
         subject_count = 0
-        if enrollment and active_term and enrollment.session_id == active_term.session_id:
-            subject_count = TeacherAssignment.objects.filter(
+        if (
+            enrollment and enrollment.class_offering_id
+            and active_term and enrollment.session_id == active_term.session_id
+        ):
+            subject_count = ClassSubject.objects.filter(
                 school=request.school,
-                school_class=enrollment.school_class,
-                session=active_term.session,
-            ).values('subject_id').distinct().count()
+                class_offering=enrollment.class_offering,
+            ).count()
 
         # Last confirmed payment
         last_payment = Payment.objects.filter(
@@ -810,8 +816,8 @@ class StudentResultsHistoryView(RoleRequiredMixin, View):
 class StudentSubjectsView(RoleRequiredMixin, View):
     """Current-term subject list for the student.
 
-    Subjects come from the TeacherAssignments for the class the student is
-    enrolled in, filtered to the session of the current term.
+    Subjects come from the student's exact ClassOffering configuration;
+    teacher names are attached from assignments to those configurations.
     """
 
     allowed_roles = [Roles.STUDENT]
@@ -827,26 +833,33 @@ class StudentSubjectsView(RoleRequiredMixin, View):
 
         subjects = []
         if (
-            enrollment and active_term
+            enrollment and enrollment.class_offering_id and active_term
             and enrollment.session_id == active_term.session_id
         ):
-            assignments = TeacherAssignment.objects.filter(
+            configurations = ClassSubject.objects.filter(
                 school=request.school,
-                school_class=enrollment.school_class,
-                session=active_term.session,
-            ).select_related('subject', 'teacher').order_by('subject__name')
-
-            by_subject = {}
-            for assignment in assignments:
-                group = by_subject.setdefault(
-                    assignment.subject_id,
-                    {'subject': assignment.subject, 'teachers': []},
+                class_offering=enrollment.class_offering,
+                teacher_assignments__school=request.school,
+            ).select_related('subject').prefetch_related(
+                Prefetch(
+                    'teacher_assignments',
+                    queryset=TeacherAssignment.objects.filter(
+                        school=request.school,
+                    ).select_related('teacher'),
                 )
-                group['teachers'].append(
-                    assignment.teacher.get_full_name() or assignment.teacher.username
-                )
+            ).distinct().order_by('subject__name')
 
-            subjects = sorted(by_subject.values(), key=lambda g: g['subject'].name)
+            subjects = [
+                {
+                    'subject': config.subject,
+                    'teachers': [
+                        assignment.teacher.get_full_name()
+                        or assignment.teacher.username
+                        for assignment in config.teacher_assignments.all()
+                    ],
+                }
+                for config in configurations
+            ]
 
         return render(request, 'students/student/subjects.html', {
             'subjects': subjects,

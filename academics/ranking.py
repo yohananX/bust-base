@@ -36,8 +36,8 @@ def _assign_dense_ranks(items, score_attr, id_attr=None, *, key=None):
     return ranked
 
 
-def compute_positions(school_class, subject, term):
-    """Compute Olympic/dense ranking for scores in a given class, subject, and term.
+def compute_positions(class_subject, term):
+    """Compute ranking for one offering-specific subject and term.
 
     Olympic/dense ranking means:
       - Students with the same total_score share the same position.
@@ -53,16 +53,20 @@ def compute_positions(school_class, subject, term):
     reflects scores that made it onto the official record, so rejected
     scores can never skew positions.
 
-    Enrollment is scoped to the term's own session (not "current"), so
-    historical terms rank against the class roster of that session.
+    The subject configuration owns the exact ClassOffering, so historical
+    terms can never drift onto another session's class roster.
 
     Returns the number of scores that received a position.
     """
+    if class_subject.class_offering.academic_session_id != term.session_id:
+        raise ValueError(
+            'ClassSubject offering session must match the ranking term session.'
+        )
+
     base = Score.objects.filter(
-        subject=subject,
+        class_subject=class_subject,
         term=term,
-        student__enrollments__school_class=school_class,
-        student__enrollments__session=term.session,
+        student__enrollments__class_offering=class_subject.class_offering,
     ).select_related('student')
 
     # Reset all positions to None first
@@ -86,8 +90,8 @@ def compute_positions(school_class, subject, term):
     return len(complete)
 
 
-def compute_term_summary(school_class, term):
-    """Compute TermResult rows for every student in a class for a given term.
+def compute_term_summary(class_offering, term):
+    """Compute TermResult rows for every student in an offering and term.
 
     Creates/updates TermResult with:
     - grand_total: sum of all Score.total_score for this student this term
@@ -104,11 +108,15 @@ def compute_term_summary(school_class, term):
     from students.models import Student
     from .models import Score, TermResult
 
-    # Get all students enrolled in this class for the term's session
+    if class_offering.academic_session_id != term.session_id:
+        raise ValueError(
+            'ClassOffering session must match the term summary session.'
+        )
+
+    # Get all students enrolled in this exact class offering.
     enrolled_students = Student.objects.filter(
-        school=school_class.school,
-        enrollments__school_class=school_class,
-        enrollments__session=term.session,
+        school=class_offering.school,
+        enrollments__class_offering=class_offering,
     ).distinct()
 
     # Collect totals per student
@@ -118,8 +126,7 @@ def compute_term_summary(school_class, term):
             student=student,
             term=term,
             moderation_status=Score.MODERATION_APPROVED,
-            student__enrollments__school_class=school_class,
-            student__enrollments__session=term.session,
+            class_subject__class_offering=class_offering,
         )
         complete_scores = [s for s in scores if s.is_complete]
         if not complete_scores:
@@ -146,7 +153,7 @@ def compute_term_summary(school_class, term):
     count = 0
     for entry in student_totals:
         TermResult.objects.update_or_create(
-            school=school_class.school,
+            school=class_offering.school,
             student=entry['student'],
             term=term,
             defaults={
@@ -165,7 +172,7 @@ def compute_term_summary(school_class, term):
     enrolled_ids = set(enrolled_students.values_list('pk', flat=True))
     kept_ids = {entry['student'].pk for entry in student_totals}
     TermResult.objects.filter(
-        school=school_class.school,
+        school=class_offering.school,
         term=term,
         student__in=enrolled_ids,
     ).exclude(student_id__in=kept_ids).delete()

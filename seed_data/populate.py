@@ -27,14 +27,16 @@ from django.db import transaction
 from django.utils import timezone
 
 from accounts.models import Roles, User
-from academics.models import Score, Subject, TeacherAssignment, TermResult
+from academics.models import ClassSubject, Score, Subject, TeacherAssignment, TermResult
 from academics.ranking import compute_positions, compute_term_summary
 from core.models import AcademicSession, Term
 from data_import.importers import (
     ClassImporter, StaffImporter, StudentImporter, SubjectImporter,
 )
 from fees.models import FeeCategory, FeePrice, FeeReceipt, Invoice, InvoiceLineItem, Payment
-from students.models import ClassEnrollment, SchoolClass, Student, StudentGuardianLink
+from students.models import (
+    ClassEnrollment, ClassOffering, SchoolClass, Student, StudentGuardianLink,
+)
 
 from curriculum import CLASSES, CURRICULUM, FEE_TIERS, PRIMARY_SUBJECTS, TEACHERS
 
@@ -54,9 +56,10 @@ def wipe(school):
     print('--- wiping old data ---')
     counts = {}
     models = [
-        TeacherAssignment, Score, TermResult, Payment, FeeReceipt,
+        TeacherAssignment, Score, TermResult, ClassSubject, Payment, FeeReceipt,
         InvoiceLineItem, Invoice, FeePrice, FeeCategory,
-        StudentGuardianLink, ClassEnrollment, Student, Subject, SchoolClass,
+        StudentGuardianLink, ClassEnrollment, Student, ClassOffering,
+        Subject, SchoolClass,
     ]
     for model in models:
         qs = model.objects.filter(school=school) if hasattr(model, 'school') else model.objects.all()
@@ -72,13 +75,24 @@ def wipe(school):
     print('  deleted users:', n_users)
 
 
-def import_classes_and_subjects(school):
+def import_classes_and_subjects(school, session):
     print('--- importing classes ---')
     result = ClassImporter(school=school, dry_run=False, verbose=False) \
         .import_csv(os.path.join(HERE, 'classes.csv'))
     print('  classes:', result)
+    for school_class in SchoolClass.objects.filter(school=school):
+        ClassOffering.objects.get_or_create(
+            school=school,
+            school_class=school_class,
+            academic_session=session,
+        )
     print('--- importing subjects ---')
-    result = SubjectImporter(school=school, dry_run=False, verbose=False) \
+    result = SubjectImporter(
+        school=school,
+        academic_session=session,
+        dry_run=False,
+        verbose=False,
+    ) \
         .import_csv(os.path.join(HERE, 'subjects.csv'))
     print('  subjects:', result)
 
@@ -117,6 +131,20 @@ def build_assignments(school, session):
     classes = {c.name: c for c in SchoolClass.objects.filter(school=school)}
     subjects = {s.name: s for s in Subject.objects.filter(school=school)}
     users = {u.username: u for u in User.objects.filter(school=school, role=Roles.TEACHER)}
+    offerings = {
+        offering.school_class.name: offering
+        for offering in ClassOffering.objects.filter(
+            school=school,
+            academic_session=session,
+        ).select_related('school_class')
+    }
+    configurations = {
+        (config.class_offering_id, config.subject_id): config
+        for config in ClassSubject.objects.filter(
+            school=school,
+            class_offering__academic_session=session,
+        )
+    }
     created = 0
     for first, last, spec in TEACHERS:
         user = users.get('{}.{}'.format(first, last).lower().replace("'", '').replace('-', ''))
@@ -131,9 +159,15 @@ def build_assignments(school, session):
         else:
             pairs = spec
         for subject_name, class_name in pairs:
+            offering = offerings[class_name]
+            class_subject = configurations[(
+                offering.pk,
+                subjects[subject_name].pk,
+            )]
             TeacherAssignment.objects.create(
-                school=school, teacher=user, subject=subjects[subject_name],
-                school_class=classes[class_name], session=session,
+                school=school,
+                teacher=user,
+                class_subject=class_subject,
             )
             created += 1
     print('  assignments created:', created)
@@ -195,8 +229,11 @@ def generate_scores(school, term, classes, subjects):
     admin = User.objects.filter(school=school, role=Roles.ADMIN) \
         .exclude(is_superuser=True).first()
     assignments = {}
-    for a in TeacherAssignment.objects.filter(school=school, session=term.session):
-        assignments[(a.school_class_id, a.subject_id)] = a.teacher_id
+    for a in TeacherAssignment.objects.filter(
+        school=school,
+        class_subject__class_offering__academic_session=term.session,
+    ).select_related('class_subject__class_offering'):
+        assignments[(a.class_offering_id, a.subject_id)] = a.teacher_id
 
     students = list(Student.objects.filter(school=school).select_related('user'))
     enrollments = {
@@ -211,10 +248,16 @@ def generate_scores(school, term, classes, subjects):
             continue
         for subject_name in CURRICULUM[enrollment.school_class.name]:
             subject = subjects[subject_name]
-            teacher_id = assignments.get((enrollment.school_class_id, subject.id))
+            class_subject = ClassSubject.objects.get(
+                school=school,
+                class_offering=enrollment.class_offering,
+                subject=subject,
+            )
+            teacher_id = assignments.get((enrollment.class_offering_id, subject.id))
             approved = RNG.random() < 0.85
             score = Score.objects.create(
-                school=school, student=student, subject=subject, term=term,
+                school=school, student=student,
+                class_subject=class_subject, term=term,
                 test_1=RNG.randint(4, 10), test_2=RNG.randint(4, 10),
                 test_3=RNG.randint(4, 10), exam_score=RNG.randint(25, 68),
                 entered_by_id=teacher_id or admin.id,
@@ -233,13 +276,28 @@ def compute_rankings(school, term, classes, subjects):
     print('--- computing rankings ---')
     positioned = 0
     for class_name, class_obj in classes.items():
+        offering = ClassOffering.objects.get(
+            school=school,
+            school_class=class_obj,
+            academic_session=term.session,
+        )
         for subject_name in CURRICULUM[class_name]:
-            positioned += compute_positions(class_obj, subjects[subject_name], term)
+            config = ClassSubject.objects.get(
+                school=school,
+                class_offering=offering,
+                subject=subjects[subject_name],
+            )
+            positioned += compute_positions(config, term)
     print('  score positions:', positioned)
 
     summaries = 0
     for class_obj in classes.values():
-        summaries += compute_term_summary(class_obj, term)
+        offering = ClassOffering.objects.get(
+            school=school,
+            school_class=class_obj,
+            academic_session=term.session,
+        )
+        summaries += compute_term_summary(offering, term)
     print('  term results created/updated:', summaries)
 
     for result in TermResult.objects.filter(school=school, term=term):
@@ -273,7 +331,10 @@ def verify(school, term):
     print('  users by role:', by_role)
     print('  classes:', SchoolClass.objects.filter(school=school).count())
     print('  subjects:', Subject.objects.filter(school=school).count())
-    print('  assignments:', TeacherAssignment.objects.filter(school=school, session=term.session).count())
+    print('  assignments:', TeacherAssignment.objects.filter(
+        school=school,
+        class_subject__class_offering__academic_session=term.session,
+    ).count())
     print('  students:', Student.objects.filter(school=school).count())
     print('  enrollments:', ClassEnrollment.objects.filter(school=school, session=term.session).count())
     print('  invoices:', Invoice.objects.filter(school=school, term=term).count())
@@ -307,7 +368,7 @@ def main():
 
     wipe(school)
     with transaction.atomic():
-        import_classes_and_subjects(school)
+        import_classes_and_subjects(school, session)
         create_fee_structures(school, session)
         import_staff(school)
         classes, subjects = build_assignments(school, session)

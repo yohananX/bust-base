@@ -906,11 +906,17 @@ class ResultModerationViewTests(TestCase):
         self.school_class = SchoolClass.objects.create(
             school=self.school, name='JSS1A',
         )
+        self.offering = ClassOffering.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            academic_session=self.session,
+        )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH', pass_mark=40,
         )
-        ClassSubject.objects.create(
-            school=self.school, subject=self.subject, school_class=self.school_class,
+        self.class_subject = ClassSubject.objects.create(
+            school=self.school, subject=self.subject,
+            class_offering=self.offering,
         )
         self.admin_user = User.objects.create_user(
             username='admin1', email='admin@test.com', password='testpass123',
@@ -922,8 +928,7 @@ class ResultModerationViewTests(TestCase):
         )
         TeacherAssignment.objects.create(
             school=self.school, teacher=self.teacher_user,
-            subject=self.subject, school_class=self.school_class,
-            session=self.session,
+            class_subject=self.class_subject,
         )
 
     def _make_student(self, username, admission_number):
@@ -939,14 +944,15 @@ class ResultModerationViewTests(TestCase):
         ClassEnrollment.objects.create(
             school=self.school, student=student,
             school_class=self.school_class, session=self.session,
-            is_current=True,
+            class_offering=self.offering, is_current=True,
         )
         return student
 
     def _score(self, student, total_test, status=Score.MODERATION_PENDING):
         return Score.objects.create(
-            school=self.school, student=student, subject=self.subject,
-            term=self.term, test_1=total_test, test_2=5, test_3=5,
+            school=self.school, student=student,
+            class_subject=self.class_subject, term=self.term,
+            test_1=total_test, test_2=5, test_3=5,
             exam_score=50, entered_by=self.teacher_user,
             moderation_status=status,
         )
@@ -1593,24 +1599,38 @@ class ClassFirstSubjectManagementTests(TestCase):
         self.school_class = SchoolClass.objects.create(
             school=self.school, name='JSS 1',
         )
+        self.offering = ClassOffering.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            academic_session=self.session,
+        )
         self.subject = Subject.objects.create(
             school=self.school, name='Mathematics', code='MTH',
         )
 
     def test_class_detail_renders_subjects(self):
-        resp = self.client.get(reverse('school_admin:class_detail', args=[self.school_class.pk]))
+        ClassSubject.objects.create(
+            school=self.school, subject=self.subject,
+            class_offering=self.offering, pass_mark=40,
+        )
+        resp = self.client.get(
+            reverse('school_admin:class_detail', args=[self.school_class.pk]),
+            {'offering_id': self.offering.pk},
+        )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Mathematics')
 
     def test_add_existing_subject_to_class(self):
         resp = self.client.post(
             reverse('school_admin:class_subject_add', args=[self.school_class.pk]),
-            {'subject_ids': [self.subject.pk], 'pass_mark': '50'},
+            {'offering_id': self.offering.pk,
+             'subject_ids': [self.subject.pk], 'pass_mark': '50'},
         )
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(
             ClassSubject.objects.filter(
-                school=self.school, subject=self.subject, school_class=self.school_class, pass_mark=50
+                school=self.school, subject=self.subject,
+                class_offering=self.offering, pass_mark=50
             ).exists()
         )
 
@@ -1618,35 +1638,46 @@ class ClassFirstSubjectManagementTests(TestCase):
         english = Subject.objects.create(school=self.school, name='English', code='ENG')
         resp = self.client.post(
             reverse('school_admin:class_subject_bulk_add', args=[self.school_class.pk]),
-            {'subject_ids': [self.subject.pk, english.pk], 'pass_mark': '45'},
+            {'offering_id': self.offering.pk,
+             'subject_ids': [self.subject.pk, english.pk], 'pass_mark': '45'},
         )
         self.assertEqual(resp.status_code, 302)
-        self.assertEqual(ClassSubject.objects.filter(school_class=self.school_class).count(), 2)
+        self.assertEqual(
+            ClassSubject.objects.filter(class_offering=self.offering).count(), 2
+        )
 
     def test_create_new_subject_from_class(self):
         resp = self.client.post(
             reverse('school_admin:class_subject_create', args=[self.school_class.pk]),
-            {'name': 'Physics', 'code': 'PHY', 'pass_mark': '50'},
+            {'offering_id': self.offering.pk,
+             'name': 'Physics', 'code': 'PHY', 'pass_mark': '50'},
         )
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Subject.objects.filter(school=self.school, name='Physics').exists())
         self.assertTrue(
             ClassSubject.objects.filter(
-                school=self.school, subject__name='Physics', school_class=self.school_class, pass_mark=50
+                school=self.school, subject__name='Physics',
+                class_offering=self.offering, pass_mark=50
             ).exists()
         )
 
     def test_remove_subject_from_class(self):
-        ClassSubject.objects.create(
-            school=self.school, subject=self.subject, school_class=self.school_class, pass_mark=40,
+        config = ClassSubject.objects.create(
+            school=self.school, subject=self.subject,
+            class_offering=self.offering, pass_mark=40,
         )
         resp = self.client.post(
-            reverse('school_admin:class_subject_remove', args=[self.school_class.pk, self.subject.pk]),
+            reverse(
+                'school_admin:class_subject_remove',
+                args=[self.school_class.pk, config.pk],
+            ),
+            {'offering_id': self.offering.pk},
         )
         self.assertEqual(resp.status_code, 302)
         self.assertFalse(
             ClassSubject.objects.filter(
-                school=self.school, subject=self.subject, school_class=self.school_class
+                school=self.school, subject=self.subject,
+                class_offering=self.offering
             ).exists()
         )
 
@@ -1703,7 +1734,16 @@ class StaffDeleteViewTest(TestCase):
     def test_delete_page_shows_related_warnings(self):
         from academics.models import TeacherAssignment, Score
         subject = Subject.objects.create(school=self.school, name='Math', code='MTH')
-        TeacherAssignment.objects.create(school=self.school, teacher=self.teacher, subject=subject, school_class=self.school_class, session=self.session)
+        offering = ClassOffering.objects.create(
+            school=self.school, school_class=self.school_class,
+            academic_session=self.session,
+        )
+        class_subject = ClassSubject.objects.create(
+            school=self.school, subject=subject, class_offering=offering,
+        )
+        TeacherAssignment.objects.create(
+            school=self.school, teacher=self.teacher, class_subject=class_subject,
+        )
         student_user = User.objects.create_user(
             username='scorestu', email='scorestu@test.com', password='pass123',
             school=self.school, role=Roles.STUDENT, first_name='Score', last_name='Student',
@@ -1713,7 +1753,15 @@ class StaffDeleteViewTest(TestCase):
             date_of_birth=date(2012, 1, 1), gender='MALE',
             admission_date=date(2026, 9, 1), status='ACTIVE',
         )
-        Score.objects.create(school=self.school, student=student, subject=subject, term=self.term, entered_by=self.teacher)
+        ClassEnrollment.objects.create(
+            school=self.school, student=student,
+            school_class=self.school_class, session=self.session,
+            class_offering=offering, is_current=True,
+        )
+        Score.objects.create(
+            school=self.school, student=student, class_subject=class_subject,
+            term=self.term, entered_by=self.teacher,
+        )
 
         self.client.force_login(self.superadmin)
         resp = self.client.get(reverse('school_admin:staff_delete', args=[self.teacher.pk]))
@@ -1822,6 +1870,12 @@ class SetupChecksTest(TestCase):
         subject = Subject.objects.create(
             school=self.school, name='Math', code='MTH',
         )
+        offering = ClassOffering.objects.create(
+            school=self.school, school_class=school_class, academic_session=session,
+        )
+        class_subject = ClassSubject.objects.create(
+            school=self.school, subject=subject, class_offering=offering,
+        )
         category = FeeCategory.objects.create(school=self.school, name='School Fees')
         FeePrice.objects.create(
             school=self.school, category=category,
@@ -1833,8 +1887,7 @@ class SetupChecksTest(TestCase):
             school=self.school, role=Roles.TEACHER,
         )
         TeacherAssignment.objects.create(
-            school=self.school, teacher=teacher, subject=subject,
-            school_class=school_class, session=session,
+            school=self.school, teacher=teacher, class_subject=class_subject,
         )
         student_user = User.objects.create_user(
             username='stu1', email='stu@test.com', password='testpass123',
@@ -1976,13 +2029,18 @@ class SetupChecksTest(TestCase):
         self.assertIsNotNone(check_teacher_assignments(self.school))
         school_class = SchoolClass.objects.create(school=self.school, name='JSS1')
         subject = Subject.objects.create(school=self.school, name='Math', code='MTH')
+        offering = ClassOffering.objects.create(
+            school=self.school, school_class=school_class, academic_session=session,
+        )
+        class_subject = ClassSubject.objects.create(
+            school=self.school, subject=subject, class_offering=offering,
+        )
         teacher = User.objects.create_user(
             username='t1', email='t@test.com', password='testpass123',
             school=self.school, role=Roles.TEACHER,
         )
         TeacherAssignment.objects.create(
-            school=self.school, teacher=teacher, subject=subject,
-            school_class=school_class, session=session,
+            school=self.school, teacher=teacher, class_subject=class_subject,
         )
         self.assertIsNone(check_teacher_assignments(self.school))
 
@@ -2047,13 +2105,28 @@ class SubjectListViewTests(TestCase):
         )
         self.client.force_login(self.admin_user)
 
+        self.session = AcademicSession.objects.create(
+            school=self.school, name='2025/2026',
+            start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            is_current=True,
+        )
         self.cls_a = SchoolClass.objects.create(school=self.school, name='JSS1')
         self.cls_b = SchoolClass.objects.create(school=self.school, name='JSS2')
+        self.offering_a = ClassOffering.objects.create(
+            school=self.school, school_class=self.cls_a, academic_session=self.session,
+        )
+        self.offering_b = ClassOffering.objects.create(
+            school=self.school, school_class=self.cls_b, academic_session=self.session,
+        )
 
         self.math = Subject.objects.create(school=self.school, name='Mathematics', code='MTH')
         self.eng = Subject.objects.create(school=self.school, name='English', code='ENG')
-        ClassSubject.objects.create(school=self.school, subject=self.math, school_class=self.cls_a)
-        ClassSubject.objects.create(school=self.school, subject=self.eng, school_class=self.cls_b)
+        ClassSubject.objects.create(
+            school=self.school, subject=self.math, class_offering=self.offering_a,
+        )
+        ClassSubject.objects.create(
+            school=self.school, subject=self.eng, class_offering=self.offering_b,
+        )
 
     def test_add_subject_button_present(self):
         """The list page has a link to create a new subject."""
@@ -2077,9 +2150,9 @@ class SubjectListViewTests(TestCase):
         self.assertNotContains(resp, 'Mathematics')
 
     def test_class_filter_narrows_results(self):
-        """Filtering by class_id shows only subjects linked to that class."""
+        """Filtering by offering_id shows only subjects linked to that class."""
         resp = self.client.get(
-            reverse('school_admin:subject_list'), {'class_id': self.cls_a.pk}
+            reverse('school_admin:subject_list'), {'offering_id': self.offering_a.pk}
         )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Mathematics')
@@ -2088,7 +2161,7 @@ class SubjectListViewTests(TestCase):
     def test_search_api_filters_by_class_id(self):
         """SubjectSearchAPIView returns only subjects linked to the given class."""
         resp = self.client.get(
-            reverse('school_admin:subject_search_api'), {'class_id': self.cls_a.pk}
+            reverse('school_admin:subject_search_api'), {'offering_id': self.offering_a.pk}
         )
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
