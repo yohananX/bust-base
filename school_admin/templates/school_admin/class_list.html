@@ -34,10 +34,16 @@
   <!-- Header and Add Button -->
   <div class="flex justify-between items-center mb-4">
     <h2 class="text-lg font-display font-semibold text-ink">Classes</h2>
-    <a href="{% url 'school_admin:class_create' %}"
-       class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
-      <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Class
-    </a>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'school_admin:progression_configuration' %}"
+         class="inline-flex items-center px-4 py-2.5 bg-white border border-line hover:border-primary/40 text-ink text-sm font-medium rounded-xl transition-colors">
+        <i data-lucide="route" class="w-4 h-4 mr-1.5"></i>Progression
+      </a>
+      <a href="{% url 'school_admin:class_create' %}"
+         class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Class
+      </a>
+    </div>
   </div>
 
   <!-- Class Table -->

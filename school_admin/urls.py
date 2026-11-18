@@ -24,6 +24,12 @@ from school_admin.views import (
     GeneratePayrollView, RecordDisbursementView,
     PublishResultsView, ResultReviewView,
     SessionListView, SessionCreateView, SessionSetCurrentView, TermSetCurrentView,
+    ProgressionConfigurationView,
+    SessionPreparationCreateView, SessionPreparationStartView,
+    SessionPreparationDetailView, PreparationScheduleUpdateView,
+    PreparationOfferingsUpdateView, PreparationProgressionUpdateView,
+    PreparationGenerateView, PreparationMovementUpdateView,
+    PreparationConfirmView,
     SchoolSettingsView,
     NotificationLogView,
     CredentialSlipView, CredentialBatchView, CredentialBatchPrintView, CredentialSingleResetView,
@@ -110,6 +116,7 @@ urlpatterns = [
     path('classes/<int:pk>/subjects/new/', ClassSubjectCreateView.as_view(), name='class_subject_create'),
     path('classes/<int:pk>/subjects/<int:class_subject_id>/update/', ClassSubjectUpdateView.as_view(), name='class_subject_update'),
     path('classes/<int:pk>/subjects/<int:class_subject_id>/remove/', ClassSubjectRemoveView.as_view(), name='class_subject_remove'),
+    path('classes/progression/', ProgressionConfigurationView.as_view(), name='progression_configuration'),
 
     # Fees & Invoices
     path('fees/categories/', FeeCategoryListView.as_view(), name='fee_category_list'),
@@ -153,6 +160,15 @@ path('students/<int:pk>/record-payment/', StudentRecordPaymentView.as_view(), na
     path('sessions/new/', SessionCreateView.as_view(), name='session_create'),
     path('sessions/<int:pk>/current/', SessionSetCurrentView.as_view(), name='session_set_current'),
     path('sessions/terms/<int:pk>/current/', TermSetCurrentView.as_view(), name='term_set_current'),
+    path('sessions/prepare/new/', SessionPreparationCreateView.as_view(), name='session_preparation_create'),
+    path('sessions/<int:session_pk>/prepare/', SessionPreparationStartView.as_view(), name='session_preparation_start'),
+    path('sessions/preparations/<int:pk>/', SessionPreparationDetailView.as_view(), name='session_preparation_detail'),
+    path('sessions/preparations/<int:pk>/schedule/', PreparationScheduleUpdateView.as_view(), name='session_preparation_schedule'),
+    path('sessions/preparations/<int:pk>/offerings/', PreparationOfferingsUpdateView.as_view(), name='session_preparation_offerings'),
+    path('sessions/preparations/<int:pk>/progression/', PreparationProgressionUpdateView.as_view(), name='session_preparation_progression'),
+    path('sessions/preparations/<int:pk>/generate/', PreparationGenerateView.as_view(), name='session_preparation_generate'),
+    path('sessions/preparations/<int:pk>/movements/<int:movement_pk>/', PreparationMovementUpdateView.as_view(), name='session_preparation_movement'),
+    path('sessions/preparations/<int:pk>/confirm/', PreparationConfirmView.as_view(), name='session_preparation_confirm'),
 
     # School Settings
     path('settings/', SchoolSettingsView.as_view(), name='school_settings'),

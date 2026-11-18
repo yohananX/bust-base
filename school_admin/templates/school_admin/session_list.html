@@ -18,10 +18,18 @@
   {# ── Header row ── #}
   <div class="flex justify-between items-center">
     <h2 class="text-lg font-display font-semibold text-ink">Sessions</h2>
-    <a href="{% url 'school_admin:session_create' %}"
-       class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
-      <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Session
-    </a>
+    <div class="flex items-center gap-2">
+      {% if sessions %}
+      <a href="{% url 'school_admin:session_preparation_create' %}"
+         class="inline-flex items-center px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors">
+        <i data-lucide="route" class="w-4 h-4 mr-1.5"></i>Prepare Next Session
+      </a>
+      {% endif %}
+      <a href="{% url 'school_admin:session_create' %}"
+         class="inline-flex items-center px-4 py-2.5 bg-white border border-line hover:border-primary/40 text-ink text-sm font-medium rounded-xl transition-colors">
+        <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>Add Session
+      </a>
+    </div>
   </div>
 
   {% if sessions %}
@@ -34,11 +42,20 @@
         <h3 class="text-base font-display font-semibold text-ink">{{ s.name }}</h3>
         <p class="text-xs text-ink-faint mt-0.5">{{ s.start_date|date:'M j, Y' }} – {{ s.end_date|date:'M j, Y' }}</p>
       </div>
-      <div class="flex-shrink-0">
+      <div class="flex-shrink-0 flex items-center gap-2">
+        {% if s.preparation_record %}
+        <a href="{% url 'school_admin:session_preparation_detail' s.preparation_record.pk %}" class="inline-flex items-center px-3 py-1.5 bg-primary-tint text-primary text-xs font-medium rounded-lg hover:bg-primary/10">
+          {% if s.preparation_record.status == 'CONFIRMED' %}View preparation{% else %}Continue preparation{% endif %}
+        </a>
+        {% elif not s.is_current %}
+        <a href="{% url 'school_admin:session_preparation_start' s.pk %}" class="inline-flex items-center px-3 py-1.5 bg-white border border-line text-xs font-medium text-ink hover:border-primary/40 rounded-lg">Prepare</a>
+        {% endif %}
         {% if current_session and current_session.pk == s.pk %}
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100">
           <span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span>Current Session
         </span>
+        {% elif s.preparation_record and s.preparation_record.status != 'CONFIRMED' %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning-tint text-warning border border-warning/20">Confirm preparation first</span>
         {% else %}
         <form method="POST" action="{% url 'school_admin:session_set_current' s.pk %}">
           {% csrf_token %}
@@ -66,6 +83,8 @@
           <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100">
             <span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span>Current
           </span>
+          {% elif s.preparation_record and s.preparation_record.status != 'CONFIRMED' %}
+          <span class="text-xs text-ink-faint">Preparation pending</span>
           {% else %}
           <form method="POST" action="{% url 'school_admin:term_set_current' t.pk %}">
             {% csrf_token %}

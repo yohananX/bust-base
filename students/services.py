@@ -8,7 +8,7 @@ calls in views and model methods should route through this service.
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
-from .models import ClassEnrollment, ClassOffering
+from .models import ClassEnrollment, ClassOffering, Student
 
 
 class EnrolmentConflictError(ValidationError):
@@ -19,7 +19,9 @@ class EnrolmentConflictError(ValidationError):
     """
 
 
-def confirm_enrolment(student, school_class, session):
+def confirm_enrolment(
+    student, school_class=None, session=None, *, class_offering=None
+):
     """Confirm (create or return) a student's enrolment in a class/session.
 
     The service is transactional and idempotent:
@@ -39,6 +41,13 @@ def confirm_enrolment(student, school_class, session):
 
     Returns the (existing or newly created) :class:`ClassEnrollment`.
     """
+    if class_offering is not None:
+        school_class = school_class or class_offering.school_class
+        session = session or class_offering.academic_session
+    if school_class is None or session is None:
+        raise ValidationError(
+            {'class_offering': 'A class, session, and exact class offering are required.'}
+        )
     if student.school_id is None:
         raise ValidationError({'student': 'Student must belong to a school.'})
     if school_class.school_id != student.school_id:
@@ -50,34 +59,49 @@ def confirm_enrolment(student, school_class, session):
             {'session': 'Session must belong to the same school as the student.'}
         )
 
-    try:
-        offering = ClassOffering.objects.get(
+    with transaction.atomic():
+        # Serialise all enrolment changes for this student. This closes the race
+        # between simultaneous requests for different sessions as well as the
+        # duplicate request handled by the database uniqueness constraint.
+        locked_student = Student.objects.select_for_update().filter(
+            pk=student.pk, school_id=student.school_id
+        ).first()
+        if locked_student is None:
+            raise ValidationError({'student': 'Select a valid student for this school.'})
+        student = locked_student
+
+        offering_qs = ClassOffering.objects.select_for_update().filter(
             school_class=school_class,
             academic_session=session,
             school=student.school,
         )
-    except ClassOffering.DoesNotExist:
-        raise ValidationError(
-            {
-                'class_offering': (
-                    'No class offering exists for this class and session. '
-                    'Create the offering before enrolling.'
-                )
-            }
-        )
-    except ClassOffering.MultipleObjectsReturned:
-        raise ValidationError(
-            {
-                'class_offering': (
-                    'Multiple class offerings exist for this class and session. '
-                    'The offering is ambiguous.'
-                )
-            }
-        )
+        if class_offering is not None:
+            offering_qs = offering_qs.filter(pk=class_offering.pk)
+        try:
+            offering = offering_qs.get()
+        except ClassOffering.DoesNotExist:
+            raise ValidationError(
+                {
+                    'class_offering': (
+                        'No exact class offering exists for this class and session. '
+                        'Create the offering before enrolling.'
+                    )
+                }
+            )
+        except ClassOffering.MultipleObjectsReturned:
+            raise ValidationError(
+                {
+                    'class_offering': (
+                        'Multiple class offerings exist for this class and session. '
+                        'The offering is ambiguous.'
+                    )
+                }
+            )
 
-    with transaction.atomic():
         existing = (
-            ClassEnrollment.objects.filter(student=student, session=session)
+            ClassEnrollment.objects.filter(
+                school=student.school, student=student, session=session
+            )
             .select_for_update()
             .first()
         )
@@ -124,7 +148,7 @@ def confirm_enrolment(student, school_class, session):
             # first. A matching enrolment is idempotent; a differing one is a
             # conflict. Any other integrity failure propagates.
             existing = ClassEnrollment.objects.filter(
-                student=student, session=session
+                school=student.school, student=student, session=session
             ).first()
             if existing and (
                 existing.school_class_id == school_class.id

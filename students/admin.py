@@ -1,9 +1,19 @@
 from django.contrib import admin
 from django import forms
+from django.core.exceptions import ValidationError
 from django.shortcuts import render, redirect
 from django.utils.translation import gettext_lazy as _
 
-from .models import AcademicStage, SchoolClass, Student, ClassEnrollment, ClassOffering, StudentGuardianLink
+from .models import (
+    AcademicStage,
+    SchoolClass,
+    Student,
+    ClassEnrollment,
+    ClassOffering,
+    SessionPreparation,
+    StudentSessionMovement,
+    StudentGuardianLink,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -35,12 +45,29 @@ class StudentGuardianLinkInline(admin.TabularInline):
 # AcademicStage Admin
 # ---------------------------------------------------------------------------
 
+class AcademicStageAdminForm(forms.ModelForm):
+    class Meta:
+        model = AcademicStage
+        fields = ['name', 'display_order', 'next_stage', 'is_active', 'school']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        school_id = self.instance.school_id or self.data.get('school') or self.initial.get('school')
+        choices = AcademicStage.objects.none()
+        if school_id:
+            choices = AcademicStage.objects.filter(school_id=school_id)
+            if self.instance.pk:
+                choices = choices.exclude(pk=self.instance.pk)
+        self.fields['next_stage'].queryset = choices.order_by('display_order', 'name')
+
+
 @admin.register(AcademicStage)
 class AcademicStageAdmin(admin.ModelAdmin):
-    list_display = ['name', 'display_order', 'is_active', 'school']
+    list_display = ['name', 'next_stage', 'display_order', 'is_active', 'school']
     list_filter = ['is_active', 'school']
     search_fields = ['name']
     ordering = ['display_order', 'name']
+    form = AcademicStageAdminForm
 
 
 # ---------------------------------------------------------------------------
@@ -56,12 +83,27 @@ class SchoolClassAdminForm(forms.ModelForm):
 
     class Meta:
         model = SchoolClass
-        fields = ['name', 'academic_stage', 'is_active', 'school']
+        fields = ['name', 'academic_stage', 'next_class', 'is_active', 'school']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        school_id = self.instance.school_id or self.data.get('school') or self.initial.get('school')
+        stage_choices = AcademicStage.objects.none()
+        class_choices = SchoolClass.objects.none()
+        if school_id:
+            stage_choices = AcademicStage.objects.filter(school_id=school_id)
+            class_choices = SchoolClass.objects.filter(school_id=school_id)
+            if self.instance.pk:
+                class_choices = class_choices.exclude(pk=self.instance.pk)
+        self.fields['academic_stage'].queryset = stage_choices.order_by('display_order', 'name')
+        self.fields['next_class'].queryset = class_choices.select_related(
+            'academic_stage'
+        ).order_by('academic_stage__display_order', 'name')
 
 
 @admin.register(SchoolClass)
 class SchoolClassAdmin(admin.ModelAdmin):
-    list_display = ['name', 'academic_stage', 'is_active', 'school']
+    list_display = ['name', 'academic_stage', 'next_class', 'is_active', 'school']
     list_filter = ['academic_stage', 'is_active', 'school']
     search_fields = ['name', 'academic_stage__name']
     autocomplete_fields = ['academic_stage']
@@ -76,6 +118,37 @@ class ClassOfferingAdmin(admin.ModelAdmin):
     search_fields = ['school_class__name', 'academic_session__name']
     autocomplete_fields = ['school_class', 'academic_session']
     list_select_related = ['school', 'school_class', 'academic_session']
+
+
+@admin.register(SessionPreparation)
+class SessionPreparationAdmin(admin.ModelAdmin):
+    list_display = [
+        'source_session', 'target_session', 'status',
+        'proposals_generated_at', 'confirmed_at', 'school',
+    ]
+    list_filter = ['status', 'school']
+    search_fields = ['source_session__name', 'target_session__name']
+    list_select_related = ['school', 'source_session', 'target_session']
+    readonly_fields = [
+        'proposals_generated_at', 'confirmed_at', 'created_at', 'updated_at',
+    ]
+
+
+@admin.register(StudentSessionMovement)
+class StudentSessionMovementAdmin(admin.ModelAdmin):
+    list_display = [
+        'student', 'preparation', 'action', 'proposed_class',
+        'destination_class', 'is_override', 'school',
+    ]
+    list_filter = ['action', 'proposal_basis', 'is_override', 'school']
+    search_fields = [
+        'student__admission_number', 'student__user__first_name',
+        'student__user__last_name',
+    ]
+    list_select_related = [
+        'school', 'student__user', 'preparation',
+        'proposed_class', 'destination_class',
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -102,6 +175,16 @@ class StudentAdmin(admin.ModelAdmin):
         from core.models import AcademicSession
         from .models import SchoolClass
 
+        school_ids = set(queryset.values_list('school_id', flat=True))
+        if len(school_ids) != 1:
+            self.message_user(
+                request,
+                _('Select students from exactly one school.'),
+                level='ERROR',
+            )
+            return redirect(request.get_full_path())
+        school_id = school_ids.pop()
+
         if 'apply' in request.POST:
             # --- Intermediate form submission --------------------------------
             session_id = request.POST.get('session')
@@ -110,7 +193,9 @@ class StudentAdmin(admin.ModelAdmin):
                 return redirect(request.get_full_path())
 
             try:
-                target_session = AcademicSession.objects.get(pk=session_id)
+                target_session = AcademicSession.objects.get(
+                    pk=session_id, school_id=school_id
+                )
             except AcademicSession.DoesNotExist:
                 self.message_user(request, _('Selected session does not exist.'), level='ERROR')
                 return redirect(request.get_full_path())
@@ -132,20 +217,26 @@ class StudentAdmin(admin.ModelAdmin):
                     continue
 
                 try:
-                    target_class = SchoolClass.objects.get(pk=class_id)
+                    target_class = SchoolClass.objects.get(
+                        pk=class_id, school_id=school_id
+                    )
                 except SchoolClass.DoesNotExist:
                     skipped_count += 1
                     continue
 
-                student.promote_to(target_session, target_class)
-                promoted_count += 1
+                try:
+                    student.promote_to(target_session, target_class)
+                except ValidationError:
+                    skipped_count += 1
+                else:
+                    promoted_count += 1
 
             parts = []
             if promoted_count:
                 parts.append(_('%(count)d student(s) promoted.') % {'count': promoted_count})
             if skipped_count:
                 parts.append(
-                    _('%(count)d student(s) skipped (withdrawn/graduated or missing class).')
+                    _('%(count)d student(s) skipped (lifecycle status, missing class, or missing offering).')
                     % {'count': skipped_count}
                 )
             msg = ' '.join(parts) if parts else _('No students were promoted.')
@@ -156,8 +247,8 @@ class StudentAdmin(admin.ModelAdmin):
         # --- Initial action: show intermediate page -------------------------
         # Filter out withdrawn/graduated from the actionable list
         actionable = queryset.exclude(status__in=[Student.WITHDRAWN, Student.GRADUATED])
-        sessions = AcademicSession.objects.filter(school=request.school)
-        classes = SchoolClass.objects.filter(school=request.school)
+        sessions = AcademicSession.objects.filter(school_id=school_id)
+        classes = SchoolClass.objects.filter(school_id=school_id)
 
         return render(
             request,

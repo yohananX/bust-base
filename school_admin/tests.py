@@ -2351,6 +2351,7 @@ class SchoolClassStageSelectorTests(TestCase):
         self.assertEqual(created.academic_stage, self.jss)
 
     def test_create_form_renders_without_configured_stages(self):
+        self.school_class.delete()
         AcademicStage.objects.filter(school=self.school).delete()
 
         response = self.client.get(reverse('school_admin:class_create'))
@@ -2359,8 +2360,8 @@ class SchoolClassStageSelectorTests(TestCase):
         self.assertContains(response, 'No active stages are configured yet')
 
     def test_create_without_stage_allowed_when_no_stages_configured(self):
-        """Without stages there is nothing authoritative to select;
-        the class is stored unclassified."""
+        """Without configured stages, the explicit Unclassified fallback is used."""
+        self.school_class.delete()
         AcademicStage.objects.filter(school=self.school).delete()
 
         response = self.client.post(
@@ -2370,7 +2371,7 @@ class SchoolClassStageSelectorTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         created = SchoolClass.objects.get(school=self.school, name='JSS2A')
-        self.assertIsNone(created.academic_stage)
+        self.assertEqual(created.academic_stage.name, 'Unclassified')
 
     def test_create_class_requires_stage_when_stages_configured(self):
         """The stage is the authoritative classification, so it is not
@@ -2460,8 +2461,9 @@ class SchoolClassStageSelectorTests(TestCase):
         self.school_class.refresh_from_db()
         self.assertEqual(self.school_class.academic_stage, self.primary)
 
-    def test_edit_class_clears_stage_when_no_stages_configured(self):
-        AcademicStage.objects.filter(school=self.school).delete()
+    def test_edit_class_uses_unclassified_when_no_active_stages_configured(self):
+        fallback = self.school_class.academic_stage
+        AcademicStage.objects.filter(school=self.school).exclude(pk=fallback.pk).delete()
 
         response = self.client.post(
             reverse('school_admin:class_edit', args=[self.school_class.pk]),
@@ -2470,7 +2472,7 @@ class SchoolClassStageSelectorTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.school_class.refresh_from_db()
-        self.assertIsNone(self.school_class.academic_stage)
+        self.assertEqual(self.school_class.academic_stage, fallback)
 
     def test_edit_class_rejects_foreign_school_stage(self):
         self.school_class.academic_stage = self.primary
@@ -2518,4 +2520,4 @@ class SchoolClassStageSelectorTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIsNone(self.school_class.academic_stage)
+        self.assertEqual(self.school_class.academic_stage.name, 'Unclassified')

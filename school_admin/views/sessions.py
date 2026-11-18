@@ -9,6 +9,7 @@ from django.db import transaction
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from core.models import AcademicSession
+from students.models import SessionPreparation
 
 
 class SessionListView(RoleRequiredMixin, View):
@@ -19,9 +20,15 @@ class SessionListView(RoleRequiredMixin, View):
     def get(self, request):
         school = request.school
         from core.models import Term
-        sessions = AcademicSession.objects.filter(
+        sessions = list(AcademicSession.objects.filter(
             school=school
-        ).prefetch_related('terms').order_by('-start_date')
+        ).prefetch_related('terms').order_by('-start_date'))
+        preparations = {
+            preparation.target_session_id: preparation
+            for preparation in SessionPreparation.objects.filter(school=school)
+        }
+        for session in sessions:
+            session.preparation_record = preparations.get(session.pk)
         context = {
             'sessions': sessions,
             'current_session': AcademicSession.objects.filter(
@@ -89,7 +96,9 @@ class SessionCreateView(RoleRequiredMixin, View):
                 school=school, session=session, name='First Term',
                 start_date=start_date,
                 end_date=start_date + timedelta(days=third),
-                is_current=True,
+                # Creating a future session must not change the live term.
+                # Activation remains an explicit administrator action.
+                is_current=False,
             )
             Term.objects.create(
                 school=school, session=session, name='Second Term',
@@ -116,6 +125,15 @@ class SessionSetCurrentView(RoleRequiredMixin, View):
     def post(self, request, pk):
         school = request.school
         session = get_object_or_404(AcademicSession, school=school, pk=pk)
+        preparation = SessionPreparation.objects.filter(
+            school=school, target_session=session
+        ).first()
+        if preparation and preparation.status != SessionPreparation.Status.CONFIRMED:
+            messages.error(
+                request,
+                'Confirm the session preparation before making this session current.',
+            )
+            return redirect('school_admin:session_preparation_detail', pk=preparation.pk)
         session.is_current = True
         session.save()
 
@@ -137,6 +155,15 @@ class TermSetCurrentView(RoleRequiredMixin, View):
         school = request.school
         from core.models import Term
         term = get_object_or_404(Term, school=school, pk=pk)
+        preparation = SessionPreparation.objects.filter(
+            school=school, target_session=term.session
+        ).first()
+        if preparation and preparation.status != SessionPreparation.Status.CONFIRMED:
+            messages.error(
+                request,
+                'Confirm the session preparation before making one of its terms current.',
+            )
+            return redirect('school_admin:session_preparation_detail', pk=preparation.pk)
         term.is_current = True
         term.save()
 

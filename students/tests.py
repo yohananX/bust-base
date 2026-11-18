@@ -59,7 +59,7 @@ class StudentModelTests(TestCase):
 
     def test_school_class_creation(self):
         self.assertEqual(str(self.school_class), "JSS1A")
-        self.assertIsNone(self.school_class.academic_stage)
+        self.assertEqual(self.school_class.academic_stage.name, "Unclassified")
         self.assertTrue(self.school_class.is_active)
 
     def test_student_creation(self):
@@ -182,6 +182,11 @@ class StudentModelTests(TestCase):
         class_b = SchoolClass.objects.create(
             school=self.school, name="SSS1A",
         )
+        ClassOffering.objects.create(
+            school=self.school,
+            school_class=class_b,
+            academic_session=session_b,
+        )
 
         # Promote using the model method
         new_enrollment = student.promote_to(session_b, class_b)
@@ -216,6 +221,11 @@ class StudentModelTests(TestCase):
             name="2026/2027",
             start_date="2026-09-01",
             end_date="2027-07-31",
+        )
+        ClassOffering.objects.create(
+            school=self.school,
+            school_class=self.school_class,
+            academic_session=session_b,
         )
         # promote_to should still work at the model level — it's the admin action
         # that skips. We verify that the enrollment is created successfully.
@@ -1851,7 +1861,7 @@ class SchoolClassStageOnlyAdminFormTests(TestCase):
         obj = form.save()
         self.assertEqual(obj.academic_stage, self.jss)
 
-    def test_stage_clear(self):
+    def test_stage_clear_is_rejected(self):
         from students.admin import SchoolClassAdminForm
 
         school_class = SchoolClass.objects.create(
@@ -1860,9 +1870,10 @@ class SchoolClassStageOnlyAdminFormTests(TestCase):
         form = SchoolClassAdminForm(
             instance=school_class, data=self._data(academic_stage=''),
         )
-        self.assertTrue(form.is_valid(), form.errors)
-        obj = form.save()
-        self.assertIsNone(obj.academic_stage)
+        self.assertFalse(form.is_valid())
+        self.assertIn('academic_stage', form.errors)
+        school_class.refresh_from_db()
+        self.assertEqual(school_class.academic_stage, self.jss)
 
     def test_admission_header_uses_stage_name(self):
         """The stage name feeds the admission-number header map directly."""

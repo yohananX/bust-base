@@ -1,0 +1,30 @@
+{% extends 'school_admin/base_admin.html' %}
+
+{% block title %}Start Session Preparation — School Admin{% endblock %}
+{% block page_header %}Start Session Preparation{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white border border-line rounded-xl p-6">
+    <h2 class="text-base font-display font-semibold text-ink">Prepare {{ target_session.name }}</h2>
+    <p class="text-sm text-ink-muted mt-1">Choose the session whose enrolments will be used to generate student movement proposals.</p>
+    {% if source_sessions %}
+    <form method="post" class="space-y-5 mt-6">
+      {% csrf_token %}
+      <div>
+        <label class="block text-sm font-medium text-ink mb-1.5">Source session</label>
+        <select name="source_session_id" required class="w-full px-3 py-2.5 bg-surface-muted border border-line rounded-xl text-sm text-ink">
+          {% for session in source_sessions %}<option value="{{ session.pk }}" {% if default_source.pk == session.pk %}selected{% endif %}>{{ session.name }}{% if session.is_current %} — current{% endif %}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="flex items-center gap-4">
+        <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl">Start Preparation</button>
+        <a href="{% url 'school_admin:session_list' %}" class="text-sm font-medium text-ink-muted hover:text-ink">Cancel</a>
+      </div>
+    </form>
+    {% else %}
+    <div class="mt-6 p-4 bg-warning-tint border border-warning/20 rounded-xl text-sm text-ink">No earlier session is available to use as the source.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
