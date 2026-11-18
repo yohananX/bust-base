@@ -10,6 +10,7 @@ from django.test import TransactionTestCase
 class ClassOfferingMigrationTests(TransactionTestCase):
     migrate_from = ('students', '0010_remove_schoolclass_level')
     migrate_to = ('students', '0011_classoffering_and_enrollment_offering')
+    latest = ('students', '0012_student_progression_phase3')
     accounts_leaf = ('accounts', '0007_plan_updates')
 
     def setUp(self):
@@ -24,7 +25,7 @@ class ClassOfferingMigrationTests(TransactionTestCase):
         # Always return the shared test database schema to the latest migration,
         # including after the intentional migration-failure test.
         executor = MigrationExecutor(connection)
-        executor.migrate([self.migrate_to])
+        executor.migrate([self.latest])
         super().tearDown()
 
     def _create_school(self, *, name, short_code):

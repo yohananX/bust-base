@@ -1,0 +1,149 @@
+{% extends 'school_admin/base_admin.html' %}
+
+{% block title %}Prepare {{ preparation.target_session.name }} — School Admin{% endblock %}
+{% block page_header %}Prepare {{ preparation.target_session.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="bg-white border border-line rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2">
+        <h2 class="text-lg font-display font-semibold text-ink">{{ preparation.source_session.name }} → {{ preparation.target_session.name }}</h2>
+        {% if is_draft %}{% include 'components/badge.html' with status='warning' text='Draft' %}{% else %}{% include 'components/badge.html' with status='success' text='Confirmed' %}{% endif %}
+      </div>
+      <p class="text-sm text-ink-muted mt-1">This workflow creates enrolments only. Scores, results, invoices, payments and arrears are not copied or changed.</p>
+    </div>
+    <a href="{% url 'school_admin:session_list' %}" class="text-sm font-medium text-ink-muted hover:text-ink">Back to sessions</a>
+  </div>
+
+  <nav aria-label="Preparation steps" class="bg-surface-muted border border-line rounded-xl px-4 py-3 overflow-x-auto">
+    <ol class="flex min-w-max items-center gap-3 text-xs font-medium text-ink-muted">
+      <li>1. Session setup</li><li class="text-line-strong">→</li>
+      <li>2. Class offerings</li><li class="text-line-strong">→</li>
+      <li>3. Progression</li><li class="text-line-strong">→</li>
+      <li>4. Proposals</li><li class="text-line-strong">→</li>
+      <li>5. Exceptions</li><li class="text-line-strong">→</li>
+      <li>6. Confirm</li>
+    </ol>
+  </nav>
+
+  <section class="bg-white border border-line rounded-xl overflow-hidden">
+    <div class="px-5 py-4 border-b border-line"><h2 class="text-base font-display font-semibold text-ink">1. Session setup</h2><p class="text-sm text-ink-muted mt-1">Review the target session and its term boundaries.</p></div>
+    {% if is_draft %}
+    <form method="post" action="{% url 'school_admin:session_preparation_schedule' preparation.pk %}" class="p-5 space-y-4">
+      {% csrf_token %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div><label class="block text-xs font-medium text-ink-muted mb-1">Session start</label><input type="date" name="start_date" required value="{{ preparation.target_session.start_date|date:'Y-m-d' }}" class="w-full px-3 py-2 bg-surface-muted border border-line rounded-lg text-sm"></div>
+        <div><label class="block text-xs font-medium text-ink-muted mb-1">Session end</label><input type="date" name="end_date" required value="{{ preparation.target_session.end_date|date:'Y-m-d' }}" class="w-full px-3 py-2 bg-surface-muted border border-line rounded-lg text-sm"></div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {% for term in terms %}
+        <div class="p-4 bg-surface-muted rounded-xl">
+          <p class="text-sm font-medium text-ink mb-3">{{ term.name }}</p>
+          <div class="grid grid-cols-2 gap-2">
+            <div><label class="block text-xs text-ink-muted mb-1">Start</label><input type="date" name="{% if term.name == 'First Term' %}first{% elif term.name == 'Second Term' %}second{% else %}third{% endif %}_term_start" value="{{ term.start_date|date:'Y-m-d' }}" required class="w-full px-2.5 py-2 bg-white border border-line rounded-lg text-xs"></div>
+            <div><label class="block text-xs text-ink-muted mb-1">End</label><input type="date" name="{% if term.name == 'First Term' %}first{% elif term.name == 'Second Term' %}second{% else %}third{% endif %}_term_end" value="{{ term.end_date|date:'Y-m-d' }}" required class="w-full px-2.5 py-2 bg-white border border-line rounded-lg text-xs"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="submit" class="inline-flex items-center px-4 py-2 bg-white border border-line hover:border-primary/40 text-sm font-medium text-ink rounded-lg"><i data-lucide="save" class="w-4 h-4 mr-2"></i>Update dates</button>
+    </form>
+    {% else %}
+    <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-3">{% for term in terms %}<div class="p-4 bg-surface-muted rounded-xl"><p class="text-sm font-medium text-ink">{{ term.name }}</p><p class="text-xs text-ink-muted mt-1">{{ term.start_date|date:'M j, Y' }} – {{ term.end_date|date:'M j, Y' }}</p></div>{% endfor %}</div>
+    {% endif %}
+  </section>
+
+  <section class="bg-white border border-line rounded-xl overflow-hidden">
+    <div class="px-5 py-4 border-b border-line"><h2 class="text-base font-display font-semibold text-ink">2. Class offerings</h2><p class="text-sm text-ink-muted mt-1">Only selected classes can receive students in {{ preparation.target_session.name }}.</p></div>
+    <form method="post" action="{% url 'school_admin:session_preparation_offerings' preparation.pk %}" class="p-5">
+      {% csrf_token %}
+      {% if offering_classes %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {% for class_obj in offering_classes %}
+        <label class="flex items-center gap-3 p-3 border border-line rounded-lg {% if not is_draft %}opacity-75{% else %}cursor-pointer hover:bg-surface-muted{% endif %}">
+          <input type="checkbox" name="class_ids" value="{{ class_obj.pk }}" {% if class_obj.pk in offered_class_ids %}checked{% endif %} {% if not is_draft %}disabled{% endif %} class="w-4 h-4 rounded border-line text-primary">
+          <span><span class="block text-sm font-medium text-ink">{{ class_obj.name }}</span><span class="block text-xs text-ink-muted">{{ class_obj.academic_stage.name }}</span></span>
+        </label>
+        {% endfor %}
+      </div>
+      {% if is_draft %}<button type="submit" class="inline-flex items-center mt-4 px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg">Save class offerings</button>{% endif %}
+      {% else %}<p class="text-sm text-ink-muted">No classes are configured.</p>{% endif %}
+    </form>
+  </section>
+
+  <section class="bg-white border border-line rounded-xl overflow-hidden">
+    <div class="px-5 py-4 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><h2 class="text-base font-display font-semibold text-ink">3. Progression configuration</h2><p class="text-sm text-ink-muted mt-1">Saving here changes the permanent configuration used in future sessions.</p></div><a href="{% url 'school_admin:progression_configuration' %}" class="text-sm font-medium text-primary hover:text-primary-hover">Open dedicated page</a></div>
+    <form method="post" action="{% url 'school_admin:session_preparation_progression' preparation.pk %}" class="p-5 space-y-5">
+      {% csrf_token %}
+      <div>
+        <h3 class="text-sm font-semibold text-ink mb-2">Stage progression</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {% for stage in stages %}
+          <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-3 p-3 bg-surface-muted rounded-lg"><span class="text-sm font-medium text-ink">{{ stage.name }}</span><select name="stage_next_{{ stage.pk }}" {% if not is_draft %}disabled{% endif %} class="w-full px-2.5 py-2 bg-white border border-line rounded-lg text-sm"><option value="">— No next stage —</option>{% for option in stages %}{% if option.pk != stage.pk %}<option value="{{ option.pk }}" {% if stage.next_stage_id == option.pk %}selected{% endif %}>{{ option.name }}</option>{% endif %}{% endfor %}</select></div>
+          {% empty %}<p class="text-sm text-ink-muted">No stages configured.</p>{% endfor %}
+        </div>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold text-ink mb-2">Class progression</h3>
+        <div class="responsive-table-wrap border border-line rounded-xl">
+          <table class="w-full text-sm"><thead><tr class="bg-surface-muted text-left text-xs uppercase text-ink-muted"><th class="px-4 py-3">Class</th><th class="px-4 py-3">Stage</th><th class="px-4 py-3">Next class</th></tr></thead><tbody class="divide-y divide-line">
+          {% for class_obj in classes %}<tr><td class="px-4 py-3 font-medium text-ink">{{ class_obj.name }}</td><td class="px-4 py-3 text-ink-muted">{{ class_obj.academic_stage.name }}</td><td class="px-4 py-3"><select name="class_next_{{ class_obj.pk }}" {% if not is_draft %}disabled{% endif %} class="w-full px-2.5 py-2 bg-surface-muted border border-line rounded-lg text-sm"><option value="">— Same class —</option>{% for option in classes %}{% if option.pk != class_obj.pk %}<option value="{{ option.pk }}" {% if class_obj.next_class_id == option.pk %}selected{% endif %}>{{ option.name }} — {{ option.academic_stage.name }}</option>{% endif %}{% endfor %}</select></td></tr>{% empty %}<tr><td colspan="3" class="px-4 py-6 text-center text-ink-muted">No classes configured.</td></tr>{% endfor %}
+          </tbody></table>
+        </div>
+      </div>
+      {% if is_draft %}<button type="submit" class="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg"><i data-lucide="save" class="w-4 h-4 mr-2"></i>Save permanent progression</button>{% endif %}
+    </form>
+  </section>
+
+  <section class="bg-white border border-line rounded-xl overflow-hidden">
+    <div class="px-5 py-4 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><h2 class="text-base font-display font-semibold text-ink">4. Proposed student movements</h2><p class="text-sm text-ink-muted mt-1">Proposals use only permanent next-class relationships; missing links stay in the same class.</p></div>{% if is_draft %}<form method="post" action="{% url 'school_admin:session_preparation_generate' preparation.pk %}">{% csrf_token %}<button type="submit" class="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>{% if preparation.proposals_generated_at %}Regenerate{% else %}Generate proposals{% endif %}</button></form>{% endif %}</div>
+    <div class="p-5">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div class="p-3 bg-surface-muted rounded-lg"><p class="text-xs text-ink-muted">Eligible</p><p class="text-xl font-semibold text-ink mt-1">{{ counts.eligible }}</p></div>
+        <div class="p-3 bg-surface-muted rounded-lg"><p class="text-xs text-ink-muted">Remaining</p><p class="text-xl font-semibold text-ink mt-1">{{ counts.remaining }}</p></div>
+        <div class="p-3 bg-warning-tint rounded-lg"><p class="text-xs text-ink-muted">Manual attention</p><p class="text-xl font-semibold text-warning mt-1">{{ counts.manual_attention }}</p></div>
+        <div class="p-3 bg-surface-muted rounded-lg"><p class="text-xs text-ink-muted">Excluded / withdrawn</p><p class="text-xl font-semibold text-ink mt-1">{{ counts.excluded|add:counts.withdrawn }}</p></div>
+        <div class="p-3 bg-danger-tint rounded-lg"><p class="text-xs text-ink-muted">Without offering</p><p class="text-xl font-semibold text-danger mt-1">{{ counts.without_offering }}</p></div>
+      </div>
+      {% if preparation.proposals_generated_at %}<p class="text-xs text-ink-faint mt-3">Last generated {{ preparation.proposals_generated_at|date:'M j, Y g:i A' }}. Administrative overrides are retained when proposals are regenerated.</p>{% else %}<p class="text-sm text-ink-muted mt-4">Generate proposals after saving offerings and progression.</p>{% endif %}
+    </div>
+  </section>
+
+  <section class="bg-white border border-line rounded-xl overflow-hidden">
+    <div class="px-5 py-4 border-b border-line"><h2 class="text-base font-display font-semibold text-ink">5. Exceptions and overrides</h2><p class="text-sm text-ink-muted mt-1">Review each student. Overrides can only use a class offering from the target session.</p></div>
+    {% if movements %}
+    <div class="divide-y divide-line">
+      {% for movement in movements %}
+      <form method="post" action="{% url 'school_admin:session_preparation_movement' preparation.pk movement.pk %}" class="p-4 {% if movement.review_issue %}bg-warning-tint/50{% endif %}">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 lg:grid-cols-[minmax(12rem,1.2fr)_minmax(9rem,0.8fr)_minmax(11rem,1fr)_minmax(12rem,1.2fr)_auto] gap-3 items-end">
+          <div><p class="text-sm font-semibold text-ink">{{ movement.student.user.get_full_name|default:movement.student.user.username }}</p><p class="text-xs text-ink-muted">{{ movement.student.admission_number }} · From {{ movement.source_enrollment.school_class.name }}</p><p class="text-xs text-ink-faint mt-1">{{ movement.get_proposal_basis_display }}{% if movement.proposed_class %}: {{ movement.proposed_class.name }}{% endif %}</p></div>
+          <div><label class="block text-xs font-medium text-ink-muted mb-1">Action</label><select name="action" {% if not is_draft %}disabled{% endif %} class="w-full px-2.5 py-2 bg-surface-muted border border-line rounded-lg text-sm">{% for value, label in movement_actions %}<option value="{{ value }}" {% if movement.action == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+          <div><label class="block text-xs font-medium text-ink-muted mb-1">Destination</label><select name="destination_class_id" {% if not is_draft %}disabled{% endif %} class="w-full px-2.5 py-2 bg-surface-muted border border-line rounded-lg text-sm"><option value="">— None —</option>{% for offering in offerings %}<option value="{{ offering.school_class_id }}" {% if movement.destination_class_id == offering.school_class_id %}selected{% endif %}>{{ offering.school_class.name }}</option>{% endfor %}</select></div>
+          <div><label class="block text-xs font-medium text-ink-muted mb-1">Note</label><input type="text" name="note" value="{{ movement.note }}" {% if not is_draft %}disabled{% endif %} placeholder="Optional reason" class="w-full px-2.5 py-2 bg-surface-muted border border-line rounded-lg text-sm"></div>
+          {% if is_draft %}<button type="submit" class="px-3 py-2 bg-white border border-line hover:border-primary/40 rounded-lg text-sm font-medium text-ink">Save</button>{% endif %}
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mt-2">{% if movement.is_override %}{% include 'components/badge.html' with status='info' text='Override' %}{% endif %}{% if movement.action == 'REPEAT' %}{% include 'components/badge.html' with status='warning' text='Repeater' %}{% endif %}{% if movement.review_issue %}<span class="text-xs font-medium text-warning">{{ movement.review_issue.1 }}</span>{% endif %}</div>
+      </form>
+      {% endfor %}
+    </div>
+    {% else %}<div class="p-8 text-center"><i data-lucide="users" class="w-8 h-8 text-ink-faint mx-auto"></i><p class="text-sm text-ink-muted mt-3">No proposals generated yet.</p></div>{% endif %}
+  </section>
+
+  <section class="bg-white border border-line rounded-xl p-5">
+    <h2 class="text-base font-display font-semibold text-ink">6. Final review and confirmation</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+      <div><p class="text-xs text-ink-muted">Will enrol</p><p class="text-lg font-semibold text-ink">{{ counts.progressing|add:counts.remaining }}</p></div>
+      <div><p class="text-xs text-ink-muted">Repeaters</p><p class="text-lg font-semibold text-ink">{{ counts.repeaters }}</p></div>
+      <div><p class="text-xs text-ink-muted">Overrides</p><p class="text-lg font-semibold text-ink">{{ counts.overrides }}</p></div>
+      <div><p class="text-xs text-ink-muted">Blocking issues</p><p class="text-lg font-semibold {% if counts.manual_attention %}text-danger{% else %}text-success{% endif %}">{{ counts.manual_attention }}</p></div>
+    </div>
+    {% if is_draft %}
+      {% if preparation.proposals_generated_at and not counts.manual_attention %}
+      <form method="post" action="{% url 'school_admin:session_preparation_confirm' preparation.pk %}" class="mt-5" onsubmit="return confirm('Confirm all reviewed enrolments for {{ preparation.target_session.name|escapejs }}? This will not copy financial or result records.');">{% csrf_token %}<button type="submit" class="inline-flex items-center px-5 py-2.5 bg-success hover:bg-green-700 text-white text-sm font-medium rounded-xl"><i data-lucide="check-circle" class="w-4 h-4 mr-2"></i>Confirm Enrolment Plan</button></form>
+      {% else %}<p class="text-sm text-warning mt-4">Generate proposals and resolve every blocking issue before confirmation.</p>{% endif %}
+    {% else %}<div class="mt-4 p-4 bg-success-tint border border-success/20 rounded-xl text-sm text-success">Confirmed {{ preparation.confirmed_at|date:'M j, Y g:i A' }}. Repeating this request will not create duplicate enrolments.</div>{% endif %}
+  </section>
+</div>
+{% endblock %}

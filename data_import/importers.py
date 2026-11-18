@@ -72,9 +72,9 @@ class ClassImporter(BaseImporter):
 
     CSV columns: name, section. ``section`` is the academic stage: an
     existing stage of the same normalized name is linked; anything else
-    (missing section or no matching stage) imports unclassified and is
-    reported for review. Imports never create stages and never infer a
-    stage from the class name.
+    (missing section or no matching stage) receives the tenant's explicit
+    ``Unclassified`` fallback and is reported for review. Imports never create
+    a stage from the submitted section and never infer one from the class name.
     """
 
     def import_csv(self, file_path):
@@ -109,7 +109,9 @@ class ClassImporter(BaseImporter):
             # Link an existing stage by exact (case-insensitive,
             # whitespace-collapsed) name identity. Imported sections are never
             # reinterpreted into broader stages, and no stage is created here;
-            # unmatched imports stay unclassified for review (AS-22).
+            # unmatched imports use the model's explicit Unclassified fallback
+            # for review; the submitted section is never turned into a stage
+            # (AS-22).
             if stage_map is None:
                 stage_map = _build_stage_map()
 

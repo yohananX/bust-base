@@ -185,8 +185,13 @@ class ClassImporterWithSectionTest(BaseImportTestCase):
             importer.import_csv(csv_path)
 
             cls = SchoolClass.objects.get(school=self.school, name='JSS 2')
-            self.assertIsNone(cls.academic_stage)
-            self.assertFalse(AcademicStage.objects.filter(school=self.school).exists())
+            self.assertEqual(cls.academic_stage.name, 'Unclassified')
+            self.assertFalse(cls.academic_stage.is_active)
+            self.assertFalse(
+                AcademicStage.objects.filter(
+                    school=self.school, name__iexact='Mystery'
+                ).exists()
+            )
         finally:
             os.unlink(csv_path)
 
@@ -205,7 +210,8 @@ class ClassImporterWithSectionTest(BaseImportTestCase):
             importer.import_csv(csv_path)
 
             cls = SchoolClass.objects.get(school=self.school, name='JSS 2')
-            self.assertIsNone(cls.academic_stage)
+            self.assertEqual(cls.academic_stage.name, 'Unclassified')
+            self.assertEqual(cls.academic_stage.school, self.school)
         finally:
             os.unlink(csv_path)
 
@@ -221,7 +227,8 @@ class ClassImporterWithSectionTest(BaseImportTestCase):
 
             self.assertEqual(result['created'], 1)
             cls = SchoolClass.objects.get(school=self.school, name='Reception')
-            self.assertIsNone(cls.academic_stage)
+            self.assertEqual(cls.academic_stage.name, 'Unclassified')
+            self.assertFalse(cls.academic_stage.is_active)
         finally:
             os.unlink(csv_path)
 

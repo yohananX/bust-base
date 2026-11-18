@@ -1,0 +1,99 @@
+{% extends 'school_admin/base_admin.html' %}
+
+{% block title %}Progression Configuration — School Admin{% endblock %}
+{% block page_header %}Progression Configuration{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+  <div class="bg-warning-tint border border-warning/20 rounded-xl p-4">
+    <div class="flex items-start gap-3">
+      <i data-lucide="route" class="w-5 h-5 text-warning mt-0.5 flex-shrink-0"></i>
+      <div>
+        <h2 class="text-sm font-semibold text-ink">Permanent academic configuration</h2>
+        <p class="text-sm text-ink-muted mt-1">These relationships are reused for every future session. Progression is never inferred from names or display order.</p>
+      </div>
+    </div>
+  </div>
+
+  <form method="post" class="space-y-6">
+    {% csrf_token %}
+
+    <section class="bg-white border border-line rounded-xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-line">
+        <h2 class="text-base font-display font-semibold text-ink">Academic stage progression</h2>
+        <p class="text-sm text-ink-muted mt-1">Required when a class moves into a different stage.</p>
+      </div>
+      {% if stages %}
+      <div class="responsive-table-wrap">
+        <table class="w-full text-sm">
+          <thead><tr class="bg-surface-muted text-left text-xs uppercase tracking-wider text-ink-muted">
+            <th class="px-5 py-3 font-semibold">Stage</th>
+            <th class="px-5 py-3 font-semibold">Next stage</th>
+          </tr></thead>
+          <tbody class="divide-y divide-line">
+            {% for stage in stages %}
+            <tr>
+              <td class="px-5 py-3.5 font-medium text-ink">{{ stage.name }}{% if not stage.is_active %} <span class="text-xs text-ink-faint">(inactive)</span>{% endif %}</td>
+              <td class="px-5 py-3.5">
+                <select name="stage_next_{{ stage.pk }}" class="w-full max-w-md px-3 py-2 bg-surface-muted border border-line rounded-lg text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+                  <option value="">— Final stage / no next stage —</option>
+                  {% for option in stages %}{% if option.pk != stage.pk %}
+                  <option value="{{ option.pk }}" {% if stage.next_stage_id == option.pk %}selected{% endif %}>{{ option.name }}</option>
+                  {% endif %}{% endfor %}
+                </select>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="px-5 py-8 text-center text-sm text-ink-muted">No academic stages are configured.</div>
+      {% endif %}
+    </section>
+
+    <section class="bg-white border border-line rounded-xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-line">
+        <h2 class="text-base font-display font-semibold text-ink">Class progression</h2>
+        <p class="text-sm text-ink-muted mt-1">Leave a class blank to propose the same class during preparation.</p>
+      </div>
+      {% if classes %}
+      <div class="responsive-table-wrap">
+        <table class="w-full text-sm">
+          <thead><tr class="bg-surface-muted text-left text-xs uppercase tracking-wider text-ink-muted">
+            <th class="px-5 py-3 font-semibold">Class</th>
+            <th class="px-5 py-3 font-semibold">Stage</th>
+            <th class="px-5 py-3 font-semibold">Next class</th>
+          </tr></thead>
+          <tbody class="divide-y divide-line">
+            {% for class_obj in classes %}
+            <tr>
+              <td class="px-5 py-3.5 font-medium text-ink">{{ class_obj.name }}</td>
+              <td class="px-5 py-3.5 text-ink-muted">{{ class_obj.academic_stage.name }}</td>
+              <td class="px-5 py-3.5">
+                <select name="class_next_{{ class_obj.pk }}" class="w-full max-w-md px-3 py-2 bg-surface-muted border border-line rounded-lg text-sm text-ink focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+                  <option value="">— Stay in {{ class_obj.name }} —</option>
+                  {% for option in classes %}{% if option.pk != class_obj.pk %}
+                  <option value="{{ option.pk }}" {% if class_obj.next_class_id == option.pk %}selected{% endif %}>{{ option.name }} — {{ option.academic_stage.name }}</option>
+                  {% endif %}{% endfor %}
+                </select>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="px-5 py-8 text-center text-sm text-ink-muted">No classes are configured.</div>
+      {% endif %}
+    </section>
+
+    <div class="flex items-center gap-4">
+      <button type="submit" class="inline-flex items-center px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl transition-colors">
+        <i data-lucide="save" class="w-4 h-4 mr-2"></i>Save Permanent Progression
+      </button>
+      <a href="{% url 'school_admin:class_list' %}" class="text-sm font-medium text-ink-muted hover:text-ink">Back to classes</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

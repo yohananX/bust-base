@@ -1,10 +1,50 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import F, Q
 from django.db.models.functions import Lower, Trim
 from django.utils.translation import gettext_lazy as _
 
 from core.models import AcademicSession, TenantScopedModel
 from accounts.models import Roles
+
+
+def _validate_progression_edge(instance, field_name, label):
+    """Validate one tenant-scoped self-referencing progression edge.
+
+    Self references and longer cycles cannot be expressed completely with a
+    database constraint.  This guard is shared by stages and classes and runs
+    from both ``clean()`` and ``save()`` so normal ORM writes cannot bypass it.
+    Controlled bulk configuration updates validate the complete proposed graph
+    in ``students.progression`` before writing it.
+    """
+    target_id = getattr(instance, f'{field_name}_id')
+    if not target_id:
+        return
+
+    if instance.pk and target_id == instance.pk:
+        raise ValidationError({field_name: _(f'A {label} cannot progress to itself.')})
+
+    model = type(instance)
+    visited = set()
+    current_id = target_id
+    while current_id:
+        if instance.pk and current_id == instance.pk:
+            raise ValidationError({field_name: _(f'This {label} progression would create a cycle.')})
+        if current_id in visited:
+            raise ValidationError({field_name: _(f'The selected {label} progression already contains a cycle.')})
+        visited.add(current_id)
+
+        row = model.objects.filter(
+            pk=current_id, school_id=instance.school_id
+        ).values(
+            'school_id', f'{field_name}_id'
+        ).first()
+        if row is None:
+            raise ValidationError({field_name: _(f'Select a valid next {label}.')})
+        if instance.school_id and row['school_id'] != instance.school_id:
+            raise ValidationError({field_name: _(f'The next {label} must belong to the same school.')})
+        current_id = row[f'{field_name}_id']
 
 
 class AcademicStage(TenantScopedModel):
@@ -13,6 +53,15 @@ class AcademicStage(TenantScopedModel):
     name = models.CharField(max_length=100, verbose_name=_('name'))
     display_order = models.PositiveIntegerField(default=0, verbose_name=_('display order'))
     is_active = models.BooleanField(default=True, verbose_name=_('active'))
+    next_stage = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='previous_stages',
+        verbose_name=_('next stage'),
+        help_text=_('Permanent destination stage used when a class progression crosses stages.'),
+    )
 
     class Meta:
         verbose_name = _('academic stage')
@@ -26,6 +75,10 @@ class AcademicStage(TenantScopedModel):
                 Lower(Trim('name')),
                 'school',
                 name='uniq_academicstage_school_normalized_name',
+            ),
+            models.CheckConstraint(
+                condition=~Q(next_stage=F('pk')),
+                name='academicstage_next_stage_not_self',
             ),
         ]
 
@@ -48,10 +101,34 @@ class AcademicStage(TenantScopedModel):
             name__iexact=self.name,
         ).exclude(pk=self.pk).exists():
             raise ValidationError({'name': _('An academic stage with this name already exists for this school.')})
+        self._validate_progression()
+
+    def _validate_progression(self):
+        _validate_progression_edge(self, 'next_stage', 'academic stage')
+
+        # Changing a stage edge must not leave existing class progressions in
+        # disagreement with it. Same-stage class progressions remain valid.
+        if self.pk:
+            cross_stage_links = SchoolClass.objects.filter(
+                school_id=self.school_id,
+                academic_stage_id=self.pk,
+                next_class__isnull=False,
+            ).exclude(next_class__academic_stage_id=self.pk).select_related(
+                'next_class__academic_stage'
+            )
+            for school_class in cross_stage_links:
+                if school_class.next_class.academic_stage_id != self.next_stage_id:
+                    raise ValidationError({
+                        'next_stage': _(
+                            'This stage progression conflicts with the configured '
+                            f'class progression for {school_class.name}.'
+                        )
+                    })
 
     def save(self, *args, **kwargs):
         # Normalize on every write path, including ``objects.create()``.
         self.name = self.normalize_name(self.name)
+        self._validate_progression()
         super().save(*args, **kwargs)
 
 
@@ -62,13 +139,18 @@ class SchoolClass(TenantScopedModel):
     academic_stage = models.ForeignKey(
         'AcademicStage',
         on_delete=models.PROTECT,
-        null=True,
-        blank=True,
         related_name='classes',
         verbose_name=_('academic stage'),
-        help_text=_('The academic stage this class belongs to. Academic Stage is the single '
-                    'classification for classes; a class may stay unclassified only while '
-                    'the school has no active stages configured.'),
+        help_text=_('The permanent academic stage this class belongs to.'),
+    )
+    next_class = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='previous_classes',
+        verbose_name=_('next class'),
+        help_text=_('Permanent destination used when preparing the next academic session.'),
     )
     is_active = models.BooleanField(default=True, verbose_name=_('active'))
 
@@ -77,6 +159,12 @@ class SchoolClass(TenantScopedModel):
         verbose_name_plural = _('school classes')
         unique_together = ('school', 'name')
         ordering = ['academic_stage__display_order', 'name']
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(next_class=F('pk')),
+                name='schoolclass_next_class_not_self',
+            ),
+        ]
 
     def __str__(self):
         return self.name
@@ -90,22 +178,112 @@ class SchoolClass(TenantScopedModel):
         cannot be expressed as a single-table database constraint.
         """
         if not self.academic_stage_id:
-            return
-        try:
-            stage_school_id = self.academic_stage.school_id
-        except AcademicStage.DoesNotExist:
+            raise ValidationError({'academic_stage': _('Every class must belong to an academic stage.')})
+        stage_school_id = AcademicStage.objects.filter(
+            pk=self.academic_stage_id,
+            school_id=self.school_id,
+        ).values_list('school_id', flat=True).first()
+        if stage_school_id is None:
             raise ValidationError(
                 {'academic_stage': _('Select a valid academic stage.')}
             )
         if stage_school_id != self.school_id:
             raise ValidationError({'academic_stage': _('Academic stage must belong to the same school as the class.')})
 
+    def _ensure_academic_stage(self):
+        """Backwards-compatible assignment for legacy programmatic class writes.
+
+        Phase 3 makes the stage mandatory. Existing integrations and fixtures
+        that create a class before configuring stages receive an explicit
+        ``Unclassified`` stage rather than having a stage inferred from the
+        class name or display order.
+        """
+        if self.academic_stage_id:
+            return
+        if not self.school_id:
+            raise ValidationError({'school': _('Select a school before creating a class.')})
+        stage = next(
+            (
+                candidate
+                for candidate in AcademicStage.objects.filter(school_id=self.school_id)
+                if AcademicStage.normalize_name(candidate.name).casefold() == 'unclassified'
+            ),
+            None,
+        )
+        if stage is None:
+            stage, _ = AcademicStage.objects.get_or_create(
+                school_id=self.school_id,
+                name='Unclassified',
+                defaults={
+                    'display_order': 9999,
+                    'is_active': False,
+                },
+            )
+        self.academic_stage = stage
+
+    @staticmethod
+    def _cross_stage_error(school_id, source_stage_id, destination_stage_id):
+        if source_stage_id == destination_stage_id:
+            return None
+        source_next_stage_id = AcademicStage.objects.filter(
+            pk=source_stage_id, school_id=school_id
+        ).values_list('next_stage_id', flat=True).first()
+        if source_next_stage_id is None:
+            return _('A class cannot progress across stages until its source stage has a next stage.')
+        if source_next_stage_id != destination_stage_id:
+            return _('The destination class stage must match the source stage’s configured next stage.')
+        return None
+
+    def _validate_progression(self):
+        _validate_progression_edge(self, 'next_class', 'class')
+
+        if self.next_class_id:
+            destination = SchoolClass.objects.filter(
+                pk=self.next_class_id, school_id=self.school_id
+            ).values(
+                'school_id', 'academic_stage_id'
+            ).first()
+            if destination is None:
+                raise ValidationError({'next_class': _('Select a valid next class.')})
+            if destination['school_id'] != self.school_id:
+                raise ValidationError({'next_class': _('The next class must belong to the same school.')})
+            error = self._cross_stage_error(
+                self.school_id,
+                self.academic_stage_id,
+                destination['academic_stage_id'],
+            )
+            if error:
+                raise ValidationError({'next_class': error})
+
+        # A stage change on this class can also invalidate classes that point
+        # to it, so validate incoming edges against the proposed stage value.
+        if self.pk:
+            incoming = SchoolClass.objects.filter(
+                school_id=self.school_id, next_class_id=self.pk
+            ).exclude(pk=self.pk).values('name', 'academic_stage_id')
+            for source in incoming:
+                error = self._cross_stage_error(
+                    self.school_id,
+                    source['academic_stage_id'],
+                    self.academic_stage_id,
+                )
+                if error:
+                    raise ValidationError({
+                        'academic_stage': _(
+                            f'This stage would invalidate the progression into this class from {source["name"]}.'
+                        )
+                    })
+
     def clean(self):
         super().clean()
+        self._ensure_academic_stage()
         self._validate_academic_stage_school()
+        self._validate_progression()
 
     def save(self, *args, **kwargs):
+        self._ensure_academic_stage()
         self._validate_academic_stage_school()
+        self._validate_progression()
         super().save(*args, **kwargs)
 
 
@@ -338,11 +516,6 @@ class Student(TenantScopedModel):
         """
         from .services import confirm_enrolment
 
-        ClassOffering.objects.get_or_create(
-            school=self.school,
-            school_class=school_class,
-            academic_session=session,
-        )
         return confirm_enrolment(student=self, school_class=school_class, session=session)
 
 
@@ -470,6 +643,266 @@ class ClassEnrollment(TenantScopedModel):
             ClassEnrollment.objects.filter(
                 student=self.student, is_current=True
             ).exclude(pk=self.pk).update(is_current=False)
+
+
+class SessionPreparation(TenantScopedModel):
+    """Persisted administrative plan for preparing one future session.
+
+    Progression configuration itself remains on ``AcademicStage`` and
+    ``SchoolClass``. This model records only the review/confirmation workflow
+    for a specific target session.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = 'DRAFT', _('Draft')
+        CONFIRMED = 'CONFIRMED', _('Confirmed')
+
+    source_session = models.ForeignKey(
+        'core.AcademicSession',
+        on_delete=models.PROTECT,
+        related_name='outgoing_student_preparations',
+        verbose_name=_('source session'),
+    )
+    target_session = models.OneToOneField(
+        'core.AcademicSession',
+        on_delete=models.PROTECT,
+        related_name='student_preparation',
+        verbose_name=_('target session'),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
+        db_index=True,
+        verbose_name=_('status'),
+    )
+    proposals_generated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('proposals generated at'),
+    )
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('confirmed at'),
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_session_preparations',
+        verbose_name=_('created by'),
+    )
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='confirmed_session_preparations',
+        verbose_name=_('confirmed by'),
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('created at'))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_('updated at'))
+
+    class Meta:
+        verbose_name = _('session preparation')
+        verbose_name_plural = _('session preparations')
+        ordering = ['-target_session__start_date']
+
+    def __str__(self):
+        return f'{self.source_session.name} → {self.target_session.name}'
+
+    def _validate_context(self):
+        errors = {}
+        source = AcademicSession.objects.filter(
+            pk=self.source_session_id, school_id=self.school_id
+        ).values(
+            'school_id', 'start_date', 'end_date'
+        ).first()
+        target = AcademicSession.objects.filter(
+            pk=self.target_session_id, school_id=self.school_id
+        ).values(
+            'school_id', 'start_date'
+        ).first()
+        if source is None:
+            errors['source_session'] = _('Select a valid source session.')
+        if target is None:
+            errors['target_session'] = _('Select a valid target session.')
+        if source and source['school_id'] != self.school_id:
+            errors['source_session'] = _('Source session must belong to this school.')
+        if target and target['school_id'] != self.school_id:
+            errors['target_session'] = _('Target session must belong to this school.')
+        if self.source_session_id and self.source_session_id == self.target_session_id:
+            errors['target_session'] = _('Source and target sessions must be different.')
+        if source and target and target['start_date'] <= source['end_date']:
+            errors['target_session'] = _('Target session must start after the source session ends.')
+        for field_name in ('created_by', 'confirmed_by'):
+            user_id = getattr(self, f'{field_name}_id')
+            if user_id:
+                from accounts.models import User
+
+                user_school_id = User.objects.filter(
+                    pk=user_id, school_id=self.school_id
+                ).values_list(
+                    'school_id', flat=True
+                ).first()
+                if user_school_id != self.school_id:
+                    errors[field_name] = _('Administrator must belong to this school.')
+        if errors:
+            raise ValidationError(errors)
+
+    def clean(self):
+        super().clean()
+        self._validate_context()
+
+    def save(self, *args, **kwargs):
+        self._validate_context()
+        super().save(*args, **kwargs)
+
+
+class StudentSessionMovement(TenantScopedModel):
+    """One student's reviewed destination within a session preparation."""
+
+    class Action(models.TextChoices):
+        PROGRESS = 'PROGRESS', _('Progress')
+        REPEAT = 'REPEAT', _('Repeat current class')
+        EXCLUDE = 'EXCLUDE', _('Exclude from this session')
+        WITHDRAW = 'WITHDRAW', _('Mark withdrawn')
+
+    class ProposalBasis(models.TextChoices):
+        NEXT_CLASS = 'NEXT_CLASS', _('Configured next class')
+        SAME_CLASS = 'SAME_CLASS', _('Same class (no next class configured)')
+        LIFECYCLE_EXCLUSION = 'LIFECYCLE_EXCLUSION', _('Student lifecycle status')
+
+    preparation = models.ForeignKey(
+        SessionPreparation,
+        on_delete=models.CASCADE,
+        related_name='movements',
+        verbose_name=_('session preparation'),
+    )
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.PROTECT,
+        related_name='session_movements',
+        verbose_name=_('student'),
+    )
+    source_enrollment = models.ForeignKey(
+        ClassEnrollment,
+        on_delete=models.PROTECT,
+        related_name='session_movements',
+        verbose_name=_('source enrolment'),
+    )
+    proposed_class = models.ForeignKey(
+        SchoolClass,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='proposed_session_movements',
+        verbose_name=_('proposed class'),
+    )
+    destination_class = models.ForeignKey(
+        SchoolClass,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='destination_session_movements',
+        verbose_name=_('destination class'),
+    )
+    proposal_basis = models.CharField(
+        max_length=30,
+        choices=ProposalBasis.choices,
+        verbose_name=_('proposal basis'),
+    )
+    action = models.CharField(
+        max_length=20,
+        choices=Action.choices,
+        default=Action.PROGRESS,
+        verbose_name=_('action'),
+    )
+    is_override = models.BooleanField(default=False, verbose_name=_('administrative override'))
+    note = models.CharField(max_length=255, blank=True, verbose_name=_('note'))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('created at'))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_('updated at'))
+
+    class Meta:
+        verbose_name = _('student session movement')
+        verbose_name_plural = _('student session movements')
+        ordering = ['student__user__last_name', 'student__user__first_name', 'student__admission_number']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['preparation', 'student'],
+                name='uniq_preparation_student_movement',
+            ),
+        ]
+
+    def __str__(self):
+        destination = self.destination_class.name if self.destination_class_id else self.get_action_display()
+        return f'{self.student} → {destination}'
+
+    def _validate_context(self):
+        errors = {}
+        preparation = SessionPreparation.objects.filter(
+            pk=self.preparation_id, school_id=self.school_id
+        ).values(
+            'school_id', 'source_session_id'
+        ).first()
+        student = Student.objects.filter(
+            pk=self.student_id, school_id=self.school_id
+        ).values('school_id').first()
+        source = ClassEnrollment.objects.filter(
+            pk=self.source_enrollment_id, school_id=self.school_id
+        ).values(
+            'school_id', 'student_id', 'session_id', 'school_class_id'
+        ).first()
+
+        if preparation is None:
+            errors['preparation'] = _('Select a valid session preparation.')
+        elif preparation['school_id'] != self.school_id:
+            errors['preparation'] = _('Session preparation must belong to this school.')
+        if student is None:
+            errors['student'] = _('Select a valid student.')
+        elif student['school_id'] != self.school_id:
+            errors['student'] = _('Student must belong to this school.')
+        if source is None:
+            errors['source_enrollment'] = _('Select a valid source enrolment.')
+        else:
+            if source['school_id'] != self.school_id:
+                errors['source_enrollment'] = _('Source enrolment must belong to this school.')
+            if self.student_id and source['student_id'] != self.student_id:
+                errors['source_enrollment'] = _('Source enrolment must belong to this student.')
+            if preparation and source['session_id'] != preparation['source_session_id']:
+                errors['source_enrollment'] = _('Source enrolment must belong to the preparation source session.')
+
+        for field_name in ('proposed_class', 'destination_class'):
+            class_id = getattr(self, f'{field_name}_id')
+            if class_id:
+                class_school_id = SchoolClass.objects.filter(
+                    pk=class_id, school_id=self.school_id
+                ).values_list(
+                    'school_id', flat=True
+                ).first()
+                if class_school_id != self.school_id:
+                    errors[field_name] = _('Class must belong to this school.')
+
+        included = self.action in (self.Action.PROGRESS, self.Action.REPEAT)
+        if included and not self.destination_class_id:
+            errors['destination_class'] = _('Included students require a destination class.')
+        if not included and self.destination_class_id:
+            errors['destination_class'] = _('Excluded or withdrawn students cannot have a destination class.')
+        if self.action == self.Action.REPEAT and source:
+            if self.destination_class_id != source['school_class_id']:
+                errors['destination_class'] = _('A repeater must remain in the source class.')
+        if errors:
+            raise ValidationError(errors)
+
+    def clean(self):
+        super().clean()
+        self._validate_context()
+
+    def save(self, *args, **kwargs):
+        self._validate_context()
+        super().save(*args, **kwargs)
 
 
 class StudentGuardianLink(TenantScopedModel):

@@ -11,6 +11,7 @@ class SessionScopedAcademicMigrationTests(TransactionTestCase):
     migrate_from = ('academics', '0011_subject_pass_mark')
     migrate_to = ('academics', '0013_finalize_session_scoped_academics')
     students_leaf = ('students', '0011_classoffering_and_enrollment_offering')
+    students_latest = ('students', '0012_student_progression_phase3')
     accounts_leaf = ('accounts', '0007_plan_updates')
 
     def setUp(self):
@@ -23,7 +24,7 @@ class SessionScopedAcademicMigrationTests(TransactionTestCase):
 
     def tearDown(self):
         executor = MigrationExecutor(connection)
-        executor.migrate([self.migrate_to])
+        executor.migrate([self.migrate_to, self.students_latest])
         super().tearDown()
 
     def _school(self, suffix='main'):

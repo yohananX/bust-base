@@ -41,6 +41,18 @@ from .results import PublishResultsView, ResultReviewView
 from .sessions import (
     SessionListView, SessionCreateView, SessionSetCurrentView, TermSetCurrentView,
 )
+from .progression import (
+    ProgressionConfigurationView,
+    SessionPreparationCreateView,
+    SessionPreparationStartView,
+    SessionPreparationDetailView,
+    PreparationScheduleUpdateView,
+    PreparationOfferingsUpdateView,
+    PreparationProgressionUpdateView,
+    PreparationGenerateView,
+    PreparationMovementUpdateView,
+    PreparationConfirmView,
+)
 from .school_settings import SchoolSettingsView
 from .notifications import NotificationLogView
 from .credentials import (
