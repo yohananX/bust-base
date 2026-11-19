@@ -22,24 +22,37 @@ class BaseTest(TestCase):
     def setUp(self):
         self.school = School.objects.create(name="Test School", short_code="test")
         self.session = AcademicSession.objects.create(
-            school=self.school, name="2025/2026",
-            start_date="2025-09-01", end_date="2026-07-31", is_current=True,
+            school=self.school,
+            name="2025/2026",
+            start_date="2025-09-01",
+            end_date="2026-07-31",
+            is_current=True,
         )
         self.term = Term.objects.create(
-            school=self.school, session=self.session,
-            name="First Term", start_date="2025-09-01", end_date="2025-12-20",
+            school=self.school,
+            session=self.session,
+            name="First Term",
+            start_date="2025-09-01",
+            end_date="2025-12-20",
             is_current=True,
         )
         self.teacher_user = User.objects.create_user(
-            username="teacher", email="t@t.com", password="pass",
-            school=self.school, role=Roles.TEACHER,
+            username="teacher",
+            email="t@t.com",
+            password="pass",
+            school=self.school,
+            role=Roles.TEACHER,
         )
         self.student_user = User.objects.create_user(
-            username="student", email="s@s.com", password="pass",
-            school=self.school, role=Roles.STUDENT,
+            username="student",
+            email="s@s.com",
+            password="pass",
+            school=self.school,
+            role=Roles.STUDENT,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A",
+            school=self.school,
+            name="JSS1A",
         )
         self.offering = ClassOffering.objects.create(
             school=self.school,
@@ -47,26 +60,35 @@ class BaseTest(TestCase):
             academic_session=self.session,
         )
         self.subject = Subject.objects.create(
-            school=self.school, name="Mathematics", code="MTH",
+            school=self.school,
+            name="Mathematics",
+            code="MTH",
         )
         self.class_subject = ClassSubject.objects.create(
-            school=self.school, subject=self.subject,
+            school=self.school,
+            subject=self.subject,
             class_offering=self.offering,
             pass_mark=40,
         )
         self.student_profile = StudentProfile.objects.create(
-            school=self.school, user=self.student_user,
-            admission_number="001", date_of_birth="2010-01-01",
-            gender=StudentProfile.MALE, admission_date="2025-09-01",
+            school=self.school,
+            user=self.student_user,
+            admission_number="001",
+            date_of_birth="2010-01-01",
+            gender=StudentProfile.MALE,
+            admission_date="2025-09-01",
         )
         self.enrollment = ClassEnrollment.objects.create(
-            school=self.school, student=self.student_profile,
-            school_class=self.school_class, session=self.session,
+            school=self.school,
+            student=self.student_profile,
+            school_class=self.school_class,
+            session=self.session,
             class_offering=self.offering,
             is_current=True,
         )
         self.assignment = TeacherAssignment.objects.create(
-            school=self.school, teacher=self.teacher_user,
+            school=self.school,
+            teacher=self.teacher_user,
             class_subject=self.class_subject,
         )
 
@@ -74,6 +96,7 @@ class BaseTest(TestCase):
 # ---------------------------------------------------------------------------
 # Subject model tests
 # ---------------------------------------------------------------------------
+
 
 class SubjectModelTests(TestCase):
     """Tests for the Subject model."""
@@ -84,14 +107,18 @@ class SubjectModelTests(TestCase):
             short_code="grace-house",
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A",
+            school=self.school,
+            name="JSS1A",
         )
         self.session = AcademicSession.objects.create(
-            school=self.school, name="2025/2026",
-            start_date=date(2025, 9, 1), end_date=date(2026, 7, 31),
+            school=self.school,
+            name="2025/2026",
+            start_date=date(2025, 9, 1),
+            end_date=date(2026, 7, 31),
         )
         self.offering = ClassOffering.objects.create(
-            school=self.school, school_class=self.school_class,
+            school=self.school,
+            school_class=self.school_class,
             academic_session=self.session,
         )
 
@@ -103,7 +130,9 @@ class SubjectModelTests(TestCase):
             code="MTH",
         )
         ClassSubject.objects.create(
-            school=self.school, subject=subject, class_offering=self.offering,
+            school=self.school,
+            subject=subject,
+            class_offering=self.offering,
         )
         self.assertEqual(subject.name, "Mathematics")
         self.assertEqual(subject.code, "MTH")
@@ -114,15 +143,21 @@ class SubjectModelTests(TestCase):
         Two different schools CAN have the same code.
         """
         subject = Subject.objects.create(
-            school=self.school, name="Mathematics", code="MTH",
+            school=self.school,
+            name="Mathematics",
+            code="MTH",
         )
         ClassSubject.objects.create(
-            school=self.school, subject=subject, class_offering=self.offering,
+            school=self.school,
+            subject=subject,
+            class_offering=self.offering,
         )
         # Same school, same code → IntegrityError
         with self.assertRaises(IntegrityError):
             Subject.objects.create(
-                school=self.school, name="Maths", code="MTH",
+                school=self.school,
+                name="Maths",
+                code="MTH",
             )
 
     def test_same_code_different_schools(self):
@@ -130,24 +165,36 @@ class SubjectModelTests(TestCase):
         school2 = School.objects.create(name="Other School", short_code="other")
         class2 = SchoolClass.objects.create(school=school2, name="JSS1A")
         session2 = AcademicSession.objects.create(
-            school=school2, name="2025/2026",
-            start_date=date(2025, 9, 1), end_date=date(2026, 7, 31),
+            school=school2,
+            name="2025/2026",
+            start_date=date(2025, 9, 1),
+            end_date=date(2026, 7, 31),
         )
         offering2 = ClassOffering.objects.create(
-            school=school2, school_class=class2, academic_session=session2,
+            school=school2,
+            school_class=class2,
+            academic_session=session2,
         )
 
         subject1 = Subject.objects.create(
-            school=self.school, name="Mathematics", code="MTH",
+            school=self.school,
+            name="Mathematics",
+            code="MTH",
         )
         ClassSubject.objects.create(
-            school=self.school, subject=subject1, class_offering=self.offering,
+            school=self.school,
+            subject=subject1,
+            class_offering=self.offering,
         )
         subject2 = Subject.objects.create(
-            school=school2, name="Mathematics", code="MTH",
+            school=school2,
+            name="Mathematics",
+            code="MTH",
         )
         ClassSubject.objects.create(
-            school=school2, subject=subject2, class_offering=offering2,
+            school=school2,
+            subject=subject2,
+            class_offering=offering2,
         )
 
         self.assertEqual(Subject.objects.for_school(self.school).count(), 1)
@@ -158,24 +205,36 @@ class SubjectModelTests(TestCase):
         school2 = School.objects.create(name="Other School", short_code="other")
         class2 = SchoolClass.objects.create(school=school2, name="JSS1A")
         session2 = AcademicSession.objects.create(
-            school=school2, name="2025/2026",
-            start_date=date(2025, 9, 1), end_date=date(2026, 7, 31),
+            school=school2,
+            name="2025/2026",
+            start_date=date(2025, 9, 1),
+            end_date=date(2026, 7, 31),
         )
         offering2 = ClassOffering.objects.create(
-            school=school2, school_class=class2, academic_session=session2,
+            school=school2,
+            school_class=class2,
+            academic_session=session2,
         )
 
         subject1 = Subject.objects.create(
-            school=self.school, name="Mathematics", code="MTH",
+            school=self.school,
+            name="Mathematics",
+            code="MTH",
         )
         ClassSubject.objects.create(
-            school=self.school, subject=subject1, class_offering=self.offering,
+            school=self.school,
+            subject=subject1,
+            class_offering=self.offering,
         )
         subject2 = Subject.objects.create(
-            school=school2, name="Mathematics", code="MTH",
+            school=school2,
+            name="Mathematics",
+            code="MTH",
         )
         ClassSubject.objects.create(
-            school=school2, subject=subject2, class_offering=offering2,
+            school=school2,
+            subject=subject2,
+            class_offering=offering2,
         )
 
         self.assertEqual(Subject.objects.for_school(self.school).count(), 1)
@@ -185,6 +244,7 @@ class SubjectModelTests(TestCase):
 # ---------------------------------------------------------------------------
 # TeacherAssignment model tests
 # ---------------------------------------------------------------------------
+
 
 class TeacherAssignmentModelTests(TestCase):
     """Tests for the TeacherAssignment model."""
@@ -211,10 +271,13 @@ class TeacherAssignmentModelTests(TestCase):
             role=Roles.ADMIN,
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A",
+            school=self.school,
+            name="JSS1A",
         )
         self.subject = Subject.objects.create(
-            school=self.school, name="Mathematics", code="MTH",
+            school=self.school,
+            name="Mathematics",
+            code="MTH",
         )
         self.session = AcademicSession.objects.create(
             school=self.school,
@@ -260,6 +323,7 @@ class TeacherAssignmentModelTests(TestCase):
 # ---------------------------------------------------------------------------
 # Score model tests
 # ---------------------------------------------------------------------------
+
 
 class ScoreModelTests(BaseTest):
     """Tests for the Score model fields, computed properties, and constraints."""
@@ -325,7 +389,7 @@ class ScoreModelTests(BaseTest):
             over_default.full_clean()
 
         # Custom scheme: 20 per test, 100 exam
-        self.school.test_max_scores = {'test_1': 20, 'test_2': 20, 'test_3': 20}
+        self.school.test_max_scores = {"test_1": 20, "test_2": 20, "test_3": 20}
         self.school.exam_max_score = 100
         self.school.save()
 
@@ -354,13 +418,19 @@ class ScoreModelTests(BaseTest):
 
     def test_score_component_maxima_helper(self):
         """score_component_maxima maps the school's scheme per component."""
-        self.school.test_max_scores = {'test_1': 15, 'test_2': 15, 'test_3': 15}
+        self.school.test_max_scores = {"test_1": 15, "test_2": 15, "test_3": 15}
         self.school.exam_max_score = 60
         self.school.save()
 
-        self.assertEqual(self.school.score_component_maxima(), {
-            'test_1': 15, 'test_2': 15, 'test_3': 15, 'exam_score': 60,
-        })
+        self.assertEqual(
+            self.school.score_component_maxima(),
+            {
+                "test_1": 15,
+                "test_2": 15,
+                "test_3": 15,
+                "exam_score": 60,
+            },
+        )
         self.assertEqual(self.school.total_score_max(), 105)
 
     def test_score_computed_properties_complete_and_passing(self):
@@ -454,16 +524,23 @@ class ScoreModelTests(BaseTest):
         # School B with identical setup
         school2 = School.objects.create(name="Other School", short_code="other")
         session2 = AcademicSession.objects.create(
-            school=school2, name="2025/2026",
-            start_date="2025-09-01", end_date="2026-07-31", is_current=True,
+            school=school2,
+            name="2025/2026",
+            start_date="2025-09-01",
+            end_date="2026-07-31",
+            is_current=True,
         )
         term2 = Term.objects.create(
-            school=school2, session=session2,
-            name="First Term", start_date="2025-09-01", end_date="2025-12-20",
+            school=school2,
+            session=session2,
+            name="First Term",
+            start_date="2025-09-01",
+            end_date="2025-12-20",
             is_current=True,
         )
         school_class2 = SchoolClass.objects.create(
-            school=school2, name="JSS1A",
+            school=school2,
+            name="JSS1A",
         )
         offering2 = ClassOffering.objects.create(
             school=school2,
@@ -471,25 +548,38 @@ class ScoreModelTests(BaseTest):
             academic_session=session2,
         )
         student_user2 = User.objects.create_user(
-            username="student2", email="s2@s2.com", password="pass",
-            school=school2, role=Roles.STUDENT,
+            username="student2",
+            email="s2@s2.com",
+            password="pass",
+            school=school2,
+            role=Roles.STUDENT,
         )
         student_profile2 = StudentProfile.objects.create(
-            school=school2, user=student_user2,
-            admission_number="002", date_of_birth="2010-01-01",
-            gender=StudentProfile.MALE, admission_date="2025-09-01",
+            school=school2,
+            user=student_user2,
+            admission_number="002",
+            date_of_birth="2010-01-01",
+            gender=StudentProfile.MALE,
+            admission_date="2025-09-01",
         )
 
         teacher2 = User.objects.create_user(
-            username="teacher2", email="t2@t2.com", password="pass",
-            school=school2, role=Roles.TEACHER,
+            username="teacher2",
+            email="t2@t2.com",
+            password="pass",
+            school=school2,
+            role=Roles.TEACHER,
         )
 
         subject2 = Subject.objects.create(
-            school=school2, name="Mathematics", code="MTH",
+            school=school2,
+            name="Mathematics",
+            code="MTH",
         )
         class_subject2 = ClassSubject.objects.create(
-            school=school2, subject=subject2, class_offering=offering2,
+            school=school2,
+            subject=subject2,
+            class_offering=offering2,
         )
         ClassEnrollment.objects.create(
             school=school2,
@@ -541,7 +631,8 @@ class ScoreModelTests(BaseTest):
         self.subject.pass_mark = 40
         self.subject.save()
         ClassSubject.objects.filter(
-            subject=self.subject, class_offering=self.offering,
+            subject=self.subject,
+            class_offering=self.offering,
         ).update(pass_mark=50)
 
         score = Score.objects.create(
@@ -549,7 +640,10 @@ class ScoreModelTests(BaseTest):
             student=self.student_profile,
             class_subject=self.class_subject,
             term=self.term,
-            test_1=8, test_2=7, test_3=9, exam_score=60,
+            test_1=8,
+            test_2=7,
+            test_3=9,
+            exam_score=60,
             entered_by=self.teacher_user,
         )
         self.assertEqual(score.total_score, 84)
@@ -565,7 +659,10 @@ class ScoreModelTests(BaseTest):
             student=self.student_profile,
             class_subject=self.class_subject,
             term=self.term,
-            test_1=8, test_2=7, test_3=9, exam_score=20,
+            test_1=8,
+            test_2=7,
+            test_3=9,
+            exam_score=20,
             entered_by=self.teacher_user,
         )
         self.assertEqual(score.total_score, 44)
@@ -576,6 +673,7 @@ class ScoreModelTests(BaseTest):
 # ---------------------------------------------------------------------------
 # Ranking tests
 # ---------------------------------------------------------------------------
+
 
 class RankingTests(TestCase):
     """Tests for compute_positions with Olympic/dense ranking."""
@@ -606,7 +704,8 @@ class RankingTests(TestCase):
             end_date=date(2025, 12, 20),
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A",
+            school=self.school,
+            name="JSS1A",
         )
         self.offering = ClassOffering.objects.create(
             school=self.school,
@@ -614,10 +713,14 @@ class RankingTests(TestCase):
             academic_session=self.session,
         )
         self.subject = Subject.objects.create(
-            school=self.school, name="Mathematics", code="MTH", pass_mark=40,
+            school=self.school,
+            name="Mathematics",
+            code="MTH",
+            pass_mark=40,
         )
         self.class_subject = ClassSubject.objects.create(
-            school=self.school, subject=self.subject,
+            school=self.school,
+            subject=self.subject,
             class_offering=self.offering,
         )
 
@@ -699,7 +802,9 @@ class RankingTests(TestCase):
 
         positions = {
             s.student.user.username: s.position
-            for s in Score.objects.filter(class_subject=self.class_subject, term=self.term)
+            for s in Score.objects.filter(
+                class_subject=self.class_subject, term=self.term
+            )
         }
 
         self.assertEqual(positions["stu_a"], 1)
@@ -745,7 +850,11 @@ class RankingTests(TestCase):
 
     def test_ranking_all_tied(self):
         """All students with the same total_score should get position 1."""
-        for username, adm_no in [("stu_a", "C001"), ("stu_b", "C002"), ("stu_c", "C003")]:
+        for username, adm_no in [
+            ("stu_a", "C001"),
+            ("stu_b", "C002"),
+            ("stu_c", "C003"),
+        ]:
             student = self._create_student(username, adm_no)
             self._enroll(student)
             self._score(student, test_1=8, test_2=7, test_3=9, exam_score=60)
@@ -754,7 +863,9 @@ class RankingTests(TestCase):
 
         positions = {
             s.student.user.username: s.position
-            for s in Score.objects.filter(class_subject=self.class_subject, term=self.term)
+            for s in Score.objects.filter(
+                class_subject=self.class_subject, term=self.term
+            )
         }
 
         self.assertEqual(positions["stu_a"], 1)
@@ -817,7 +928,10 @@ class RankingTests(TestCase):
             student=stu_c,
             class_subject=self.class_subject,
             term=self.term,
-            test_1=10, test_2=10, test_3=10, exam_score=65,
+            test_1=10,
+            test_2=10,
+            test_3=10,
+            exam_score=65,
             entered_by=self.teacher_user,
             moderation_status=Score.MODERATION_REJECTED,
         )
@@ -830,7 +944,10 @@ class RankingTests(TestCase):
             student=stu_d,
             class_subject=self.class_subject,
             term=self.term,
-            test_1=8, test_2=8, test_3=9, exam_score=60,
+            test_1=8,
+            test_2=8,
+            test_3=9,
+            exam_score=60,
             entered_by=self.teacher_user,
         )
 
@@ -838,7 +955,9 @@ class RankingTests(TestCase):
 
         positions = {
             s.student.user.username: s.position
-            for s in Score.objects.filter(class_subject=self.class_subject, term=self.term)
+            for s in Score.objects.filter(
+                class_subject=self.class_subject, term=self.term
+            )
         }
 
         self.assertEqual(positions["stu_a"], 1)
@@ -854,15 +973,25 @@ class RankingTests(TestCase):
         self._enroll(stu_b)
 
         Score.objects.create(
-            school=self.school, student=stu_a,
-            class_subject=self.class_subject, term=self.term,
-            test_1=9, test_2=9, test_3=9, exam_score=60,
+            school=self.school,
+            student=stu_a,
+            class_subject=self.class_subject,
+            term=self.term,
+            test_1=9,
+            test_2=9,
+            test_3=9,
+            exam_score=60,
             entered_by=self.teacher_user,
         )
         Score.objects.create(
-            school=self.school, student=stu_b,
-            class_subject=self.class_subject, term=self.term,
-            test_1=10, test_2=10, test_3=10, exam_score=65,
+            school=self.school,
+            student=stu_b,
+            class_subject=self.class_subject,
+            term=self.term,
+            test_1=10,
+            test_2=10,
+            test_3=10,
+            exam_score=65,
             entered_by=self.teacher_user,
             moderation_status=Score.MODERATION_APPROVED,
         )
@@ -887,23 +1016,32 @@ class TermSummaryModerationTests(TestCase):
 
     def setUp(self):
         self.school = School.objects.create(
-            name="Grace House School", short_code="grace-house",
+            name="Grace House School",
+            short_code="grace-house",
         )
         self.teacher_user = User.objects.create_user(
-            username="mr_smith", email="smith@grace.edu",
-            password="testpass123", school=self.school, role=Roles.TEACHER,
+            username="mr_smith",
+            email="smith@grace.edu",
+            password="testpass123",
+            school=self.school,
+            role=Roles.TEACHER,
         )
         self.session = AcademicSession.objects.create(
-            school=self.school, name="2025/2026",
-            start_date=date(2025, 9, 1), end_date=date(2026, 7, 31),
+            school=self.school,
+            name="2025/2026",
+            start_date=date(2025, 9, 1),
+            end_date=date(2026, 7, 31),
         )
         self.term = Term.objects.create(
-            school=self.school, session=self.session,
-            name="First Term", start_date=date(2025, 9, 1),
+            school=self.school,
+            session=self.session,
+            name="First Term",
+            start_date=date(2025, 9, 1),
             end_date=date(2025, 12, 20),
         )
         self.school_class = SchoolClass.objects.create(
-            school=self.school, name="JSS1A",
+            school=self.school,
+            name="JSS1A",
         )
         self.offering = ClassOffering.objects.create(
             school=self.school,
@@ -911,7 +1049,10 @@ class TermSummaryModerationTests(TestCase):
             academic_session=self.session,
         )
         self.subject = Subject.objects.create(
-            school=self.school, name="Mathematics", code="MTH", pass_mark=40,
+            school=self.school,
+            name="Mathematics",
+            code="MTH",
+            pass_mark=40,
         )
         self.class_subject = ClassSubject.objects.create(
             school=self.school,
@@ -921,19 +1062,27 @@ class TermSummaryModerationTests(TestCase):
 
     def _make_student(self, username, admission_number):
         user = User.objects.create_user(
-            username=username, email=f"{username}@grace.edu",
-            password="testpass123", school=self.school, role=Roles.STUDENT,
+            username=username,
+            email=f"{username}@grace.edu",
+            password="testpass123",
+            school=self.school,
+            role=Roles.STUDENT,
         )
         return StudentProfile.objects.create(
-            school=self.school, user=user,
-            admission_number=admission_number, date_of_birth=date(2010, 1, 1),
-            gender=StudentProfile.MALE, admission_date=date(2025, 9, 1),
+            school=self.school,
+            user=user,
+            admission_number=admission_number,
+            date_of_birth=date(2010, 1, 1),
+            gender=StudentProfile.MALE,
+            admission_date=date(2025, 9, 1),
         )
 
     def _enroll(self, student):
         return ClassEnrollment.objects.create(
-            school=self.school, student=student,
-            school_class=self.school_class, session=self.session,
+            school=self.school,
+            student=student,
+            school_class=self.school_class,
+            session=self.session,
             class_offering=self.offering,
             is_current=True,
         )
@@ -951,23 +1100,40 @@ class TermSummaryModerationTests(TestCase):
 
         # Approved: total 84
         Score.objects.create(
-            school=self.school, student=approved,
-            class_subject=self.class_subject, term=self.term,
-            test_1=8, test_2=7, test_3=9, exam_score=60,
-            entered_by=self.teacher_user, moderation_status=Score.MODERATION_APPROVED,
+            school=self.school,
+            student=approved,
+            class_subject=self.class_subject,
+            term=self.term,
+            test_1=8,
+            test_2=7,
+            test_3=9,
+            exam_score=60,
+            entered_by=self.teacher_user,
+            moderation_status=Score.MODERATION_APPROVED,
         )
         # Rejected: higher total (95) — must not appear anywhere
         Score.objects.create(
-            school=self.school, student=rejected,
-            class_subject=self.class_subject, term=self.term,
-            test_1=10, test_2=10, test_3=10, exam_score=65,
-            entered_by=self.teacher_user, moderation_status=Score.MODERATION_REJECTED,
+            school=self.school,
+            student=rejected,
+            class_subject=self.class_subject,
+            term=self.term,
+            test_1=10,
+            test_2=10,
+            test_3=10,
+            exam_score=65,
+            entered_by=self.teacher_user,
+            moderation_status=Score.MODERATION_REJECTED,
         )
         # Pending: awaiting review
         Score.objects.create(
-            school=self.school, student=pending,
-            class_subject=self.class_subject, term=self.term,
-            test_1=9, test_2=9, test_3=9, exam_score=60,
+            school=self.school,
+            student=pending,
+            class_subject=self.class_subject,
+            term=self.term,
+            test_1=9,
+            test_2=9,
+            test_3=9,
+            exam_score=60,
             entered_by=self.teacher_user,
         )
 
@@ -989,26 +1155,37 @@ class TermSummaryModerationTests(TestCase):
         self._enroll(student)
 
         score = Score.objects.create(
-            school=self.school, student=student,
-            class_subject=self.class_subject, term=self.term,
-            test_1=8, test_2=7, test_3=9, exam_score=60,
-            entered_by=self.teacher_user, moderation_status=Score.MODERATION_APPROVED,
+            school=self.school,
+            student=student,
+            class_subject=self.class_subject,
+            term=self.term,
+            test_1=8,
+            test_2=7,
+            test_3=9,
+            exam_score=60,
+            entered_by=self.teacher_user,
+            moderation_status=Score.MODERATION_APPROVED,
         )
 
         self.assertEqual(compute_term_summary(self.offering, self.term), 1)
-        self.assertTrue(TermResult.objects.filter(student=student, term=self.term).exists())
+        self.assertTrue(
+            TermResult.objects.filter(student=student, term=self.term).exists()
+        )
 
         # Admin rejects the score, then a recompute drops the stale row
         score.moderation_status = Score.MODERATION_REJECTED
-        score.save(update_fields=['moderation_status'])
+        score.save(update_fields=["moderation_status"])
         compute_term_summary(self.offering, self.term)
 
-        self.assertFalse(TermResult.objects.filter(student=student, term=self.term).exists())
+        self.assertFalse(
+            TermResult.objects.filter(student=student, term=self.term).exists()
+        )
 
 
 # ---------------------------------------------------------------------------
 # Teacher dashboard smoke tests
 # ---------------------------------------------------------------------------
+
 
 class TeacherDashboardSmokeTests(BaseTest):
     """The teacher dashboard answers 'what needs action' with scoring progress."""
@@ -1019,7 +1196,7 @@ class TeacherDashboardSmokeTests(BaseTest):
         resp = self.client.get("/teacher/")
 
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Scoring Progress")
+        self.assertContains(resp, "Pending scoring")
         self.assertContains(resp, "still need")
         self.assertContains(resp, "Incomplete")
         self.assertNotContains(resp, "All assignments fully graded")
@@ -1030,11 +1207,9 @@ class TeacherDashboardSmokeTests(BaseTest):
         resp = self.client.get("/teacher/")
 
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "All Students Graded")
-        self.assertContains(resp, "/ 1")
-        self.assertContains(resp, "Current Term")
         self.assertContains(resp, "First Term")
         self.assertContains(resp, "Results not published")
+        self.assertContains(resp, "0/1 scored")
         self.assertNotContains(resp, "My Subjects")
         self.assertNotContains(resp, "My Classes")
         self.assertNotContains(resp, "Scores Entered")
@@ -1046,14 +1221,18 @@ class TeacherDashboardSmokeTests(BaseTest):
             student=self.student_profile,
             class_subject=self.class_subject,
             term=self.term,
-            test_1=8, test_2=7, test_3=9, exam_score=60,
+            test_1=8,
+            test_2=7,
+            test_3=9,
+            exam_score=60,
             entered_by=self.teacher_user,
         )
         self.client.force_login(self.teacher_user)
         resp = self.client.get("/teacher/")
 
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Complete")
+        # No pending-work banner when everything is complete
+        self.assertNotContains(resp, "Pending scoring")
         self.assertNotContains(resp, "still need")
         # The green confirmation is a one-time toast, not a static banner:
         # it renders as a Django message the first time only.
@@ -1066,7 +1245,10 @@ class TeacherDashboardSmokeTests(BaseTest):
             student=self.student_profile,
             class_subject=self.class_subject,
             term=self.term,
-            test_1=8, test_2=7, test_3=9, exam_score=60,
+            test_1=8,
+            test_2=7,
+            test_3=9,
+            exam_score=60,
             entered_by=self.teacher_user,
         )
         self.client.force_login(self.teacher_user)

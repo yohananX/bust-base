@@ -8,8 +8,14 @@ from academics.views import (
 )
 
 urlpatterns = [
-    path('', TeacherAssignmentListView.as_view(), name='assignment_list'),
-    path('assignments/', TeacherAssignmentsView.as_view(), name='teacher_assignments'),
-    path('assignment/<int:pk>/scores/', TeacherScoreGridView.as_view(), name='score_grid'),
-    path('assignment/<int:pk>/score/<int:score_pk>/', TeacherScoreUpdateView.as_view(), name='score_update'),
+    path("", TeacherAssignmentListView.as_view(), name="assignment_list"),
+    path("assignments/", TeacherAssignmentsView.as_view(), name="teacher_assignments"),
+    path(
+        "assignment/<int:pk>/scores/", TeacherScoreGridView.as_view(), name="score_grid"
+    ),
+    path(
+        "assignment/<int:pk>/score/<int:score_pk>/",
+        TeacherScoreUpdateView.as_view(),
+        name="score_update",
+    ),
 ]
