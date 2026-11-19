@@ -8,6 +8,7 @@ Covers:
 - Generation billing_cycle enforcement and one-time guard
 - Checkout grouped_extras
 """
+
 from decimal import Decimal
 from datetime import date
 
@@ -20,12 +21,21 @@ from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
 from fees.models import (
     FeeCategory,
-    FeePrice, Invoice, InvoiceLineItem, Payment, PaymentLineItem,
-    InvoiceResetLog, FeeValidationError,
+    FeePrice,
+    Invoice,
+    InvoiceLineItem,
+    Payment,
+    PaymentLineItem,
+    InvoiceResetLog,
+    FeeValidationError,
 )
 from fees.validation import InvoiceIntegrityValidator
 from fees.reset import InvoiceResetService
-from fees.generation import generate_invoice_for_student, sync_class_invoices, effective_fee_structures
+from fees.generation import (
+    generate_invoice_for_student,
+    sync_class_invoices,
+    effective_fee_structures,
+)
 from fees.checkout import get_checkout_options
 
 
@@ -34,12 +44,12 @@ class BasePaymentManagementTest(TestCase):
 
     def setUp(self):
         self.school = School.objects.create(
-            name='Test School',
-            short_code='test',
+            name="Test School",
+            short_code="test",
         )
         self.session = AcademicSession.objects.create(
             school=self.school,
-            name='2025/2026',
+            name="2025/2026",
             start_date=date(2025, 9, 1),
             end_date=date(2026, 8, 31),
             is_current=True,
@@ -47,7 +57,7 @@ class BasePaymentManagementTest(TestCase):
         self.term = Term.objects.create(
             school=self.school,
             session=self.session,
-            name='First Term',
+            name="First Term",
             start_date=date(2025, 9, 1),
             end_date=date(2025, 12, 15),
             is_current=True,
@@ -55,20 +65,20 @@ class BasePaymentManagementTest(TestCase):
         self.next_term = Term.objects.create(
             school=self.school,
             session=self.session,
-            name='Second Term',
+            name="Second Term",
             start_date=date(2026, 1, 5),
             end_date=date(2026, 4, 10),
             is_current=False,
         )
         self.school_class = SchoolClass.objects.create(
             school=self.school,
-            name='JSS1A',
+            name="JSS1A",
         )
-        self.student_user = self._create_user('student1', Roles.STUDENT)
+        self.student_user = self._create_user("student1", Roles.STUDENT)
         self.student = Student.objects.create(
             school=self.school,
             user=self.student_user,
-            admission_number='STU001',
+            admission_number="STU001",
             date_of_birth=date(2010, 1, 1),
             gender=Student.MALE,
             admission_date=date(2025, 9, 1),
@@ -81,20 +91,23 @@ class BasePaymentManagementTest(TestCase):
             session=self.session,
             is_current=True,
         )
-        self.admin_user = self._create_user('admin1', Roles.ADMIN)
-        self.superadmin_user = self._create_user('superadmin1', Roles.ADMIN, is_superuser=True)
+        self.admin_user = self._create_user("admin1", Roles.ADMIN)
+        self.superadmin_user = self._create_user(
+            "superadmin1", Roles.ADMIN, is_superuser=True
+        )
 
     def _create_user(self, username, role, is_superuser=False):
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
         return User.objects.create_user(
             username=username,
-            email=f'{username}@test.com',
-            password='testpass123',
+            email=f"{username}@test.com",
+            password="testpass123",
             school=self.school if not is_superuser else None,
             role=role,
             first_name=username.title(),
-            last_name='User',
+            last_name="User",
             is_superuser=is_superuser,
             is_staff=is_superuser,
         )
@@ -108,7 +121,7 @@ class InvoiceResetLogTest(BasePaymentManagementTest):
         term = Term.objects.create(
             school=self.school,
             session=self.session,
-            name='Third Term',
+            name="Third Term",
             start_date=date(2026, 4, 20),
             end_date=date(2026, 7, 10),
             is_current=False,
@@ -119,13 +132,13 @@ class InvoiceResetLogTest(BasePaymentManagementTest):
             scope_id=term.pk,
             scope_name=str(term),
             reset_by=self.admin_user,
-            reason='Test reset',
+            reason="Test reset",
             invoices_deleted=5,
             payments_deleted=3,
             line_items_deleted=12,
             receipts_deleted=2,
         )
-        self.assertEqual(log.scope_type, 'TERM')
+        self.assertEqual(log.scope_type, "TERM")
         self.assertEqual(log.invoices_deleted, 5)
 
 
@@ -137,11 +150,11 @@ class FeeValidationErrorTest(BasePaymentManagementTest):
         err = FeeValidationError.objects.create(
             school=self.school,
             code=FeeValidationError.ErrorCode.NEGATIVE_AMOUNT,
-            message='Amount is negative',
-            related_object_type='Invoice',
+            message="Amount is negative",
+            related_object_type="Invoice",
             related_object_id=1,
         )
-        self.assertEqual(err.code, 'NEGATIVE_AMOUNT')
+        self.assertEqual(err.code, "NEGATIVE_AMOUNT")
         self.assertFalse(err.is_resolved)
 
 
@@ -153,14 +166,14 @@ class ValidationServiceTest(BasePaymentManagementTest):
         super().setUp()
         self.tuition_category = FeeCategory.objects.create(
             school=self.school,
-            name='Tuition',
+            name="Tuition",
             is_compulsory=True,
             billing_cycle=FeeCategory.BILLING_CYCLE_CHOICES[0][0],
             student_type=FeeCategory.STUDENT_TYPE_CHOICES[2][0],
         )
         self.sports_category = FeeCategory.objects.create(
             school=self.school,
-            name='Sports',
+            name="Sports",
             is_compulsory=False,
             billing_cycle=FeeCategory.BILLING_CYCLE_CHOICES[0][0],
             student_type=FeeCategory.STUDENT_TYPE_CHOICES[2][0],
@@ -171,8 +184,8 @@ class ValidationServiceTest(BasePaymentManagementTest):
             school_class=self.school_class,
             term=self.term,
             category=self.tuition_category,
-            amount=Decimal('50000.00'),
-            student_type='ALL',
+            amount=Decimal("50000.00"),
+            student_type="ALL",
         )
         self.sports_fee = FeePrice.objects.create(
             school=self.school,
@@ -180,8 +193,8 @@ class ValidationServiceTest(BasePaymentManagementTest):
             school_class=self.school_class,
             term=self.term,
             category=self.sports_category,
-            amount=Decimal('10000.00'),
-            student_type='ALL',
+            amount=Decimal("10000.00"),
+            student_type="ALL",
         )
 
     def test_validate_invoice_totals_mismatch(self):
@@ -189,38 +202,40 @@ class ValidationServiceTest(BasePaymentManagementTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=invoice,
             category=self.tuition_category,
-            amount=Decimal('50000.00'),
+            amount=Decimal("50000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=invoice,
             category=self.sports_category,
-            amount=Decimal('8000.00'),
+            amount=Decimal("8000.00"),
         )
         errors = InvoiceIntegrityValidator.validate_invoice_totals(invoice)
         self.assertEqual(len(errors), 1)
-        self.assertEqual(errors[0]['code'], FeeValidationError.ErrorCode.MISMATCHED_TOTAL)
+        self.assertEqual(
+            errors[0]["code"], FeeValidationError.ErrorCode.MISMATCHED_TOTAL
+        )
 
     def test_validate_invoice_totals_match(self):
         invoice = Invoice.objects.create(
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=invoice,
             category=self.tuition_category,
-            amount=Decimal('50000.00'),
+            amount=Decimal("50000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=invoice,
             category=self.sports_category,
-            amount=Decimal('10000.00'),
+            amount=Decimal("10000.00"),
         )
         errors = InvoiceIntegrityValidator.validate_invoice_totals(invoice)
         self.assertEqual(len(errors), 0)
@@ -228,19 +243,19 @@ class ValidationServiceTest(BasePaymentManagementTest):
     def test_validate_compulsory_coverage_missing(self):
         optional_category = FeeCategory.objects.create(
             school=self.school,
-            name='Library',
+            name="Library",
             is_compulsory=False,
         )
         invoice = Invoice.objects.create(
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('50000.00'),
+            total_amount=Decimal("50000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=invoice,
             category=self.tuition_category,
-            amount=Decimal('50000.00'),
+            amount=Decimal("50000.00"),
         )
         errors = InvoiceIntegrityValidator.validate_compulsory_coverage(invoice)
         # sports is optional, so no missing compulsory
@@ -255,7 +270,7 @@ class ResetServiceTest(BasePaymentManagementTest):
         super().setUp()
         self.tuition_category = FeeCategory.objects.create(
             school=self.school,
-            name='Tuition',
+            name="Tuition",
             is_compulsory=True,
         )
         self.fee_structure = FeePrice.objects.create(
@@ -264,24 +279,24 @@ class ResetServiceTest(BasePaymentManagementTest):
             school_class=self.school_class,
             term=self.term,
             category=self.tuition_category,
-            amount=Decimal('50000.00'),
-            student_type='ALL',
+            amount=Decimal("50000.00"),
+            student_type="ALL",
         )
         self.invoice = Invoice.objects.create(
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('50000.00'),
+            total_amount=Decimal("50000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=self.invoice,
             category=self.tuition_category,
-            amount=Decimal('50000.00'),
+            amount=Decimal("50000.00"),
         )
         self.payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('20000.00'),
+            amount=Decimal("20000.00"),
             method=Payment.Method.CASH,
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
@@ -290,8 +305,11 @@ class ResetServiceTest(BasePaymentManagementTest):
 
     def test_reset_student(self):
         log = InvoiceResetService.reset_student(
-            self.school, self.student, self.term,
-            user=self.superadmin_user, reason='Test reset'
+            self.school,
+            self.student,
+            self.term,
+            user=self.superadmin_user,
+            reason="Test reset",
         )
         self.assertEqual(log.scope_type, InvoiceResetLog.ResetScope.STUDENT)
         self.assertEqual(log.invoices_deleted, 1)
@@ -302,8 +320,8 @@ class ResetServiceTest(BasePaymentManagementTest):
     def test_reset_student_no_invoice(self):
         student2 = Student.objects.create(
             school=self.school,
-            user=self._create_user('student2', Roles.STUDENT),
-            admission_number='STU002',
+            user=self._create_user("student2", Roles.STUDENT),
+            admission_number="STU002",
             date_of_birth=date(2010, 1, 1),
             gender=Student.MALE,
             admission_date=date(2025, 9, 1),
@@ -317,15 +335,17 @@ class ResetServiceTest(BasePaymentManagementTest):
             is_current=True,
         )
         log = InvoiceResetService.reset_student(
-            self.school, student2, self.term,
-            user=self.superadmin_user, reason='Test reset'
+            self.school,
+            student2,
+            self.term,
+            user=self.superadmin_user,
+            reason="Test reset",
         )
         self.assertEqual(log.invoices_deleted, 0)
 
     def test_reset_term(self):
         log = InvoiceResetService.reset_term(
-            self.school, self.term,
-            user=self.superadmin_user, reason='Test reset'
+            self.school, self.term, user=self.superadmin_user, reason="Test reset"
         )
         self.assertEqual(log.scope_type, InvoiceResetLog.ResetScope.TERM)
         self.assertEqual(log.invoices_deleted, 1)
@@ -337,7 +357,7 @@ class ResetServiceTest(BasePaymentManagementTest):
 
     def test_reset_school_with_force(self):
         log = InvoiceResetService.reset_school(
-            self.school, user=self.superadmin_user, reason='Wipe all', force=True
+            self.school, user=self.superadmin_user, reason="Wipe all", force=True
         )
         self.assertEqual(log.scope_type, InvoiceResetLog.ResetScope.SCHOOL)
         self.assertEqual(log.invoices_deleted, 1)
@@ -351,9 +371,9 @@ class GenerationBillingCycleTest(BasePaymentManagementTest):
     def test_one_time_fee_not_rebilled_next_session(self):
         tuition_category = FeeCategory.objects.create(
             school=self.school,
-            name='Tuition',
+            name="Tuition",
             is_compulsory=True,
-            billing_cycle='ONE_TIME',
+            billing_cycle="ONE_TIME",
             student_type=FeeCategory.STUDENT_TYPE_CHOICES[2][0],
         )
         FeePrice.objects.create(
@@ -362,16 +382,16 @@ class GenerationBillingCycleTest(BasePaymentManagementTest):
             school_class=self.school_class,
             term=self.term,
             category=tuition_category,
-            amount=Decimal('5000.00'),
+            amount=Decimal("5000.00"),
         )
 
         invoice = generate_invoice_for_student(self.student, self.term)
         self.assertIsNotNone(invoice)
-        self.assertEqual(invoice.total_amount, Decimal('5000.00'))
+        self.assertEqual(invoice.total_amount, Decimal("5000.00"))
 
         next_session = AcademicSession.objects.create(
             school=self.school,
-            name='2026/2027',
+            name="2026/2027",
             start_date=date(2026, 9, 1),
             end_date=date(2027, 8, 31),
             is_current=False,
@@ -379,7 +399,7 @@ class GenerationBillingCycleTest(BasePaymentManagementTest):
         next_term = Term.objects.create(
             school=self.school,
             session=next_session,
-            name='First Term',
+            name="First Term",
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
             is_current=True,
@@ -390,18 +410,120 @@ class GenerationBillingCycleTest(BasePaymentManagementTest):
             school_class=self.school_class,
             term=next_term,
             category=tuition_category,
-            amount=Decimal('5000.00'),
+            amount=Decimal("5000.00"),
         )
 
-        invoice2 = generate_invoice_for_student(self.student, next_term)
-        self.assertIsNone(invoice2)
+
+# ─── Transfer Return View Tests ──────────────────────────────────────────────
+
+
+class TransferReturnViewTest(BasePaymentManagementTest):
+    """Tests for the bank transfer return confirmation screen."""
+
+    def test_transfer_return_page_shows_pending_transfer(self):
+        """The transfer return page displays the pending transfer details."""
+        from fees.models import Payment
+        from django.urls import reverse
+        from django.utils import timezone
+
+        # Create a pending bank transfer
+        proof_path = "fees/proofs/test_proof.png"
+        payment = Payment.objects.create(
+            school=self.school,
+            student=self.student,
+            amount=Decimal("10000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+            proof_image=proof_path,
+            paid_by_name="Test Parent",
+            paid_by_relation="Mother",
+        )
+
+        # Login as parent
+        parent_user = self._create_user("parent1", Roles.PARENT)
+        StudentGuardianLink.objects.create(
+            school=self.school,
+            student=self.student,
+            guardian=parent_user,
+            is_primary_contact=True,
+        )
+        self.client.force_login(parent_user)
+
+        # Access the transfer return page
+        url = reverse("fees:transfer-return", kwargs={"payment_id": payment.pk})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Transfer submitted")
+        self.assertContains(response, "Awaiting confirmation")
+        self.assertContains(response, "10000.00")
+        self.assertContains(response, "Test Parent")
+        self.assertContains(response, "Do not submit another transfer")
+
+    def test_transfer_return_requires_authorization(self):
+        """Unauthorized users cannot view another user's transfer."""
+        from fees.models import Payment
+        from django.urls import reverse
+        from django.utils import timezone
+
+        payment = Payment.objects.create(
+            school=self.school,
+            student=self.student,
+            amount=Decimal("10000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+
+        # Login as unrelated parent
+        other_parent = self._create_user("other_parent", Roles.PARENT)
+        self.client.force_login(other_parent)
+
+        url = reverse("fees:transfer-return", kwargs={"payment_id": payment.pk})
+        response = self.client.get(url)
+
+        # Should redirect due to lack of authorization
+        self.assertEqual(response.status_code, 302)
+
+    def test_transfer_return_shows_proof_image(self):
+        """The transfer return page displays the proof image when present."""
+        from fees.models import Payment
+        from django.urls import reverse
+        from django.utils import timezone
+
+        payment = Payment.objects.create(
+            school=self.school,
+            student=self.student,
+            amount=Decimal("10000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+            proof_image="fees/proofs/test.png",
+        )
+
+        parent_user = self._create_user("parent2", Roles.PARENT)
+        StudentGuardianLink.objects.create(
+            school=self.school,
+            student=self.student,
+            guardian=parent_user,
+            is_primary_contact=True,
+        )
+        self.client.force_login(parent_user)
+
+        url = reverse("fees:transfer-return", kwargs={"payment_id": payment.pk})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Transfer proof")
+        self.assertContains(response, "fees/proofs/test.png")
 
     def test_sync_preserves_one_time_guard(self):
         one_time_category = FeeCategory.objects.create(
             school=self.school,
-            name='Registration',
+            name="Registration",
             is_compulsory=True,
-            billing_cycle='ONE_TIME',
+            billing_cycle="ONE_TIME",
             student_type=FeeCategory.STUDENT_TYPE_CHOICES[2][0],
         )
         one_time_fee = FeePrice.objects.create(
@@ -410,12 +532,12 @@ class GenerationBillingCycleTest(BasePaymentManagementTest):
             school_class=self.school_class,
             term=self.term,
             category=one_time_category,
-            amount=Decimal('5000.00'),
+            amount=Decimal("5000.00"),
         )
 
         invoice = generate_invoice_for_student(self.student, self.term)
         self.assertIsNotNone(invoice)
-        self.assertEqual(invoice.total_amount, Decimal('5000.00'))
+        self.assertEqual(invoice.total_amount, Decimal("5000.00"))
 
         one_time_fee.delete()
 

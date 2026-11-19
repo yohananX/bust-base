@@ -23,6 +23,7 @@ a Books structure on the next term. The current-term invoice carries only
 the Tuition line so its balance is > 0; both categories surface as extras,
 with Tuition flagged ``billed=True`` and Books unbilled (selectable).
 """
+
 from decimal import Decimal
 from datetime import date
 
@@ -36,19 +37,29 @@ from django.contrib.messages import get_messages
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
-from fees.models import FeeCategory, FeePrice, Invoice, InvoiceLineItem, Payment, PaymentLineItem
+from fees.models import (
+    FeeCategory,
+    FeePrice,
+    Invoice,
+    InvoiceLineItem,
+    Payment,
+    PaymentLineItem,
+)
 from fees.checkout import get_checkout_options, reconcile_checkout
+
 try:
     from fees.views import CheckoutSubmitView
-except ImportError:  # CheckoutSubmitView is built by a parallel agent (see views.py pattern)
+except (
+    ImportError
+):  # CheckoutSubmitView is built by a parallel agent (see views.py pattern)
     CheckoutSubmitView = None
 
 
 User = get_user_model()
 
-TUITION_AMOUNT = Decimal('50000.00')
-BOOKS_AMOUNT = Decimal('10000.00')
-NEXT_BOOKS_AMOUNT = Decimal('12000.00')
+TUITION_AMOUNT = Decimal("50000.00")
+BOOKS_AMOUNT = Decimal("10000.00")
+NEXT_BOOKS_AMOUNT = Decimal("12000.00")
 
 
 class FeeCheckoutTest(TestCase):
@@ -57,13 +68,13 @@ class FeeCheckoutTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.school = School.objects.create(
-            name='Test School',
-            short_code='test',
+            name="Test School",
+            short_code="test",
         )
 
         cls.session = AcademicSession.objects.create(
             school=cls.school,
-            name='2025/2026',
+            name="2025/2026",
             start_date=date(2025, 9, 1),
             end_date=date(2026, 8, 31),
             is_current=True,
@@ -71,7 +82,7 @@ class FeeCheckoutTest(TestCase):
         cls.term = Term.objects.create(
             school=cls.school,
             session=cls.session,
-            name='First Term',
+            name="First Term",
             start_date=date(2025, 9, 1),
             end_date=date(2025, 12, 15),
             is_current=True,
@@ -79,7 +90,7 @@ class FeeCheckoutTest(TestCase):
         cls.next_term = Term.objects.create(
             school=cls.school,
             session=cls.session,
-            name='Second Term',
+            name="Second Term",
             start_date=date(2026, 1, 5),
             end_date=date(2026, 4, 10),
             is_current=False,
@@ -87,22 +98,22 @@ class FeeCheckoutTest(TestCase):
 
         cls.school_class = SchoolClass.objects.create(
             school=cls.school,
-            name='JSS1A',
+            name="JSS1A",
         )
 
         cls.student_user = User.objects.create_user(
-            username='student1',
-            email='student1@test.com',
-            password='testpass123',
+            username="student1",
+            email="student1@test.com",
+            password="testpass123",
             school=cls.school,
             role=Roles.STUDENT,
-            first_name='John',
-            last_name='Doe',
+            first_name="John",
+            last_name="Doe",
         )
         cls.student = Student.objects.create(
             school=cls.school,
             user=cls.student_user,
-            admission_number='STU001',
+            admission_number="STU001",
             date_of_birth=date(2010, 1, 1),
             gender=Student.MALE,
             admission_date=date(2025, 9, 1),
@@ -117,22 +128,22 @@ class FeeCheckoutTest(TestCase):
         )
 
         cls.admin_user = User.objects.create_user(
-            username='admin1',
-            email='admin@test.com',
-            password='testpass123',
+            username="admin1",
+            email="admin@test.com",
+            password="testpass123",
             school=cls.school,
             role=Roles.ADMIN,
-            first_name='Admin',
-            last_name='User',
+            first_name="Admin",
+            last_name="User",
         )
         cls.parent_user = User.objects.create_user(
-            username='parent1',
-            email='parent@test.com',
-            password='testpass123',
+            username="parent1",
+            email="parent@test.com",
+            password="testpass123",
             school=cls.school,
             role=Roles.PARENT,
-            first_name='Parent',
-            last_name='One',
+            first_name="Parent",
+            last_name="One",
         )
         StudentGuardianLink.objects.create(
             school=cls.school,
@@ -146,11 +157,11 @@ class FeeCheckoutTest(TestCase):
         # on the invoice; Books is NOT — so Books shows up as the extra.
         cls.tuition_category = FeeCategory.objects.create(
             school=cls.school,
-            name='Tuition',
+            name="Tuition",
         )
         cls.books_category = FeeCategory.objects.create(
             school=cls.school,
-            name='Books',
+            name="Books",
         )
         cls.tuition_fee = FeePrice.objects.create(
             school=cls.school,
@@ -200,7 +211,7 @@ class FeeCheckoutTest(TestCase):
         self.assertTrue(options.outstanding.flexible)
         self.assertEqual(options.outstanding.amount, self.invoice.balance)
         self.assertEqual(self.invoice.balance, TUITION_AMOUNT)
-        self.assertEqual(options.outstanding.key, 'outstanding')
+        self.assertEqual(options.outstanding.key, "outstanding")
         self.assertEqual(options.outstanding.invoice_id, self.invoice.pk)
 
     def test_get_checkout_options_no_outstanding(self):
@@ -244,7 +255,7 @@ class FeeCheckoutTest(TestCase):
             amount=BOOKS_AMOUNT,
         )
         self.invoice.total_amount = self.invoice.total_amount + BOOKS_AMOUNT
-        self.invoice.save(update_fields=['total_amount'])
+        self.invoice.save(update_fields=["total_amount"])
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
@@ -284,12 +295,12 @@ class FeeCheckoutTest(TestCase):
         self.assertIn(self.books_category.pk, next_options)
 
         tuition_opt = next_options[self.tuition_category.pk]
-        self.assertEqual(tuition_opt.key, f'next:{self.tuition_category.pk}')
+        self.assertEqual(tuition_opt.key, f"next:{self.tuition_category.pk}")
         self.assertFalse(tuition_opt.flexible)
         self.assertEqual(tuition_opt.amount, TUITION_AMOUNT)
 
         books_opt = next_options[self.books_category.pk]
-        self.assertEqual(books_opt.key, f'next:{self.books_category.pk}')
+        self.assertEqual(books_opt.key, f"next:{self.books_category.pk}")
         self.assertFalse(books_opt.flexible)
         self.assertEqual(books_opt.amount, NEXT_BOOKS_AMOUNT)
 
@@ -300,7 +311,10 @@ class FeeCheckoutTest(TestCase):
         line_items_before = self.invoice.line_items.count()
 
         result = reconcile_checkout(
-            self.student, self.term, ['outstanding'], Decimal('20000.00'),
+            self.student,
+            self.term,
+            ["outstanding"],
+            Decimal("20000.00"),
         )
 
         self.invoice.refresh_from_db()
@@ -309,8 +323,8 @@ class FeeCheckoutTest(TestCase):
         self.assertEqual(len(result.invoices), 1)
         self.assertEqual(len(result.allocations), 1)
         self.assertEqual(result.allocations[0].invoice.pk, self.invoice.pk)
-        self.assertEqual(result.allocations[0].amount, Decimal('20000.00'))
-        self.assertEqual(result.minimum_payable, Decimal('0.00'))
+        self.assertEqual(result.allocations[0].amount, Decimal("20000.00"))
+        self.assertEqual(result.minimum_payable, Decimal("0.00"))
         self.assertEqual(result.total_balance, TUITION_AMOUNT)
 
     def test_reconcile_checkout_idempotent_extras(self):
@@ -337,25 +351,28 @@ class FeeCheckoutTest(TestCase):
 
     def test_reconcile_checkout_two_invoice_split(self):
         """Outstanding + next-term selection splits proportionally across invoices."""
-        amount = Decimal('30000.00')
+        amount = Decimal("30000.00")
 
         result = reconcile_checkout(
-            self.student, self.term,
-            ['outstanding', f'next:{self.books_category.pk}'],
+            self.student,
+            self.term,
+            ["outstanding", f"next:{self.books_category.pk}"],
             amount,
         )
 
         self.assertTrue(result.is_split)
         self.assertEqual(len(result.invoices), 2)
         self.assertEqual(len(result.allocations), 2)
-        self.assertEqual(result.minimum_payable, Decimal('0.00'))
+        self.assertEqual(result.minimum_payable, Decimal("0.00"))
         self.assertEqual(
             result.total_balance,
             TUITION_AMOUNT + NEXT_BOOKS_AMOUNT,
         )
 
         # Proportional: current gets amount * current_balance / total_balance.
-        expected_current = (amount * TUITION_AMOUNT / (TUITION_AMOUNT + NEXT_BOOKS_AMOUNT)).quantize(Decimal('0.01'))
+        expected_current = (
+            amount * TUITION_AMOUNT / (TUITION_AMOUNT + NEXT_BOOKS_AMOUNT)
+        ).quantize(Decimal("0.01"))
         by_invoice = {a.invoice.pk: a.amount for a in result.allocations}
         self.assertEqual(by_invoice[self.invoice.pk], expected_current)
         self.assertEqual(sum(by_invoice.values()), amount)
@@ -375,15 +392,20 @@ class FeeCheckoutTest(TestCase):
 
         # Pay only a fraction of the selected Books extra — the remainder is owed.
         result = reconcile_checkout(
-            self.student, self.term, [extra_key], Decimal('5000.00'),
+            self.student,
+            self.term,
+            [extra_key],
+            Decimal("5000.00"),
         )
-        self.assertEqual(result.allocations[0].amount, Decimal('5000.00'))
-        self.assertEqual(result.minimum_payable, Decimal('0.00'))
+        self.assertEqual(result.allocations[0].amount, Decimal("5000.00"))
+        self.assertEqual(result.minimum_payable, Decimal("0.00"))
         self.invoice.refresh_from_db()
         # The full extra is billed onto the invoice; reconcile itself only
         # returns the allocation (payment creation happens in the view), so the
         # stored balance reflects the full billed amount, not the partial one.
-        self.assertEqual(self.invoice.total_amount, TUITION_AMOUNT + options.extras[0].amount)
+        self.assertEqual(
+            self.invoice.total_amount, TUITION_AMOUNT + options.extras[0].amount
+        )
         self.assertEqual(
             self.invoice.balance,
             TUITION_AMOUNT + options.extras[0].amount,
@@ -397,8 +419,10 @@ class FeeCheckoutTest(TestCase):
 
         with self.assertRaises(ValidationError):
             reconcile_checkout(
-                self.student, self.term, [extra_key],
-                post_add_balance + Decimal('1.00'),
+                self.student,
+                self.term,
+                [extra_key],
+                post_add_balance + Decimal("1.00"),
             )
 
         # Nothing persisted on error
@@ -414,93 +438,128 @@ class FeeCheckoutTest(TestCase):
     def test_checkout_submit_bank_transfer_creates_pending(self):
         """Bank-transfer checkout creates a PENDING row per allocation, then redirects."""
         if CheckoutSubmitView is None:
-            self.skipTest('fees.views.CheckoutSubmitView not yet present')
+            self.skipTest("fees.views.CheckoutSubmitView not yet present")
         self.client.force_login(self.parent_user)
 
         from django.core.files.uploadedfile import SimpleUploadedFile
-        response = self.client.post(reverse('fees:checkout-submit'), {
-            'student_id': str(self.student.pk),
-            'item': ['outstanding', f'next:{self.books_category.pk}'],
-            'amount': '30000.00',
-            'method': 'bank_transfer',
-            'proof_image': SimpleUploadedFile(
-                'proof.png', b'\x89PNG\r\n\x1a\nfake-image-bytes', content_type='image/png'
-            ),
-            'paid_by_name': 'Parent One',
-            'paid_by_relation': 'Father',
-        })
 
-        self.assertEqual(response.status_code, 302)
-        self.assertRedirects(
-            response, reverse('parent-pay'), fetch_redirect_response=False,
+        response = self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "item": ["outstanding", f"next:{self.books_category.pk}"],
+                "amount": "30000.00",
+                "method": "bank_transfer",
+                "proof_image": SimpleUploadedFile(
+                    "proof.png",
+                    b"\x89PNG\r\n\x1a\nfake-image-bytes",
+                    content_type="image/png",
+                ),
+                "paid_by_name": "Parent One",
+                "paid_by_relation": "Father",
+            },
         )
 
+        self.assertEqual(response.status_code, 302)
+        # After a bank transfer the parent is shown the transfer return page,
+        # not the pay page — they need to see the awaiting-confirmation state.
+        # The redirect points at the FIRST (current-term) allocation's payment.
+        self.assertRedirects(
+            response,
+            reverse(
+                "fees:transfer-return",
+                kwargs={
+                    "payment_id": Payment.objects.filter(
+                        method=Payment.Method.BANK_TRANSFER,
+                        invoice=self.invoice,
+                    )
+                    .first()
+                    .pk
+                },
+            ),
+            fetch_redirect_response=False,
+        )
+        # Payments are created before the redirect (the transfer return page
+        # displays the first allocation's payment).
         payments = Payment.objects.filter(
             status=Payment.Status.PENDING,
             method=Payment.Method.BANK_TRANSFER,
         )
         self.assertEqual(payments.count(), 2)
 
-        expected_current = (Decimal('30000.00') * TUITION_AMOUNT / (TUITION_AMOUNT + NEXT_BOOKS_AMOUNT)).quantize(Decimal('0.01'))
+        expected_current = (
+            Decimal("30000.00") * TUITION_AMOUNT / (TUITION_AMOUNT + NEXT_BOOKS_AMOUNT)
+        ).quantize(Decimal("0.01"))
         current = payments.get(invoice=self.invoice)
         self.assertEqual(current.amount, expected_current)
 
         next_invoice = Invoice.objects.get(student=self.student, term=self.next_term)
         next_payment = payments.get(invoice=next_invoice)
-        self.assertEqual(next_payment.amount, Decimal('30000.00') - expected_current)
+        self.assertEqual(next_payment.amount, Decimal("30000.00") - expected_current)
 
     def test_checkout_submit_scope_denied(self):
         """A user with no link to the student is redirected and nothing is created."""
         if CheckoutSubmitView is None:
-            self.skipTest('fees.views.CheckoutSubmitView not yet present')
+            self.skipTest("fees.views.CheckoutSubmitView not yet present")
         intruder = User.objects.create_user(
-            username='intruder',
-            email='intruder@test.com',
-            password='testpass123',
+            username="intruder",
+            email="intruder@test.com",
+            password="testpass123",
             school=self.school,
             role=Roles.PARENT,
-            first_name='Intruder',
-            last_name='Parent',
+            first_name="Intruder",
+            last_name="Parent",
         )
         self.client.force_login(intruder)
 
-        response = self.client.post(reverse('fees:checkout-submit'), {
-            'student_id': str(self.student.pk),
-            'item': ['outstanding'],
-            'amount': '20000.00',
-            'method': 'bank_transfer',
-        })
+        response = self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "item": ["outstanding"],
+                "amount": "20000.00",
+                "method": "bank_transfer",
+            },
+        )
 
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(
-            response, reverse('parent-pay'), fetch_redirect_response=False,
+            response,
+            reverse("parent-pay"),
+            fetch_redirect_response=False,
         )
         self.assertEqual(Payment.objects.count(), 0)
 
         messages = [str(m) for m in get_messages(response.wsgi_request)]
         self.assertTrue(
-            any('authorized' in m.lower() for m in messages),
-            f'expected an authorization message, got: {messages}',
+            any("authorized" in m.lower() for m in messages),
+            f"expected an authorization message, got: {messages}",
         )
 
     def test_checkout_creates_payment_line_items(self):
         """Bank-transfer checkout creates PaymentLineItems for selected items."""
         if CheckoutSubmitView is None:
-            self.skipTest('fees.views.CheckoutSubmitView not yet present')
+            self.skipTest("fees.views.CheckoutSubmitView not yet present")
         self.client.force_login(self.parent_user)
 
         from django.core.files.uploadedfile import SimpleUploadedFile
-        response = self.client.post(reverse('fees:checkout-submit'), {
-            'student_id': str(self.student.pk),
-            'item': ['outstanding', f'extra:{self.books_category.pk}'],
-            'amount': '60000.00',
-            'method': 'bank_transfer',
-            'proof_image': SimpleUploadedFile(
-                'proof.png', b'\x89PNG\r\n\x1a\nfake-image-bytes', content_type='image/png'
-            ),
-            'paid_by_name': 'Parent One',
-            'paid_by_relation': 'Father',
-        })
+
+        response = self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "item": ["outstanding", f"extra:{self.books_category.pk}"],
+                "amount": "60000.00",
+                "method": "bank_transfer",
+                "proof_image": SimpleUploadedFile(
+                    "proof.png",
+                    b"\x89PNG\r\n\x1a\nfake-image-bytes",
+                    content_type="image/png",
+                ),
+                "paid_by_name": "Parent One",
+                "paid_by_relation": "Father",
+            },
+        )
 
         self.assertEqual(response.status_code, 302)
         payment = Payment.objects.get(
@@ -513,5 +572,5 @@ class FeeCheckoutTest(TestCase):
         self.assertIn(PaymentLineItem.KIND_OUTSTANDING, kinds)
         self.assertIn(PaymentLineItem.KIND_EXTRA, kinds)
         labels = {item.label for item in line_items}
-        self.assertIn('Outstanding: First Term', labels)
-        self.assertIn('Books', labels)
+        self.assertIn("Outstanding: First Term", labels)
+        self.assertIn("Books", labels)
