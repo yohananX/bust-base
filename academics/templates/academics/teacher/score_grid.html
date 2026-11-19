@@ -43,7 +43,7 @@
             <th class="px-5 py-3.5 font-semibold">Student Name</th>
             {% for key, limit in score_limits.items %}
               {% if key != 'exam_score' %}
-              <th class="px-5 py-3.5 font-semibold text-center w-20">{{ key|replace:'test_','Test ' }}<span class="block text-[10px] font-normal text-gray-400">/{{ limit }}</span></th>
+              <th class="px-5 py-3.5 font-semibold text-center w-20">{{ key|replace:"test_,Test " }}<span class="block text-[10px] font-normal text-gray-400">/{{ limit }}</span></th>
               {% endif %}
             {% endfor %}
             <th class="px-5 py-3.5 font-semibold text-center w-20">Exam<span class="block text-[10px] font-normal text-gray-400">/{{ score_limits.exam_score }}</span></th>
