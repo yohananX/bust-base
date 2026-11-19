@@ -199,6 +199,18 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
         teachers = User.objects.filter(
             school=school, role=Roles.TEACHER, is_active=True
         ).order_by('first_name', 'last_name')
+        q = request.GET.get('q', '').strip()
+        if q:
+            # Support multi-word queries (e.g. a full name selected from the
+            # autocomplete) by requiring every token to match somewhere in the
+            # teacher's name or email, rather than the whole phrase.
+            tokens = [t for t in q.split() if t]
+            for token in tokens:
+                teachers = teachers.filter(
+                    Q(first_name__icontains=token) |
+                    Q(last_name__icontains=token) |
+                    Q(email__icontains=token)
+                )
         offerings = ClassOffering.objects.filter(school=school).select_related(
             'school_class', 'academic_session'
         ).order_by('-academic_session__start_date', 'school_class__name')
@@ -223,6 +235,7 @@ class TeacherAssignmentListView(RoleRequiredMixin, View):
             'selected_teacher': selected_teacher,
             'assignments': assignments,
             'offerings': offerings,
+            'q': q,
         }
         return render(request, 'school_admin/assignment_list.html', context)
 

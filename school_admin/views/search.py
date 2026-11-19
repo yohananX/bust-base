@@ -109,6 +109,28 @@ class StaffSearchAPIView(EntitySearchAPIView):
         return _user_payload(user)
 
 
+class TeacherSearchAPIView(EntitySearchAPIView):
+    """Autocomplete for teachers only — used on the teacher assignment page."""
+
+    def get_queryset(self, request):
+        q = request.GET.get('q', '').strip()
+        qs = User.objects.filter(
+            school=request.school,
+            role=Roles.TEACHER,
+            is_active=True,
+        ).order_by('first_name', 'last_name')
+        for token in [t for t in q.split() if t]:
+            qs = qs.filter(
+                Q(first_name__icontains=token) |
+                Q(last_name__icontains=token) |
+                Q(email__icontains=token)
+            )
+        return qs
+
+    def serialize(self, user):
+        return _user_payload(user)
+
+
 class MemberSearchAPIView(EntitySearchAPIView):
     """Autocomplete for resettable school members (staff/student/parent)."""
 
