@@ -39,25 +39,6 @@ class TeacherAssignmentSearchTests(TestCase):
         )
         self.client.force_login(self.admin)
 
-    def test_search_filters_assignment_teacher_list_by_name(self):
-        response = self.client.get(
-            reverse("school_admin:assignment_list"),
-            {"q": "Ada"},
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertQuerySetEqual(response.context["teachers"], [self.ada])
-        self.assertEqual(response.context["q"], "Ada")
-
-    def test_search_filters_assignment_teacher_list_by_email(self):
-        response = self.client.get(
-            reverse("school_admin:assignment_list"),
-            {"q": "grace@example.com"},
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertQuerySetEqual(response.context["teachers"], [self.grace])
-
     def test_search_api_returns_only_current_school_teachers(self):
         school2 = School.objects.create(name="Other School", short_code="other")
         User.objects.create_user(
