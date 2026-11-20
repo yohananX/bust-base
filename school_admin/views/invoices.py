@@ -524,7 +524,8 @@ class PendingTransferRejectView(RoleRequiredMixin, View):
                     f"new transfer for the correct amount."
                 ),
                 reference=f"transfer-reject:{payment.id}",
-                url=reverse("fees:payment-receipt", kwargs={"payment_id": payment.pk}),
+                url=reverse("fees:transfer-return", kwargs={"payment_id": payment.pk}),
+                action_label="View reason",
             )
 
         messages.info(request, f"Payment of ₦{payment.amount:,.2f} rejected.")

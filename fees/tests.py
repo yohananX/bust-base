@@ -2875,7 +2875,8 @@ class InAppNotificationTriggerTest(BaseFeesTest):
 
         self.client.force_login(self.admin_user)
         response = self.client.post(
-            reverse("school_admin:pending_transfer_reject", args=[payment.pk])
+            reverse("school_admin:pending_transfer_reject", args=[payment.pk]),
+            {"rejection_reason": "Incorrect amount paid"},
         )
 
         self.assertEqual(response.status_code, 302)
@@ -2886,7 +2887,12 @@ class InAppNotificationTriggerTest(BaseFeesTest):
         log = logs.get(recipient=self.parent_user)
         self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
         self.assertIn("Bank transfer rejected", log.subject)
+        self.assertIn("Incorrect amount paid", log.message)
         self.assertEqual(log.status, NotificationLog.Status.QUEUED)
+        self.assertEqual(
+            log.url,
+            reverse("fees:transfer-return", kwargs={"payment_id": payment.pk}),
+        )
         self.assertTrue(logs.filter(recipient=self.student_user).exists())
 
     def test_receipt_issuance_creates_notification_log(self):
@@ -3054,16 +3060,21 @@ class PaymentAuditTrailTest(BaseFeesTest):
         self.assertEqual(self.pending.confirmed_by_id, self.admin.pk)
         self.assertIsNotNone(self.pending.confirmed_at)
 
-    def test_admin_reject_marks_failed_without_audit_fields(self):
+    def test_admin_reject_records_reviewer_and_reason(self):
+        reason = "Proof does not match the transfer"
         self.client.force_login(self.admin)
         resp = self.client.post(
             reverse(
                 "school_admin:pending_transfer_reject", kwargs={"pk": self.pending.pk}
-            )
+            ),
+            {"rejection_reason": reason},
         )
         self.assertEqual(resp.status_code, 302)
         self.pending.refresh_from_db()
-        self.assertEqual(self.pending.status, Payment.Status.FAILED)
+        self.assertEqual(self.pending.status, Payment.Status.REJECTED)
+        self.assertEqual(self.pending.rejection_reason, reason)
+        self.assertEqual(self.pending.reviewed_by_id, self.admin.pk)
+        self.assertIsNotNone(self.pending.reviewed_at)
         self.assertIsNone(self.pending.confirmed_by_id)
         self.assertIsNone(self.pending.confirmed_at)
 

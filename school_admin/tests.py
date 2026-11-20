@@ -1553,6 +1553,19 @@ class PendingTransferRejectViewTest(TestCase):
         self.assertEqual(self.payment.reviewed_by, self.admin_user)
         self.assertIsNotNone(self.payment.reviewed_at)
 
+    def test_pending_list_reject_modal_targets_the_matching_payment_form(self):
+        """The reject modal submits the form belonging to the selected payment."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("school_admin:pending_transfers"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'id="reject-form-{self.payment.pk}"')
+        self.assertContains(
+            response,
+            "document.getElementById('reject-form-' + pk)",
+        )
+
     def test_reject_requires_reason(self):
         """Missing rejection_reason redirects with an error message."""
         self.client.force_login(self.admin_user)
@@ -1590,6 +1603,13 @@ class PendingTransferRejectViewTest(TestCase):
         self.assertIsNotNone(notification)
         self.assertIn(reason, notification.message)
         self.assertEqual(notification.channel, "IN_APP")
+        self.assertEqual(
+            notification.url,
+            reverse(
+                "fees:transfer-return",
+                kwargs={"payment_id": self.payment.pk},
+            ),
+        )
 
     def test_reject_not_allowed_on_non_pending(self):
         """Rejecting an already-processed payment is a no-op."""

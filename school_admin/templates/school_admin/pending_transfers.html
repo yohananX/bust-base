@@ -96,7 +96,7 @@
                   <i data-lucide="check" class="w-3.5 h-3.5 mr-1"></i>Confirm
                 </button>
               </form>
-              <form method="POST" action="{% url 'school_admin:pending_transfer_reject' p.pk %}" class="inline ml-1 reject-form">
+              <form id="reject-form-{{ p.pk }}" method="POST" action="{% url 'school_admin:pending_transfer_reject' p.pk %}" class="inline ml-1 reject-form">
                 {% csrf_token %}
                 <input type="hidden" name="rejection_reason" id="reject-reason-{{ p.pk }}" value="">
                 <button type="button" onclick="openRejectModal({{ p.pk }})" class="inline-flex items-center px-3 py-1.5 bg-red-50 hover:bg-danger-tint text-danger text-xs font-medium rounded-xl transition-colors border border-red-100">
@@ -155,9 +155,11 @@ function confirmReject() {
     if (textarea) textarea.focus();
     return;
   }
-  document.getElementById('reject-reason-' + pk).value = reason;
-  const form = document.querySelector('.reject-form[action$="/reject/' + pk + '/"]');
-  if (form) form.submit();
+  const form = document.getElementById('reject-form-' + pk);
+  const reasonInput = document.getElementById('reject-reason-' + pk);
+  if (!form || !reasonInput) return;
+  reasonInput.value = reason;
+  form.requestSubmit();
   closeRejectModal();
 }
 </script>
