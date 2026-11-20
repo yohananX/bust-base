@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
@@ -282,20 +283,18 @@ class InitiatePaymentView(RoleRequiredMixin, View):
 
 
 class CheckoutSubmitView(RoleRequiredMixin, View):
-    """Handles the checkout form POST on the parent/student pay pages.
+    """Handle payment submissions from the parent and student portals.
 
-    Serves both portals. Reconciles the submitted selections against the
-    checkout cart, then either records BANK_TRANSFER payments as PENDING or
-    initiates a Paystack charge. A split checkout (current + next term)
-    registers both payments up front so the return page can offer to continue
-    the sibling after the first clears.
+    The current amount-first form targets one existing invoice. The legacy
+    item-list contract remains supported for older callers and split checkouts.
+    Bank transfers are recorded as PENDING; Paystack payments are sent to the
+    gateway and return through the shared status flow.
     """
 
     allowed_roles = [Roles.PARENT, Roles.STUDENT]
 
     def post(self, request):
         back_url = "parent-pay" if request.user.role == Roles.PARENT else "student-pay"
-        role = request.user.role
 
         raw_student_id = request.POST.get("student_id")
         if not raw_student_id:
@@ -316,21 +315,49 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
             messages.error(request, "You are not authorized to pay for this student.")
             return redirect(redirect_name)
 
-        term = current_term(request.school)
+        raw_invoice_id = (request.POST.get("invoice_id") or "").strip()
+        target_invoice = None
+        if raw_invoice_id:
+            try:
+                invoice_id = int(raw_invoice_id)
+            except (TypeError, ValueError):
+                messages.error(request, "The selected invoice is invalid.")
+                return redirect(back_url)
+            target_invoice = get_object_or_404(
+                Invoice,
+                pk=invoice_id,
+                school=request.school,
+                student=student,
+            )
+            term = target_invoice.term
+            if target_invoice.balance <= 0:
+                messages.info(request, "This invoice has no outstanding balance.")
+                return redirect(back_url)
+        else:
+            term = current_term(request.school)
         if term is None:
             messages.error(request, "No active term yet.")
             return redirect(back_url)
 
-        try:
-            amount = Decimal(str(request.POST.get("amount") or "0"))
-        except (InvalidOperation, TypeError, ValueError):
-            messages.error(request, "Enter a valid payment amount.")
+        raw_amount = (request.POST.get("amount") or "").strip()
+        if not re.fullmatch(r"\d+(?:\.\d{1,2})?", raw_amount):
+            messages.error(
+                request,
+                "Enter the amount using numbers only, without commas.",
+            )
             return redirect(back_url)
+        amount = Decimal(raw_amount)
         if amount <= 0:
             messages.error(request, "Enter an amount greater than 0.")
             return redirect(back_url)
 
-        selected_keys = request.POST.getlist("item")
+        # Keep the older item-list path as a compatibility fallback for callers
+        # that still submit configurable or split checkout selections.
+        selected_keys = (
+            ["outstanding"]
+            if target_invoice is not None
+            else request.POST.getlist("item")
+        )
 
         try:
             result = reconcile_checkout(student, term, selected_keys, amount)

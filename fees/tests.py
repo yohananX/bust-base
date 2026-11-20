@@ -2439,6 +2439,43 @@ class MakePaymentPageTest(BaseFeesTest):
         # Invoice term names show the outstanding fees for each child
         self.assertContains(response, "First Term")
 
+    def test_pay_page_uses_amount_first_invoice_flow(self):
+        """The pay page asks for one amount instead of presenting competing fee options."""
+        self.client.force_login(self.parent_user)
+
+        response = self.client.get(reverse("parent-pay"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Remaining balance")
+        self.assertContains(response, "Use full balance")
+        self.assertContains(response, "Numbers only. Do not use commas.")
+        self.assertContains(response, 'name="invoice_id"')
+        self.assertContains(response, "Recent Payments")
+        self.assertNotContains(response, "Full Fees")
+        self.assertNotContains(response, "Select all payable items")
+        self.assertNotContains(response, 'name="item-bundle"')
+
+    def test_fully_paid_invoice_does_not_offer_unbilled_price_bundle(self):
+        """Only an invoice balance is payable on the simplified portal flow."""
+        Payment.objects.create(
+            school=self.school,
+            student=self.student,
+            invoice=self.invoice,
+            amount=Decimal("60000.00"),
+            method=Payment.Method.CASH,
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+            recorded_by=self.admin_user,
+        )
+        self.client.force_login(self.student_user)
+
+        response = self.client.get(reverse("student-pay"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["any_payable"])
+        self.assertContains(response, "No outstanding balance")
+        self.assertNotContains(response, "Use full balance")
+
     def test_student_pay_page_renders(self):
         """Student pay page renders for the student's own user."""
         self.client.force_login(self.student_user)
@@ -2498,7 +2535,7 @@ class MakePaymentPageTest(BaseFeesTest):
 
         self.assertEqual(response.status_code, 200)
         # Still owing the full amount — pending transfer doesn't count yet
-        self.assertContains(response, "&#8358;60000.00")
+        self.assertContains(response, "&#8358;60,000.00")
         # The pending transaction is visible for the parent
         self.assertContains(response, "Awaiting confirmation")
         self.assertNotContains(response, "Receipt")
@@ -2724,7 +2761,7 @@ class PaystackGatingTest(BaseFeesTest):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Paystack Card")
         self.assertContains(response, "Bank Transfer")
-        self.assertContains(response, "Amount due")
+        self.assertContains(response, "Remaining balance")
 
     def test_paystack_shown_with_keys(self):
         """With keys configured the card option and checkout button appear."""
@@ -2735,7 +2772,7 @@ class PaystackGatingTest(BaseFeesTest):
             response = self._get_pay_page()
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Paystack Card")
-        self.assertContains(response, "Proceed to Paystack Checkout")
+        self.assertContains(response, "Continue to Paystack")
 
 
 # --- In-App Notification Trigger Tests ---

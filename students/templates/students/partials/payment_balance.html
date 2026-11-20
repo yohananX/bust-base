@@ -1,0 +1,64 @@
+{% load humanize %}
+<div class="child-payment space-y-6"
+     data-child="{{ payment_student.pk }}"
+     data-has-balance="{% if invoice %}true{% else %}false{% endif %}">
+  {% if invoice %}
+  <input type="hidden" name="invoice_id" value="{{ invoice.pk }}">
+
+  <div class="flex flex-col gap-3 border-y border-line py-5 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-sm font-semibold text-ink">{{ invoice.term.name }} fees</p>
+      <p class="mt-1 text-xs text-ink-muted">{{ invoice.term.session.name }}</p>
+    </div>
+    <div class="sm:text-right">
+      <p class="text-xs font-medium text-ink-muted">Remaining balance</p>
+      <p class="mt-1 text-3xl font-bold tracking-tight text-ink tabular-nums">
+        &#8358;{{ invoice.balance|floatformat:2|intcomma }}
+      </p>
+    </div>
+  </div>
+
+  <div>
+    <div class="mb-2 flex items-center justify-between gap-3">
+      <label for="payment-amount-{{ payment_student.pk }}" class="text-sm font-semibold text-ink">
+        Amount to pay
+      </label>
+      <button type="button"
+              data-role="use-full-balance"
+              data-balance="{{ invoice.balance }}"
+              class="inline-flex min-h-9 items-center rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary-tint focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+        Use full balance
+      </button>
+    </div>
+    <div class="relative">
+      <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-sm font-semibold text-ink-muted">&#8358;</span>
+      <input type="number"
+             id="payment-amount-{{ payment_student.pk }}"
+             name="amount"
+             data-role="payment-amount"
+             data-balance="{{ invoice.balance }}"
+             inputmode="decimal"
+             autocomplete="off"
+             min="0.01"
+             max="{{ invoice.balance }}"
+             step="0.01"
+             required
+             placeholder="0.00"
+             aria-describedby="amount-help-{{ payment_student.pk }} amount-error-{{ payment_student.pk }}"
+             class="w-full rounded-xl border border-line bg-white py-3 pl-9 pr-4 text-base font-semibold text-ink tabular-nums outline-none transition-colors placeholder:text-ink-faint focus:border-primary focus:ring-2 focus:ring-primary/20">
+    </div>
+    <p id="amount-help-{{ payment_student.pk }}" class="mt-2 text-xs text-ink-muted">
+      Numbers only. Do not use commas.
+    </p>
+    <p id="amount-error-{{ payment_student.pk }}" data-role="amount-error" class="mt-2 hidden text-xs font-medium text-danger" aria-live="polite"></p>
+  </div>
+  {% else %}
+  <div class="py-8 text-center">
+    <div class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-success-tint text-success">
+      <i data-lucide="check" class="h-5 w-5" aria-hidden="true"></i>
+    </div>
+    <p class="text-sm font-semibold text-ink">No outstanding balance</p>
+    <p class="mt-1 text-xs text-ink-muted">There is nothing to pay for this student right now.</p>
+  </div>
+  {% endif %}
+</div>

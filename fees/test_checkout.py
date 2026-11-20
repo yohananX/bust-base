@@ -437,6 +437,62 @@ class FeeCheckoutTest(TestCase):
 
     # ─── CheckoutSubmitView ──────────────────────────────────────────────
 
+    def test_checkout_invoice_mode_defaults_to_outstanding(self):
+        """The amount-first form pays its invoice without a selectable item list."""
+        self.client.force_login(self.parent_user)
+
+        response = self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "invoice_id": str(self.invoice.pk),
+                "amount": "20000.00",
+                "method": "bank_transfer",
+                "proof_image": SimpleUploadedFile(
+                    "proof.png",
+                    b"\x89PNG\r\n\x1a\nfake-image-bytes",
+                    content_type="image/png",
+                ),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        payment = Payment.objects.get(
+            invoice=self.invoice,
+            method=Payment.Method.BANK_TRANSFER,
+        )
+        self.assertEqual(payment.amount, Decimal("20000.00"))
+        self.assertEqual(payment.status, Payment.Status.PENDING)
+
+    def test_checkout_rejects_amounts_that_are_not_plain_numbers(self):
+        """Comma-formatted and exponent amounts are rejected before payment processing."""
+        self.client.force_login(self.parent_user)
+
+        for invalid_amount in ("10,000.00", "1e4"):
+            with self.subTest(amount=invalid_amount):
+                response = self.client.post(
+                    reverse("fees:checkout-submit"),
+                    {
+                        "student_id": str(self.student.pk),
+                        "invoice_id": str(self.invoice.pk),
+                        "amount": invalid_amount,
+                        "method": "bank_transfer",
+                    },
+                )
+
+                self.assertEqual(response.status_code, 302)
+                feedback = [
+                    str(message) for message in get_messages(response.wsgi_request)
+                ]
+                self.assertTrue(
+                    any(
+                        "numbers only, without commas" in message.lower()
+                        for message in feedback
+                    ),
+                    f"expected numeric-format guidance, got: {feedback}",
+                )
+                self.assertFalse(Payment.objects.exists())
+
     def test_checkout_submit_bank_transfer_creates_pending(self):
         """Bank-transfer checkout creates a PENDING row per allocation, then redirects."""
         if CheckoutSubmitView is None:

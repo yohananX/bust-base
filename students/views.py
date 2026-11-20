@@ -11,7 +11,7 @@ from accounts.mixins import RoleRequiredMixin
 from accounts.models import Roles
 from core.models import Term
 from students.models import Student, StudentGuardianLink, ClassEnrollment
-from fees.checkout import get_checkout_options, current_term
+from fees.checkout import current_term
 from fees.models import Invoice, Payment
 from fees.selectors import owed_term_ids as owed_term_ids_for
 from fees.selectors import owed_term_ids_from
@@ -553,40 +553,37 @@ class _BaseMakePaymentView(RoleRequiredMixin, View):
             for child_id, inv_list in invoices_by_child.items()
         }
 
-        checkout_term = current_term(request.school)
         checkout_students = list(students)
-        checkouts_by_child = {}
+        payable_invoices_by_child = {}
         for child in checkout_students:
-            unpaid_terms = [
-                inv.term
-                for inv in invoices_by_child.get(child.pk, [])
-                if inv.balance > 0 and inv.term
+            unpaid_invoices = [
+                invoice
+                for invoice in invoices_by_child.get(child.pk, [])
+                if invoice.balance > 0
             ]
-            term = max(
-                unpaid_terms,
-                key=lambda t: t.start_date,
-                default=checkout_term,
-            )
-            if term is None:
-                continue
-            checkouts_by_child[child.pk] = get_checkout_options(child, term)
+            if unpaid_invoices:
+                # Preserve the portal's existing behavior of presenting the
+                # most recent unpaid term while making that invoice the only
+                # payment target shown in the simplified flow.
+                payable_invoices_by_child[child.pk] = max(
+                    unpaid_invoices,
+                    key=lambda invoice: (
+                        invoice.term.start_date,
+                        invoice.generated_on,
+                    ),
+                )
 
-        can_pay_by_child = {}
-        for child in checkout_students:
-            co = checkouts_by_child.get(child.pk)
-            can_pay = False
-            if co is not None:
-                if co.outstanding is not None:
-                    can_pay = True
-                elif co.bundle is not None and not co.bundle.billed:
-                    can_pay = True
-                else:
-                    payable = [o for o in co.extras if not o.billed]
-                    if co.next_term is not None:
-                        payable += [o for o in co.next_term.options if not o.billed]
-                    if payable:
-                        can_pay = True
-            can_pay_by_child[child.pk] = can_pay
+        can_pay_by_child = {
+            child.pk: child.pk in payable_invoices_by_child
+            for child in checkout_students
+        }
+        payment_accounts = [
+            {
+                "student": child,
+                "invoice": payable_invoices_by_child.get(child.pk),
+            }
+            for child in checkout_students
+        ]
         any_payable = any(can_pay_by_child.values())
 
         school = request.school
@@ -616,8 +613,9 @@ class _BaseMakePaymentView(RoleRequiredMixin, View):
                 "fully_paid": fully_paid,
                 "unpaid_invoices_count": unpaid_invoices_count,
                 "recent_payments": recent_payments,
-                "checkouts_by_child": checkouts_by_child,
+                "payable_invoices_by_child": payable_invoices_by_child,
                 "can_pay_by_child": can_pay_by_child,
+                "payment_accounts": payment_accounts,
                 "any_payable": any_payable,
                 "bank_details": bank_details,
                 "paystack_enabled": bool(

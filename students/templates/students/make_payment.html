@@ -1,75 +1,28 @@
 {% extends 'base.html' %}
 {% block title %}Make a Payment - Grace House{% endblock %}
 {% block page_header %}Make a Payment{% endblock %}
-{% block extra_css %}
-<style>
-  @keyframes check-pop {
-    0% { transform: scale(0); opacity: 0; }
-    60% { transform: scale(1.15); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  .check-pop { animation: check-pop 0.45s ease-out; }
-</style>
-{% endblock %}
+
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
-
-  {# ===== How much do you owe? ===== #}
-  {% if not any_payable %}
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 opacity-70">
-    <div class="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-      <svg viewBox="0 0 24 24" class="w-6 h-6 text-green-600 check-pop" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="20 6 9 17 4 12"></polyline>
-      </svg>
-    </div>
-    <div class="min-w-0">
-      <p class="text-sm font-semibold text-green-700 mb-0.5">All fees paid</p>
-    </div>
-  </div>
-  {% elif fully_paid %}
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
-    <div class="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-      <svg viewBox="0 0 24 24" class="w-6 h-6 text-green-600 check-pop" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="20 6 9 17 4 12"></polyline>
-      </svg>
-    </div>
-    <div class="min-w-0">
-      <p class="text-sm font-semibold text-green-700 mb-0.5">All fees paid</p>
-      <p class="text-xs text-gray-500">You have nothing due for the term. You can still select a category below to pay for something else.</p>
-    </div>
-  </div>
-  {% else %}
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between">
-    <div class="min-w-0">
-      <p class="text-sm text-gray-600 mb-1">Amount due</p>
-      <p class="text-2xl font-bold text-gray-900 tabular-nums truncate">&#8358;{{ total_owed|floatformat:2 }}</p>
-      <p class="text-xs text-gray-400 mt-1">{{ unpaid_invoices_count|default:"0" }} invoice{{ unpaid_invoices_count|default:"0"|pluralize }} not yet paid</p>
-    </div>
-    <div class="w-10 h-10 rounded-xl bg-violet-200/50 text-violet-600 flex items-center justify-center flex-shrink-0">
-      <i data-lucide="wallet" class="w-5 h-5"></i>
-    </div>
-  </div>
-  {% endif %}
-
-  {# ===== Payment form — cart + method step ===== #}
-  <form method="post" action="{% url 'fees:checkout-submit' %}" id="payment-form" enctype="multipart/form-data" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6 {% if not any_payable %}opacity-60 pointer-events-none select-none{% endif %}">
+<div class="mx-auto max-w-3xl space-y-6">
+  <form method="post"
+        action="{% url 'fees:checkout-submit' %}"
+        id="payment-form"
+        enctype="multipart/form-data"
+        class="space-y-6 rounded-2xl border border-line bg-white p-5 shadow-sm sm:p-6">
     {% csrf_token %}
-    {% if not any_payable %}
-    <div class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
-      <div class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><i data-lucide="lock" class="w-4 h-4 text-gray-400"></i></div>
-      <div>
-        <p class="text-sm font-semibold text-gray-700">Payments are disabled</p>
-        <p class="text-xs text-gray-500 mt-0.5">You've settled everything for this term. Nothing more to pay.</p>
-      </div>
-    </div>
-    {% endif %}
 
-    {# Child selector — parents only; students carry a hidden student_id #}
+    <div>
+      <h2 class="text-lg font-bold tracking-tight text-ink">Pay school fees</h2>
+      <p class="mt-1 text-sm text-ink-muted">Review the remaining balance, then enter the payment amount.</p>
+    </div>
+
     {% if children %}
     <div>
-      <label for="child-select" class="block text-sm font-semibold text-gray-800 mb-2">Pay for</label>
-      <select name="student_id" id="child-select" required
-              class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+      <label for="child-select" class="mb-2 block text-sm font-semibold text-ink">Pay for</label>
+      <select name="student_id"
+              id="child-select"
+              required
+              class="w-full rounded-xl border border-line bg-surface-muted px-4 py-2.5 text-sm text-ink outline-none transition-colors focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20">
         {% for child in children %}
         <option value="{{ child.pk }}">{{ child.user.get_full_name }}</option>
         {% endfor %}
@@ -79,501 +32,138 @@
     <input type="hidden" name="student_id" value="{{ student.pk }}">
     {% endif %}
 
-    {# What to pay for — a single dropdown per child; picking one sets the amount #}
-    <div>
-      <p class="text-sm font-semibold text-gray-800 mb-2">What are you paying for?</p>
-      <div class="space-y-4">
-        {% if children %}
-          {% for child in children %}
-          <div class="child-cart space-y-3" data-child="{{ child.pk }}">
-            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{{ child.user.get_full_name }}</p>
-
-            {% if checkouts_by_child and child.pk in checkouts_by_child %}
-              {% for cid, co in checkouts_by_child.items %}
-                {% if cid == child.pk %}
-
-                  {# ---- Outstanding balance (always pre-selected when present) ---- #}
-                  {% if co.outstanding %}
-                  <label class="fee-row flex items-start gap-3 p-4 rounded-xl border border-primary/30 bg-primary-tint/40 hover:border-primary hover:bg-primary-tint/60 cursor-pointer transition-all mb-2 has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
-                    <input type="checkbox" name="item" value="{{ co.outstanding.key }}" data-amount="{{ co.outstanding.amount }}"
-                           data-role="fee-checkbox" data-group="outstanding"
-                           class="mt-1 accent-primary" checked>
-                    <span class="flex-1 min-w-0">
-                      <span class="flex items-center justify-between gap-2">
-                        <span class="text-sm font-bold text-gray-900">{{ co.outstanding.term_name }} — Outstanding School Fees</span>
-                        <span class="text-xs font-medium text-gray-500">{{ co.outstanding.term_name }}</span>
-                      </span>
-                      <span class="block text-xs text-gray-500 mt-0.5">Current balance on the term invoice. Check to include in this payment.</span>
-                    </span>
-                    <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ co.outstanding.amount|floatformat:2 }}</span>
-                  </label>
-                  {% endif %}
-
-                  {# ---- Full-term bundle (new vs returning) ---- #}
-                  {% if co.bundle and not co.bundle.billed %}
-                  <label class="bundle-option flex items-start gap-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50 hover:border-emerald-400 cursor-pointer transition-all mb-2 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-100/70"
-                         data-role="bundle-row">
-                    <input type="radio" name="item-bundle" value="{{ co.bundle.key }}" data-amount="{{ co.bundle.amount }}"
-                           data-role="bundle-radio"
-                           class="mt-1 accent-emerald-600">
-                    <span class="flex-1 min-w-0">
-                      <span class="flex items-center justify-between gap-2">
-                        <span class="text-sm font-bold text-gray-900">{{ co.bundle.label }}</span>
-                        <span class="text-xs font-medium text-gray-500">{{ co.bundle.term_name }}</span>
-                      </span>
-                      <span class="block text-xs text-gray-500 mt-0.5">Full fees for {{ co.bundle.term_name }} — pay all categories at once.</span>
-                      <button type="button" class="text-xs font-semibold text-emerald-700 hover:underline mt-1" onclick="this.nextElementSibling.classList.toggle('hidden')">View breakdown</button>
-                      <div class="hidden mt-2 space-y-1">
-                        {% for bi in co.bundle.bundle_items %}
-                        <div class="flex items-center justify-between text-xs text-gray-600">
-                          <span>{{ bi.category_name }}</span>
-                          <span class="tabular-nums">₦{{ bi.amount|floatformat:2 }}</span>
-                        </div>
-                        {% endfor %}
-                        <div class="flex items-center justify-between text-xs font-bold text-gray-900 border-t border-gray-200 pt-1 mt-1">
-                          <span>Total</span>
-                          <span class="tabular-nums">₦{{ co.bundle.amount|floatformat:2 }}</span>
-                        </div>
-                      </div>
-                    </span>
-                    <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ co.bundle.amount|floatformat:2 }}</span>
-                  </label>
-                  {% endif %}
-
-                  {# ---- Select-all + checklist of payable options ---- #}
-                  {% if co.extras or co.next_term %}
-                  <div class="mt-1 mb-1 flex items-center justify-between px-1">
-                    <label class="flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer select-none">
-                      <input type="checkbox" data-role="select-all-fees"
-                             class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
-                      <span>Select all payable items</span>
-                    </label>
-                    <span class="text-[11px] text-gray-500" data-role="select-summary">0 selected</span>
-                  </div>
-
-                  {% if co.grouped_extras %}
-                    {% for group_name, opts in co.grouped_extras.items %}
-                      {% if opts %}
-                      <div class="mb-3">
-                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 px-1">{{ group_name }}</p>
-                        <div class="space-y-2">
-                          {% for opt in opts %}
-                            {% if not opt.billed %}
-                            <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
-                              <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
-                                     data-role="fee-checkbox" data-group="extras"
-                                     class="mt-1 accent-primary">
-                              <span class="flex-1 min-w-0">
-                                <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
-                                <span class="block text-xs text-gray-500 mt-0.5">{{ opt.term_name }}</span>
-                              </span>
-                              <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
-                            </label>
-                            {% endif %}
-                          {% endfor %}
-                        </div>
-                      </div>
-                      {% endif %}
-                    {% endfor %}
-                  {% else %}
-                    <div class="space-y-2">
-                      {% for opt in co.extras %}
-                        {% if not opt.billed %}
-                        <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
-                          <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
-                                 data-role="fee-checkbox" data-group="extras"
-                                 class="mt-1 accent-primary">
-                          <span class="flex-1 min-w-0">
-                            <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
-                            <span class="block text-xs text-gray-500 mt-0.5">{{ opt.term_name }}</span>
-                          </span>
-                          <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
-                        </label>
-                        {% endif %}
-                      {% endfor %}
-                    </div>
-                  {% endif %}
-
-                  {% if co.next_term and co.next_term.options %}
-                  <div class="mt-4">
-                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 px-1">{{ co.next_term.term_name }} — Pre-pay</p>
-                    <div class="space-y-2">
-                      {% for opt in co.next_term.options %}
-                        {% if not opt.billed %}
-                        <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
-                          <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
-                                 data-role="fee-checkbox" data-group="next"
-                                 class="mt-1 accent-primary">
-                          <span class="flex-1 min-w-0">
-                            <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
-                            <span class="block text-xs text-gray-500 mt-0.5">{{ co.next_term.term_name }}</span>
-                          </span>
-                          <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
-                        </label>
-                        {% endif %}
-                      {% endfor %}
-                    </div>
-                  </div>
-                  {% endif %}
-
-                  <p class="text-[10px] text-gray-400 mt-1">Check or uncheck the items you want to pay for.</p>
-                  {% endif %}
-
-                  {# ---- Negotiable amount for this child ---- #}
-                  <div class="pt-3 mt-1 border-t border-gray-100">
-                    <label for="child-amount-{{ child.pk }}" class="text-xs font-medium text-gray-600">Amount to pay</label>
-                    <div class="relative mt-1.5 max-w-[220px]">
-                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-xs">&#8358;</span>
-                      <input type="number" id="child-amount-{{ child.pk }}" data-role="child-amount"
-                             step="0.01" min="0"
-                             class="w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm tabular-nums font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-                    </div>
-                    <p class="text-xs text-gray-400 mt-1">Defaults to the full selected total — lower it to pay a partial amount.</p>
-                  </div>
-
-                {% endif %}
-              {% endfor %}
-            {% else %}
-              {# ---- Fallback: invoice radio list when checkout data is missing ---- #}
-              <div class="space-y-2">
-                {% if invoices_by_child and child.pk in invoices_by_child %}
-                  {% for cid, invoices in invoices_by_child.items %}
-                    {% if cid == child.pk %}
-                      {% for invoice in invoices %}
-                        {% if invoice.status != 'PAID' %}
-                        <label class="invoice-option flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
-                          <input type="radio" name="invoice_id" value="{{ invoice.pk }}"
-                                 data-balance="{{ invoice.balance }}"
-                                 class="mt-1 accent-primary"
-                                 {% if forloop.parentloop.parentloop.first and forloop.first %}checked{% endif %}>
-                          <span class="flex-1 min-w-0">
-                            <span class="flex items-center justify-between gap-2">
-                              <span class="text-sm font-semibold text-gray-900">{{ invoice.term.name }}{% if invoice.term.session.name %} &mdash; {{ invoice.term.session.name }}{% endif %}</span>
-                              {% if invoice.status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text=invoice.status %}
-                              {% else %}{% include 'components/badge.html' with status='danger' text=invoice.status %}{% endif %}
-                            </span>
-                            <span class="flex items-center justify-between gap-2 mt-1.5 text-xs text-gray-500">
-                              <span>Total: <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ invoice.total_amount|floatformat:2 }}</span></span>
-                              <span>Balance: <span class="font-medium {% if invoice.balance > 0 %}text-amber-600{% else %}text-green-600{% endif %} tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</span></span>
-                            </span>
-                          </span>
-                        </label>
-                        {% endif %}
-                      {% endfor %}
-                    {% endif %}
-                  {% endfor %}
-                {% else %}
-                  <p class="text-sm text-gray-400 py-1.5">No fee invoices yet for this child.</p>
-                {% endif %}
-              </div>
-            {% endif %}
-          </div>
-          {% endfor %}
-        {% elif student %}
-          <div class="child-cart space-y-3" data-child="{{ student.pk }}">
-
-            {% if checkouts_by_child and student.pk in checkouts_by_child %}
-              {% for cid, co in checkouts_by_child.items %}
-                {% if cid == student.pk %}
-
-                  {# ---- Outstanding balance (always pre-selected when present) ---- #}
-                  {% if co.outstanding %}
-                  <label class="fee-row flex items-start gap-3 p-4 rounded-xl border border-primary/30 bg-primary-tint/40 hover:border-primary hover:bg-primary-tint/60 cursor-pointer transition-all mb-2 has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
-                    <input type="checkbox" name="item" value="{{ co.outstanding.key }}" data-amount="{{ co.outstanding.amount }}"
-                           data-role="fee-checkbox" data-group="outstanding"
-                           class="mt-1 accent-primary" checked>
-                    <span class="flex-1 min-w-0">
-                      <span class="flex items-center justify-between gap-2">
-                        <span class="text-sm font-bold text-gray-900">{{ co.outstanding.term_name }} — Outstanding School Fees</span>
-                        <span class="text-xs font-medium text-gray-500">{{ co.outstanding.term_name }}</span>
-                      </span>
-                      <span class="block text-xs text-gray-500 mt-0.5">Current balance on the term invoice. Check to include in this payment.</span>
-                    </span>
-                    <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ co.outstanding.amount|floatformat:2 }}</span>
-                  </label>
-                  {% endif %}
-
-                  {# ---- Full-term bundle (new vs returning) ---- #}
-                  {% if co.bundle and not co.bundle.billed %}
-                  <label class="bundle-option flex items-start gap-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50 hover:border-emerald-400 cursor-pointer transition-all mb-2 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-100/70"
-                         data-role="bundle-row">
-                    <input type="radio" name="item-bundle" value="{{ co.bundle.key }}" data-amount="{{ co.bundle.amount }}"
-                           data-role="bundle-radio"
-                           class="mt-1 accent-emerald-600">
-                    <span class="flex-1 min-w-0">
-                      <span class="flex items-center justify-between gap-2">
-                        <span class="text-sm font-bold text-gray-900">{{ co.bundle.label }}</span>
-                        <span class="text-xs font-medium text-gray-500">{{ co.bundle.term_name }}</span>
-                      </span>
-                      <span class="block text-xs text-gray-500 mt-0.5">Full fees for {{ co.bundle.term_name }} — pay all categories at once.</span>
-                      <button type="button" class="text-xs font-semibold text-emerald-700 hover:underline mt-1" onclick="this.nextElementSibling.classList.toggle('hidden')">View breakdown</button>
-                      <div class="hidden mt-2 space-y-1">
-                        {% for bi in co.bundle.bundle_items %}
-                        <div class="flex items-center justify-between text-xs text-gray-600">
-                          <span>{{ bi.category_name }}</span>
-                          <span class="tabular-nums">₦{{ bi.amount|floatformat:2 }}</span>
-                        </div>
-                        {% endfor %}
-                        <div class="flex items-center justify-between text-xs font-bold text-gray-900 border-t border-gray-200 pt-1 mt-1">
-                          <span>Total</span>
-                          <span class="tabular-nums">₦{{ co.bundle.amount|floatformat:2 }}</span>
-                        </div>
-                      </div>
-                    </span>
-                    <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ co.bundle.amount|floatformat:2 }}</span>
-                  </label>
-                  {% endif %}
-
-                  {# ---- Select-all + checklist of payable options ---- #}
-                  {% if co.extras or co.next_term %}
-                  <div class="mt-1 mb-1 flex items-center justify-between px-1">
-                    <label class="flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer select-none">
-                      <input type="checkbox" data-role="select-all-fees"
-                             class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
-                      <span>Select all payable items</span>
-                    </label>
-                    <span class="text-[11px] text-gray-500" data-role="select-summary">0 selected</span>
-                  </div>
-
-                  {% if co.grouped_extras %}
-                    {% for group_name, opts in co.grouped_extras.items %}
-                      {% if opts %}
-                      <div class="mb-3">
-                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 px-1">{{ group_name }}</p>
-                        <div class="space-y-2">
-                          {% for opt in opts %}
-                            {% if not opt.billed %}
-                            <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
-                              <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
-                                     data-role="fee-checkbox" data-group="extras"
-                                     class="mt-1 accent-primary">
-                              <span class="flex-1 min-w-0">
-                                <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
-                                <span class="block text-xs text-gray-500 mt-0.5">{{ opt.term_name }}</span>
-                              </span>
-                              <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
-                            </label>
-                            {% endif %}
-                          {% endfor %}
-                        </div>
-                      </div>
-                      {% endif %}
-                    {% endfor %}
-                  {% else %}
-                    <div class="space-y-2">
-                      {% for opt in co.extras %}
-                        {% if not opt.billed %}
-                        <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
-                          <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
-                                 data-role="fee-checkbox" data-group="extras"
-                                 class="mt-1 accent-primary">
-                          <span class="flex-1 min-w-0">
-                            <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
-                            <span class="block text-xs text-gray-500 mt-0.5">{{ opt.term_name }}</span>
-                          </span>
-                          <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
-                        </label>
-                        {% endif %}
-                      {% endfor %}
-                    </div>
-                  {% endif %}
-
-                  {% if co.next_term and co.next_term.options %}
-                  <div class="mt-4">
-                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 px-1">{{ co.next_term.term_name }} — Pre-pay</p>
-                    <div class="space-y-2">
-                      {% for opt in co.next_term.options %}
-                        {% if not opt.billed %}
-                        <label class="fee-row flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/60">
-                          <input type="checkbox" name="item" value="{{ opt.key }}" data-amount="{{ opt.amount }}"
-                                 data-role="fee-checkbox" data-group="next"
-                                 class="mt-1 accent-primary">
-                          <span class="flex-1 min-w-0">
-                            <span class="block text-sm font-semibold text-gray-900">{{ opt.category_name }}</span>
-                            <span class="block text-xs text-gray-500 mt-0.5">{{ co.next_term.term_name }}</span>
-                          </span>
-                          <span class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0 ml-3">&#8358;{{ opt.amount|floatformat:2 }}</span>
-                        </label>
-                        {% endif %}
-                      {% endfor %}
-                    </div>
-                  </div>
-                  {% endif %}
-
-                  <p class="text-[10px] text-gray-400 mt-1">Check or uncheck the items you want to pay for.</p>
-                  {% endif %}
-
-                  {# ---- Negotiable amount for this student ---- #}
-                  <div class="pt-3 mt-1 border-t border-gray-100">
-                    <label for="child-amount-{{ student.pk }}" class="text-xs font-medium text-gray-600">Amount to pay</label>
-                    <div class="relative mt-1.5 max-w-[220px]">
-                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-xs">&#8358;</span>
-                      <input type="number" id="child-amount-{{ student.pk }}" data-role="child-amount"
-                             step="0.01" min="0"
-                             class="w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm tabular-nums font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
-                    </div>
-                    <p class="text-xs text-gray-400 mt-1">Defaults to the full selected total — lower it to pay a partial amount.</p>
-                  </div>
-
-                {% endif %}
-              {% endfor %}
-            {% else %}
-              {# ---- Fallback: invoice radio list when checkout data is missing ---- #}
-              <div class="space-y-2">
-                {% if invoices_by_child and student.pk in invoices_by_child %}
-                  {% for cid, invoices in invoices_by_child.items %}
-                    {% if cid == student.pk %}
-                      {% for invoice in invoices %}
-                        {% if invoice.status != 'PAID' %}
-                        <label class="invoice-option flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
-                          <input type="radio" name="invoice_id" value="{{ invoice.pk }}"
-                                 data-balance="{{ invoice.balance }}"
-                                 class="mt-1 accent-primary"
-                                 {% if forloop.parentloop.first and forloop.first %}checked{% endif %}>
-                          <span class="flex-1 min-w-0">
-                            <span class="flex items-center justify-between gap-2">
-                              <span class="text-sm font-semibold text-gray-900">{{ invoice.term.name }}{% if invoice.term.session.name %} &mdash; {{ invoice.term.session.name }}{% endif %}</span>
-                              {% if invoice.status == 'PARTIAL' %}{% include 'components/badge.html' with status='warning' text=invoice.status %}
-                              {% else %}{% include 'components/badge.html' with status='danger' text=invoice.status %}{% endif %}
-                            </span>
-                            <span class="flex items-center justify-between gap-2 mt-1.5 text-xs text-gray-500">
-                              <span>Total: <span class="font-medium text-gray-700 tabular-nums">&#8358;{{ invoice.total_amount|floatformat:2 }}</span></span>
-                              <span>Balance: <span class="font-medium {% if invoice.balance > 0 %}text-amber-600{% else %}text-green-600{% endif %} tabular-nums">&#8358;{{ invoice.balance|floatformat:2 }}</span></span>
-                            </span>
-                          </span>
-                        </label>
-                        {% endif %}
-                      {% empty %}
-                        <p class="text-sm text-gray-400 py-1.5">No fee invoices yet.</p>
-                      {% endfor %}
-                    {% endif %}
-                  {% endfor %}
-                {% else %}
-                  <p class="text-sm text-gray-400 py-1.5">No fee invoices yet.</p>
-                {% endif %}
-              </div>
-            {% endif %}
-          </div>
-        {% else %}
-          <p class="text-sm text-gray-400 py-1.5">No fee invoices available.</p>
-        {% endif %}
+    <div id="payment-accounts">
+      {% for account in payment_accounts %}
+        {% include 'students/partials/payment_balance.html' with payment_student=account.student invoice=account.invoice %}
+      {% empty %}
+      <div class="py-8 text-center">
+        <p class="text-sm font-semibold text-ink">No outstanding balance</p>
+        <p class="mt-1 text-xs text-ink-muted">There is nothing to pay right now.</p>
       </div>
+      {% endfor %}
     </div>
 
-    {# ===== Running total (authoritative amount = cart total) ===== #}
-    <div id="cart-total" class="flex items-center justify-between pt-4 border-t border-gray-100">
-      <span class="text-sm font-semibold text-gray-800">Total</span>
-      <span id="cart-total-value" class="text-lg font-bold text-gray-900 tabular-nums">&#8358;0.00</span>
-      <input type="hidden" name="amount" id="amount-input" value="0.00">
-    </div>
-    <p id="cart-hint" class="hidden text-xs text-amber-600">Select at least one item to pay for.</p>
-
-    {# ===== Proceed to Payment — reveals the method step (does NOT submit) ===== #}
-    <button type="button" id="proceed-btn"
-            class="inline-flex items-center justify-center w-full px-4 py-3 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-xl transition-colors shadow-sm hover:shadow">
-      <i data-lucide="wallet" class="w-4 h-4 mr-2"></i>Proceed to Payment
+    {% if any_payable %}
+    <button type="button"
+            id="proceed-btn"
+            class="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+      <i data-lucide="arrow-right" class="mr-2 h-4 w-4" aria-hidden="true"></i>
+      Proceed to payment
     </button>
+    {% endif %}
 
-    {# ===== Payment method step — hidden until Proceed ===== #}
-    <div id="payment-method-step" class="hidden space-y-4 pt-4 border-t border-gray-100">
-      <p class="text-sm font-semibold text-gray-800">How would you like to pay?</p>
+    <div id="payment-method-step" class="hidden space-y-4 border-t border-line pt-5">
+      <p class="text-sm font-semibold text-ink">How would you like to pay?</p>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {% if paystack_enabled %}
-        <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+        <label class="flex min-h-20 cursor-pointer items-start gap-3 rounded-xl border border-line bg-white p-4 transition-colors hover:border-primary/40 hover:bg-primary-tint/40 has-[:checked]:border-primary has-[:checked]:bg-primary-tint/60">
           <input type="radio" name="method" value="paystack" class="mt-1 accent-primary" checked>
-          <span class="flex-1 min-w-0">
+          <span class="min-w-0 flex-1">
             <span class="flex items-center gap-2">
-              <i data-lucide="credit-card" class="w-4 h-4 text-primary"></i>
-              <span class="text-sm font-semibold text-gray-900">Paystack Card</span>
+              <i data-lucide="credit-card" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+              <span class="text-sm font-semibold text-ink">Paystack Card</span>
             </span>
-            <span class="block text-xs text-gray-500 mt-0.5">Debit or credit card</span>
+            <span class="mt-0.5 block text-xs text-ink-muted">Debit or credit card</span>
           </span>
         </label>
         {% endif %}
-        <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-violet-50/50">
+
+        <label class="flex min-h-20 cursor-pointer items-start gap-3 rounded-xl border border-line bg-white p-4 transition-colors hover:border-primary/40 hover:bg-primary-tint/40 has-[:checked]:border-primary has-[:checked]:bg-primary-tint/60">
           <input type="radio" name="method" value="bank_transfer" class="mt-1 accent-primary" {% if not paystack_enabled %}checked{% endif %}>
-          <span class="flex-1 min-w-0">
+          <span class="min-w-0 flex-1">
             <span class="flex items-center gap-2">
-              <i data-lucide="landmark" class="w-4 h-4 text-gray-500"></i>
-              <span class="text-sm font-semibold text-gray-900">Bank Transfer</span>
+              <i data-lucide="landmark" class="h-4 w-4 text-ink-muted" aria-hidden="true"></i>
+              <span class="text-sm font-semibold text-ink">Bank Transfer</span>
             </span>
-            <span class="block text-xs text-gray-500 mt-0.5">Transfer to our account</span>
+            <span class="mt-0.5 block text-xs text-ink-muted">Transfer to our account</span>
           </span>
         </label>
       </div>
 
       {% if paystack_enabled %}
-      {# Paystack panel — default #}
       <div id="paystack-panel">
         <button type="submit"
-                class="inline-flex items-center justify-center w-full px-4 py-3 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-xl transition-colors shadow-sm hover:shadow">
-          <i data-lucide="credit-card" class="w-4 h-4 mr-2"></i>Proceed to Paystack Checkout
+                class="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+          <i data-lucide="credit-card" class="mr-2 h-4 w-4" aria-hidden="true"></i>
+          Continue to Paystack
         </button>
       </div>
       {% endif %}
 
-      {# Bank transfer panel #}
       <div id="bank-transfer-panel" class="{% if paystack_enabled %}hidden{% endif %} space-y-4">
         {% if bank_details %}
-        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
-          <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Transfer to</p>
-          <p class="text-sm font-semibold text-gray-900">{{ bank_details.bank }}</p>
-          <p class="text-sm text-gray-600">{{ bank_details.account_name }}</p>
-          <p class="text-lg font-bold text-gray-900 tabular-nums tracking-[0.15em]">{{ bank_details.account_number }}</p>
+        <div class="border-y border-line bg-surface-muted px-4 py-3">
+          <p class="text-xs font-semibold text-ink-muted">Transfer account</p>
+          <p class="mt-1 text-sm font-semibold text-ink">{{ bank_details.bank }}</p>
+          <p class="text-sm text-ink-muted">{{ bank_details.account_name }}</p>
+          <p class="mt-1 text-lg font-bold tracking-wider text-ink tabular-nums">{{ bank_details.account_number }}</p>
         </div>
         {% endif %}
+
         <div>
-          <label for="paid-by-name" class="text-xs font-medium text-gray-600">Who made the transfer? <span class="text-gray-400">(optional)</span></label>
-          <input type="text" id="paid-by-name" name="paid_by_name" maxlength="200"
-                 class="mt-1 w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <label for="paid-by-name" class="text-xs font-medium text-ink-muted">Who made the transfer? <span class="text-ink-faint">(optional)</span></label>
+          <input type="text"
+                 id="paid-by-name"
+                 name="paid_by_name"
+                 maxlength="200"
+                 class="mt-1 w-full rounded-xl border border-line bg-surface-muted px-4 py-2.5 text-sm text-ink outline-none transition-colors focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20">
         </div>
+
         <div>
-          <label for="paid-by-relation" class="text-xs font-medium text-gray-600">Their relation to the student <span class="text-gray-400">(optional)</span></label>
-          <input type="text" id="paid-by-relation" name="paid_by_relation" maxlength="100"
-                 class="mt-1 w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all">
+          <label for="paid-by-relation" class="text-xs font-medium text-ink-muted">Their relation to the student <span class="text-ink-faint">(optional)</span></label>
+          <input type="text"
+                 id="paid-by-relation"
+                 name="paid_by_relation"
+                 maxlength="100"
+                 class="mt-1 w-full rounded-xl border border-line bg-surface-muted px-4 py-2.5 text-sm text-ink outline-none transition-colors focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20">
         </div>
+
         <div>
-          <label for="proof-image" class="text-xs font-medium text-gray-600">Transfer receipt / screenshot <span class="text-amber-600">(required)</span></label>
-          <input type="file" id="proof-image" name="proof_image" accept="image/*,application/pdf" required
-                 class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-primary file:text-white file:text-sm file:font-semibold hover:file:bg-primary-hover cursor-pointer">
-          <p class="text-xs text-gray-400 mt-1">Upload a screenshot of your transfer.</p>
+          <label for="proof-image" class="text-xs font-medium text-ink-muted">Transfer receipt or screenshot <span class="text-warning">(required)</span></label>
+          <input type="file"
+                 id="proof-image"
+                 name="proof_image"
+                 accept="image/*,application/pdf"
+                 class="mt-1 block w-full cursor-pointer text-sm text-ink-muted file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary-hover">
+          <p class="mt-1 text-xs text-ink-faint">Upload a clear image or PDF of the transfer.</p>
         </div>
+
         <button type="submit"
-                class="inline-flex items-center justify-center w-full px-4 py-3 bg-white border-2 border-gray-300 text-gray-800 text-sm font-semibold rounded-xl transition-colors hover:border-primary hover:text-primary">
-          <i data-lucide="check-circle" class="w-4 h-4 mr-2"></i>I've Transferred
+                class="inline-flex min-h-11 w-full items-center justify-center rounded-xl border-2 border-line-strong bg-white px-4 py-3 text-sm font-semibold text-ink transition-colors hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+          <i data-lucide="check-circle" class="mr-2 h-4 w-4" aria-hidden="true"></i>
+          Submit transfer
         </button>
-        <p class="text-xs text-gray-500">Your payment will show as <span class="font-medium text-amber-600">Awaiting confirmation</span> until the school confirms the transfer.</p>
+        <p class="text-xs text-ink-muted">The payment remains <span class="font-medium text-warning">awaiting confirmation</span> until the school confirms the transfer.</p>
       </div>
     </div>
   </form>
 
-  {# ===== Recent payments ===== #}
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-100">
-      <h3 class="text-sm font-semibold text-gray-800">Recent Payments</h3>
+  <div class="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
+    <div class="border-b border-line px-5 py-4 sm:px-6">
+      <h3 class="text-sm font-semibold text-ink">Recent Payments</h3>
     </div>
     {% if recent_payments %}
-    <ul class="divide-y divide-gray-50">
+    <ul class="divide-y divide-line">
       {% for payment in recent_payments %}
-      <li class="flex items-center justify-between gap-3 px-6 py-3.5">
+      <li class="flex items-center justify-between gap-3 px-5 py-3.5 sm:px-6">
         <div class="min-w-0">
-          <p class="text-sm font-medium text-gray-900 truncate">
+          <p class="truncate text-sm font-medium text-ink">
             {% if payment.invoice %}{{ payment.invoice.term.name }}{% elif payment.description %}{{ payment.description }}{% else %}Fee payment{% endif %}
           </p>
-          <p class="text-xs text-gray-500 mt-0.5">
+          <p class="mt-0.5 text-xs text-ink-muted">
             {% if children and payment.student %}{{ payment.student.user.get_full_name }} &middot; {% endif %}{{ payment.paid_on|date:"d M Y H:i" }}
           </p>
         </div>
-        <div class="flex flex-wrap items-center gap-3 flex-shrink-0">
-          <span class="text-sm font-semibold text-gray-900 tabular-nums">&#8358;{{ payment.amount|floatformat:2 }}</span>
+        <div class="flex flex-shrink-0 flex-wrap items-center gap-3">
+          <span class="text-sm font-semibold text-ink tabular-nums">&#8358;{{ payment.amount|floatformat:2 }}</span>
           {% if payment.status == 'PENDING' %}
             {% include 'components/badge.html' with status='warning' text='Awaiting confirmation' %}
           {% else %}
             {% include 'components/badge.html' with status='success' text='Paid' %}
           {% endif %}
           {% if payment.status == 'CONFIRMED' %}
-          <a href="{% url 'fees:payment-receipt' payment.pk %}" class="text-xs font-medium text-primary hover:underline">Receipt</a>
+          <a href="{% url 'fees:payment-receipt' payment.pk %}" class="text-xs font-medium text-primary underline-offset-4 hover:underline">Receipt</a>
           {% endif %}
         </div>
       </li>
@@ -581,12 +171,13 @@
     </ul>
     {% else %}
     <div class="py-10 text-center">
-      <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3"><i data-lucide="banknote" class="w-5 h-5 text-gray-400"></i></div>
-      <p class="text-sm text-gray-400">No payments yet.</p>
+      <div class="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface-muted text-ink-faint">
+        <i data-lucide="banknote" class="h-5 w-5" aria-hidden="true"></i>
+      </div>
+      <p class="text-sm text-ink-muted">No payments yet.</p>
     </div>
     {% endif %}
   </div>
-
 </div>
 {% endblock %}
 
@@ -594,218 +185,156 @@
 <script>
 (function () {
   var form = document.getElementById('payment-form');
+  if (!form) return;
+
   var childSelect = document.getElementById('child-select');
-  var blocks = Array.prototype.slice.call(document.querySelectorAll('.child-cart'));
-  var amountInput = document.getElementById('amount-input');
-  var totalValue = document.getElementById('cart-total-value');
-  var cartHint = document.getElementById('cart-hint');
-  var proceedBtn = document.getElementById('proceed-btn');
+  var blocks = Array.prototype.slice.call(document.querySelectorAll('.child-payment'));
+  var proceedButton = document.getElementById('proceed-btn');
   var methodStep = document.getElementById('payment-method-step');
   var paystackPanel = document.getElementById('paystack-panel');
   var bankPanel = document.getElementById('bank-transfer-panel');
+  var proofInput = document.getElementById('proof-image');
 
-  function fmt(v) { return '\u20A6' + Number(v || 0).toFixed(2); }
-  function activeChild() { return childSelect ? childSelect.value : null; }
+  function activeChildId() {
+    return childSelect ? childSelect.value : null;
+  }
 
-  /* The visible block for the selected child (or the only block for students). */
   function activeBlock() {
-    var c = activeChild();
+    var childId = activeChildId();
     for (var i = 0; i < blocks.length; i++) {
-      if (!c || blocks[i].getAttribute('data-child') === c) return blocks[i];
+      if (!childId || blocks[i].getAttribute('data-child') === childId) return blocks[i];
     }
     return null;
   }
 
-  /* Full amount for the active block.
-     - bundle radio checked → bundle amount (and bundle is mutually exclusive with items)
-     - else → sum of checked item checkboxes */
-  function blockFull(block) {
-    if (!block) return 0;
-    var bundleRadio = block.querySelector('input[name="item-bundle"]:checked');
-    if (bundleRadio) {
-      var b = parseFloat(bundleRadio.getAttribute('data-amount'));
-      return isNaN(b) ? 0 : b;
-    }
-    var invRadio = block.querySelector('input[name="invoice_id"]:checked');
-    if (invRadio) {
-      var b = parseFloat(invRadio.getAttribute('data-balance'));
-      return isNaN(b) ? 0 : b;
-    }
-    var boxes = block.querySelectorAll('input[name="item"]:checked');
-    var total = 0;
-    for (var i = 0; i < boxes.length; i++) {
-      var n = parseFloat(boxes[i].getAttribute('data-amount'));
-      if (!isNaN(n)) total += n;
-    }
-    return total;
+  function setProceedState(enabled) {
+    if (!proceedButton) return;
+    proceedButton.disabled = !enabled;
+    proceedButton.setAttribute('aria-disabled', enabled ? 'false' : 'true');
   }
 
-  /* Set the amount field to the sum of selected items (defaults to selected total). */
-  function setAmountFromSelection(block) {
-    var amountField = block ? block.querySelector('input[data-role="child-amount"]') : null;
-    var full = blockFull(block);
-    if (amountField) amountField.value = full.toFixed(2);
-    return full;
-  }
-
-  /* Update the visible cart-total and the hidden amount input. */
-  function recalc() {
-    var block = activeBlock();
-    var full = blockFull(block);
-    var amountField = block ? block.querySelector('input[data-role="child-amount"]') : null;
-    var total = full;
-    if (amountField) {
-      if (amountField.value === '' || amountField.value === '0.00' || amountField.value === '0') {
-        amountField.value = full.toFixed(2);
-      } else {
-        var v = parseFloat(amountField.value);
-        if (!isNaN(v)) total = Math.min(v, full);
-      }
-    }
-    if (amountInput) amountInput.value = total.toFixed(2);
-    if (totalValue) totalValue.textContent = fmt(total);
-    syncSelectAll(block);
-  }
-
-  /* Sync the per-block "Select all" checkbox to the current item state. */
-  function syncSelectAll(block) {
-    if (!block) return;
-    var selectAll = block.querySelector('input[data-role="select-all-fees"]');
-    var summary = block.querySelector('[data-role="select-summary"]');
-    var boxes = Array.prototype.slice.call(
-      block.querySelectorAll('input[data-role="fee-checkbox"]')
-    );
-    var checkedCount = boxes.filter(function (b) { return b.checked; }).length;
-    if (selectAll) {
-      selectAll.checked = boxes.length > 0 && checkedCount === boxes.length;
-      selectAll.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
-    }
-    if (summary) summary.textContent = checkedCount + ' of ' + boxes.length + ' selected';
-  }
-
-  /* Show only the selected child's cart; disable inactive blocks so only the
-     active child's items (and its amount) are submitted. */
   function updateVisibility() {
-    var c = activeChild();
-    blocks.forEach(function (el) {
-      var show = !c || el.getAttribute('data-child') === c;
-      el.classList.toggle('hidden', !show);
-      var inputs = el.querySelectorAll('input, select');
-      for (var i = 0; i < inputs.length; i++) inputs[i].disabled = !show;
+    var childId = activeChildId();
+    blocks.forEach(function (block) {
+      var visible = !childId || block.getAttribute('data-child') === childId;
+      block.classList.toggle('hidden', !visible);
+      var controls = block.querySelectorAll('input, button, select, textarea');
+      for (var i = 0; i < controls.length; i++) controls[i].disabled = !visible;
     });
-    /* Fallback mode: keep exactly one invoice radio selected in the visible block. */
+
     var block = activeBlock();
-    if (block && !block.querySelector('input[name="invoice_id"]:checked')) {
-      var first = block.querySelector('input[name="invoice_id"]');
-      if (first) first.checked = true;
-    }
-    recalc();
+    var hasBalance = !!(block && block.getAttribute('data-has-balance') === 'true');
+    setProceedState(hasBalance);
+    if (methodStep) methodStep.classList.add('hidden');
   }
 
-  /* Sync bundle radio with item checkboxes. When the bundle is checked, we
-     uncheck + disable the item boxes; when the user unchecks the bundle, the
-     previous per-item state is restored from the prior session. */
-  function syncBundleUI(block) {
-    if (!block) return;
-    var bundleRadio = block.querySelector('input[name="item-bundle"]:checked');
-    var itemBoxes = block.querySelectorAll('input[name="item"]');
-    for (var i = 0; i < itemBoxes.length; i++) {
-      itemBoxes[i].disabled = !!bundleRadio;
-      if (bundleRadio) itemBoxes[i].checked = false;
-    }
-    var selectAll = block.querySelector('input[data-role="select-all-fees"]');
-    if (selectAll) selectAll.disabled = !!bundleRadio;
+  function amountElements(block) {
+    return {
+      input: block ? block.querySelector('[data-role="payment-amount"]') : null,
+      error: block ? block.querySelector('[data-role="amount-error"]') : null
+    };
   }
 
-  /* Swap the bank/paystack panels to match the selected method. */
+  function showAmountError(block, message) {
+    var elements = amountElements(block);
+    if (!elements.input) return false;
+    elements.input.setCustomValidity(message || '');
+    if (elements.error) {
+      elements.error.textContent = message || '';
+      elements.error.classList.toggle('hidden', !message);
+    }
+    return !message;
+  }
+
+  function validateAmount(block, report) {
+    var elements = amountElements(block);
+    var input = elements.input;
+    if (!input) return false;
+
+    var raw = input.value.trim();
+    var balance = Number(input.getAttribute('data-balance') || 0);
+    var message = '';
+
+    if (!raw) {
+      message = 'Enter an amount to continue.';
+    } else if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) {
+      message = 'Use numbers only, without commas.';
+    } else if (Number(raw) <= 0) {
+      message = 'Enter an amount greater than zero.';
+    } else if (Number(raw) > balance) {
+      message = 'The amount cannot be more than the remaining balance.';
+    }
+
+    showAmountError(block, message);
+    if (message && report) input.reportValidity();
+    return !message;
+  }
+
   function syncMethodPanels() {
-    var checked = form ? form.querySelector('input[name="method"]:checked') : null;
-    var isBank = !!(checked && checked.value === 'bank_transfer');
+    var method = form.querySelector('input[name="method"]:checked');
+    var isBank = !!(method && method.value === 'bank_transfer');
     if (bankPanel) bankPanel.classList.toggle('hidden', !isBank);
     if (paystackPanel) paystackPanel.classList.toggle('hidden', isBank);
+    if (proofInput) {
+      proofInput.required = isBank;
+      proofInput.disabled = !isBank;
+    }
   }
 
-  if (childSelect) childSelect.addEventListener('change', function () {
-    updateVisibility();
-    var block = activeBlock();
-    syncBundleUI(block);
+  blocks.forEach(function (block) {
+    var fillButton = block.querySelector('[data-role="use-full-balance"]');
+    var input = block.querySelector('[data-role="payment-amount"]');
+
+    if (fillButton && input) {
+      fillButton.addEventListener('click', function () {
+        input.value = Number(fillButton.getAttribute('data-balance') || 0).toFixed(2);
+        showAmountError(block, '');
+        input.focus();
+      });
+    }
+
+    if (input) {
+      input.addEventListener('keydown', function (event) {
+        if (['e', 'E', '+', '-', ','].indexOf(event.key) !== -1) event.preventDefault();
+      });
+      input.addEventListener('paste', function (event) {
+        var text = (event.clipboardData || window.clipboardData).getData('text');
+        if (!/^\d+(?:\.\d{1,2})?$/.test(text.trim())) {
+          event.preventDefault();
+          showAmountError(block, 'Use numbers only, without commas.');
+        }
+      });
+      input.addEventListener('input', function () {
+        showAmountError(block, '');
+      });
+      input.addEventListener('blur', function () {
+        if (input.value) validateAmount(block, false);
+      });
+    }
   });
 
-  if (form) {
-    form.addEventListener('change', function (e) {
-      var t = e.target;
-      if (!t) return;
-      var block = t.closest('.child-cart');
-      if (!block) {
-        if (t.name === 'method') syncMethodPanels();
-        return;
-      }
-      if (t.name === 'item-bundle') {
-        syncBundleUI(block);
-        setAmountFromSelection(block);
-        recalc();
-      } else if (t.dataset && t.dataset.role === 'select-all-fees') {
-        var boxes = block.querySelectorAll('input[data-role="fee-checkbox"]');
-        for (var i = 0; i < boxes.length; i++) {
-          if (!boxes[i].disabled) boxes[i].checked = t.checked;
-        }
-        setAmountFromSelection(block);
-        recalc();
-      } else if (t.dataset && t.dataset.role === 'fee-checkbox') {
-        setAmountFromSelection(block);
-        recalc();
-      } else if (t.name === 'invoice_id') {
-        setAmountFromSelection(block);
-        recalc();
-      } else if (t.name === 'method') {
-        syncMethodPanels();
-      }
-    });
-    form.addEventListener('input', function (e) {
-      var t = e.target;
-      if (t && t.dataset && t.dataset.role === 'child-amount') recalc();
-    });
-  }
+  if (childSelect) childSelect.addEventListener('change', updateVisibility);
 
-  if (proceedBtn) {
-    proceedBtn.addEventListener('click', function () {
+  if (proceedButton) {
+    proceedButton.addEventListener('click', function () {
       var block = activeBlock();
-      var any = false;
-      if (block) {
-        var bundleRadio = block.querySelector('input[name="item-bundle"]:checked');
-        if (bundleRadio) any = true;
-        if (!any) {
-          var boxes = block.querySelectorAll('input[name="item"]:checked:not(:disabled)');
-          if (boxes.length > 0) any = true;
-        }
-        if (!any) {
-          var radio = block.querySelector('input[name="invoice_id"]:checked');
-          if (radio) any = true;
-        }
-      }
-      if (!any) {
-        if (cartHint) {
-          cartHint.classList.remove('hidden');
-          if (cartHint.scrollIntoView) cartHint.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-        return;
-      }
-      if (cartHint) cartHint.classList.add('hidden');
-      recalc();
+      if (!validateAmount(block, true)) return;
       if (methodStep) {
         methodStep.classList.remove('hidden');
         syncMethodPanels();
-        if (methodStep.scrollIntoView) methodStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        methodStep.scrollIntoView({behavior: 'smooth', block: 'nearest'});
       }
     });
   }
 
-  /* Init: default each child's amount to its selected option and show the
-     first child's block. */
-  blocks.forEach(function (block) {
-    setAmountFromSelection(block);
-    syncBundleUI(block);
+  form.addEventListener('change', function (event) {
+    if (event.target && event.target.name === 'method') syncMethodPanels();
   });
+
+  form.addEventListener('submit', function (event) {
+    if (!validateAmount(activeBlock(), true)) event.preventDefault();
+  });
+
   updateVisibility();
   syncMethodPanels();
 })();
