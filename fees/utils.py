@@ -1,4 +1,5 @@
 """Fee-related utilities: student type resolution, pricing helpers, etc."""
+
 from __future__ import annotations
 
 from core.models import AcademicSession
@@ -27,7 +28,7 @@ def resolve_student_type(student: Student, session=None, term=None) -> str:
         ).first()
 
     if session is None:
-        return getattr(student, 'student_type', 'NEW') or 'NEW'
+        return getattr(student, "student_type", "NEW") or "NEW"
 
     has_prior_enrollment = ClassEnrollment.objects.filter(
         student=student,
@@ -35,15 +36,31 @@ def resolve_student_type(student: Student, session=None, term=None) -> str:
     ).exists()
 
     if has_prior_enrollment:
-        return 'RETURNING'
+        return "RETURNING"
 
-    registration_paid_term_id = getattr(student, 'registration_paid_term_id', None)
+    registration_paid_term_id = getattr(student, "registration_paid_term_id", None)
     if registration_paid_term_id:
-        return 'RETURNING'
+        return "RETURNING"
 
-    return 'NEW'
+    return "NEW"
 
 
 def student_type_for_term(student, term):
     """Convenience wrapper: resolve student type for the term's session."""
     return resolve_student_type(student, term.session)
+
+
+def generate_transfer_reference() -> str:
+    """Generate a human-readable bank-transfer reference.
+
+    Format: ``TRF-YYYYMMDD-XXXX`` where XXXX is a 4-char hex suffix.
+    The date prefix aids manual lookup; the suffix keeps collisions
+    negligible within a day. Stored on ``Payment.reference`` where the
+    ``('school', 'reference')`` uniqueness constraint guards the rest.
+    """
+    from datetime import datetime
+    from uuid import uuid4
+
+    today = datetime.now().strftime("%Y%m%d")
+    suffix = uuid4().hex[:4].upper()
+    return f"TRF-{today}-{suffix}"

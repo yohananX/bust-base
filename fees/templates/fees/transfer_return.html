@@ -1,90 +1,9 @@
 {% extends 'base.html' %}
-{% load humanize %}
-{% block title %}Transfer Submitted — Grace House{% endblock %}
-{% block page_header %}Transfer Submitted{% endblock %}
+{% block title %}Payment Status — Grace House{% endblock %}
+{% block page_header %}Payment Status{% endblock %}
 {% block content %}
-<div class="max-w-lg mx-auto space-y-5">
-
-  {# ── Confirmation card ── #}
-  <div class="bg-white rounded-2xl border border-line p-8 text-center">
-    <div class="w-16 h-16 rounded-full bg-warning-tint flex items-center justify-center mx-auto mb-5">
-      <i data-lucide="clock" class="w-8 h-8 text-warning"></i>
-    </div>
-
-    <h1 class="text-xl font-display font-semibold text-ink">Transfer submitted</h1>
-    <p class="text-sm text-ink-muted mt-1">Your payment is being reviewed by the school office.</p>
-
-    {# ── Amount ── #}
-    <div class="mt-6">
-      <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">Amount</p>
-      <p class="font-display text-3xl font-bold text-ink tabular-nums mt-1">₦{{ payment.amount|floatformat:2 }}</p>
-    </div>
-
-    {# ── Details ── #}
-    <div class="mt-6 space-y-2 text-sm text-left">
-      <div class="flex justify-between">
-        <span class="text-ink-muted">Student</span>
-        <span class="font-medium text-ink text-right">{{ payment.student }}</span>
-      </div>
-      {% if payment.invoice %}
-      <div class="flex justify-between">
-        <span class="text-ink-muted">Invoice</span>
-        <span class="font-medium text-ink text-right">#{{ payment.invoice.id }}</span>
-      </div>
-      {% endif %}
-      <div class="flex justify-between">
-        <span class="text-ink-muted">Method</span>
-        <span class="font-medium text-ink text-right">{{ payment.get_method_display }}</span>
-      </div>
-      <div class="flex justify-between">
-        <span class="text-ink-muted">Date</span>
-        <span class="font-medium text-ink text-right">{{ payment.paid_on|date:"d M Y, H:i" }}</span>
-      </div>
-      {% if payment.paid_by_name %}
-      <div class="flex justify-between">
-        <span class="text-ink-muted">Paid by</span>
-        <span class="font-medium text-ink text-right">{{ payment.paid_by_name }}{% if payment.paid_by_relation %} &middot; {{ payment.paid_by_relation }}{% endif %}</span>
-      </div>
-      {% endif %}
-    </div>
-
-    {# ── Status ── #}
-    <div class="mt-5">
-      {% include 'components/badge.html' with status='warning' text='Awaiting confirmation' %}
-    </div>
-
-    {# ── Proof thumbnail ── #}
-    {% if payment.proof_image %}
-    <div class="mt-5">
-      <p class="text-xs font-medium text-ink-muted uppercase tracking-wider mb-2">Transfer proof</p>
-      <div class="inline-block rounded-xl overflow-hidden border border-line">
-        <img src="{{ payment.proof_image.url }}" alt="Transfer proof" class="max-h-40 w-auto">
-      </div>
-    </div>
-    {% endif %}
-
-    {# ── Do-not-pay-again note ── #}
-    <div class="mt-6 bg-warning-tint rounded-xl p-3 flex items-start gap-2 text-left">
-      <i data-lucide="alert-triangle" class="w-4 h-4 text-warning mt-0.5 flex-shrink-0"></i>
-      <p class="text-xs text-ink">Do not submit another transfer for this amount until the school confirms this one. You will be notified when it is approved.</p>
-    </div>
-  </div>
-
-  {# ── Actions ── #}
-  <div class="space-y-2">
-    {% if payment.invoice %}
-    <a href="{% url 'parent-invoice-detail' payment.invoice.pk %}" class="flex items-center justify-center w-full px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors">
-      <i data-lucide="file-text" class="w-4 h-4 mr-2"></i>View Invoice
-    </a>
-    {% endif %}
-    <a href="{% url 'parent-pay' %}" class="flex items-center justify-center w-full px-4 py-2.5 rounded-xl bg-white border border-line text-ink text-sm font-medium hover:bg-surface-muted transition-colors">
-      <i data-lucide="banknote" class="w-4 h-4 mr-2"></i>Pay Another Fee
-    </a>
-    <a href="{% url 'parent-invoices' %}" class="flex items-center justify-center w-full px-4 py-2.5 rounded-xl bg-white border border-line text-ink-muted text-sm font-medium hover:bg-surface-muted transition-colors">
-      <i data-lucide="list" class="w-4 h-4 mr-2"></i>View All Invoices
-    </a>
-  </div>
-
+<div class="max-w-lg mx-auto">
+  {% include 'fees/partials/payment_status.html' %}
 </div>
 {% endblock %}
 {% block extra_scripts %}{% endblock %}

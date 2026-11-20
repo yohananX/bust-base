@@ -11,7 +11,14 @@ from django.contrib.auth import get_user_model
 from core.models import School, AcademicSession, Term
 from accounts.models import Roles
 from students.models import SchoolClass, Student, ClassEnrollment, StudentGuardianLink
-from fees.models import FeeCategory, FeePrice, Invoice, InvoiceLineItem, Payment, PaymentLineItem
+from fees.models import (
+    FeeCategory,
+    FeePrice,
+    Invoice,
+    InvoiceLineItem,
+    Payment,
+    PaymentLineItem,
+)
 from fees.selectors import invoices_with_balance
 from notifications.models import NotificationLog
 
@@ -25,14 +32,14 @@ class BaseFeesTest(TestCase):
     def setUp(self):
         # Create school
         self.school = School.objects.create(
-            name='Test School',
-            short_code='test',
+            name="Test School",
+            short_code="test",
         )
 
         # Create session and term
         self.session = AcademicSession.objects.create(
             school=self.school,
-            name='2025/2026',
+            name="2025/2026",
             start_date=date(2025, 9, 1),
             end_date=date(2026, 8, 31),
             is_current=True,
@@ -40,7 +47,7 @@ class BaseFeesTest(TestCase):
         self.term = Term.objects.create(
             school=self.school,
             session=self.session,
-            name='First Term',
+            name="First Term",
             start_date=date(2025, 9, 1),
             end_date=date(2025, 12, 15),
             is_current=True,
@@ -49,23 +56,23 @@ class BaseFeesTest(TestCase):
         # Create school class
         self.school_class = SchoolClass.objects.create(
             school=self.school,
-            name='JSS1A',
+            name="JSS1A",
         )
 
         # Create student user and student
         self.student_user = User.objects.create_user(
-            username='student1',
-            email='student1@test.com',
-            password='testpass123',
+            username="student1",
+            email="student1@test.com",
+            password="testpass123",
             school=self.school,
             role=Roles.STUDENT,
-            first_name='John',
-            last_name='Doe',
+            first_name="John",
+            last_name="Doe",
         )
         self.student = Student.objects.create(
             school=self.school,
             user=self.student_user,
-            admission_number='STU001',
+            admission_number="STU001",
             date_of_birth=date(2010, 1, 1),
             gender=Student.MALE,
             admission_date=date(2025, 9, 1),
@@ -81,13 +88,13 @@ class BaseFeesTest(TestCase):
 
         # Create parent user and guardian link
         self.parent_user = User.objects.create_user(
-            username='parent1',
-            email='parent1@test.com',
-            password='testpass123',
+            username="parent1",
+            email="parent1@test.com",
+            password="testpass123",
             school=self.school,
             role=Roles.PARENT,
-            first_name='Parent',
-            last_name='One',
+            first_name="Parent",
+            last_name="One",
         )
         StudentGuardianLink.objects.create(
             school=self.school,
@@ -99,23 +106,23 @@ class BaseFeesTest(TestCase):
 
         # Create admin user
         self.admin_user = User.objects.create_user(
-            username='admin1',
-            email='admin1@test.com',
-            password='testpass123',
+            username="admin1",
+            email="admin1@test.com",
+            password="testpass123",
             school=self.school,
             role=Roles.ADMIN,
-            first_name='Admin',
-            last_name='One',
+            first_name="Admin",
+            last_name="One",
         )
 
         # Create fee categories and structures
         self.tuition_category = FeeCategory.objects.create(
             school=self.school,
-            name='Tuition',
+            name="Tuition",
         )
         self.sports_category = FeeCategory.objects.create(
             school=self.school,
-            name='Sports Fee',
+            name="Sports Fee",
         )
 
         self.tuition_fee = FeePrice.objects.create(
@@ -124,8 +131,8 @@ class BaseFeesTest(TestCase):
             school_class=self.school_class,
             term=self.term,
             category=self.tuition_category,
-            amount=Decimal('50000.00'),
-            student_type='ALL',
+            amount=Decimal("50000.00"),
+            student_type="ALL",
         )
         self.sports_fee = FeePrice.objects.create(
             school=self.school,
@@ -133,8 +140,8 @@ class BaseFeesTest(TestCase):
             school_class=self.school_class,
             term=self.term,
             category=self.sports_category,
-            amount=Decimal('10000.00'),
-            student_type='ALL',
+            amount=Decimal("10000.00"),
+            student_type="ALL",
         )
 
 
@@ -152,12 +159,12 @@ class OneTimeFeeGuardTest(BaseFeesTest):
 
     def setUp(self):
         self.school = School.objects.create(
-            name='Test School',
-            short_code='test',
+            name="Test School",
+            short_code="test",
         )
         self.session = AcademicSession.objects.create(
             school=self.school,
-            name='2025/2026',
+            name="2025/2026",
             start_date=date(2025, 9, 1),
             end_date=date(2026, 8, 31),
             is_current=True,
@@ -165,7 +172,7 @@ class OneTimeFeeGuardTest(BaseFeesTest):
         self.term1 = Term.objects.create(
             school=self.school,
             session=self.session,
-            name='First Term',
+            name="First Term",
             start_date=date(2025, 9, 1),
             end_date=date(2025, 12, 15),
             is_current=True,
@@ -173,32 +180,32 @@ class OneTimeFeeGuardTest(BaseFeesTest):
         self.term2 = Term.objects.create(
             school=self.school,
             session=self.session,
-            name='Second Term',
+            name="Second Term",
             start_date=date(2026, 1, 5),
             end_date=date(2026, 4, 15),
         )
         self.term3 = Term.objects.create(
             school=self.school,
             session=self.session,
-            name='Third Term',
+            name="Third Term",
             start_date=date(2026, 4, 20),
             end_date=date(2026, 7, 31),
         )
         self.school_class = SchoolClass.objects.create(
             school=self.school,
-            name='JSS1A',
+            name="JSS1A",
         )
         self.student_user = User.objects.create_user(
-            username='midterm_student',
-            email='mid@test.com',
-            password='testpass123',
+            username="midterm_student",
+            email="mid@test.com",
+            password="testpass123",
             school=self.school,
             role=Roles.STUDENT,
         )
         self.student = Student.objects.create(
             school=self.school,
             user=self.student_user,
-            admission_number='MID001',
+            admission_number="MID001",
             date_of_birth=date(2010, 1, 1),
             gender=Student.MALE,
             admission_date=date(2026, 1, 10),  # Admitted mid-session (Term 2)
@@ -208,25 +215,25 @@ class OneTimeFeeGuardTest(BaseFeesTest):
         # One-time fee category for NEW students
         self.reg_category = FeeCategory.objects.create(
             school=self.school,
-            name='Registration Form',
-            billing_cycle='ONE_TIME',
-            student_type='NEW',
+            name="Registration Form",
+            billing_cycle="ONE_TIME",
+            student_type="NEW",
             is_compulsory=True,
         )
         self.uniform_category = FeeCategory.objects.create(
             school=self.school,
-            name='Uniforms',
-            billing_cycle='ONE_TIME',
-            student_type='NEW',
+            name="Uniforms",
+            billing_cycle="ONE_TIME",
+            student_type="NEW",
             is_compulsory=True,
         )
 
         # Per-term fee
         self.tuition_category = FeeCategory.objects.create(
             school=self.school,
-            name='Tuition',
-            billing_cycle='PER_TERM',
-            student_type='ALL',
+            name="Tuition",
+            billing_cycle="PER_TERM",
+            student_type="ALL",
             is_compulsory=True,
         )
 
@@ -237,8 +244,8 @@ class OneTimeFeeGuardTest(BaseFeesTest):
             school_class=None,
             term=None,
             category=self.reg_category,
-            amount=Decimal('5000.00'),
-            student_type='NEW',
+            amount=Decimal("5000.00"),
+            student_type="NEW",
         )
         self.uniform_price = FeePrice.objects.create(
             school=self.school,
@@ -246,8 +253,8 @@ class OneTimeFeeGuardTest(BaseFeesTest):
             school_class=None,
             term=None,
             category=self.uniform_category,
-            amount=Decimal('15000.00'),
-            student_type='NEW',
+            amount=Decimal("15000.00"),
+            student_type="NEW",
         )
         self.tuition_price = FeePrice.objects.create(
             school=self.school,
@@ -255,8 +262,8 @@ class OneTimeFeeGuardTest(BaseFeesTest):
             school_class=self.school_class,
             term=self.term2,
             category=self.tuition_category,
-            amount=Decimal('30000.00'),
-            student_type='ALL',
+            amount=Decimal("30000.00"),
+            student_type="ALL",
         )
 
         # Enroll student in Term 2 (mid-session admission)
@@ -280,13 +287,15 @@ class OneTimeFeeGuardTest(BaseFeesTest):
         # Term 2: student is NEW, gets invoice with one-time fees
         invoice_t2 = generate_invoice_for_student(self.student, self.term2)
         self.assertIsNotNone(invoice_t2)
-        one_time_items_t2 = invoice_t2.line_items.filter(billing_cycle='ONE_TIME')
+        one_time_items_t2 = invoice_t2.line_items.filter(billing_cycle="ONE_TIME")
         self.assertEqual(one_time_items_t2.count(), 2)  # Registration + Uniforms
-        one_time_categories_t2 = set(one_time_items_t2.values_list('category__name', flat=True))
-        self.assertEqual(one_time_categories_t2, {'Registration Form', 'Uniforms'})
+        one_time_categories_t2 = set(
+            one_time_items_t2.values_list("category__name", flat=True)
+        )
+        self.assertEqual(one_time_categories_t2, {"Registration Form", "Uniforms"})
 
         # Student does NOT pay registration yet, remains NEW
-        self.assertEqual(self.student.student_type, 'NEW')
+        self.assertEqual(self.student.student_type, "NEW")
         self.assertIsNone(self.student.registration_paid_term_id)
 
         # Term 3: student still NEW (hasn't paid registration), but should NOT
@@ -295,21 +304,24 @@ class OneTimeFeeGuardTest(BaseFeesTest):
         self.assertIsNotNone(invoice_t3)
 
         # The bug: one-time fees appear again in Term 3 invoice
-        one_time_items_t3 = invoice_t3.line_items.filter(billing_cycle='ONE_TIME')
-        one_time_categories_t3 = set(one_time_items_t3.values_list('category__name', flat=True))
+        one_time_items_t3 = invoice_t3.line_items.filter(billing_cycle="ONE_TIME")
+        one_time_categories_t3 = set(
+            one_time_items_t3.values_list("category__name", flat=True)
+        )
 
         # Expected: no one-time fees in Term 3 (already billed in Term 2 of same session)
         # Actual (bug): one-time fees appear again
         self.assertEqual(
-            len(one_time_categories_t3), 0,
-            f'One-time fees should not be billed again in same session. '
-            f'Got: {one_time_categories_t3}'
+            len(one_time_categories_t3),
+            0,
+            f"One-time fees should not be billed again in same session. "
+            f"Got: {one_time_categories_t3}",
         )
 
         # Per-term tuition should still appear
-        tuition_items_t3 = invoice_t3.line_items.filter(billing_cycle='PER_TERM')
+        tuition_items_t3 = invoice_t3.line_items.filter(billing_cycle="PER_TERM")
         self.assertEqual(tuition_items_t3.count(), 1)
-        self.assertEqual(tuition_items_t3.first().category.name, 'Tuition')
+        self.assertEqual(tuition_items_t3.first().category.name, "Tuition")
 
     def test_prior_session_one_time_fee_not_billed_again(self):
         """
@@ -320,7 +332,7 @@ class OneTimeFeeGuardTest(BaseFeesTest):
 
         prior_session = AcademicSession.objects.create(
             school=self.school,
-            name='2024/2025',
+            name="2024/2025",
             start_date=date(2024, 9, 1),
             end_date=date(2025, 8, 31),
             is_current=False,
@@ -328,7 +340,7 @@ class OneTimeFeeGuardTest(BaseFeesTest):
         prior_term = Term.objects.create(
             school=self.school,
             session=prior_session,
-            name='First Term',
+            name="First Term",
             start_date=date(2024, 9, 1),
             end_date=date(2024, 12, 15),
         )
@@ -338,21 +350,21 @@ class OneTimeFeeGuardTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=prior_term,
-            total_amount=Decimal('20000.00'),
+            total_amount=Decimal("20000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=prior_invoice,
             category=self.reg_category,
-            amount=Decimal('5000.00'),
+            amount=Decimal("5000.00"),
             term=prior_term,
             session=prior_session,
-            billing_cycle='ONE_TIME',
+            billing_cycle="ONE_TIME",
         )
 
         # Current session invoice should NOT include the one-time fee
         invoice = generate_invoice_for_student(self.student, self.term2)
         self.assertIsNotNone(invoice)
-        one_time_items = invoice.line_items.filter(billing_cycle='ONE_TIME')
+        one_time_items = invoice.line_items.filter(billing_cycle="ONE_TIME")
         # Registration already paid in prior session, should not appear
         reg_items = one_time_items.filter(category=self.reg_category)
         self.assertEqual(reg_items.count(), 0)
@@ -364,24 +376,24 @@ class OneTimeFeeGuardTest(BaseFeesTest):
 
         # Create admin user
         self.admin_user = User.objects.create_user(
-            username='admin1',
-            email='admin@test.com',
-            password='testpass123',
+            username="admin1",
+            email="admin@test.com",
+            password="testpass123",
             school=self.school,
             role=Roles.ADMIN,
-            first_name='Admin',
-            last_name='User',
+            first_name="Admin",
+            last_name="User",
         )
 
         # Create parent user and link
         self.parent_user = User.objects.create_user(
-            username='parent1',
-            email='parent@test.com',
-            password='testpass123',
+            username="parent1",
+            email="parent@test.com",
+            password="testpass123",
             school=self.school,
             role=Roles.PARENT,
-            first_name='Parent',
-            last_name='One',
+            first_name="Parent",
+            last_name="One",
         )
         StudentGuardianLink.objects.create(
             school=self.school,
@@ -394,14 +406,15 @@ class OneTimeFeeGuardTest(BaseFeesTest):
 
 # ─── Model Tests ──────────────────────────────────────────────────────────
 
+
 class FeeCategoryModelTest(BaseFeesTest):
     def test_fee_category_creation(self):
         """Test FeeCategory creation and string representation."""
         category = FeeCategory.objects.create(
             school=self.school,
-            name='Library Fee',
+            name="Library Fee",
         )
-        self.assertEqual(str(category), 'Library Fee')
+        self.assertEqual(str(category), "Library Fee")
         self.assertEqual(category.school, self.school)
 
 
@@ -409,7 +422,7 @@ class FeePriceModelTest(BaseFeesTest):
     def test_fee_price_creation(self):
         """Test FeePrice creation with unique constraint."""
         fs = FeePrice.objects.get(pk=self.tuition_fee.pk)
-        self.assertEqual(fs.amount, Decimal('50000.00'))
+        self.assertEqual(fs.amount, Decimal("50000.00"))
         self.assertEqual(fs.school_class, self.school_class)
         self.assertEqual(fs.term, self.term)
 
@@ -422,12 +435,13 @@ class FeePriceModelTest(BaseFeesTest):
                 school_class=self.school_class,
                 term=self.term,
                 category=self.tuition_category,
-                amount=Decimal('60000.00'),
-                student_type='ALL',
+                amount=Decimal("60000.00"),
+                student_type="ALL",
             )
 
 
 # ─── Invoice Tests ────────────────────────────────────────────────────────
+
 
 class InvoiceModelTest(BaseFeesTest):
     def test_invoice_creation_with_line_items(self):
@@ -436,25 +450,26 @@ class InvoiceModelTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=invoice,
             category=self.tuition_category,
-            amount=Decimal('50000.00'),
+            amount=Decimal("50000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=invoice,
             category=self.sports_category,
-            amount=Decimal('10000.00'),
+            amount=Decimal("10000.00"),
         )
 
         self.assertEqual(invoice.line_items.count(), 2)
-        self.assertEqual(invoice.total_amount, Decimal('60000.00'))
+        self.assertEqual(invoice.total_amount, Decimal("60000.00"))
         self.assertEqual(invoice.student, self.student)
 
 
 # ─── Computed Property Tests ──────────────────────────────────────────────
+
 
 class InvoiceComputedPropertiesTest(BaseFeesTest):
     def setUp(self):
@@ -463,113 +478,112 @@ class InvoiceComputedPropertiesTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=self.invoice,
             category=self.tuition_category,
-            amount=Decimal('50000.00'),
+            amount=Decimal("50000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=self.invoice,
             category=self.sports_category,
-            amount=Decimal('10000.00'),
+            amount=Decimal("10000.00"),
         )
 
     def test_invoice_unpaid_by_default(self):
         """Test that new invoice has status UNPAID and balance equals total."""
-        self.assertEqual(self.invoice.status, 'UNPAID')
-        self.assertEqual(self.invoice.balance, Decimal('60000.00'))
-        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
+        self.assertEqual(self.invoice.status, "UNPAID")
+        self.assertEqual(self.invoice.balance, Decimal("60000.00"))
+        self.assertEqual(self.invoice.amount_paid, Decimal("0.00"))
 
     def test_invoice_partial_payment(self):
         """Test that partial CONFIRMED payment results in PARTIAL status."""
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('20000.00'),
+            amount=Decimal("20000.00"),
             method=Payment.Method.CASH,
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
             recorded_by=self.admin_user,
         )
-        self.assertEqual(self.invoice.status, 'PARTIAL')
-        self.assertEqual(self.invoice.amount_paid, Decimal('20000.00'))
-        self.assertEqual(self.invoice.balance, Decimal('40000.00'))
+        self.assertEqual(self.invoice.status, "PARTIAL")
+        self.assertEqual(self.invoice.amount_paid, Decimal("20000.00"))
+        self.assertEqual(self.invoice.balance, Decimal("40000.00"))
 
     def test_invoice_full_payment(self):
         """Test that full CONFIRMED payment results in PAID status."""
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.CASH,
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
             recorded_by=self.admin_user,
         )
-        self.assertEqual(self.invoice.status, 'PAID')
-        self.assertEqual(self.invoice.amount_paid, Decimal('60000.00'))
-        self.assertEqual(self.invoice.balance, Decimal('0.00'))
+        self.assertEqual(self.invoice.status, "PAID")
+        self.assertEqual(self.invoice.amount_paid, Decimal("60000.00"))
+        self.assertEqual(self.invoice.balance, Decimal("0.00"))
 
     def test_pending_payment_does_not_count_toward_amount_paid(self):
         """CRITICAL: PENDING payment does NOT count toward amount_paid."""
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='PAYSTACK_REF_001',
+            reference="PAYSTACK_REF_001",
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
         # PENDING should not count
-        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
-        self.assertEqual(self.invoice.status, 'UNPAID')
-        self.assertEqual(self.invoice.balance, Decimal('60000.00'))
-
+        self.assertEqual(self.invoice.amount_paid, Decimal("0.00"))
+        self.assertEqual(self.invoice.status, "UNPAID")
+        self.assertEqual(self.invoice.balance, Decimal("60000.00"))
 
     def test_pending_bank_transfer_does_not_count_toward_amount_paid(self):
         """A PENDING bank transfer never reduces the balance until confirmed."""
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('40000.00'),
+            amount=Decimal("40000.00"),
             method=Payment.Method.BANK_TRANSFER,
             reference=None,
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
             recorded_by=self.admin_user,
         )
-        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
-        self.assertEqual(self.invoice.status, 'UNPAID')
-        self.assertEqual(self.invoice.balance, Decimal('60000.00'))
+        self.assertEqual(self.invoice.amount_paid, Decimal("0.00"))
+        self.assertEqual(self.invoice.status, "UNPAID")
+        self.assertEqual(self.invoice.balance, Decimal("60000.00"))
 
     def test_rejected_bank_transfer_never_counts(self):
         """A bank transfer counts only once CONFIRMED; pending/failed never count."""
         payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('40000.00'),
+            amount=Decimal("40000.00"),
             method=Payment.Method.BANK_TRANSFER,
             reference=None,
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
             recorded_by=self.admin_user,
         )
-        self.assertEqual(self.invoice.balance, Decimal('60000.00'))
+        self.assertEqual(self.invoice.balance, Decimal("60000.00"))
 
         payment.status = Payment.Status.FAILED
         payment.save()
-        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
-        self.assertEqual(self.invoice.balance, Decimal('60000.00'))
+        self.assertEqual(self.invoice.amount_paid, Decimal("0.00"))
+        self.assertEqual(self.invoice.balance, Decimal("60000.00"))
 
     def test_confirmed_bank_transfer_counts(self):
         """Once an admin confirms the transfer it counts toward amount_paid."""
         payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('40000.00'),
+            amount=Decimal("40000.00"),
             method=Payment.Method.BANK_TRANSFER,
             reference=None,
             status=Payment.Status.PENDING,
@@ -578,12 +592,13 @@ class InvoiceComputedPropertiesTest(BaseFeesTest):
         )
         payment.status = Payment.Status.CONFIRMED
         payment.save()
-        self.assertEqual(self.invoice.amount_paid, Decimal('40000.00'))
-        self.assertEqual(self.invoice.status, 'PARTIAL')
-        self.assertEqual(self.invoice.balance, Decimal('20000.00'))
+        self.assertEqual(self.invoice.amount_paid, Decimal("40000.00"))
+        self.assertEqual(self.invoice.status, "PARTIAL")
+        self.assertEqual(self.invoice.balance, Decimal("20000.00"))
 
 
 # ─── Invoice Generation Tests ─────────────────────────────────────────────
+
 
 class InvoiceGenerationTest(BaseFeesTest):
     def test_generate_invoices_for_term(self):
@@ -592,22 +607,22 @@ class InvoiceGenerationTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=invoice,
             category=self.tuition_category,
-            amount=Decimal('50000.00'),
+            amount=Decimal("50000.00"),
         )
         InvoiceLineItem.objects.create(
             invoice=invoice,
             category=self.sports_category,
-            amount=Decimal('10000.00'),
+            amount=Decimal("10000.00"),
         )
 
         self.assertEqual(Invoice.objects.count(), 1)
         self.assertEqual(InvoiceLineItem.objects.count(), 2)
-        self.assertEqual(invoice.total_amount, Decimal('60000.00'))
+        self.assertEqual(invoice.total_amount, Decimal("60000.00"))
 
     def test_generate_invoices_idempotent(self):
         """CRITICAL: Running invoice generation twice does NOT create duplicates."""
@@ -616,7 +631,7 @@ class InvoiceGenerationTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
         # Try to create again
@@ -625,7 +640,7 @@ class InvoiceGenerationTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            defaults={'total_amount': Decimal('60000.00')},
+            defaults={"total_amount": Decimal("60000.00")},
         )
 
         self.assertEqual(Invoice.objects.count(), invoice_count)
@@ -655,6 +670,7 @@ class InvoiceGenerationTest(BaseFeesTest):
 
 # ─── Payment Tests ────────────────────────────────────────────────────────
 
+
 class PaymentModelTest(BaseFeesTest):
     def setUp(self):
         super().setUp()
@@ -662,7 +678,7 @@ class PaymentModelTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
     def test_cash_payment_recorded_directly_confirmed(self):
@@ -670,7 +686,7 @@ class PaymentModelTest(BaseFeesTest):
         payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.CASH,
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
@@ -684,9 +700,9 @@ class PaymentModelTest(BaseFeesTest):
         payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='PAYSTACK_REF_002',
+            reference="PAYSTACK_REF_002",
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
@@ -699,9 +715,9 @@ class PaymentModelTest(BaseFeesTest):
             payment = Payment(
                 school=self.school,
                 invoice=self.invoice,
-                amount=Decimal('60000.00'),
+                amount=Decimal("60000.00"),
                 method=Payment.Method.PAYSTACK,
-                reference='',
+                reference="",
                 status=Payment.Status.PENDING,
                 paid_on=timezone.now(),
             )
@@ -712,9 +728,9 @@ class PaymentModelTest(BaseFeesTest):
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='UNIQUE_REF_001',
+            reference="UNIQUE_REF_001",
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
         )
@@ -722,15 +738,16 @@ class PaymentModelTest(BaseFeesTest):
             Payment.objects.create(
                 school=self.school,
                 invoice=self.invoice,
-                amount=Decimal('60000.00'),
+                amount=Decimal("60000.00"),
                 method=Payment.Method.PAYSTACK,
-                reference='UNIQUE_REF_001',
+                reference="UNIQUE_REF_001",
                 status=Payment.Status.CONFIRMED,
                 paid_on=timezone.now(),
             )
 
 
 # ─── Duplicate Webhook Test (CRITICAL) ────────────────────────────────────
+
 
 class DuplicateWebhookTest(BaseFeesTest):
     """CRITICAL: Duplicate webhook calls must be idempotent."""
@@ -741,7 +758,7 @@ class DuplicateWebhookTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
     def _simulate_webhook(self, reference: str, amount_kobo: int = 6000000):
@@ -750,37 +767,40 @@ class DuplicateWebhookTest(BaseFeesTest):
         from fees.paystack import handle_webhook as webhook_view
         import json
 
-        payload = json.dumps({
-            'event': 'charge.success',
-            'data': {
-                'reference': reference,
-                'amount': amount_kobo,
-                'paid_at': '2026-01-15T10:30:00.000Z',
-                'metadata': {
-                    'invoice_id': self.invoice.id,
+        payload = json.dumps(
+            {
+                "event": "charge.success",
+                "data": {
+                    "reference": reference,
+                    "amount": amount_kobo,
+                    "paid_at": "2026-01-15T10:30:00.000Z",
+                    "metadata": {
+                        "invoice_id": self.invoice.id,
+                    },
                 },
-            },
-        })
+            }
+        )
 
         factory = RequestFactory()
         request = factory.post(
-            '/fees/api/paystack-webhook/',
+            "/fees/api/paystack-webhook/",
             data=payload,
-            content_type='application/json',
-            HTTP_X_PAYSTACK_SIGNATURE='test_signature',
+            content_type="application/json",
+            HTTP_X_PAYSTACK_SIGNATURE="test_signature",
         )
 
         # We need to handle the signature verification for testing
         # Override the verify function to accept our test signature
         from unittest.mock import patch
-        with patch('fees.paystack.verify_webhook_signature', return_value=True):
+
+        with patch("fees.paystack.verify_webhook_signature", return_value=True):
             response = webhook_view(request)
 
         return response
 
     def test_first_webhook_call_creates_payment(self):
         """First webhook call with reference X creates CONFIRMED payment."""
-        reference = 'WEBHOOK_REF_001'
+        reference = "WEBHOOK_REF_001"
         response = self._simulate_webhook(reference)
 
         self.assertEqual(response.status_code, 200)
@@ -795,7 +815,7 @@ class DuplicateWebhookTest(BaseFeesTest):
         CRITICAL: Second webhook call with the same reference must not
         create a duplicate payment or change the balance.
         """
-        reference = 'WEBHOOK_REF_002'
+        reference = "WEBHOOK_REF_002"
 
         # First call
         response1 = self._simulate_webhook(reference)
@@ -822,17 +842,18 @@ class DuplicateWebhookTest(BaseFeesTest):
 
 # ─── Cross-School Isolation Tests ─────────────────────────────────────────
 
+
 class CrossSchoolIsolationTest(BaseFeesTest):
     def test_two_schools_with_same_data_dont_leak(self):
         """Test that two schools with identical data are properly isolated."""
         # Create a second school with identical setup
         school2 = School.objects.create(
-            name='Second School',
-            short_code='second',
+            name="Second School",
+            short_code="second",
         )
         session2 = AcademicSession.objects.create(
             school=school2,
-            name='2025/2026',
+            name="2025/2026",
             start_date=date(2025, 9, 1),
             end_date=date(2026, 8, 31),
             is_current=True,
@@ -840,20 +861,20 @@ class CrossSchoolIsolationTest(BaseFeesTest):
         term2 = Term.objects.create(
             school=school2,
             session=session2,
-            name='First Term',
+            name="First Term",
             start_date=date(2025, 9, 1),
             end_date=date(2025, 12, 15),
             is_current=True,
         )
         class2 = SchoolClass.objects.create(
             school=school2,
-            name='JSS1A',
+            name="JSS1A",
         )
 
         # Create category with same name in second school
         category2 = FeeCategory.objects.create(
             school=school2,
-            name='Tuition',
+            name="Tuition",
         )
 
         # Create fee price in second school
@@ -863,8 +884,8 @@ class CrossSchoolIsolationTest(BaseFeesTest):
             school_class=class2,
             term=term2,
             category=category2,
-            amount=Decimal('70000.00'),
-            student_type='ALL',
+            amount=Decimal("70000.00"),
+            student_type="ALL",
         )
 
         # First school's data should be isolated
@@ -875,12 +896,15 @@ class CrossSchoolIsolationTest(BaseFeesTest):
         self.assertEqual(FeePrice.objects.filter(school=school2).count(), 1)
 
         self.assertEqual(
-            FeePrice.objects.get(school=self.school, category=self.tuition_category).amount,
-            Decimal('50000.00'),
+            FeePrice.objects.get(
+                school=self.school, category=self.tuition_category
+            ).amount,
+            Decimal("50000.00"),
         )
 
 
 # ─── Decimal Check Tests ──────────────────────────────────────────────────
+
 
 class DecimalCheckTest(BaseFeesTest):
     def test_no_float_in_fees_app(self):
@@ -889,31 +913,29 @@ class DecimalCheckTest(BaseFeesTest):
 
         fees_dir = os.path.join(os.path.dirname(__file__))
         # Files to skip (test file contains this docstring)
-        skip_files = {'tests.py'}
-        skip_dirs = {'migrations', '__pycache__'}
+        skip_files = {"tests.py"}
+        skip_dirs = {"migrations", "__pycache__"}
         for root, dirs, files in os.walk(fees_dir):
             basename = os.path.basename(root)
             if basename in skip_dirs:
                 continue
             for filename in files:
-                if not filename.endswith('.py'):
+                if not filename.endswith(".py"):
                     continue
                 if filename in skip_files:
                     continue
                 filepath = os.path.join(root, filename)
-                with open(filepath, 'r') as f:
+                with open(filepath, "r") as f:
                     content_lines = f.readlines()
                 for i, line in enumerate(content_lines, 1):
                     stripped = line.strip()
-                    if stripped.startswith('#') or not stripped:
+                    if stripped.startswith("#") or not stripped:
                         continue
                     # Check for float keyword in non-comment code
-                    if 'float' in stripped.lower():
+                    if "float" in stripped.lower():
                         # Allow 'FloatField' and 'float' used as type hint (e.g., -> float)
-                        if 'float' in stripped.lower():
-                            self.fail(
-                                f'FLOAT USAGE FOUND: {filename}:{i}: {stripped}'
-                            )
+                        if "float" in stripped.lower():
+                            self.fail(f"FLOAT USAGE FOUND: {filename}:{i}: {stripped}")
 
     def test_amount_paid_aggregation_uses_decimal(self):
         """Test that amount_paid aggregation returns Decimal."""
@@ -921,12 +943,12 @@ class DecimalCheckTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
         Payment.objects.create(
             school=self.school,
             invoice=invoice,
-            amount=Decimal('30000.00'),
+            amount=Decimal("30000.00"),
             method=Payment.Method.CASH,
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
@@ -935,10 +957,11 @@ class DecimalCheckTest(BaseFeesTest):
 
         amount_paid = invoice.amount_paid
         self.assertIsInstance(amount_paid, Decimal)
-        self.assertEqual(amount_paid, Decimal('30000.00'))
+        self.assertEqual(amount_paid, Decimal("30000.00"))
 
 
 # ─── Additional Model Tests ───────────────────────────────────────────────
+
 
 class AdditionalPaymentTests(BaseFeesTest):
     def setUp(self):
@@ -947,7 +970,7 @@ class AdditionalPaymentTests(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
     def test_payment_creation_with_minimal_fields(self):
@@ -955,34 +978,34 @@ class AdditionalPaymentTests(BaseFeesTest):
         payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('5000.00'),
+            amount=Decimal("5000.00"),
             method=Payment.Method.OTHER,
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
         )
         self.assertIsNotNone(payment.pk)
-        self.assertEqual(payment.amount, Decimal('5000.00'))
+        self.assertEqual(payment.amount, Decimal("5000.00"))
 
     def test_payment_str_representation(self):
         """Test Payment string representation."""
         payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('5000.00'),
+            amount=Decimal("5000.00"),
             method=Payment.Method.CASH,
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
             recorded_by=self.admin_user,
         )
         self.assertIn(str(self.invoice), str(payment))
-        self.assertIn('5000', str(payment))
+        self.assertIn("5000", str(payment))
 
     def test_multiple_payments_on_same_invoice(self):
         """Test that multiple payments can be made on the same invoice."""
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('10000.00'),
+            amount=Decimal("10000.00"),
             method=Payment.Method.CASH,
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
@@ -991,19 +1014,26 @@ class AdditionalPaymentTests(BaseFeesTest):
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('20000.00'),
+            amount=Decimal("20000.00"),
             method=Payment.Method.BANK_TRANSFER,
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
             recorded_by=self.admin_user,
         )
 
-        self.assertEqual(self.invoice.amount_paid, Decimal('30000.00'))
-        self.assertEqual(self.invoice.status, 'PARTIAL')
+        self.assertEqual(self.invoice.amount_paid, Decimal("30000.00"))
+        self.assertEqual(self.invoice.status, "PARTIAL")
 
     def test_payment_methods_have_required_choices(self):
         """Test that Payment method has all required choices."""
-        required_methods = ['CASH', 'BANK_TRANSFER', 'CARD', 'USSD', 'PAYSTACK', 'OTHER']
+        required_methods = [
+            "CASH",
+            "BANK_TRANSFER",
+            "CARD",
+            "USSD",
+            "PAYSTACK",
+            "OTHER",
+        ]
         for method in required_methods:
             self.assertIn(method, [m[0] for m in Payment.Method.choices])
 
@@ -1012,7 +1042,7 @@ class AdditionalPaymentTests(BaseFeesTest):
         line_item = InvoiceLineItem.objects.create(
             invoice=self.invoice,
             category=self.tuition_category,
-            amount=Decimal('50000.00'),
+            amount=Decimal("50000.00"),
         )
         self.assertEqual(line_item.invoice, self.invoice)
 
@@ -1024,11 +1054,12 @@ class AdditionalPaymentTests(BaseFeesTest):
                 school=self.school,
                 student=self.student,
                 term=self.term,
-                total_amount=Decimal('60000.00'),
+                total_amount=Decimal("60000.00"),
             )
 
 
 # ─── Annotation Selector Tests ────────────────────────────────────────────
+
 
 class InvoicesWithBalanceSelectorTest(BaseFeesTest):
     """Tests for the invoices_with_balance() query helper (no N+1 annotation)."""
@@ -1039,7 +1070,7 @@ class InvoicesWithBalanceSelectorTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('100000.00'),
+            total_amount=Decimal("100000.00"),
         )
 
     def _annotated(self):
@@ -1061,40 +1092,40 @@ class InvoicesWithBalanceSelectorTest(BaseFeesTest):
     def test_unpaid_invoice_balance_matches_property(self):
         """No payments — annotation matches the model property."""
         inv = self._annotated()
-        self.assertEqual(inv.amount_paid_annotated, Decimal('0.00'))
+        self.assertEqual(inv.amount_paid_annotated, Decimal("0.00"))
         self.assertEqual(inv.balance_annotated, self.invoice.total_amount)
         self.assertEqual(inv.balance_annotated, self.invoice.balance)
 
     def test_partial_payment_matches_property(self):
         """Partial confirmed payment — annotation matches amount_paid/balance."""
-        self._add_payment(Decimal('30000.00'))
+        self._add_payment(Decimal("30000.00"))
         inv = self._annotated()
-        self.assertEqual(inv.amount_paid_annotated, Decimal('30000.00'))
+        self.assertEqual(inv.amount_paid_annotated, Decimal("30000.00"))
         self.assertEqual(inv.amount_paid_annotated, self.invoice.amount_paid)
-        self.assertEqual(inv.balance_annotated, Decimal('70000.00'))
+        self.assertEqual(inv.balance_annotated, Decimal("70000.00"))
         self.assertEqual(inv.balance_annotated, self.invoice.balance)
 
     def test_full_payment_balance_zero(self):
         """Fully paid invoice — annotated balance is zero."""
-        self._add_payment(Decimal('100000.00'))
+        self._add_payment(Decimal("100000.00"))
         inv = self._annotated()
-        self.assertEqual(inv.amount_paid_annotated, Decimal('100000.00'))
-        self.assertEqual(inv.balance_annotated, Decimal('0.00'))
+        self.assertEqual(inv.amount_paid_annotated, Decimal("100000.00"))
+        self.assertEqual(inv.balance_annotated, Decimal("0.00"))
 
     def test_pending_payments_do_not_count(self):
         """Business rule: PENDING payments never count toward amount_paid."""
-        self._add_payment(Decimal('50000.00'), status=Payment.Status.PENDING)
+        self._add_payment(Decimal("50000.00"), status=Payment.Status.PENDING)
         inv = self._annotated()
-        self.assertEqual(inv.amount_paid_annotated, Decimal('0.00'))
-        self.assertEqual(inv.balance_annotated, Decimal('100000.00'))
-        self.assertEqual(inv.balance, Decimal('100000.00'))
+        self.assertEqual(inv.amount_paid_annotated, Decimal("0.00"))
+        self.assertEqual(inv.balance_annotated, Decimal("100000.00"))
+        self.assertEqual(inv.balance, Decimal("100000.00"))
 
     def test_pending_bank_transfer_does_not_count_in_annotation(self):
         """Business rule: PENDING bank transfers never count toward amount_paid."""
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('40000.00'),
+            amount=Decimal("40000.00"),
             method=Payment.Method.BANK_TRANSFER,
             reference=None,
             status=Payment.Status.PENDING,
@@ -1102,16 +1133,16 @@ class InvoicesWithBalanceSelectorTest(BaseFeesTest):
             recorded_by=self.admin_user,
         )
         inv = self._annotated()
-        self.assertEqual(inv.amount_paid_annotated, Decimal('0.00'))
-        self.assertEqual(inv.balance_annotated, Decimal('100000.00'))
-        self.assertEqual(inv.balance, Decimal('100000.00'))
+        self.assertEqual(inv.amount_paid_annotated, Decimal("0.00"))
+        self.assertEqual(inv.balance_annotated, Decimal("100000.00"))
+        self.assertEqual(inv.balance, Decimal("100000.00"))
 
     def test_confirmed_bank_transfer_counts_in_annotation(self):
         """Business rule: CONFIRMED bank transfers count toward amount_paid."""
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('40000.00'),
+            amount=Decimal("40000.00"),
             method=Payment.Method.BANK_TRANSFER,
             reference=None,
             status=Payment.Status.CONFIRMED,
@@ -1119,24 +1150,24 @@ class InvoicesWithBalanceSelectorTest(BaseFeesTest):
             recorded_by=self.admin_user,
         )
         inv = self._annotated()
-        self.assertEqual(inv.amount_paid_annotated, Decimal('40000.00'))
-        self.assertEqual(inv.balance_annotated, Decimal('60000.00'))
-        self.assertEqual(inv.balance, Decimal('60000.00'))
+        self.assertEqual(inv.amount_paid_annotated, Decimal("40000.00"))
+        self.assertEqual(inv.balance_annotated, Decimal("60000.00"))
+        self.assertEqual(inv.balance, Decimal("60000.00"))
 
     def test_failed_payments_do_not_count(self):
         """Business rule: FAILED payments never count toward amount_paid."""
-        self._add_payment(Decimal('50000.00'), status=Payment.Status.FAILED)
+        self._add_payment(Decimal("50000.00"), status=Payment.Status.FAILED)
         inv = self._annotated()
-        self.assertEqual(inv.amount_paid_annotated, Decimal('0.00'))
-        self.assertEqual(inv.balance_annotated, Decimal('100000.00'))
+        self.assertEqual(inv.amount_paid_annotated, Decimal("0.00"))
+        self.assertEqual(inv.balance_annotated, Decimal("100000.00"))
 
     def test_multiple_confirmed_payments_sum(self):
         """Multiple confirmed payments sum correctly in the annotation."""
-        self._add_payment(Decimal('25000.00'))
-        self._add_payment(Decimal('35000.00'))
+        self._add_payment(Decimal("25000.00"))
+        self._add_payment(Decimal("35000.00"))
         inv = self._annotated()
-        self.assertEqual(inv.amount_paid_annotated, Decimal('60000.00'))
-        self.assertEqual(inv.balance_annotated, Decimal('40000.00'))
+        self.assertEqual(inv.amount_paid_annotated, Decimal("60000.00"))
+        self.assertEqual(inv.balance_annotated, Decimal("40000.00"))
 
     def test_filter_by_balance_annotation(self):
         """balance_annotated can be used in filter() (SQL-side, not Python)."""
@@ -1144,18 +1175,18 @@ class InvoicesWithBalanceSelectorTest(BaseFeesTest):
         # Can't create a second invoice for the same student+term, so use a
         # second student for the fully-paid invoice.
         user2 = User.objects.create_user(
-            username='student2',
-            email='student2@test.com',
-            password='testpass123',
+            username="student2",
+            email="student2@test.com",
+            password="testpass123",
             school=self.school,
             role=Roles.STUDENT,
-            first_name='Jane',
-            last_name='Doe',
+            first_name="Jane",
+            last_name="Doe",
         )
         student2 = Student.objects.create(
             school=self.school,
             user=user2,
-            admission_number='STU002',
+            admission_number="STU002",
             date_of_birth=date(2010, 2, 2),
             gender=Student.FEMALE,
             admission_date=date(2025, 9, 1),
@@ -1165,12 +1196,12 @@ class InvoicesWithBalanceSelectorTest(BaseFeesTest):
             school=self.school,
             student=student2,
             term=self.term,
-            total_amount=Decimal('50000.00'),
+            total_amount=Decimal("50000.00"),
         )
         Payment.objects.create(
             school=self.school,
             invoice=paid,
-            amount=Decimal('50000.00'),
+            amount=Decimal("50000.00"),
             method=Payment.Method.CASH,
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
@@ -1178,15 +1209,16 @@ class InvoicesWithBalanceSelectorTest(BaseFeesTest):
         )
 
         qs = invoices_with_balance(Invoice.objects.filter(school=self.school))
-        self.assertEqual(qs.filter(balance_annotated__gt=Decimal('0.00')).count(), 1)
-        self.assertEqual(qs.filter(balance_annotated=Decimal('0.00')).count(), 1)
+        self.assertEqual(qs.filter(balance_annotated__gt=Decimal("0.00")).count(), 1)
+        self.assertEqual(qs.filter(balance_annotated=Decimal("0.00")).count(), 1)
         self.assertEqual(
-            qs.filter(balance_annotated__gt=Decimal('0.00')).first().balance_annotated,
-            Decimal('100000.00'),
+            qs.filter(balance_annotated__gt=Decimal("0.00")).first().balance_annotated,
+            Decimal("100000.00"),
         )
 
 
 # ─── Paystack Upgrade: Webhook Security Tests ─────────────────────────────
+
 
 class WebhookSecurityTest(BaseFeesTest):
     """Security tests for the Paystack webhook upgrade (2026).
@@ -1203,24 +1235,29 @@ class WebhookSecurityTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
-    def _create_pending_payment(self, reference='SEC_REF_001'):
+    def _create_pending_payment(self, reference="SEC_REF_001"):
         from fees.models import Payment
 
         return Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
             reference=reference,
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
 
-    def _post_webhook(self, event='charge.success', reference='SEC_REF_001',
-                      amount_kobo=6000000, **extra_data):
+    def _post_webhook(
+        self,
+        event="charge.success",
+        reference="SEC_REF_001",
+        amount_kobo=6000000,
+        **extra_data,
+    ):
         """Simulate a Paystack webhook event via RequestFactory (signature patched)."""
         import json
         from unittest.mock import patch
@@ -1228,38 +1265,38 @@ class WebhookSecurityTest(BaseFeesTest):
         from fees.paystack import handle_webhook as webhook_view
 
         data = {
-            'reference': reference,
-            'amount': amount_kobo,
-            'paid_at': '2026-01-15T10:30:00.000Z',
-            'metadata': {'invoice_id': self.invoice.id},
+            "reference": reference,
+            "amount": amount_kobo,
+            "paid_at": "2026-01-15T10:30:00.000Z",
+            "metadata": {"invoice_id": self.invoice.id},
         }
         data.update(extra_data)
 
-        payload = json.dumps({'event': event, 'data': data})
+        payload = json.dumps({"event": event, "data": data})
         factory = RequestFactory()
         request = factory.post(
-            '/fees/api/paystack-webhook/',
+            "/fees/api/paystack-webhook/",
             data=payload,
-            content_type='application/json',
-            HTTP_X_PAYSTACK_SIGNATURE='test_signature',
+            content_type="application/json",
+            HTTP_X_PAYSTACK_SIGNATURE="test_signature",
         )
-        with patch('fees.paystack.verify_webhook_signature', return_value=True):
+        with patch("fees.paystack.verify_webhook_signature", return_value=True):
             return webhook_view(request)
 
     def test_webhook_event_logged(self):
         """Every verified webhook event is recorded in WebhookLog with sender IP."""
         from fees.models import Payment, WebhookLog
 
-        self._create_pending_payment('SEC_REF_001')
-        response = self._post_webhook(reference='SEC_REF_001')
+        self._create_pending_payment("SEC_REF_001")
+        response = self._post_webhook(reference="SEC_REF_001")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(WebhookLog.objects.count(), 1)
         log = WebhookLog.objects.first()
-        self.assertEqual(log.event, 'charge.success')
+        self.assertEqual(log.event, "charge.success")
         self.assertIsNotNone(log.ip_address)
         self.assertEqual(
-            Payment.objects.get(reference='SEC_REF_001').status,
+            Payment.objects.get(reference="SEC_REF_001").status,
             Payment.Status.CONFIRMED,
         )
 
@@ -1267,78 +1304,78 @@ class WebhookSecurityTest(BaseFeesTest):
         """Amount in kobo not matching payment.amount - FAILED, no credit, no receipt."""
         from fees.models import FeeReceipt, Payment
 
-        payment = self._create_pending_payment('SEC_REF_002')
-        response = self._post_webhook(reference='SEC_REF_002', amount_kobo=9999999)
+        payment = self._create_pending_payment("SEC_REF_002")
+        response = self._post_webhook(reference="SEC_REF_002", amount_kobo=9999999)
 
         self.assertEqual(response.status_code, 200)
         payment.refresh_from_db()
         self.assertEqual(payment.status, Payment.Status.FAILED)
         self.assertTrue(payment.webhook_processed)
         self.invoice.refresh_from_db()
-        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
+        self.assertEqual(self.invoice.amount_paid, Decimal("0.00"))
         self.assertEqual(FeeReceipt.objects.count(), 0)
 
     def test_charge_failed_marks_pending_failed(self):
         """charge.failed event flips a PENDING payment to FAILED with no credit."""
         from fees.models import FeeReceipt, Payment
 
-        payment = self._create_pending_payment('SEC_REF_003')
-        response = self._post_webhook(event='charge.failed', reference='SEC_REF_003')
+        payment = self._create_pending_payment("SEC_REF_003")
+        response = self._post_webhook(event="charge.failed", reference="SEC_REF_003")
 
         self.assertEqual(response.status_code, 200)
         payment.refresh_from_db()
         self.assertEqual(payment.status, Payment.Status.FAILED)
         self.invoice.refresh_from_db()
-        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
+        self.assertEqual(self.invoice.amount_paid, Decimal("0.00"))
         self.assertEqual(FeeReceipt.objects.count(), 0)
 
     def test_confirmation_enriches_metadata(self):
         """Successful charge.success enriches the Payment with Paystack metadata."""
         from fees.models import Payment
 
-        payment = self._create_pending_payment('SEC_REF_004')
+        payment = self._create_pending_payment("SEC_REF_004")
         response = self._post_webhook(
-            reference='SEC_REF_004',
+            reference="SEC_REF_004",
             amount_kobo=6000000,
-            currency='NGN',
+            currency="NGN",
             fees=15000,
             authorization={
-                'channel': 'card',
-                'last4': '4242',
-                'card_type': 'visa',
-                'bank': '',
+                "channel": "card",
+                "last4": "4242",
+                "card_type": "visa",
+                "bank": "",
             },
             customer={
-                'email': 'p@x.com',
-                'first_name': 'Ada',
-                'last_name': 'Lovelace',
+                "email": "p@x.com",
+                "first_name": "Ada",
+                "last_name": "Lovelace",
             },
         )
 
         self.assertEqual(response.status_code, 200)
         payment.refresh_from_db()
         self.assertEqual(payment.status, Payment.Status.CONFIRMED)
-        self.assertEqual(payment.channel, 'card')
-        self.assertEqual(payment.card_last4, '4242')
-        self.assertEqual(payment.card_brand, 'visa')
-        self.assertEqual(payment.paid_by_email, 'p@x.com')
-        self.assertEqual(payment.paid_by_name, 'Ada Lovelace')
-        self.assertEqual(payment.fees_charged, Decimal('150.00'))
-        self.assertEqual(payment.currency, 'NGN')
+        self.assertEqual(payment.channel, "card")
+        self.assertEqual(payment.card_last4, "4242")
+        self.assertEqual(payment.card_brand, "visa")
+        self.assertEqual(payment.paid_by_email, "p@x.com")
+        self.assertEqual(payment.paid_by_name, "Ada Lovelace")
+        self.assertEqual(payment.fees_charged, Decimal("150.00"))
+        self.assertEqual(payment.currency, "NGN")
         self.assertTrue(payment.webhook_processed)
 
     def test_receipt_issued_once_on_duplicate_webhook(self):
         """Duplicate webhooks issue exactly one receipt and never duplicate the payment."""
         from fees.models import FeeReceipt, Payment
 
-        payment = self._create_pending_payment('SEC_REF_005')
+        payment = self._create_pending_payment("SEC_REF_005")
 
-        response1 = self._post_webhook(reference='SEC_REF_005')
+        response1 = self._post_webhook(reference="SEC_REF_005")
         self.assertEqual(response1.status_code, 200)
         payment.refresh_from_db()
         self.assertEqual(payment.status, Payment.Status.CONFIRMED)
 
-        response2 = self._post_webhook(reference='SEC_REF_005')
+        response2 = self._post_webhook(reference="SEC_REF_005")
         self.assertEqual(response2.status_code, 200)
         payment.refresh_from_db()
         self.assertEqual(payment.status, Payment.Status.CONFIRMED)
@@ -1346,16 +1383,17 @@ class WebhookSecurityTest(BaseFeesTest):
         self.assertEqual(Payment.objects.count(), 1)
         self.assertEqual(FeeReceipt.objects.count(), 1)
         receipt = FeeReceipt.objects.get(payment=payment)
-        self.assertRegex(receipt.receipt_number, r'^RCP-\d{4}-0{3}\d+$')
+        self.assertRegex(receipt.receipt_number, r"^RCP-\d{4}-0{3}\d+$")
         self.assertEqual(
             receipt.receipt_number,
-            f'RCP-{timezone.now().year}-{payment.pk:06d}',
+            f"RCP-{timezone.now().year}-{payment.pk:06d}",
         )
         self.assertEqual(payment.method, Payment.Method.PAYSTACK)
-        self.assertEqual(payment.reference, 'SEC_REF_005')
+        self.assertEqual(payment.reference, "SEC_REF_005")
 
 
 # ─── Paystack Upgrade: Unresolvable School Webhook Tests ──────────────────
+
 
 class UnresolvableSchoolWebhookTest(BaseFeesTest):
     """Tests for webhook events where the tenant school cannot be resolved.
@@ -1369,15 +1407,21 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
     def setUp(self):
         super().setUp()
         from fees.models import Invoice
+
         self.invoice = Invoice.objects.create(
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
-    def _post_webhook_no_metadata(self, event='charge.success', reference='UNRESOLVED_001',
-                                  amount_kobo=6000000, metadata=None):
+    def _post_webhook_no_metadata(
+        self,
+        event="charge.success",
+        reference="UNRESOLVED_001",
+        amount_kobo=6000000,
+        metadata=None,
+    ):
         """Simulate a Paystack webhook with minimal/no identifying metadata."""
         import json
         from unittest.mock import patch
@@ -1385,21 +1429,21 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
         from fees.paystack import handle_webhook as webhook_view
 
         data = {
-            'reference': reference,
-            'amount': amount_kobo,
-            'paid_at': '2026-01-15T10:30:00.000Z',
-            'metadata': metadata if metadata is not None else {},
+            "reference": reference,
+            "amount": amount_kobo,
+            "paid_at": "2026-01-15T10:30:00.000Z",
+            "metadata": metadata if metadata is not None else {},
         }
 
-        payload = json.dumps({'event': event, 'data': data})
+        payload = json.dumps({"event": event, "data": data})
         factory = RequestFactory()
         request = factory.post(
-            '/fees/api/paystack-webhook/',
+            "/fees/api/paystack-webhook/",
             data=payload,
-            content_type='application/json',
-            HTTP_X_PAYSTACK_SIGNATURE='test_signature',
+            content_type="application/json",
+            HTTP_X_PAYSTACK_SIGNATURE="test_signature",
         )
-        with patch('fees.paystack.verify_webhook_signature', return_value=True):
+        with patch("fees.paystack.verify_webhook_signature", return_value=True):
             return webhook_view(request)
 
     def test_charge_success_unresolvable_school_returns_400(self):
@@ -1408,12 +1452,12 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
         from fees.models import Payment, WebhookLog, FeeReceipt
 
         response = self._post_webhook_no_metadata(
-            reference='UNRESOLVED_001',
-            metadata={'description': 'Only description, no IDs'},
+            reference="UNRESOLVED_001",
+            metadata={"description": "Only description, no IDs"},
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(json.loads(response.content)['status'], 'school not resolved')
+        self.assertEqual(json.loads(response.content)["status"], "school not resolved")
         self.assertEqual(Payment.objects.count(), 0)
         self.assertEqual(WebhookLog.objects.count(), 0)
         self.assertEqual(FeeReceipt.objects.count(), 0)
@@ -1426,13 +1470,13 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
         # Even if a payment with this reference exists in another school,
         # without school resolution we cannot safely act on it.
         response = self._post_webhook_no_metadata(
-            event='charge.failed',
-            reference='UNRESOLVED_002',
+            event="charge.failed",
+            reference="UNRESOLVED_002",
             metadata={},
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(json.loads(response.content)['status'], 'school not resolved')
+        self.assertEqual(json.loads(response.content)["status"], "school not resolved")
         self.assertEqual(Payment.objects.count(), 0)
         self.assertEqual(WebhookLog.objects.count(), 0)
 
@@ -1451,9 +1495,9 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
         payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='UNRESOLVED_EXISTING_001',
+            reference="UNRESOLVED_EXISTING_001",
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
@@ -1461,13 +1505,13 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
         # Webhook with same reference but NO metadata to resolve school
         # The reference itself IS the resolution path via Payment lookup
         response = self._post_webhook_no_metadata(
-            reference='UNRESOLVED_EXISTING_001',
+            reference="UNRESOLVED_EXISTING_001",
             metadata={},  # No school_id, invoice_id, student_id
         )
 
         # The school IS resolved via the payment reference, so webhook processes
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(json.loads(response.content)['status'], 'confirmed')
+        self.assertEqual(json.loads(response.content)["status"], "confirmed")
 
         # Payment IS confirmed — this is correct because reference uniquely
         # identifies the tenant via the existing payment row
@@ -1482,12 +1526,12 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
         """charge.success with school_id in metadata resolves and processes normally."""
         from fees.models import Payment, WebhookLog, FeeReceipt
 
-        reference = 'RESOLVED_BY_SCHOOL_ID_001'
+        reference = "RESOLVED_BY_SCHOOL_ID_001"
         # For webhook-first (no existing payment), we also need invoice_id or student_id
         # in metadata per _handle_charge_success validation (line 411)
         response = self._post_webhook_no_metadata(
             reference=reference,
-            metadata={'school_id': self.school.pk, 'invoice_id': self.invoice.pk},
+            metadata={"school_id": self.school.pk, "invoice_id": self.invoice.pk},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -1503,10 +1547,10 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
         """charge.success with invoice_id in metadata resolves and processes normally."""
         from fees.models import Payment, WebhookLog, FeeReceipt
 
-        reference = 'RESOLVED_BY_INVOICE_ID_001'
+        reference = "RESOLVED_BY_INVOICE_ID_001"
         response = self._post_webhook_no_metadata(
             reference=reference,
-            metadata={'invoice_id': self.invoice.pk},
+            metadata={"invoice_id": self.invoice.pk},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -1519,10 +1563,10 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
         """charge.success with student_id in metadata resolves and processes normally."""
         from fees.models import Payment, WebhookLog, FeeReceipt
 
-        reference = 'RESOLVED_BY_STUDENT_ID_001'
+        reference = "RESOLVED_BY_STUDENT_ID_001"
         response = self._post_webhook_no_metadata(
             reference=reference,
-            metadata={'student_id': self.student.pk},
+            metadata={"student_id": self.student.pk},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -1536,18 +1580,22 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
         import json
         from fees.models import Payment, WebhookLog
 
-        reference = 'UNRESOLVED_DUP_001'
-        metadata = {'description': 'Only description'}
+        reference = "UNRESOLVED_DUP_001"
+        metadata = {"description": "Only description"}
 
         # First attempt
-        response1 = self._post_webhook_no_metadata(reference=reference, metadata=metadata)
+        response1 = self._post_webhook_no_metadata(
+            reference=reference, metadata=metadata
+        )
         self.assertEqual(response1.status_code, 400)
-        self.assertEqual(json.loads(response1.content)['status'], 'school not resolved')
+        self.assertEqual(json.loads(response1.content)["status"], "school not resolved")
 
         # Second attempt (duplicate)
-        response2 = self._post_webhook_no_metadata(reference=reference, metadata=metadata)
+        response2 = self._post_webhook_no_metadata(
+            reference=reference, metadata=metadata
+        )
         self.assertEqual(response2.status_code, 400)
-        self.assertEqual(json.loads(response2.content)['status'], 'school not resolved')
+        self.assertEqual(json.loads(response2.content)["status"], "school not resolved")
 
         # No payment ever created
         self.assertEqual(Payment.objects.count(), 0)
@@ -1561,21 +1609,23 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
         # Capture log output
         log_stream = StringIO()
         handler = logging.StreamHandler(log_stream)
-        logger = logging.getLogger('fees.paystack')
+        logger = logging.getLogger("fees.paystack")
         logger.addHandler(handler)
         logger.setLevel(logging.DEBUG)  # Capture both WARNING and ERROR
 
         try:
             response = self._post_webhook_no_metadata(
-                reference='DIAG_TEST_001',
-                metadata={'description': 'Test payment', 'custom_field': 'value'},
+                reference="DIAG_TEST_001",
+                metadata={"description": "Test payment", "custom_field": "value"},
             )
             self.assertEqual(response.status_code, 400)
 
             log_output = log_stream.getvalue()
             # The log output contains the message text (not JSON in test environment)
             # Check that the ERROR log with diagnostic context is present
-            self.assertIn('Webhook rejected: tenant school could not be resolved', log_output)
+            self.assertIn(
+                "Webhook rejected: tenant school could not be resolved", log_output
+            )
             # The diagnostic context is logged via `extra` dict in the logger call
             # In test environment with default formatter, extra fields may not appear
             # but the structured logger in production will include them
@@ -1584,6 +1634,7 @@ class UnresolvableSchoolWebhookTest(BaseFeesTest):
 
 
 # ─── Paystack Upgrade: Verify-Transaction Fallback Tests ─────────────────
+
 
 class VerifyTransactionFallbackTest(BaseFeesTest):
     """Server-side verification fallback (verify_transaction) confirms PENDING payments.
@@ -1600,14 +1651,14 @@ class VerifyTransactionFallbackTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
         self.payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='VERIFY_REF_001',
+            reference="VERIFY_REF_001",
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
@@ -1616,25 +1667,50 @@ class VerifyTransactionFallbackTest(BaseFeesTest):
     def _get_verify(self, fake_result):
         from unittest.mock import patch
 
-        with patch('fees.paystack.verify_transaction', return_value=fake_result):
+        with patch("fees.paystack.verify_transaction", return_value=fake_result):
             return self.client.get(
-                reverse('fees:payment-verify'),
-                {'reference': self.payment.reference, 'invoice_id': self.invoice.id},
+                reverse("fees:payment-verify"),
+                {"reference": self.payment.reference, "invoice_id": self.invoice.id},
             )
+
+    def test_reference_only_verify_denies_unlinked_parent(self):
+        """Verification cannot be triggered for another family's payment."""
+        from unittest.mock import patch
+
+        unlinked_parent = User.objects.create_user(
+            username="unlinked_verify_parent",
+            password="testpass123",
+            school=self.school,
+            role=Roles.PARENT,
+        )
+        self.client.force_login(unlinked_parent)
+
+        with patch("fees.paystack.verify_transaction") as mock_verify:
+            response = self.client.get(
+                reverse("fees:payment-verify"),
+                {"reference": self.payment.reference},
+            )
+
+        self.assertRedirects(
+            response,
+            reverse("parent-pay"),
+            fetch_redirect_response=False,
+        )
+        mock_verify.assert_not_called()
 
     def test_verify_flow_confirms_and_issues_receipt(self):
         """Successful verify_transaction confirms, enriches and issues a receipt."""
         from fees.models import FeeReceipt, Payment
 
         fake = {
-            'status': True,
-            'data': {
-                'status': 'success',
-                'amount': 6000000,
-                'fees': 15000,
-                'currency': 'NGN',
-                'authorization': {'channel': 'bank', 'bank': 'Zenith'},
-                'customer': {'email': 'p@x.com', 'name': 'Ada'},
+            "status": True,
+            "data": {
+                "status": "success",
+                "amount": 6000000,
+                "fees": 15000,
+                "currency": "NGN",
+                "authorization": {"channel": "bank", "bank": "Zenith"},
+                "customer": {"email": "p@x.com", "name": "Ada"},
             },
         }
         response = self._get_verify(fake)
@@ -1642,8 +1718,8 @@ class VerifyTransactionFallbackTest(BaseFeesTest):
         self.assertEqual(response.status_code, 200)
         self.payment.refresh_from_db()
         self.assertEqual(self.payment.status, Payment.Status.CONFIRMED)
-        self.assertEqual(self.payment.channel, 'bank')
-        self.assertEqual(self.payment.bank_name, 'Zenith')
+        self.assertEqual(self.payment.channel, "bank")
+        self.assertEqual(self.payment.bank_name, "Zenith")
         self.assertTrue(self.payment.webhook_processed)
         self.assertTrue(FeeReceipt.objects.filter(payment=self.payment).exists())
 
@@ -1652,8 +1728,8 @@ class VerifyTransactionFallbackTest(BaseFeesTest):
         from fees.models import FeeReceipt, Payment
 
         fake = {
-            'status': True,
-            'data': {'status': 'success', 'amount': 1234},
+            "status": True,
+            "data": {"status": "success", "amount": 1234},
         }
         response = self._get_verify(fake)
 
@@ -1662,13 +1738,13 @@ class VerifyTransactionFallbackTest(BaseFeesTest):
         self.assertEqual(self.payment.status, Payment.Status.FAILED)
         self.assertEqual(FeeReceipt.objects.count(), 0)
         self.invoice.refresh_from_db()
-        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
+        self.assertEqual(self.invoice.amount_paid, Decimal("0.00"))
 
     def test_verify_error_keeps_pending(self):
         """verify_transaction returning an error leaves the payment PENDING, no receipt."""
         from fees.models import FeeReceipt, Payment
 
-        response = self._get_verify({'error': 'gateway error'})
+        response = self._get_verify({"error": "gateway error"})
 
         self.assertEqual(response.status_code, 200)
         self.payment.refresh_from_db()
@@ -1690,16 +1766,16 @@ class ReceiptViewTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
         self.parent_user2 = User.objects.create_user(
-            username='parent2',
-            email='parent2@test.com',
-            password='testpass123',
+            username="parent2",
+            email="parent2@test.com",
+            password="testpass123",
             school=self.school,
             role=Roles.PARENT,
-            first_name='Parent',
-            last_name='Two',
+            first_name="Parent",
+            last_name="Two",
         )
 
     def _create_payment(self, status):
@@ -1708,9 +1784,9 @@ class ReceiptViewTest(BaseFeesTest):
         return Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference=f'RCPT_REF_{status}',
+            reference=f"RCPT_REF_{status}",
             status=status,
             paid_on=timezone.now(),
         )
@@ -1719,23 +1795,25 @@ class ReceiptViewTest(BaseFeesTest):
         """A linked parent can view the receipt; a missing receipt is issued lazily."""
         from fees.models import FeeReceipt, Payment
 
-        self.school.address = '3 Etofia Street, Beside Itam Flyover 3, Uyo, Akwa Ibom State.'
-        self.school.save(update_fields=['address'])
+        self.school.address = (
+            "3 Etofia Street, Beside Itam Flyover 3, Uyo, Akwa Ibom State."
+        )
+        self.school.save(update_fields=["address"])
         payment = self._create_payment(Payment.Status.CONFIRMED)
         self.client.force_login(self.parent_user)
 
-        response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
+        response = self.client.get(reverse("fees:payment-receipt", args=[payment.pk]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Official School Fees Receipt')
-        self.assertContains(response, 'Print Receipt')
-        self.assertContains(response, '@page { size: 80mm 140mm; margin: 0; }')
+        self.assertContains(response, "Official School Fees Receipt")
+        self.assertContains(response, "Print Receipt")
+        self.assertContains(response, "@page { size: 80mm 140mm; margin: 0; }")
         self.assertContains(response, self.school.address)
-        self.assertContains(response, 'Student')
-        self.assertContains(response, 'Reg. No.')
-        self.school.principal_name = 'Mrs. Esther Jackson'
-        self.school.save(update_fields=['principal_name'])
-        self.assertNotContains(response, 'Mrs. Esther Jackson')
+        self.assertContains(response, "Student")
+        self.assertContains(response, "Reg. No.")
+        self.school.principal_name = "Mrs. Esther Jackson"
+        self.school.save(update_fields=["principal_name"])
+        self.assertNotContains(response, "Mrs. Esther Jackson")
         self.assertTrue(FeeReceipt.objects.filter(payment=payment).exists())
 
     def test_receipt_shows_line_items_when_present(self):
@@ -1746,9 +1824,9 @@ class ReceiptViewTest(BaseFeesTest):
         PaymentLineItem.objects.create(
             payment=payment,
             kind=PaymentLineItem.KIND_OUTSTANDING,
-            label='Outstanding: First Term',
-            amount=Decimal('60000.00'),
-            source_key='outstanding',
+            label="Outstanding: First Term",
+            amount=Decimal("60000.00"),
+            source_key="outstanding",
             term=self.term,
             session=self.session,
             invoice=self.invoice,
@@ -1756,9 +1834,9 @@ class ReceiptViewTest(BaseFeesTest):
         PaymentLineItem.objects.create(
             payment=payment,
             kind=PaymentLineItem.KIND_EXTRA,
-            label='Sports Fee',
-            amount=Decimal('10000.00'),
-            source_key=f'extra:{self.sports_category.pk}',
+            label="Sports Fee",
+            amount=Decimal("10000.00"),
+            source_key=f"extra:{self.sports_category.pk}",
             category=self.sports_category,
             term=self.term,
             session=self.session,
@@ -1766,17 +1844,17 @@ class ReceiptViewTest(BaseFeesTest):
         )
         self.client.force_login(self.parent_user)
 
-        response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
+        response = self.client.get(reverse("fees:payment-receipt", args=[payment.pk]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Items Paid For')
-        self.assertContains(response, 'Outstanding: First Term')
-        self.assertContains(response, 'Sports Fee')
-        self.assertContains(response, '60,000.00')
-        self.assertContains(response, '10,000.00')
-        self.school.principal_name = 'Mrs. Esther Jackson'
-        self.school.save(update_fields=['principal_name'])
-        self.assertNotContains(response, 'Mrs. Esther Jackson')
+        self.assertContains(response, "Items Paid For")
+        self.assertContains(response, "Outstanding: First Term")
+        self.assertContains(response, "Sports Fee")
+        self.assertContains(response, "60,000.00")
+        self.assertContains(response, "10,000.00")
+        self.school.principal_name = "Mrs. Esther Jackson"
+        self.school.save(update_fields=["principal_name"])
+        self.assertNotContains(response, "Mrs. Esther Jackson")
 
     def test_receipt_page_unauthorized_parent(self):
         """A parent not linked to the student is redirected away."""
@@ -1785,7 +1863,7 @@ class ReceiptViewTest(BaseFeesTest):
         payment = self._create_payment(Payment.Status.CONFIRMED)
         self.client.force_login(self.parent_user2)
 
-        response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
+        response = self.client.get(reverse("fees:payment-receipt", args=[payment.pk]))
 
         self.assertEqual(response.status_code, 302)
 
@@ -1796,13 +1874,14 @@ class ReceiptViewTest(BaseFeesTest):
         payment = self._create_payment(Payment.Status.PENDING)
         self.client.force_login(self.parent_user)
 
-        response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
+        response = self.client.get(reverse("fees:payment-receipt", args=[payment.pk]))
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(FeeReceipt.objects.count(), 0)
 
 
 # ─── Flexible Fee Payments (2026): Partial + Invoice-less Payments ────────
+
 
 class FlexibleInitiateTest(BaseFeesTest):
     """InitiatePaymentView: partial amounts and invoice-less ("other") payments.
@@ -1818,7 +1897,7 @@ class FlexibleInitiateTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
     def _post_initiate(self, data, user=None):
@@ -1836,151 +1915,188 @@ class FlexibleInitiateTest(BaseFeesTest):
 
             def json(self):
                 return {
-                    'status': True,
-                    'data': {
-                        'authorization_url': 'https://paystack.test/start',
-                        'access_code': 'ACC001',
-                        'reference': self._reference,
+                    "status": True,
+                    "data": {
+                        "authorization_url": "https://paystack.test/start",
+                        "access_code": "ACC001",
+                        "reference": self._reference,
                     },
                 }
 
         def _fake_post(url, json=None, headers=None, timeout=None):
-            return FakePaystackResponse(json['reference'])
+            return FakePaystackResponse(json["reference"])
 
         with patch(
-            'fees.paystack.http_requests.post', side_effect=_fake_post,
+            "fees.paystack.http_requests.post",
+            side_effect=_fake_post,
         ) as mock_post:
-            response = self.client.post(reverse('fees:initiate-payment'), data)
+            response = self.client.post(reverse("fees:initiate-payment"), data)
         return response, mock_post
 
     def test_partial_payment_amount_respected(self):
         """A partial amount creates a PENDING payment for that exact amount."""
-        response, _ = self._post_initiate({
-            'invoice_id': self.invoice.id,
-            'amount': '25000.00',
-        })
+        response, _ = self._post_initiate(
+            {
+                "invoice_id": self.invoice.id,
+                "amount": "25000.00",
+            }
+        )
 
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(
-            response, 'https://paystack.test/start', fetch_redirect_response=False,
+            response,
+            "https://paystack.test/start",
+            fetch_redirect_response=False,
         )
 
-        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 1)
+        self.assertEqual(
+            Payment.objects.filter(status=Payment.Status.PENDING).count(), 1
+        )
         payment = Payment.objects.get(status=Payment.Status.PENDING)
-        self.assertEqual(payment.amount, Decimal('25000.00'))
+        self.assertEqual(payment.amount, Decimal("25000.00"))
         self.assertEqual(payment.status, Payment.Status.PENDING)
         self.assertEqual(payment.invoice, self.invoice)
 
         # Balance untouched — PENDING payments never count toward amount_paid
         self.invoice.refresh_from_db()
-        self.assertEqual(self.invoice.amount_paid, Decimal('0.00'))
+        self.assertEqual(self.invoice.amount_paid, Decimal("0.00"))
 
     def test_amount_exceeding_balance_allowed_as_overpayment(self):
         """An amount above the invoice balance is allowed as an overpayment."""
-        response, mock_post = self._post_initiate({
-            'invoice_id': self.invoice.id,
-            'amount': '70000.00',
-        })
+        response, mock_post = self._post_initiate(
+            {
+                "invoice_id": self.invoice.id,
+                "amount": "70000.00",
+            }
+        )
 
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(
-            response, 'https://paystack.test/start', fetch_redirect_response=False,
+            response,
+            "https://paystack.test/start",
+            fetch_redirect_response=False,
         )
         payment = Payment.objects.get(status=Payment.Status.PENDING)
-        self.assertEqual(payment.amount, Decimal('70000.00'))
+        self.assertEqual(payment.amount, Decimal("70000.00"))
         self.assertEqual(payment.invoice, self.invoice)
         mock_post.assert_called_once()
 
     def test_zero_amount_rejected(self):
         """A zero amount is rejected — no payment row is created."""
-        response, mock_post = self._post_initiate({
-            'invoice_id': self.invoice.id,
-            'amount': '0',
-        })
+        response, mock_post = self._post_initiate(
+            {
+                "invoice_id": self.invoice.id,
+                "amount": "0",
+            }
+        )
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 0)
+        self.assertEqual(
+            Payment.objects.filter(status=Payment.Status.PENDING).count(), 0
+        )
         mock_post.assert_not_called()
 
     def test_other_payment_no_invoice(self):
         """An invoice-less payment is created against the student directly."""
-        response, _ = self._post_initiate({
-            'student_id': self.student.pk,
-            'amount': '5000.00',
-            'description': 'Books',
-        })
+        response, _ = self._post_initiate(
+            {
+                "student_id": self.student.pk,
+                "amount": "5000.00",
+                "description": "Books",
+            }
+        )
 
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(
-            response, 'https://paystack.test/start', fetch_redirect_response=False,
+            response,
+            "https://paystack.test/start",
+            fetch_redirect_response=False,
         )
 
-        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 1)
+        self.assertEqual(
+            Payment.objects.filter(status=Payment.Status.PENDING).count(), 1
+        )
         payment = Payment.objects.get(status=Payment.Status.PENDING)
         self.assertIsNone(payment.invoice)
         self.assertEqual(payment.student, self.student)
-        self.assertEqual(payment.description, 'Books')
-        self.assertEqual(payment.amount, Decimal('5000.00'))
+        self.assertEqual(payment.description, "Books")
+        self.assertEqual(payment.amount, Decimal("5000.00"))
         self.assertEqual(payment.status, Payment.Status.PENDING)
 
     def test_other_payment_requires_student(self):
         """An invoice-less payment without student_id is rejected."""
-        response, mock_post = self._post_initiate({
-            'amount': '5000.00',
-            'description': 'Books',
-        })
+        response, mock_post = self._post_initiate(
+            {
+                "amount": "5000.00",
+                "description": "Books",
+            }
+        )
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 0)
+        self.assertEqual(
+            Payment.objects.filter(status=Payment.Status.PENDING).count(), 0
+        )
         mock_post.assert_not_called()
 
     def test_student_role_can_pay_own_invoice(self):
         """The student user can initiate payment on their own invoice."""
-        response, _ = self._post_initiate({
-            'invoice_id': self.invoice.id,
-            'amount': '25000.00',
-        }, user=self.student_user)
+        response, _ = self._post_initiate(
+            {
+                "invoice_id": self.invoice.id,
+                "amount": "25000.00",
+            },
+            user=self.student_user,
+        )
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 1)
+        self.assertEqual(
+            Payment.objects.filter(status=Payment.Status.PENDING).count(), 1
+        )
         payment = Payment.objects.get(status=Payment.Status.PENDING)
-        self.assertEqual(payment.amount, Decimal('25000.00'))
+        self.assertEqual(payment.amount, Decimal("25000.00"))
         self.assertEqual(payment.invoice, self.invoice)
 
     def test_unauthorized_parent_other_payment_rejected(self):
         """A parent not linked to the student cannot pay for that student."""
         parent2 = User.objects.create_user(
-            username='parent_unlinked',
-            email='unlinked@test.com',
-            password='testpass123',
+            username="parent_unlinked",
+            email="unlinked@test.com",
+            password="testpass123",
             school=self.school,
             role=Roles.PARENT,
-            first_name='Unlinked',
-            last_name='Parent',
+            first_name="Unlinked",
+            last_name="Parent",
         )
 
-        response, mock_post = self._post_initiate({
-            'student_id': self.student.pk,
-            'amount': '5000.00',
-            'description': 'Books',
-        }, user=parent2)
+        response, mock_post = self._post_initiate(
+            {
+                "student_id": self.student.pk,
+                "amount": "5000.00",
+                "description": "Books",
+            },
+            user=parent2,
+        )
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(Payment.objects.filter(status=Payment.Status.PENDING).count(), 0)
+        self.assertEqual(
+            Payment.objects.filter(status=Payment.Status.PENDING).count(), 0
+        )
         mock_post.assert_not_called()
 
-    def test_callback_url_uses_pay_page(self):
-        """The Paystack callback URL points at the portal pay page, not the old return page."""
-        response, mock_post = self._post_initiate({
-            'invoice_id': self.invoice.id,
-            'amount': '25000.00',
-        })
+    def test_callback_url_uses_unified_payment_return(self):
+        """Paystack returns through the payment status endpoint."""
+        response, mock_post = self._post_initiate(
+            {
+                "invoice_id": self.invoice.id,
+                "amount": "25000.00",
+            }
+        )
 
         self.assertEqual(response.status_code, 302)
         self.assertTrue(mock_post.called)
-        payload = mock_post.call_args.kwargs['json']
-        self.assertIn('callback_url', payload)
-        self.assertIn('parent/pay', payload['callback_url'])
+        payload = mock_post.call_args.kwargs["json"]
+        self.assertIn("callback_url", payload)
+        self.assertIn(reverse("fees:payment-return"), payload["callback_url"])
 
 
 class ReferenceOnlyStatusTest(BaseFeesTest):
@@ -1992,7 +2108,7 @@ class ReferenceOnlyStatusTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
     def test_status_partial_without_invoice_id(self):
@@ -2000,9 +2116,9 @@ class ReferenceOnlyStatusTest(BaseFeesTest):
         payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='PARTIAL_REF_001',
+            reference="PARTIAL_REF_001",
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
@@ -2010,8 +2126,8 @@ class ReferenceOnlyStatusTest(BaseFeesTest):
 
         # PENDING state renders the polling partial (reference only)
         response = self.client.get(
-            reverse('fees:payment-status-partial'),
-            {'reference': payment.reference},
+            reverse("fees:payment-status-partial"),
+            {"reference": payment.reference},
         )
         self.assertEqual(response.status_code, 200)
 
@@ -2019,11 +2135,11 @@ class ReferenceOnlyStatusTest(BaseFeesTest):
         payment.status = Payment.Status.CONFIRMED
         payment.save()
         response = self.client.get(
-            reverse('fees:payment-status-partial'),
-            {'reference': payment.reference},
+            reverse("fees:payment-status-partial"),
+            {"reference": payment.reference},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Payment Successful!')
+        self.assertContains(response, "Payment confirmed")
 
     def test_status_partial_other_payment(self):
         """Reference-only polling works for an invoice-less (student) payment."""
@@ -2031,29 +2147,140 @@ class ReferenceOnlyStatusTest(BaseFeesTest):
             school=self.school,
             invoice=None,
             student=self.student,
-            amount=Decimal('5000.00'),
+            amount=Decimal("5000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='PARTIAL_REF_002',
+            reference="PARTIAL_REF_002",
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
-            description='Books',
+            description="Books",
         )
         self.client.force_login(self.parent_user)
 
         response = self.client.get(
-            reverse('fees:payment-status-partial'),
-            {'reference': payment.reference},
+            reverse("fees:payment-status-partial"),
+            {"reference": payment.reference},
         )
         self.assertEqual(response.status_code, 200)
 
         payment.status = Payment.Status.CONFIRMED
         payment.save()
         response = self.client.get(
-            reverse('fees:payment-status-partial'),
-            {'reference': payment.reference},
+            reverse("fees:payment-status-partial"),
+            {"reference": payment.reference},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Payment Successful!')
+        self.assertContains(response, "Payment confirmed")
+
+    def test_payment_return_redirects_to_unified_status_page(self):
+        """A Paystack callback lands on the shared payment status route."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("60000.00"),
+            method=Payment.Method.PAYSTACK,
+            reference="RETURN_REF_001",
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        self.client.force_login(self.parent_user)
+
+        response = self.client.get(
+            reverse("fees:payment-return"),
+            {"reference": payment.reference},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("fees:transfer-return", kwargs={"payment_id": payment.pk}),
+            fetch_redirect_response=False,
+        )
+
+    def test_unified_status_page_polls_pending_paystack_payment(self):
+        """The shared status page polls while a Paystack payment is pending."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("60000.00"),
+            method=Payment.Method.PAYSTACK,
+            reference="RETURN_REF_002",
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        self.client.force_login(self.parent_user)
+
+        response = self.client.get(
+            reverse("fees:transfer-return", kwargs={"payment_id": payment.pk}),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "fees/transfer_return.html")
+        self.assertContains(response, "Payment processing")
+        self.assertContains(response, 'hx-trigger="every 2s"')
+        self.assertContains(response, payment.reference)
+
+    def test_reference_only_status_denies_unlinked_parent(self):
+        """A reference cannot expose another family's payment in the same school."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("60000.00"),
+            method=Payment.Method.PAYSTACK,
+            reference="PRIVATE_REF_001",
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        unlinked_parent = User.objects.create_user(
+            username="unlinked_status_parent",
+            password="testpass123",
+            school=self.school,
+            role=Roles.PARENT,
+        )
+        self.client.force_login(unlinked_parent)
+
+        response = self.client.get(
+            reverse("fees:payment-status-partial"),
+            {"reference": payment.reference},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("parent-pay"),
+            fetch_redirect_response=False,
+        )
+
+    def test_payment_return_is_school_scoped(self):
+        """A callback reference from another tenant is not resolvable."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("60000.00"),
+            method=Payment.Method.PAYSTACK,
+            reference="TENANT_REF_001",
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        other_school = School.objects.create(
+            name="Other School",
+            short_code="other",
+        )
+        other_parent = User.objects.create_user(
+            username="other_school_parent",
+            password="testpass123",
+            school=other_school,
+            role=Roles.PARENT,
+        )
+        self.client.force_login(other_parent)
+
+        response = self.client.get(
+            reverse("fees:payment-return"),
+            {"reference": payment.reference},
+        )
+
+        self.assertEqual(response.status_code, 404)
 
 
 class OtherPaymentWebhookTest(BaseFeesTest):
@@ -2065,7 +2292,7 @@ class OtherPaymentWebhookTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
     def _post_webhook(self, reference, amount_kobo=6000000, metadata=None):
@@ -2076,34 +2303,34 @@ class OtherPaymentWebhookTest(BaseFeesTest):
         from fees.paystack import handle_webhook as webhook_view
 
         data = {
-            'reference': reference,
-            'amount': amount_kobo,
-            'paid_at': '2026-01-15T10:30:00.000Z',
-            'metadata': metadata if metadata is not None else {},
+            "reference": reference,
+            "amount": amount_kobo,
+            "paid_at": "2026-01-15T10:30:00.000Z",
+            "metadata": metadata if metadata is not None else {},
         }
-        payload = json.dumps({'event': 'charge.success', 'data': data})
+        payload = json.dumps({"event": "charge.success", "data": data})
         factory = RequestFactory()
         request = factory.post(
-            '/fees/api/paystack-webhook/',
+            "/fees/api/paystack-webhook/",
             data=payload,
-            content_type='application/json',
-            HTTP_X_PAYSTACK_SIGNATURE='test_signature',
+            content_type="application/json",
+            HTTP_X_PAYSTACK_SIGNATURE="test_signature",
         )
-        with patch('fees.paystack.verify_webhook_signature', return_value=True):
+        with patch("fees.paystack.verify_webhook_signature", return_value=True):
             return webhook_view(request)
 
     def test_webhook_creates_other_payment_from_student_id(self):
         """Webhook with student_id metadata creates a CONFIRMED invoice-less payment."""
         from fees.models import FeeReceipt, Payment
 
-        reference = 'WEBHOOK_REF_OTHER_001'
+        reference = "WEBHOOK_REF_OTHER_001"
         response = self._post_webhook(
             reference,
             amount_kobo=500000,
             metadata={
-                'student_id': self.student.pk,
-                'school_id': self.school.pk,
-                'description': 'Books',
+                "student_id": self.student.pk,
+                "school_id": self.school.pk,
+                "description": "Books",
             },
         )
 
@@ -2113,8 +2340,8 @@ class OtherPaymentWebhookTest(BaseFeesTest):
         payment = Payment.objects.get(reference=reference)
         self.assertIsNone(payment.invoice)
         self.assertEqual(payment.student, self.student)
-        self.assertEqual(payment.description, 'Books')
-        self.assertEqual(payment.amount, Decimal('5000.00'))
+        self.assertEqual(payment.description, "Books")
+        self.assertEqual(payment.amount, Decimal("5000.00"))
         self.assertEqual(payment.status, Payment.Status.CONFIRMED)
         self.assertTrue(payment.webhook_processed)
         self.assertEqual(FeeReceipt.objects.count(), 1)
@@ -2123,7 +2350,7 @@ class OtherPaymentWebhookTest(BaseFeesTest):
         """Webhook with neither invoice_id nor student_id is rejected with 400."""
         from fees.models import Payment
 
-        response = self._post_webhook('WEBHOOK_REF_OTHER_002', metadata={})
+        response = self._post_webhook("WEBHOOK_REF_OTHER_002", metadata={})
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(Payment.objects.count(), 0)
@@ -2132,11 +2359,11 @@ class OtherPaymentWebhookTest(BaseFeesTest):
         """A webhook for an existing payment fills in a blank description."""
         from fees.models import FeeReceipt, Payment
 
-        reference = 'WEBHOOK_REF_OTHER_003'
+        reference = "WEBHOOK_REF_OTHER_003"
         Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
             reference=reference,
             status=Payment.Status.PENDING,
@@ -2146,13 +2373,13 @@ class OtherPaymentWebhookTest(BaseFeesTest):
         response = self._post_webhook(
             reference,
             amount_kobo=6000000,
-            metadata={'invoice_id': self.invoice.id, 'description': 'Books'},
+            metadata={"invoice_id": self.invoice.id, "description": "Books"},
         )
 
         self.assertEqual(response.status_code, 200)
         payment = Payment.objects.get(reference=reference)
         self.assertEqual(payment.status, Payment.Status.CONFIRMED)
-        self.assertEqual(payment.description, 'Books')
+        self.assertEqual(payment.description, "Books")
         self.assertTrue(payment.webhook_processed)
         self.assertEqual(FeeReceipt.objects.count(), 1)
 
@@ -2166,22 +2393,22 @@ class MakePaymentPageTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
         # Second child so the parent page shows more than one child
         user2 = User.objects.create_user(
-            username='student2',
-            email='student2@test.com',
-            password='testpass123',
+            username="student2",
+            email="student2@test.com",
+            password="testpass123",
             school=self.school,
             role=Roles.STUDENT,
-            first_name='Jane',
-            last_name='Doe',
+            first_name="Jane",
+            last_name="Doe",
         )
         self.student2 = Student.objects.create(
             school=self.school,
             user=user2,
-            admission_number='STU002',
+            admission_number="STU002",
             date_of_birth=date(2011, 3, 3),
             gender=Student.FEMALE,
             admission_date=date(2025, 9, 1),
@@ -2197,47 +2424,62 @@ class MakePaymentPageTest(BaseFeesTest):
             school=self.school,
             student=self.student2,
             term=self.term,
-            total_amount=Decimal('45000.00'),
+            total_amount=Decimal("45000.00"),
         )
 
     def test_parent_pay_page_renders(self):
         """Parent pay page lists children and their balances."""
         self.client.force_login(self.parent_user)
-        response = self.client.get(reverse('parent-pay'))
+        response = self.client.get(reverse("parent-pay"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Make a Payment')
-        self.assertContains(response, 'John Doe')
-        self.assertContains(response, 'Jane Doe')
+        self.assertContains(response, "Make a Payment")
+        self.assertContains(response, "John Doe")
+        self.assertContains(response, "Jane Doe")
         # Invoice term names show the outstanding fees for each child
-        self.assertContains(response, 'First Term')
+        self.assertContains(response, "First Term")
 
     def test_student_pay_page_renders(self):
         """Student pay page renders for the student's own user."""
         self.client.force_login(self.student_user)
-        response = self.client.get(reverse('student-pay'))
+        response = self.client.get(reverse("student-pay"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Make a Payment')
+        self.assertContains(response, "Make a Payment")
+
+    def test_legacy_reference_redirects_to_unified_status_resolver(self):
+        """An older pay-page callback forwards into the shared status flow."""
+        self.client.force_login(self.parent_user)
+
+        response = self.client.get(
+            reverse("parent-pay"),
+            {"reference": "LEGACY RETURN/001"},
+        )
+
+        self.assertRedirects(
+            response,
+            f"{reverse('fees:payment-return')}?reference=LEGACY+RETURN%2F001",
+            fetch_redirect_response=False,
+        )
 
     def test_pay_page_context(self):
         """Context exposes invoices_by_child with the children's invoices and totals."""
         self.client.force_login(self.parent_user)
-        response = self.client.get(reverse('parent-pay'))
+        response = self.client.get(reverse("parent-pay"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Make a Payment')
+        self.assertContains(response, "Make a Payment")
 
         if response.context is not None:
-            self.assertIn('invoices_by_child', response.context)
-            self.assertTrue(response.context['invoices_by_child'])
+            self.assertIn("invoices_by_child", response.context)
+            self.assertTrue(response.context["invoices_by_child"])
             self.assertEqual(
-                Decimal(str(response.context['total_owed'])),
-                Decimal('105000.00'),
+                Decimal(str(response.context["total_owed"])),
+                Decimal("105000.00"),
             )
         else:
             # Context unavailable — fall back to the rendered invoice term name
-            self.assertContains(response, 'First Term')
+            self.assertContains(response, "First Term")
 
     def test_pending_bank_transfer_visible_but_balance_unchanged(self):
         """A pending transfer shows in recent payments but never reduces the owed total."""
@@ -2245,29 +2487,29 @@ class MakePaymentPageTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             invoice=self.invoice,
-            amount=Decimal('30000.00'),
+            amount=Decimal("30000.00"),
             method=Payment.Method.BANK_TRANSFER,
             reference=None,
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
         self.client.force_login(self.parent_user)
-        response = self.client.get(reverse('parent-pay'))
+        response = self.client.get(reverse("parent-pay"))
 
         self.assertEqual(response.status_code, 200)
         # Still owing the full amount — pending transfer doesn't count yet
-        self.assertContains(response, '&#8358;60000.00')
+        self.assertContains(response, "&#8358;60000.00")
         # The pending transaction is visible for the parent
-        self.assertContains(response, 'Awaiting confirmation')
-        self.assertNotContains(response, 'Receipt')
+        self.assertContains(response, "Awaiting confirmation")
+        self.assertNotContains(response, "Receipt")
 
         if response.context is not None:
             self.assertEqual(
-                Decimal(str(response.context['total_owed'])),
-                Decimal('105000.00'),
+                Decimal(str(response.context["total_owed"])),
+                Decimal("105000.00"),
             )
-            recent = list(response.context['recent_payments'])
-            self.assertTrue(any(p.status == 'PENDING' for p in recent))
+            recent = list(response.context["recent_payments"])
+            self.assertTrue(any(p.status == "PENDING" for p in recent))
 
     def test_confirmed_bank_transfer_reduces_balance(self):
         """Once confirmed, the transfer reduces the balance and a receipt is offered."""
@@ -2275,7 +2517,7 @@ class MakePaymentPageTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             invoice=self.invoice,
-            amount=Decimal('30000.00'),
+            amount=Decimal("30000.00"),
             method=Payment.Method.BANK_TRANSFER,
             reference=None,
             status=Payment.Status.PENDING,
@@ -2285,13 +2527,13 @@ class MakePaymentPageTest(BaseFeesTest):
         payment.save()
 
         self.client.force_login(self.parent_user)
-        response = self.client.get(reverse('parent-pay'))
+        response = self.client.get(reverse("parent-pay"))
 
         self.assertEqual(response.status_code, 200)
         if response.context is not None:
             self.assertEqual(
-                Decimal(str(response.context['total_owed'])),
-                Decimal('75000.00'),
+                Decimal(str(response.context["total_owed"])),
+                Decimal("75000.00"),
             )
 
 
@@ -2304,26 +2546,26 @@ class BankTransferProofTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
     def _post(self, extra=None):
         data = {
-            'student_id': str(self.student.pk),
-            'item': ['outstanding'],
-            'amount': '60000.00',
-            'method': 'bank_transfer',
+            "student_id": str(self.student.pk),
+            "item": ["outstanding"],
+            "amount": "60000.00",
+            "method": "bank_transfer",
         }
         if extra:
             data.update(extra)
         self.client.force_login(self.parent_user)
-        return self.client.post(reverse('fees:checkout-submit'), data, follow=True)
+        return self.client.post(reverse("fees:checkout-submit"), data, follow=True)
 
     def test_transfer_without_proof_rejected(self):
         """No screenshot — the transfer is refused and nothing is recorded."""
         response = self._post()
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Upload a screenshot of your transfer')
+        self.assertContains(response, "Upload a screenshot of your transfer")
         self.assertEqual(
             Payment.objects.filter(method=Payment.Method.BANK_TRANSFER).count(),
             0,
@@ -2332,12 +2574,13 @@ class BankTransferProofTest(BaseFeesTest):
     def test_transfer_with_junk_file_rejected(self):
         """A renamed non-image file is refused by the server-side validator."""
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         junk = SimpleUploadedFile(
-            'proof.png', b'#!/bin/sh\nrm -rf /', content_type='image/png'
+            "proof.png", b"#!/bin/sh\nrm -rf /", content_type="image/png"
         )
-        response = self._post({'proof_image': junk})
+        response = self._post({"proof_image": junk})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'does not look like a proof')
+        self.assertContains(response, "does not look like a proof")
         self.assertEqual(
             Payment.objects.filter(method=Payment.Method.BANK_TRANSFER).count(),
             0,
@@ -2347,14 +2590,15 @@ class BankTransferProofTest(BaseFeesTest):
         """Files over 5 MB are refused before anything is stored."""
         from django.core.files.uploadedfile import SimpleUploadedFile
         from fees.validators import MAX_PROOF_SIZE
+
         oversized = SimpleUploadedFile(
-            'proof.png',
-            b'\x89PNG\r\n\x1a\n' + b'0' * (MAX_PROOF_SIZE + 1),
-            content_type='image/png',
+            "proof.png",
+            b"\x89PNG\r\n\x1a\n" + b"0" * (MAX_PROOF_SIZE + 1),
+            content_type="image/png",
         )
-        response = self._post({'proof_image': oversized})
+        response = self._post({"proof_image": oversized})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'too large')
+        self.assertContains(response, "too large")
         self.assertEqual(
             Payment.objects.filter(method=Payment.Method.BANK_TRANSFER).count(),
             0,
@@ -2363,20 +2607,23 @@ class BankTransferProofTest(BaseFeesTest):
     def test_proof_kept_and_shown_after_confirmation(self):
         """The uploaded proof survives confirmation and appears on the receipt."""
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         proof = SimpleUploadedFile(
-            'proof.png', b'\x89PNG\r\n\x1a\nfake-image-bytes', content_type='image/png'
+            "proof.png", b"\x89PNG\r\n\x1a\nfake-image-bytes", content_type="image/png"
         )
-        response = self._post({
-            'proof_image': proof,
-            'paid_by_name': 'Aunty Ada',
-            'paid_by_relation': 'Aunt',
-        })
-        self.assertNotContains(response, 'before submitting')
+        response = self._post(
+            {
+                "proof_image": proof,
+                "paid_by_name": "Aunty Ada",
+                "paid_by_relation": "Aunt",
+            }
+        )
+        self.assertNotContains(response, "before submitting")
 
         payment = Payment.objects.get(method=Payment.Method.BANK_TRANSFER)
         self.client.force_login(self.admin_user)
         response = self.client.post(
-            reverse('school_admin:pending_transfer_confirm', args=[payment.pk])
+            reverse("school_admin:pending_transfer_confirm", args=[payment.pk])
         )
         self.assertEqual(response.status_code, 302)
 
@@ -2385,14 +2632,14 @@ class BankTransferProofTest(BaseFeesTest):
         self.assertTrue(payment.proof_image)
 
         self.client.force_login(self.parent_user)
-        response = self.client.get(reverse('fees:payment-receipt', args=[payment.pk]))
+        response = self.client.get(reverse("fees:payment-receipt", args=[payment.pk]))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Transfer Proof')
+        self.assertContains(response, "Transfer Proof")
         self.assertContains(response, payment.proof_image.url)
 
         self.client.force_login(self.admin_user)
         response = self.client.get(
-            reverse('school_admin:invoice_detail', args=[payment.invoice_id])
+            reverse("school_admin:invoice_detail", args=[payment.invoice_id])
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, payment.proof_image.url)
@@ -2400,23 +2647,26 @@ class BankTransferProofTest(BaseFeesTest):
     def test_transfer_with_proof_creates_pending_payment(self):
         """A screenshot + payer details produce a PENDING payment with proof."""
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         proof = SimpleUploadedFile(
-            'proof.png', b'\x89PNG\r\n\x1a\nfake-image-bytes', content_type='image/png'
+            "proof.png", b"\x89PNG\r\n\x1a\nfake-image-bytes", content_type="image/png"
         )
-        response = self._post({
-            'proof_image': proof,
-            'paid_by_name': 'Aunty Ada',
-            'paid_by_relation': 'Aunt',
-        })
-        self.assertNotContains(response, 'before submitting')
+        response = self._post(
+            {
+                "proof_image": proof,
+                "paid_by_name": "Aunty Ada",
+                "paid_by_relation": "Aunt",
+            }
+        )
+        self.assertNotContains(response, "before submitting")
 
         payment = Payment.objects.get(method=Payment.Method.BANK_TRANSFER)
         self.assertEqual(payment.status, Payment.Status.PENDING)
-        self.assertEqual(payment.paid_by_name, 'Aunty Ada')
-        self.assertEqual(payment.paid_by_relation, 'Aunt')
+        self.assertEqual(payment.paid_by_name, "Aunty Ada")
+        self.assertEqual(payment.paid_by_relation, "Aunt")
         self.assertTrue(payment.proof_image)
         # Pending transfer still doesn't reduce the balance
-        self.assertEqual(payment.invoice.balance, Decimal('60000.00'))
+        self.assertEqual(payment.invoice.balance, Decimal("60000.00"))
 
     def test_transfer_submission_notifies_admins(self):
         """Submitting a bank transfer creates an in-app alert for every admin."""
@@ -2424,26 +2674,31 @@ class BankTransferProofTest(BaseFeesTest):
         from notifications.models import NotificationLog
 
         admin = User.objects.create_user(
-            username='adminx', email='adminx@test.com', password='testpass123',
-            school=self.school, role=Roles.ADMIN,
+            username="adminx",
+            email="adminx@test.com",
+            password="testpass123",
+            school=self.school,
+            role=Roles.ADMIN,
         )
         proof = SimpleUploadedFile(
-            'proof.png', b'\x89PNG\r\n\x1a\nfake-image-bytes', content_type='image/png'
+            "proof.png", b"\x89PNG\r\n\x1a\nfake-image-bytes", content_type="image/png"
         )
-        response = self._post({
-            'proof_image': proof,
-            'paid_by_name': 'Aunty Ada',
-            'paid_by_relation': 'Aunt',
-        })
+        response = self._post(
+            {
+                "proof_image": proof,
+                "paid_by_name": "Aunty Ada",
+                "paid_by_relation": "Aunt",
+            }
+        )
         self.assertEqual(response.status_code, 200)
 
         row = NotificationLog.objects.filter(
             recipient=admin,
-            reference__startswith='transfer-pending:',
+            reference__startswith="transfer-pending:",
         ).first()
         self.assertIsNotNone(row)
         self.assertEqual(row.channel, NotificationLog.Channel.IN_APP)
-        self.assertEqual(row.url, reverse('school_admin:pending_transfers'))
+        self.assertEqual(row.url, reverse("school_admin:pending_transfers"))
 
 
 class PaystackGatingTest(BaseFeesTest):
@@ -2455,34 +2710,36 @@ class PaystackGatingTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
     def _get_pay_page(self):
         self.client.force_login(self.parent_user)
-        return self.client.get(reverse('parent-pay'))
+        return self.client.get(reverse("parent-pay"))
 
     def test_paystack_hidden_without_keys(self):
         """No PAYSTACK keys — only the bank-transfer method is offered."""
-        with self.settings(PAYSTACK_SECRET_KEY='', PAYSTACK_PUBLIC_KEY=''):
+        with self.settings(PAYSTACK_SECRET_KEY="", PAYSTACK_PUBLIC_KEY=""):
             response = self._get_pay_page()
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, 'Paystack Card')
-        self.assertContains(response, 'Bank Transfer')
-        self.assertContains(response, 'Amount due')
+        self.assertNotContains(response, "Paystack Card")
+        self.assertContains(response, "Bank Transfer")
+        self.assertContains(response, "Amount due")
 
     def test_paystack_shown_with_keys(self):
         """With keys configured the card option and checkout button appear."""
         with self.settings(
-            PAYSTACK_SECRET_KEY='sk_test_abc',
-            PAYSTACK_PUBLIC_KEY='pk_test_abc',
+            PAYSTACK_SECRET_KEY="sk_test_abc",
+            PAYSTACK_PUBLIC_KEY="pk_test_abc",
         ):
             response = self._get_pay_page()
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Paystack Card')
-        self.assertContains(response, 'Proceed to Paystack Checkout')
+        self.assertContains(response, "Paystack Card")
+        self.assertContains(response, "Proceed to Paystack Checkout")
+
 
 # --- In-App Notification Trigger Tests ---
+
 
 class InAppNotificationTriggerTest(BaseFeesTest):
     """Tests that fee events create IN_APP NotificationLog rows with correct references."""
@@ -2493,7 +2750,7 @@ class InAppNotificationTriggerTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
     def test_payment_confirmation_creates_notification_log(self):
@@ -2504,35 +2761,41 @@ class InAppNotificationTriggerTest(BaseFeesTest):
             school=self.school,
             invoice=self.invoice,
             student=self.student,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='PAY_CONFIRM_REF',
+            reference="PAY_CONFIRM_REF",
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
 
         data = {
-            'status': 'success',
-            'amount': 6000000,  # kobo
-            'currency': 'NGN',
-            'fees': 15000,
-            'authorization': {'channel': 'card', 'last4': '4242', 'card_type': 'visa'},
-            'customer': {'email': 'p@x.com', 'first_name': 'Ada', 'last_name': 'Lovelace'},
+            "status": "success",
+            "amount": 6000000,  # kobo
+            "currency": "NGN",
+            "fees": 15000,
+            "authorization": {"channel": "card", "last4": "4242", "card_type": "visa"},
+            "customer": {
+                "email": "p@x.com",
+                "first_name": "Ada",
+                "last_name": "Lovelace",
+            },
         }
 
         confirm_payment_from_verify(payment, data)
 
-        logs = NotificationLog.objects.filter(reference='payment-confirm:%s' % payment.id)
+        logs = NotificationLog.objects.filter(
+            reference="payment-confirm:%s" % payment.id
+        )
         # One row for the paying student, one for the guardian — never the admin
         self.assertEqual(logs.count(), 2)
         guardian_log = logs.get(recipient=self.parent_user)
         self.assertEqual(guardian_log.channel, NotificationLog.Channel.IN_APP)
         self.assertEqual(guardian_log.recipient, self.parent_user)
-        self.assertIn('Payment confirmed', guardian_log.subject)
+        self.assertIn("Payment confirmed", guardian_log.subject)
         self.assertEqual(guardian_log.status, NotificationLog.Status.QUEUED)
         student_log = logs.get(recipient=self.student_user)
         self.assertEqual(student_log.channel, NotificationLog.Channel.IN_APP)
-        self.assertIn('Payment confirmed', student_log.subject)
+        self.assertIn("Payment confirmed", student_log.subject)
         self.assertFalse(logs.filter(recipient=self.admin_user).exists())
 
     def test_payment_failure_creates_notification_log(self):
@@ -2543,30 +2806,30 @@ class InAppNotificationTriggerTest(BaseFeesTest):
             school=self.school,
             invoice=self.invoice,
             student=self.student,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='PAY_FAIL_REF',
+            reference="PAY_FAIL_REF",
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
 
-        event = {'event': 'charge.failed', 'data': {'reference': 'PAY_FAIL_REF'}}
-        _handle_charge_failure('charge.failed', event, event['data'], webhook_log=None)
+        event = {"event": "charge.failed", "data": {"reference": "PAY_FAIL_REF"}}
+        _handle_charge_failure("charge.failed", event, event["data"], webhook_log=None)
 
-        logs = NotificationLog.objects.filter(reference='payment-fail:%s' % payment.id)
+        logs = NotificationLog.objects.filter(reference="payment-fail:%s" % payment.id)
         # Student + guardian + admin (failure is an exception worth flagging)
         self.assertEqual(logs.count(), 3)
         guardian_log = logs.get(recipient=self.parent_user)
         self.assertEqual(guardian_log.channel, NotificationLog.Channel.IN_APP)
         self.assertEqual(guardian_log.recipient, self.parent_user)
-        self.assertIn('Payment failed', guardian_log.subject)
+        self.assertIn("Payment failed", guardian_log.subject)
         self.assertEqual(guardian_log.status, NotificationLog.Status.QUEUED)
         student_log = logs.get(recipient=self.student_user)
-        self.assertIn('Payment failed', student_log.subject)
+        self.assertIn("Payment failed", student_log.subject)
         admin_log = logs.get(recipient=self.admin_user)
         self.assertEqual(admin_log.channel, NotificationLog.Channel.IN_APP)
-        self.assertIn('Payment failed', admin_log.subject)
-        self.assertEqual(admin_log.action_label, 'View student')
+        self.assertIn("Payment failed", admin_log.subject)
+        self.assertEqual(admin_log.action_label, "View student")
 
     def test_bank_transfer_confirm_creates_notification_log(self):
         """PendingTransferConfirmView creates NotificationLog with reference 'transfer-confirm:{id}'."""
@@ -2574,7 +2837,7 @@ class InAppNotificationTriggerTest(BaseFeesTest):
             school=self.school,
             invoice=self.invoice,
             student=self.student,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.BANK_TRANSFER,
             reference=None,
             status=Payment.Status.PENDING,
@@ -2583,15 +2846,17 @@ class InAppNotificationTriggerTest(BaseFeesTest):
 
         self.client.force_login(self.admin_user)
         response = self.client.post(
-            reverse('school_admin:pending_transfer_confirm', args=[payment.pk])
+            reverse("school_admin:pending_transfer_confirm", args=[payment.pk])
         )
 
         self.assertEqual(response.status_code, 302)
-        logs = NotificationLog.objects.filter(reference='transfer-confirm:%s' % payment.id)
+        logs = NotificationLog.objects.filter(
+            reference="transfer-confirm:%s" % payment.id
+        )
         self.assertEqual(logs.count(), 2)  # student + guardian
         log = logs.get(recipient=self.parent_user)
         self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
-        self.assertIn('Bank transfer confirmed', log.subject)
+        self.assertIn("Bank transfer confirmed", log.subject)
         self.assertEqual(log.status, NotificationLog.Status.QUEUED)
         self.assertTrue(logs.filter(recipient=self.student_user).exists())
 
@@ -2601,7 +2866,7 @@ class InAppNotificationTriggerTest(BaseFeesTest):
             school=self.school,
             invoice=self.invoice,
             student=self.student,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.BANK_TRANSFER,
             reference=None,
             status=Payment.Status.PENDING,
@@ -2610,15 +2875,17 @@ class InAppNotificationTriggerTest(BaseFeesTest):
 
         self.client.force_login(self.admin_user)
         response = self.client.post(
-            reverse('school_admin:pending_transfer_reject', args=[payment.pk])
+            reverse("school_admin:pending_transfer_reject", args=[payment.pk])
         )
 
         self.assertEqual(response.status_code, 302)
-        logs = NotificationLog.objects.filter(reference='transfer-reject:%s' % payment.id)
+        logs = NotificationLog.objects.filter(
+            reference="transfer-reject:%s" % payment.id
+        )
         self.assertEqual(logs.count(), 2)  # student + guardian
         log = logs.get(recipient=self.parent_user)
         self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
-        self.assertIn('Bank transfer rejected', log.subject)
+        self.assertIn("Bank transfer rejected", log.subject)
         self.assertEqual(log.status, NotificationLog.Status.QUEUED)
         self.assertTrue(logs.filter(recipient=self.student_user).exists())
 
@@ -2630,20 +2897,20 @@ class InAppNotificationTriggerTest(BaseFeesTest):
             school=self.school,
             invoice=self.invoice,
             student=self.student,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='RCPT_REF',
+            reference="RCPT_REF",
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
         )
 
         receipt = issue_receipt(payment)
 
-        logs = NotificationLog.objects.filter(reference='receipt:%s' % payment.id)
+        logs = NotificationLog.objects.filter(reference="receipt:%s" % payment.id)
         self.assertEqual(logs.count(), 2)  # student + guardian
         log = logs.get(recipient=self.parent_user)
         self.assertEqual(log.channel, NotificationLog.Channel.IN_APP)
-        self.assertIn('Receipt issued', log.subject)
+        self.assertIn("Receipt issued", log.subject)
         self.assertEqual(log.status, NotificationLog.Status.QUEUED)
         self.assertIsNotNone(receipt)
 
@@ -2658,77 +2925,91 @@ class PaymentStateMachineTest(BaseFeesTest):
     def setUp(self):
         super().setUp()
         self.invoice = Invoice.objects.create(
-            school=self.school, student=self.student, term=self.term,
-            total_amount=Decimal('60000.00'),
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal("60000.00"),
         )
         self.payment = Payment.objects.create(
-            school=self.school, invoice=self.invoice, student=self.student,
-            amount=Decimal('20000.00'), method=Payment.Method.BANK_TRANSFER,
-            reference='STM-001', status=Payment.Status.PENDING,
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("20000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            reference="STM-001",
+            status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
 
     def test_pending_to_confirmed_allowed(self):
         self.payment.status = Payment.Status.CONFIRMED
-        self.payment.save(update_fields=['status'])
+        self.payment.save(update_fields=["status"])
         self.payment.refresh_from_db()
         self.assertEqual(self.payment.status, Payment.Status.CONFIRMED)
 
     def test_pending_to_failed_allowed(self):
         self.payment.status = Payment.Status.FAILED
-        self.payment.save(update_fields=['status'])
+        self.payment.save(update_fields=["status"])
         self.payment.refresh_from_db()
         self.assertEqual(self.payment.status, Payment.Status.FAILED)
 
     def test_confirmed_to_failed_rejected(self):
         self.payment.status = Payment.Status.CONFIRMED
-        self.payment.save(update_fields=['status'])
+        self.payment.save(update_fields=["status"])
         self.payment.status = Payment.Status.FAILED
         with self.assertRaises(ValidationError):
-            self.payment.save(update_fields=['status'])
+            self.payment.save(update_fields=["status"])
 
     def test_failed_to_confirmed_rejected(self):
         self.payment.status = Payment.Status.FAILED
-        self.payment.save(update_fields=['status'])
+        self.payment.save(update_fields=["status"])
         self.payment.status = Payment.Status.CONFIRMED
         with self.assertRaises(ValidationError):
-            self.payment.save(update_fields=['status'])
+            self.payment.save(update_fields=["status"])
 
     def test_confirmed_to_pending_rejected(self):
         self.payment.status = Payment.Status.CONFIRMED
-        self.payment.save(update_fields=['status'])
+        self.payment.save(update_fields=["status"])
         self.payment.status = Payment.Status.PENDING
         with self.assertRaises(ValidationError):
-            self.payment.save(update_fields=['status'])
+            self.payment.save(update_fields=["status"])
 
     def test_failed_to_pending_rejected(self):
         self.payment.status = Payment.Status.FAILED
-        self.payment.save(update_fields=['status'])
+        self.payment.save(update_fields=["status"])
         self.payment.status = Payment.Status.PENDING
         with self.assertRaises(ValidationError):
-            self.payment.save(update_fields=['status'])
+            self.payment.save(update_fields=["status"])
 
     def test_direct_creation_of_confirmed_or_failed_allowed(self):
         confirmed = Payment.objects.create(
-            school=self.school, invoice=self.invoice, student=self.student,
-            amount=Decimal('30000.00'), method=Payment.Method.CASH,
-            reference='STM-002', status=Payment.Status.CONFIRMED,
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("30000.00"),
+            method=Payment.Method.CASH,
+            reference="STM-002",
+            status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
         )
         failed = Payment.objects.create(
-            school=self.school, invoice=self.invoice, student=self.student,
-            amount=Decimal('10000.00'), method=Payment.Method.CASH,
-            reference='STM-003', status=Payment.Status.FAILED,
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("10000.00"),
+            method=Payment.Method.CASH,
+            reference="STM-003",
+            status=Payment.Status.FAILED,
             paid_on=timezone.now(),
         )
         self.assertEqual(confirmed.status, Payment.Status.CONFIRMED)
         self.assertEqual(failed.status, Payment.Status.FAILED)
 
     def test_save_without_status_change_still_allowed(self):
-        self.payment.amount = Decimal('15000.00')
-        self.payment.save(update_fields=['amount'])
+        self.payment.amount = Decimal("15000.00")
+        self.payment.save(update_fields=["amount"])
         self.payment.refresh_from_db()
-        self.assertEqual(self.payment.amount, Decimal('15000.00'))
+        self.assertEqual(self.payment.amount, Decimal("15000.00"))
 
 
 class PaymentAuditTrailTest(BaseFeesTest):
@@ -2737,25 +3018,36 @@ class PaymentAuditTrailTest(BaseFeesTest):
     def setUp(self):
         super().setUp()
         self.invoice = Invoice.objects.create(
-            school=self.school, student=self.student, term=self.term,
-            total_amount=Decimal('60000.00'),
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal("60000.00"),
         )
         self.pending = Payment.objects.create(
-            school=self.school, invoice=self.invoice, student=self.student,
-            amount=Decimal('60000.00'), method=Payment.Method.BANK_TRANSFER,
-            reference='AUD-001', status=Payment.Status.PENDING,
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("60000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            reference="AUD-001",
+            status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
         self.admin = User.objects.create_user(
-            username='audit_admin', email='admin@test.com',
-            password='testpass123', school=self.school, role=Roles.ADMIN,
+            username="audit_admin",
+            email="admin@test.com",
+            password="testpass123",
+            school=self.school,
+            role=Roles.ADMIN,
         )
 
     def test_admin_confirm_records_confirmed_by_and_at(self):
         self.client.force_login(self.admin)
-        resp = self.client.post(reverse(
-            'school_admin:pending_transfer_confirm', kwargs={'pk': self.pending.pk}
-        ))
+        resp = self.client.post(
+            reverse(
+                "school_admin:pending_transfer_confirm", kwargs={"pk": self.pending.pk}
+            )
+        )
         self.assertEqual(resp.status_code, 302)
         self.pending.refresh_from_db()
         self.assertEqual(self.pending.status, Payment.Status.CONFIRMED)
@@ -2764,9 +3056,11 @@ class PaymentAuditTrailTest(BaseFeesTest):
 
     def test_admin_reject_marks_failed_without_audit_fields(self):
         self.client.force_login(self.admin)
-        resp = self.client.post(reverse(
-            'school_admin:pending_transfer_reject', kwargs={'pk': self.pending.pk}
-        ))
+        resp = self.client.post(
+            reverse(
+                "school_admin:pending_transfer_reject", kwargs={"pk": self.pending.pk}
+            )
+        )
         self.assertEqual(resp.status_code, 302)
         self.pending.refresh_from_db()
         self.assertEqual(self.pending.status, Payment.Status.FAILED)
@@ -2777,17 +3071,21 @@ class PaymentAuditTrailTest(BaseFeesTest):
         from fees.paystack import confirm_payment_from_verify
 
         payment = Payment.objects.create(
-            school=self.school, invoice=self.invoice, student=self.student,
-            amount=Decimal('40000.00'), method=Payment.Method.PAYSTACK,
-            reference='AUD-002', status=Payment.Status.PENDING,
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("40000.00"),
+            method=Payment.Method.PAYSTACK,
+            reference="AUD-002",
+            status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
         data = {
-            'amount': int(payment.amount * 100),
-            'currency': 'NGN',
-            'fees': 0,
-            'authorization': {'channel': 'card'},
-            'customer': {'email': 'payer@test.com'},
+            "amount": int(payment.amount * 100),
+            "currency": "NGN",
+            "fees": 0,
+            "authorization": {"channel": "card"},
+            "customer": {"email": "payer@test.com"},
         }
         confirm_payment_from_verify(payment, data)
         payment.refresh_from_db()
@@ -2797,12 +3095,16 @@ class PaymentAuditTrailTest(BaseFeesTest):
 
     def test_confirming_a_pending_transfer_issues_receipt(self):
         self.client.force_login(self.admin)
-        self.client.post(reverse(
-            'school_admin:pending_transfer_confirm', kwargs={'pk': self.pending.pk}
-        ))
+        self.client.post(
+            reverse(
+                "school_admin:pending_transfer_confirm", kwargs={"pk": self.pending.pk}
+            )
+        )
         from fees.models import FeeReceipt
+
         receipt = FeeReceipt.objects.filter(
-            school=self.school, payment_id=self.pending.pk,
+            school=self.school,
+            payment_id=self.pending.pk,
         ).first()
         self.assertIsNotNone(receipt)
 
@@ -2817,63 +3119,73 @@ class OverpaymentCapTest(BaseFeesTest):
     def setUp(self):
         super().setUp()
         self.invoice = Invoice.objects.create(
-            school=self.school, student=self.student, term=self.term,
-            total_amount=Decimal('60000.00'),
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal("60000.00"),
         )
         self.admin = User.objects.create_user(
-            username='cap_admin', email='cap@test.com',
-            password='testpass123', school=self.school, role=Roles.ADMIN,
+            username="cap_admin",
+            email="cap@test.com",
+            password="testpass123",
+            school=self.school,
+            role=Roles.ADMIN,
         )
 
     def test_admin_invoice_detail_post_allows_over_balance_overpayment(self):
         self.client.force_login(self.admin)
         resp = self.client.post(
-            reverse('school_admin:invoice_detail', kwargs={'pk': self.invoice.pk}),
-            {'amount': '65000.00', 'method': Payment.Method.CASH, 'reference': ''},
+            reverse("school_admin:invoice_detail", kwargs={"pk": self.invoice.pk}),
+            {"amount": "65000.00", "method": Payment.Method.CASH, "reference": ""},
         )
         self.assertEqual(resp.status_code, 302)
         payment = self.invoice.payments.get(method=Payment.Method.CASH)
-        self.assertEqual(payment.amount, Decimal('65000.00'))
+        self.assertEqual(payment.amount, Decimal("65000.00"))
         self.assertEqual(payment.status, Payment.Status.CONFIRMED)
         self.invoice.refresh_from_db()
-        self.assertEqual(self.invoice.balance, Decimal('-5000.00'))
-        self.assertEqual(self.invoice.display_balance, Decimal('0.00'))
+        self.assertEqual(self.invoice.balance, Decimal("-5000.00"))
+        self.assertEqual(self.invoice.display_balance, Decimal("0.00"))
 
     def test_partial_payments_accumulate_to_balance(self):
         self.client.force_login(self.admin)
-        for i, part in enumerate(['20000.00', '15000.00', '25000.00']):
+        for i, part in enumerate(["20000.00", "15000.00", "25000.00"]):
             resp = self.client.post(
-                reverse('school_admin:invoice_detail', kwargs={'pk': self.invoice.pk}),
-                {'amount': part, 'method': Payment.Method.CASH, 'reference': f'PART-{i}'},
+                reverse("school_admin:invoice_detail", kwargs={"pk": self.invoice.pk}),
+                {
+                    "amount": part,
+                    "method": Payment.Method.CASH,
+                    "reference": f"PART-{i}",
+                },
             )
             self.assertEqual(resp.status_code, 302)
         self.invoice.refresh_from_db()
-        self.assertEqual(self.invoice.balance, Decimal('0.00'))
-        self.assertEqual(self.invoice.status, 'PAID')
+        self.assertEqual(self.invoice.balance, Decimal("0.00"))
+        self.assertEqual(self.invoice.status, "PAID")
 
     def test_blank_reference_auto_generated_and_no_collision(self):
         """Two cash payments with blank references must both succeed (unique_together)."""
         self.client.force_login(self.admin)
-        for part in ['20000.00', '30000.00']:
+        for part in ["20000.00", "30000.00"]:
             resp = self.client.post(
-                reverse('school_admin:invoice_detail', kwargs={'pk': self.invoice.pk}),
-                {'amount': part, 'method': Payment.Method.CASH, 'reference': ''},
+                reverse("school_admin:invoice_detail", kwargs={"pk": self.invoice.pk}),
+                {"amount": part, "method": Payment.Method.CASH, "reference": ""},
             )
             self.assertEqual(resp.status_code, 302)
         payments = self.invoice.payments.filter(method=Payment.Method.CASH)
         self.assertEqual(payments.count(), 2)
         self.assertTrue(all(p.reference for p in payments))
         self.assertEqual(
-            len({p.reference for p in payments}), 2,
-            'Auto-generated references must be distinct.',
+            len({p.reference for p in payments}),
+            2,
+            "Auto-generated references must be distinct.",
         )
 
     def test_paystack_method_without_reference_rejected(self):
         """The Paystack-reference constraint survives via full_clean at the boundary."""
         self.client.force_login(self.admin)
         resp = self.client.post(
-            reverse('school_admin:invoice_detail', kwargs={'pk': self.invoice.pk}),
-            {'amount': '10000.00', 'method': Payment.Method.PAYSTACK, 'reference': ''},
+            reverse("school_admin:invoice_detail", kwargs={"pk": self.invoice.pk}),
+            {"amount": "10000.00", "method": Payment.Method.PAYSTACK, "reference": ""},
         )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(self.invoice.payments.count(), 0)
@@ -2885,15 +3197,21 @@ class ReceiptUniquenessTest(BaseFeesTest):
     def setUp(self):
         super().setUp()
         self.invoice = Invoice.objects.create(
-            school=self.school, student=self.student, term=self.term,
-            total_amount=Decimal('60000.00'),
+            school=self.school,
+            student=self.student,
+            term=self.term,
+            total_amount=Decimal("60000.00"),
         )
 
     def _make_payment(self, reference, amount):
         return Payment.objects.create(
-            school=self.school, invoice=self.invoice, student=self.student,
-            amount=amount, method=Payment.Method.PAYSTACK,
-            reference=reference, status=Payment.Status.CONFIRMED,
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=amount,
+            method=Payment.Method.PAYSTACK,
+            reference=reference,
+            status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
         )
 
@@ -2901,8 +3219,8 @@ class ReceiptUniquenessTest(BaseFeesTest):
         from fees.paystack import issue_receipt
         from fees.models import FeeReceipt
 
-        p1 = self._make_payment('RCP-UNIQ-1', Decimal('30000.00'))
-        p2 = self._make_payment('RCP-UNIQ-2', Decimal('30000.00'))
+        p1 = self._make_payment("RCP-UNIQ-1", Decimal("30000.00"))
+        p2 = self._make_payment("RCP-UNIQ-2", Decimal("30000.00"))
         r1 = issue_receipt(p1)
         r2 = issue_receipt(p2)
         self.assertIsNotNone(r1)
@@ -2914,7 +3232,7 @@ class ReceiptUniquenessTest(BaseFeesTest):
         from fees.paystack import issue_receipt
         from fees.models import FeeReceipt
 
-        payment = self._make_payment('RCP-UNIQ-3', Decimal('30000.00'))
+        payment = self._make_payment("RCP-UNIQ-3", Decimal("30000.00"))
         r1 = issue_receipt(payment)
         r2 = issue_receipt(payment)
         self.assertEqual(r1.pk, r2.pk)
@@ -2923,25 +3241,29 @@ class ReceiptUniquenessTest(BaseFeesTest):
 
 # ─── Student Type & Prospectus Fee Tests ───────────────────────────────────
 
+
 class StudentTypeResolutionTest(BaseFeesTest):
     def test_new_student_without_prior_enrollment(self):
         """Student with no prior enrollment is NEW."""
         from fees.utils import resolve_student_type
-        self.assertEqual(resolve_student_type(self.student, self.session), 'NEW')
+
+        self.assertEqual(resolve_student_type(self.student, self.session), "NEW")
 
     def test_returning_student_with_prior_enrollment(self):
         """Student with a prior enrollment in an earlier session is RETURNING."""
         from fees.utils import resolve_student_type
         from datetime import date
+
         prior_session = AcademicSession.objects.create(
             school=self.school,
-            name='2024/2025',
+            name="2024/2025",
             start_date=date(2024, 9, 1),
             end_date=date(2025, 8, 31),
             is_current=False,
         )
         prior_class = SchoolClass.objects.create(
-            school=self.school, name='PRE1A',
+            school=self.school,
+            name="PRE1A",
         )
         ClassEnrollment.objects.create(
             school=self.school,
@@ -2950,11 +3272,12 @@ class StudentTypeResolutionTest(BaseFeesTest):
             session=prior_session,
             is_current=False,
         )
-        self.assertEqual(resolve_student_type(self.student, self.session), 'RETURNING')
+        self.assertEqual(resolve_student_type(self.student, self.session), "RETURNING")
 
     def test_student_type_for_term_wrapper(self):
         from fees.utils import student_type_for_term
-        self.assertEqual(student_type_for_term(self.student, self.term), 'NEW')
+
+        self.assertEqual(student_type_for_term(self.student, self.term), "NEW")
 
 
 class ProspectusFeeGenerationTest(BaseFeesTest):
@@ -2970,30 +3293,30 @@ class ProspectusFeeGenerationTest(BaseFeesTest):
 
         self.new_intake_category = FeeCategory.objects.create(
             school=self.school,
-            name='Registration Form',
-            billing_cycle='ONE_TIME',
-            student_type='NEW',
+            name="Registration Form",
+            billing_cycle="ONE_TIME",
+            student_type="NEW",
             is_compulsory=True,
         )
         self.uniforms_category = FeeCategory.objects.create(
             school=self.school,
-            name='Uniforms',
-            billing_cycle='ONE_TIME',
-            student_type='NEW',
+            name="Uniforms",
+            billing_cycle="ONE_TIME",
+            student_type="NEW",
             is_compulsory=False,
         )
         self.tuition_category2 = FeeCategory.objects.create(
             school=self.school,
-            name='Tuition Fee',
-            billing_cycle='PER_TERM',
-            student_type='ALL',
+            name="Tuition Fee",
+            billing_cycle="PER_TERM",
+            student_type="ALL",
             is_compulsory=True,
         )
         self.party_category = FeeCategory.objects.create(
             school=self.school,
-            name='Christmas/End of Term Party Fee',
-            billing_cycle='PER_TERM',
-            student_type='ALL',
+            name="Christmas/End of Term Party Fee",
+            billing_cycle="PER_TERM",
+            student_type="ALL",
             is_compulsory=True,
         )
 
@@ -3002,45 +3325,50 @@ class ProspectusFeeGenerationTest(BaseFeesTest):
             school_class=self.school_class,
             term=None,
             category=self.new_intake_category,
-            amount=Decimal('2000.00'),
-            student_type='NEW',
+            amount=Decimal("2000.00"),
+            student_type="NEW",
         )
         self.tuition_fs = FeePrice.objects.create(
             school=self.school,
             school_class=self.school_class,
             term=self.term,
             category=self.tuition_category2,
-            amount=Decimal('25000.00'),
-            student_type='ALL',
+            amount=Decimal("25000.00"),
+            student_type="ALL",
         )
         self.party_fs = FeePrice.objects.create(
             school=self.school,
             school_class=self.school_class,
             term=self.term,
             category=self.party_category,
-            amount=Decimal('5000.00'),
-            student_type='ALL',
+            amount=Decimal("5000.00"),
+            student_type="ALL",
         )
 
     def test_new_student_receives_one_time_and_per_term_fees(self):
         from fees.generation import generate_invoice_for_student
+
         invoice = generate_invoice_for_student(self.student, self.term)
         self.assertIsNotNone(invoice)
-        self.assertEqual(invoice.total_amount, Decimal('32000.00'))  # 2000 + 25000 + 5000
+        self.assertEqual(
+            invoice.total_amount, Decimal("32000.00")
+        )  # 2000 + 25000 + 5000
         self.assertEqual(invoice.line_items.count(), 3)
 
     def test_returning_student_excludes_new_only_fees(self):
         from fees.generation import generate_invoice_for_student
         from datetime import date
+
         prior_session = AcademicSession.objects.create(
             school=self.school,
-            name='2024/2025',
+            name="2024/2025",
             start_date=date(2024, 9, 1),
             end_date=date(2025, 8, 31),
             is_current=False,
         )
         prior_class = SchoolClass.objects.create(
-            school=self.school, name='PRE1A',
+            school=self.school,
+            name="PRE1A",
         )
         ClassEnrollment.objects.create(
             school=self.school,
@@ -3051,20 +3379,20 @@ class ProspectusFeeGenerationTest(BaseFeesTest):
         )
         invoice = generate_invoice_for_student(self.student, self.term)
         self.assertIsNotNone(invoice)
-        self.assertEqual(invoice.total_amount, Decimal('30000.00'))  # 25000 + 5000
+        self.assertEqual(invoice.total_amount, Decimal("30000.00"))  # 25000 + 5000
         self.assertEqual(invoice.line_items.count(), 2)
-        categories = set(invoice.line_items.values_list('category__name', flat=True))
-        self.assertIn('Tuition Fee', categories)
-        self.assertIn('Christmas/End of Term Party Fee', categories)
-        self.assertNotIn('Registration Form', categories)
+        categories = set(invoice.line_items.values_list("category__name", flat=True))
+        self.assertIn("Tuition Fee", categories)
+        self.assertIn("Christmas/End of Term Party Fee", categories)
+        self.assertNotIn("Registration Form", categories)
 
     def test_one_time_fee_has_null_term(self):
         self.assertIsNone(self.one_time_fs.term)
-        self.assertEqual(self.one_time_fs.category.billing_cycle, 'ONE_TIME')
+        self.assertEqual(self.one_time_fs.category.billing_cycle, "ONE_TIME")
 
     def test_per_term_fee_has_term(self):
         self.assertEqual(self.tuition_fs.term, self.term)
-        self.assertEqual(self.tuition_fs.category.billing_cycle, 'PER_TERM')
+        self.assertEqual(self.tuition_fs.category.billing_cycle, "PER_TERM")
 
 
 class ReceiptLineItemBreakdownTest(BaseFeesTest):
@@ -3085,9 +3413,9 @@ class ReceiptLineItemBreakdownTest(BaseFeesTest):
 
         self.party_category = FeeCategory.objects.create(
             school=self.school,
-            name='Christmas/End of Term Party Fee',
-            billing_cycle='PER_TERM',
-            student_type='ALL',
+            name="Christmas/End of Term Party Fee",
+            billing_cycle="PER_TERM",
+            student_type="ALL",
             is_compulsory=True,
         )
         FeePrice.objects.create(
@@ -3095,16 +3423,16 @@ class ReceiptLineItemBreakdownTest(BaseFeesTest):
             school_class=self.school_class,
             term=self.term,
             category=self.tuition_category,
-            amount=Decimal('25000.00'),
-            student_type='ALL',
+            amount=Decimal("25000.00"),
+            student_type="ALL",
         )
         FeePrice.objects.create(
             school=self.school,
             school_class=self.school_class,
             term=self.term,
             category=self.party_category,
-            amount=Decimal('5000.00'),
-            student_type='ALL',
+            amount=Decimal("5000.00"),
+            student_type="ALL",
         )
 
         self.invoice = generate_invoice_for_student(self.student, self.term)
@@ -3120,7 +3448,7 @@ class ReceiptLineItemBreakdownTest(BaseFeesTest):
             student=self.student,
             amount=self.invoice.total_amount,
             method=Payment.Method.PAYSTACK,
-            reference='TEST-RECEIPT-BREAKDOWN',
+            reference="TEST-RECEIPT-BREAKDOWN",
             status=Payment.Status.CONFIRMED,
             paid_on=timezone.now(),
         )
@@ -3129,10 +3457,10 @@ class ReceiptLineItemBreakdownTest(BaseFeesTest):
 
         self.client.force_login(self.parent_user)
         resp = self.client.get(
-            reverse('fees:payment-receipt', kwargs={'payment_id': payment.pk})
+            reverse("fees:payment-receipt", kwargs={"payment_id": payment.pk})
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, 'Fee Breakdown')
+        self.assertContains(resp, "Fee Breakdown")
         self.assertContains(resp, self.tuition_category.name)
         self.assertContains(resp, self.party_category.name)
 
@@ -3148,7 +3476,7 @@ class InitiatePaymentRetryTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
 
     def _initiate(self, existing_reference=None, initialize_side_effect=None):
@@ -3156,15 +3484,16 @@ class InitiatePaymentRetryTest(BaseFeesTest):
         from fees.paystack import initiate_payment
 
         fake_success = {
-            'status': True,
-            'data': {
-                'authorization_url': 'https://paystack.com/authorize/ABC',
-                'access_code': 'ACCESS123',
-                'reference': 'NEW_REF_XYZ',
+            "status": True,
+            "data": {
+                "authorization_url": "https://paystack.com/authorize/ABC",
+                "access_code": "ACCESS123",
+                "reference": "NEW_REF_XYZ",
             },
         }
 
-        with patch('fees.paystack.http_requests.post') as mock_post:
+        with patch("fees.paystack.http_requests.post") as mock_post:
+
             def make_response(data):
                 resp = MagicMock()
                 resp.json.return_value = data
@@ -3177,8 +3506,8 @@ class InitiatePaymentRetryTest(BaseFeesTest):
 
             return initiate_payment(
                 invoice=self.invoice,
-                parent_email='parent@test.com',
-                callback_url='https://example.com/callback',
+                parent_email="parent@test.com",
+                callback_url="https://example.com/callback",
                 existing_reference=existing_reference,
             )
 
@@ -3191,9 +3520,9 @@ class InitiatePaymentRetryTest(BaseFeesTest):
             school=self.school,
             invoice=self.invoice,
             student=self.student,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='OLD_REUSE_REF',
+            reference="OLD_REUSE_REF",
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
@@ -3201,11 +3530,11 @@ class InitiatePaymentRetryTest(BaseFeesTest):
         call_count = 0
         fresh_response = MagicMock()
         fresh_response.json.return_value = {
-            'status': True,
-            'data': {
-                'authorization_url': 'https://paystack.com/authorize/NEW',
-                'access_code': 'NEW_ACCESS',
-                'reference': 'NEW_REF',
+            "status": True,
+            "data": {
+                "authorization_url": "https://paystack.com/authorize/NEW",
+                "access_code": "NEW_ACCESS",
+                "reference": "NEW_REF",
             },
         }
         fresh_response.raise_for_status.return_value = None
@@ -3214,15 +3543,15 @@ class InitiatePaymentRetryTest(BaseFeesTest):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                raise Exception('duplicate reference')
+                raise Exception("duplicate reference")
             return fresh_response
 
         result = self._initiate(
-            existing_reference='OLD_REUSE_REF',
+            existing_reference="OLD_REUSE_REF",
             initialize_side_effect=side_effect,
         )
 
-        self.assertIn('authorization_url', result)
+        self.assertIn("authorization_url", result)
         self.assertEqual(call_count, 2)
         existing_payment.refresh_from_db()
         self.assertEqual(existing_payment.status, Payment.Status.PENDING)
@@ -3235,11 +3564,11 @@ class InitiatePaymentRetryTest(BaseFeesTest):
         call_count = 0
         fresh_response = MagicMock()
         fresh_response.json.return_value = {
-            'status': True,
-            'data': {
-                'authorization_url': 'https://paystack.com/authorize/FRESH',
-                'access_code': 'FRESH_ACCESS',
-                'reference': 'FRESH_REF',
+            "status": True,
+            "data": {
+                "authorization_url": "https://paystack.com/authorize/FRESH",
+                "access_code": "FRESH_ACCESS",
+                "reference": "FRESH_REF",
             },
         }
         fresh_response.raise_for_status.return_value = None
@@ -3248,17 +3577,17 @@ class InitiatePaymentRetryTest(BaseFeesTest):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                raise Exception('duplicate reference')
+                raise Exception("duplicate reference")
             return fresh_response
 
         result = self._initiate(
-            existing_reference='REUSED_REF',
+            existing_reference="REUSED_REF",
             initialize_side_effect=side_effect,
         )
 
-        self.assertIn('authorization_url', result)
-        self.assertTrue(result['reference'].startswith('GH-'))
-        new_payment = Payment.objects.filter(reference=result['reference']).first()
+        self.assertIn("authorization_url", result)
+        self.assertTrue(result["reference"].startswith("GH-"))
+        new_payment = Payment.objects.filter(reference=result["reference"]).first()
         self.assertIsNotNone(new_payment)
         self.assertEqual(new_payment.status, Payment.Status.PENDING)
 
@@ -3275,15 +3604,15 @@ class ChargeFailureEdgeCaseTest(BaseFeesTest):
             school=self.school,
             student=self.student,
             term=self.term,
-            total_amount=Decimal('60000.00'),
+            total_amount=Decimal("60000.00"),
         )
         self.payment = Payment.objects.create(
             school=self.school,
             invoice=self.invoice,
             student=self.student,
-            amount=Decimal('60000.00'),
+            amount=Decimal("60000.00"),
             method=Payment.Method.PAYSTACK,
-            reference='FAIL_REF_001',
+            reference="FAIL_REF_001",
             status=Payment.Status.PENDING,
             paid_on=timezone.now(),
         )
@@ -3295,25 +3624,25 @@ class ChargeFailureEdgeCaseTest(BaseFeesTest):
 
         reference = reference or self.payment.reference
         payload = {
-            'event': event_name,
-            'data': {'reference': reference},
+            "event": event_name,
+            "data": {"reference": reference},
         }
         factory = RequestFactory()
         request = factory.post(
-            '/fees/api/paystack-webhook/',
+            "/fees/api/paystack-webhook/",
             data=payload,
-            content_type='application/json',
-            HTTP_X_PAYSTACK_SIGNATURE='test_signature',
+            content_type="application/json",
+            HTTP_X_PAYSTACK_SIGNATURE="test_signature",
         )
 
-        with patch('fees.paystack.verify_webhook_signature', return_value=True):
+        with patch("fees.paystack.verify_webhook_signature", return_value=True):
             response = self.webhook_view(request)
 
         return response
 
     def test_charge_error_marks_pending_failed(self):
         """charge.error event flips a PENDING payment to FAILED."""
-        response = self._simulate_webhook('charge.error')
+        response = self._simulate_webhook("charge.error")
         self.assertEqual(response.status_code, 200)
         self.payment.refresh_from_db()
         self.assertEqual(self.payment.status, Payment.Status.FAILED)
@@ -3324,16 +3653,16 @@ class ChargeFailureEdgeCaseTest(BaseFeesTest):
         from unittest.mock import patch
         from django.test import RequestFactory
 
-        payload = {'event': 'charge.failed', 'data': {}}
+        payload = {"event": "charge.failed", "data": {}}
         factory = RequestFactory()
         request = factory.post(
-            '/fees/api/paystack-webhook/',
+            "/fees/api/paystack-webhook/",
             data=payload,
-            content_type='application/json',
-            HTTP_X_PAYSTACK_SIGNATURE='test_signature',
+            content_type="application/json",
+            HTTP_X_PAYSTACK_SIGNATURE="test_signature",
         )
 
-        with patch('fees.paystack.verify_webhook_signature', return_value=True):
+        with patch("fees.paystack.verify_webhook_signature", return_value=True):
             response = self.webhook_view(request)
 
         self.assertEqual(response.status_code, 400)
@@ -3343,9 +3672,9 @@ class ChargeFailureEdgeCaseTest(BaseFeesTest):
     def test_charge_failure_on_confirmed_payment_is_idempotent(self):
         """charge.failed on an already CONFIRMED payment is a no-op."""
         self.payment.status = Payment.Status.CONFIRMED
-        self.payment.save(update_fields=['status'])
+        self.payment.save(update_fields=["status"])
 
-        response = self._simulate_webhook('charge.failed')
+        response = self._simulate_webhook("charge.failed")
         self.assertEqual(response.status_code, 200)
         self.payment.refresh_from_db()
         self.assertEqual(self.payment.status, Payment.Status.CONFIRMED)

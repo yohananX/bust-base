@@ -14,22 +14,6 @@
 {% block content %}
 <div class="max-w-3xl mx-auto space-y-6">
 
-  {# ===== Payment status — polls while Paystack confirms the return ===== #}
-  {% if reference %}
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-    <div id="payment-status"
-         hx-get="{% url 'fees:payment-status-partial' %}?reference={{ reference }}"
-         hx-trigger="every 2s"
-         hx-swap="innerHTML">
-      <div class="text-center py-8">
-        <div class="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p class="text-sm font-medium text-gray-600">Confirming your payment...</p>
-        <p class="text-xs text-gray-400 mt-2">This usually takes a few seconds.</p>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
   {# ===== How much do you owe? ===== #}
   {% if not any_payable %}
   <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 opacity-70">

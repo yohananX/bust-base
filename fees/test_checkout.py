@@ -26,12 +26,14 @@ with Tuition flagged ``billed=True`` and Books unbilled (selectable).
 
 from decimal import Decimal
 from datetime import date
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.messages import get_messages
 
 from core.models import School, AcademicSession, Term
@@ -497,6 +499,37 @@ class FeeCheckoutTest(TestCase):
         next_payment = payments.get(invoice=next_invoice)
         self.assertEqual(next_payment.amount, Decimal("30000.00") - expected_current)
 
+    @patch("fees.views.paystack_initiate")
+    def test_checkout_submit_split_paystack_uses_unified_return(self, mock_initiate):
+        """A split Paystack checkout creates both rows and uses the shared return URL."""
+        mock_initiate.return_value = {
+            "authorization_url": "https://paystack.test/start",
+            "reference": "PAYSTACK-SPLIT-001",
+        }
+        self.client.force_login(self.parent_user)
+
+        response = self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "item": ["outstanding", f"next:{self.books_category.pk}"],
+                "amount": "30000.00",
+                "method": "paystack",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            "https://paystack.test/start",
+            fetch_redirect_response=False,
+        )
+        self.assertEqual(
+            Payment.objects.filter(method=Payment.Method.PAYSTACK).count(),
+            2,
+        )
+        callback_url = mock_initiate.call_args.args[2]
+        self.assertTrue(callback_url.endswith(reverse("fees:payment-return")))
+
     def test_checkout_submit_scope_denied(self):
         """A user with no link to the student is redirected and nothing is created."""
         if CheckoutSubmitView is None:
@@ -574,3 +607,620 @@ class FeeCheckoutTest(TestCase):
         labels = {item.label for item in line_items}
         self.assertIn("Outstanding: First Term", labels)
         self.assertIn("Books", labels)
+
+
+class TransferReferenceTest(TestCase):
+    """Tests for the TRF-YYYYMMDD-XXXX reference generator."""
+
+    def test_reference_format(self):
+        """Reference matches TRF-YYYYMMDD-XXXX pattern."""
+        from fees.utils import generate_transfer_reference
+        import re
+
+        ref = generate_transfer_reference()
+        self.assertRegex(
+            ref,
+            r"^TRF-\d{8}-[0-9A-F]{4}$",
+            f"reference {ref!r} does not match TRF-YYYYMMDD-XXXX",
+        )
+
+    def test_reference_date_todays(self):
+        """Date portion of reference is today's date."""
+        from datetime import date
+        from fees.utils import generate_transfer_reference
+
+        ref = generate_transfer_reference()
+        expected = date.today().strftime("%Y%m%d")
+        self.assertIn(f"TRF-{expected}-", ref)
+
+    def test_reference_uniqueness(self):
+        """Generating references 100 times produces 100 unique values."""
+        from fees.utils import generate_transfer_reference
+
+        refs = {generate_transfer_reference() for _ in range(100)}
+        self.assertEqual(len(refs), 100)
+
+
+class BankTransferPaymentTest(FeeCheckoutTest):
+    """Tests for bank-transfer checkout: reference, idempotency, resubmission, balance."""
+
+    def setUp(self):
+        # Fresh DB for each test to avoid polluting the shared fixture.
+        from django.test.utils import setup_test_environment
+
+    def test_bank_transfer_creates_reference(self):
+        """Bank-transfer checkout generates a TRF-YYYYMMDD-XXXX reference."""
+        if CheckoutSubmitView is None:
+            self.skipTest("CheckoutSubmitView not yet present")
+        self.client.force_login(self.parent_user)
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        response = self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "item": ["outstanding"],
+                "amount": "20000.00",
+                "method": "bank_transfer",
+                "proof_image": SimpleUploadedFile(
+                    "proof.png",
+                    b"\x89PNG\r\n\x1a\nfake-image-bytes",
+                    content_type="image/png",
+                ),
+                "paid_by_name": "Parent One",
+                "paid_by_relation": "Father",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        payment = Payment.objects.get(
+            status=Payment.Status.PENDING,
+            method=Payment.Method.BANK_TRANSFER,
+        )
+        self.assertIsNotNone(payment.reference)
+        self.assertRegex(
+            payment.reference,
+            r"^TRF-\d{8}-[0-9A-F]{4}$",
+            f"reference {payment.reference!r} does not match TRF-YYYYMMDD-XXXX",
+        )
+
+    def test_idempotent_resubmission_no_duplicate(self):
+        """Re-submitting with the same idempotency_key does not create a duplicate."""
+        if CheckoutSubmitView is None:
+            self.skipTest("CheckoutSubmitView not yet present")
+        self.client.force_login(self.parent_user)
+
+        import uuid
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        idempotency_key = str(uuid.uuid4())
+
+        response = self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "item": ["outstanding"],
+                "amount": "20000.00",
+                "method": "bank_transfer",
+                "proof_image": SimpleUploadedFile(
+                    "proof.png",
+                    b"\x89PNG\r\n\x1a\nfake-image-bytes",
+                    content_type="image/png",
+                ),
+                "paid_by_name": "Parent One",
+                "paid_by_relation": "Father",
+                "idempotency_key": idempotency_key,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        first_payment = Payment.objects.get(
+            status=Payment.Status.PENDING,
+            method=Payment.Method.BANK_TRANSFER,
+        )
+
+        # Re-submit with the same idempotency_key
+        response2 = self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "item": ["outstanding"],
+                "amount": "20000.00",
+                "method": "bank_transfer",
+                "proof_image": SimpleUploadedFile(
+                    "proof.png",
+                    b"\x89PNG\r\n\x1a\nfake-image-bytes",
+                    content_type="image/png",
+                ),
+                "paid_by_name": "Parent One",
+                "paid_by_relation": "Father",
+                "idempotency_key": idempotency_key,
+            },
+        )
+
+        self.assertEqual(response2.status_code, 302)
+        # Still only one PENDING payment
+        count = Payment.objects.filter(
+            status=Payment.Status.PENDING,
+            method=Payment.Method.BANK_TRANSFER,
+        ).count()
+        self.assertEqual(count, 1)
+        messages = [str(m) for m in get_messages(response2.wsgi_request)]
+        self.assertTrue(
+            any("still pending" in m.lower() for m in messages),
+            f"expected duplicate-warning message, got: {messages}",
+        )
+
+    def test_idempotent_resubmission_different_key_creates_new(self):
+        """Re-submitting with a different idempotency_key creates a new payment."""
+        if CheckoutSubmitView is None:
+            self.skipTest("CheckoutSubmitView not yet present")
+        self.client.force_login(self.parent_user)
+
+        import uuid
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        key1 = str(uuid.uuid4())
+        key2 = str(uuid.uuid4())
+        self.assertNotEqual(key1, key2)
+
+        for key in (key1, key2):
+            response = self.client.post(
+                reverse("fees:checkout-submit"),
+                {
+                    "student_id": str(self.student.pk),
+                    "item": ["outstanding"],
+                    "amount": "20000.00",
+                    "method": "bank_transfer",
+                    "proof_image": SimpleUploadedFile(
+                        "proof.png",
+                        b"\x89PNG\r\n\x1a\nfake-image-bytes",
+                        content_type="image/png",
+                    ),
+                    "paid_by_name": "Parent One",
+                    "paid_by_relation": "Father",
+                    "idempotency_key": key,
+                },
+            )
+            self.assertEqual(response.status_code, 302)
+
+        count = Payment.objects.filter(
+            status=Payment.Status.PENDING,
+            method=Payment.Method.BANK_TRANSFER,
+        ).count()
+        self.assertEqual(count, 2)
+
+    def test_resubmission_of_links_to_rejected(self):
+        """Submitting with resubmission_of=<payment_id> links the new payment."""
+        if CheckoutSubmitView is None:
+            self.skipTest("CheckoutSubmitView not yet present")
+        self.client.force_login(self.parent_user)
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        # Create a rejected payment to resubmit
+        original = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=TUITION_AMOUNT,
+            method=Payment.Method.BANK_TRANSFER,
+            reference="TRF-OLD-0001",
+            status=Payment.Status.REJECTED,
+            paid_on=timezone.now(),
+            rejection_reason="Incorrect amount paid",
+        )
+
+        response = self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "item": ["outstanding"],
+                "amount": "20000.00",
+                "method": "bank_transfer",
+                "proof_image": SimpleUploadedFile(
+                    "proof.png",
+                    b"\x89PNG\r\n\x1a\nfake-image-bytes",
+                    content_type="image/png",
+                ),
+                "paid_by_name": "Parent One",
+                "paid_by_relation": "Father",
+                "resubmission_of": str(original.pk),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        new_payment = Payment.objects.exclude(pk=original.pk).get(
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.PENDING,
+        )
+        self.assertEqual(new_payment.resubmission_of, original)
+
+    def test_balance_unchanged_while_pending(self):
+        """PENDING bank transfers must not reduce the invoice balance."""
+        if CheckoutSubmitView is None:
+            self.skipTest("CheckoutSubmitView not yet present")
+        self.client.force_login(self.parent_user)
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        balance_before = self.invoice.balance
+        self.assertEqual(balance_before, TUITION_AMOUNT)
+
+        response = self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "item": ["outstanding"],
+                "amount": "20000.00",
+                "method": "bank_transfer",
+                "proof_image": SimpleUploadedFile(
+                    "proof.png",
+                    b"\x89PNG\r\n\x1a\nfake-image-bytes",
+                    content_type="image/png",
+                ),
+                "paid_by_name": "Parent One",
+                "paid_by_relation": "Father",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.invoice.refresh_from_db()
+        # Balance should be unchanged — PENDING payments don't count
+        self.assertEqual(self.invoice.balance, TUITION_AMOUNT)
+
+
+class BankTransferDuplicateWarningTest(TestCase):
+    """Soft duplicate warning when a PENDING bank transfer already exists."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.school = School.objects.create(name="Test School", short_code="test")
+        cls.session = AcademicSession.objects.create(
+            school=cls.school,
+            name="2025/2026",
+            start_date=date(2025, 9, 1),
+            end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        cls.term = Term.objects.create(
+            school=cls.school,
+            session=cls.session,
+            name="First Term",
+            start_date=date(2025, 9, 1),
+            end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+
+        cls.school_class = SchoolClass.objects.create(
+            school=cls.school,
+            name="JSS1A",
+        )
+
+        cls.student_user = User.objects.create_user(
+            username="student1",
+            email="student1@test.com",
+            password="testpass123",
+            school=cls.school,
+            role=Roles.STUDENT,
+            first_name="John",
+            last_name="Doe",
+            is_active=True,
+        )
+        cls.student = Student.objects.create(
+            school=cls.school,
+            user=cls.student_user,
+            admission_number="STU001",
+            date_of_birth=date(2010, 1, 1),
+            gender=Student.MALE,
+            admission_date=date(2025, 9, 1),
+            status=Student.ACTIVE,
+        )
+        ClassEnrollment.objects.create(
+            school=cls.school,
+            student=cls.student,
+            school_class=cls.school_class,
+            session=cls.session,
+            is_current=True,
+        )
+        cls.category = FeeCategory.objects.create(
+            school=cls.school,
+            name="Tuition",
+            is_compulsory=True,
+        )
+        FeePrice.objects.create(
+            school=cls.school,
+            scope=FeePrice.SCOPE_CLASS,
+            school_class=cls.school_class,
+            term=cls.term,
+            category=cls.category,
+            amount=TUITION_AMOUNT,
+            student_type="ALL",
+        )
+        cls.invoice = Invoice.objects.create(
+            school=cls.school,
+            student=cls.student,
+            term=cls.term,
+            total_amount=TUITION_AMOUNT,
+        )
+
+        cls.parent_user = User.objects.create_user(
+            username="parent1",
+            email="parent1@test.com",
+            password="testpass123",
+            school=cls.school,
+            role=Roles.PARENT,
+            first_name="Henry",
+            last_name="Cluefather",
+            is_active=True,
+        )
+        StudentGuardianLink.objects.create(
+            school=cls.school,
+            student=cls.student,
+            guardian=cls.parent_user,
+            relationship="FATHER",
+            is_primary_contact=True,
+        )
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        cls.proof = SimpleUploadedFile(
+            "proof.png",
+            b"\x89PNG\r\n\x1a\nfake-image-bytes",
+            content_type="image/png",
+        )
+
+    def test_pending_transfer_soft_duplicate_warning(self):
+        """Existing PENDING bank transfer blocks new submission without idempotency_key."""
+        if CheckoutSubmitView is None:
+            self.skipTest("CheckoutSubmitView not yet present")
+        self.client.force_login(self.parent_user)
+
+        # Submit first transfer (no idempotency_key)
+        self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "item": ["outstanding"],
+                "amount": "20000.00",
+                "method": "bank_transfer",
+                "proof_image": self.proof,
+                "paid_by_name": "Parent One",
+                "paid_by_relation": "Father",
+            },
+        )
+
+        pending = Payment.objects.filter(
+            status=Payment.Status.PENDING,
+            method=Payment.Method.BANK_TRANSFER,
+        ).first()
+        self.assertIsNotNone(pending)
+        self.assertEqual(pending.invoice, self.invoice)
+        self.assertEqual(pending.student, self.student)
+        from decimal import Decimal
+
+        self.assertEqual(pending.amount, Decimal("20000.00"))
+
+        # Second submission without idempotency_key should show warning and not create new
+        self.proof = SimpleUploadedFile(
+            "proof2.png",
+            b"\x89PNG\r\n\x1a\nfake-image-new-bytes",
+            content_type="image/png",
+        )
+
+        response2 = self.client.post(
+            reverse("fees:checkout-submit"),
+            {
+                "student_id": str(self.student.pk),
+                "item": ["outstanding"],
+                "amount": "25000.00",
+                "method": "bank_transfer",
+                "proof_image": self.proof,
+                "paid_by_name": "Parent One",
+                "paid_by_relation": "Father",
+            },
+        )
+
+        self.assertEqual(response2.status_code, 302)
+        # Still only one PENDING payment
+        count = Payment.objects.filter(
+            status=Payment.Status.PENDING,
+            method=Payment.Method.BANK_TRANSFER,
+        ).count()
+        self.assertEqual(count, 1)
+        messages = [str(m) for m in get_messages(response2.wsgi_request)]
+        self.assertTrue(
+            any(
+                "already awaiting" in m.lower() or "duplicate" in m.lower()
+                for m in messages
+            ),
+            f"expected soft duplicate warning, got: {messages}",
+        )
+
+
+class PaymentStatusTransitionTest(TestCase):
+    """Tests for REJECTED status and status transition constraints."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.school = School.objects.create(name="Test School", short_code="test")
+        cls.session = AcademicSession.objects.create(
+            school=cls.school,
+            name="2025/2026",
+            start_date=date(2025, 9, 1),
+            end_date=date(2026, 8, 31),
+            is_current=True,
+        )
+        cls.term = Term.objects.create(
+            school=cls.school,
+            session=cls.session,
+            name="First Term",
+            start_date=date(2025, 9, 1),
+            end_date=date(2025, 12, 15),
+            is_current=True,
+        )
+
+        cls.admin_user = User.objects.create_user(
+            username="admin1",
+            password="testpass123",
+            school=cls.school,
+            role=Roles.ADMIN,
+        )
+
+        cls.student_user = User.objects.create_user(
+            username="student1",
+            password="testpass123",
+            school=cls.school,
+            role=Roles.STUDENT,
+        )
+        cls.student = Student.objects.create(
+            school=cls.school,
+            user=cls.student_user,
+            admission_number="STU001",
+            date_of_birth=date(2010, 1, 1),
+            gender=Student.MALE,
+            admission_date=date(2025, 9, 1),
+            status=Student.ACTIVE,
+        )
+        cls.invoice = Invoice.objects.create(
+            school=cls.school,
+            student=cls.student,
+            term=cls.term,
+            total_amount=TUITION_AMOUNT,
+        )
+
+    def test_pending_to_rejected_transition(self):
+        """PENDING → REJECTED is a legal transition."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("20000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        payment.status = Payment.Status.REJECTED
+        payment.rejection_reason = "Incorrect amount paid"
+        payment.reviewed_by = self.admin_user
+        payment.reviewed_at = timezone.now()
+        payment.save()  # should not raise
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.REJECTED)
+
+    def test_rejected_requires_reason(self):
+        """REJECTED status requires a rejection_reason."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("20000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        payment.status = Payment.Status.REJECTED
+        with self.assertRaises(ValidationError) as ctx:
+            payment.full_clean()
+        self.assertIn("rejection_reason", ctx.exception.message_dict)
+
+    def test_rejected_requires_reason_not_blank(self):
+        """Whitespace-only rejection_reason is treated as missing."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("20000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        payment.status = Payment.Status.REJECTED
+        payment.rejection_reason = "   "
+        with self.assertRaises(ValidationError) as ctx:
+            payment.full_clean()
+        self.assertIn("rejection_reason", ctx.exception.message_dict)
+
+    def test_confirmed_to_rejected_rejected(self):
+        """CONFIRMED → REJECTED is not a legal transition."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("20000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.CONFIRMED,
+            paid_on=timezone.now(),
+        )
+        payment.status = Payment.Status.REJECTED
+        with self.assertRaises(ValidationError):
+            payment.save()
+
+    def test_failed_to_rejected_rejected(self):
+        """FAILED → REJECTED is not a legal transition."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("20000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.FAILED,
+            paid_on=timezone.now(),
+        )
+        payment.status = Payment.Status.REJECTED
+        with self.assertRaises(ValidationError):
+            payment.save()
+
+    def test_pending_to_confirmed_still_legal(self):
+        """PENDING → CONFIRMED is still a legal transition."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("20000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        payment.status = Payment.Status.CONFIRMED
+        payment.save()  # should not raise
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.CONFIRMED)
+
+    def test_pending_to_failed_still_legal(self):
+        """PENDING → FAILED is still a legal transition."""
+        payment = Payment.objects.create(
+            school=self.school,
+            invoice=self.invoice,
+            student=self.student,
+            amount=Decimal("20000.00"),
+            method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.PENDING,
+            paid_on=timezone.now(),
+        )
+        payment.status = Payment.Status.FAILED
+        payment.save()  # should not raise
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.FAILED)
+
+
+class RejectionReasonChoicesTest(TestCase):
+    """Tests for the PaymentRejectionReason choices enum."""
+
+    def test_rejection_reason_choices_exist(self):
+        """All expected choices are defined."""
+        from fees.models import PaymentRejectionReason
+
+        self.assertEqual(
+            set(r.value for r in PaymentRejectionReason),
+            {"INCORRECT_AMOUNT", "EXPIRED_TRANSFER", "INVALID_PROOF", "CUSTOM"},
+        )
+
+    def test_rejection_reason_display_labels(self):
+        """Each choice has a human-readable label."""
+        from fees.models import PaymentRejectionReason
+
+        for choice in PaymentRejectionReason:
+            label = choice.label
+            self.assertTrue(len(label) > 0, f"{choice.value} has an empty label")

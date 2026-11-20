@@ -1,8 +1,9 @@
 from decimal import Decimal
+from urllib.parse import urlencode
 from django.conf import settings
 from django.db.models import Q, Prefetch
 from django.shortcuts import get_object_or_404, render, redirect
-from django.urls import reverse                                       
+from django.urls import reverse
 from django.views.generic.base import View
 from django.contrib import messages
 
@@ -35,11 +36,11 @@ def _extra_lessons_guard_redirect(request, student_ids, student=None):
     if not qs.exists():
         messages.info(
             request,
-            'None of your children are enrolled in extra lessons yet.'
-            if student is None else
-            'You have no extra lessons enrollments yet.',
+            "None of your children are enrolled in extra lessons yet."
+            if student is None
+            else "You have no extra lessons enrollments yet.",
         )
-        return redirect('parent-children' if student is None else 'student-overview')
+        return redirect("parent-children" if student is None else "student-overview")
     return None
 
 
@@ -50,10 +51,16 @@ def _extra_lessons_base_qs(school, student_ids=None, student=None):
         qs = qs.filter(student=student)
     elif student_ids is not None:
         qs = qs.filter(student_id__in=student_ids)
-    return qs.exclude(status=LessonEnrollment.Status.CANCELLED).select_related(
-        'lesson_class', 'lesson_class__period',
-        'student', 'student__user',
-    ).prefetch_related('payments')
+    return (
+        qs.exclude(status=LessonEnrollment.Status.CANCELLED)
+        .select_related(
+            "lesson_class",
+            "lesson_class__period",
+            "student",
+            "student__user",
+        )
+        .prefetch_related("payments")
+    )
 
 
 def _extra_lessons_balance_data(enrollments):
@@ -61,7 +68,7 @@ def _extra_lessons_balance_data(enrollments):
 
     Returns ``(enrollments_list, total_outstanding)``.
     """
-    total_outstanding = Decimal('0.00')
+    total_outstanding = Decimal("0.00")
     for e in enrollments:
         if e.balance > 0:
             total_outstanding += e.balance
@@ -70,13 +77,17 @@ def _extra_lessons_balance_data(enrollments):
 
 def _get_guardian_links(user):
     """Return guardian links for a parent with related student data prefetched."""
-    return StudentGuardianLink.objects.filter(
-        guardian=user,
-    ).select_related(
-        'student__user',
-    ).prefetch_related(
-        'student__enrollments__school_class',
-        'student__enrollments__session',
+    return (
+        StudentGuardianLink.objects.filter(
+            guardian=user,
+        )
+        .select_related(
+            "student__user",
+        )
+        .prefetch_related(
+            "student__enrollments__school_class",
+            "student__enrollments__session",
+        )
     )
 
 
@@ -86,9 +97,13 @@ def _build_invoice_maps(student_ids):
     Returns:
         (invoices_by_student, owed_by_student)
     """
-    invoices_qs = Invoice.objects.filter(
-        student_id__in=student_ids,
-    ).select_related('term', 'student', 'student__user').prefetch_related('payments')
+    invoices_qs = (
+        Invoice.objects.filter(
+            student_id__in=student_ids,
+        )
+        .select_related("term", "student", "student__user")
+        .prefetch_related("payments")
+    )
     invoices_by_student = {}
     for inv in invoices_qs:
         invoices_by_student.setdefault(inv.student_id, []).append(inv)
@@ -113,7 +128,9 @@ def _term_results_for_children(student_ids, term):
     }
 
 
-def _build_child_data(link, invoices_by_student, owed_by_student, term_results, active_term):
+def _build_child_data(
+    link, invoices_by_student, owed_by_student, term_results, active_term
+):
     """Build the context dict for one child."""
     student = link.student
 
@@ -121,7 +138,8 @@ def _build_child_data(link, invoices_by_student, owed_by_student, term_results, 
 
     term_result = term_results.get(student.pk)
     results_locked = bool(
-        active_term and student.pk in owed_by_student
+        active_term
+        and student.pk in owed_by_student
         and active_term.pk in owed_by_student[student.pk]
     )
     if results_locked:
@@ -133,57 +151,57 @@ def _build_child_data(link, invoices_by_student, owed_by_student, term_results, 
     unpaid_count = len(unpaid_invoices)
 
     return {
-        'student': student,
-        'enrollment': enrollment,
-        'term_result': term_result,
-        'results_locked': results_locked,
-        'total_owed': total_owed,
-        'unpaid_count': unpaid_count,
+        "student": student,
+        "enrollment": enrollment,
+        "term_result": term_result,
+        "results_locked": results_locked,
+        "total_owed": total_owed,
+        "unpaid_count": unpaid_count,
     }
 
 
 def _build_portal_summary(children_data, active_term, request):
     """Build dashboard summary stats and chart data from children_data."""
     total_children = len(children_data)
-    total_owed_all = sum(c['total_owed'] for c in children_data)
-    unpaid_invoices = sum(c['unpaid_count'] for c in children_data)
+    total_owed_all = sum(c["total_owed"] for c in children_data)
+    unpaid_invoices = sum(c["unpaid_count"] for c in children_data)
 
-    results_published = bool(
-        active_term and active_term.results_published
-    )
+    results_published = bool(active_term and active_term.results_published)
     averages = [
-        c['term_result'].average
+        c["term_result"].average
         for c in children_data
-        if c['term_result'] and c['term_result'].average
+        if c["term_result"] and c["term_result"].average
     ]
-    children_average = (
-        round(sum(averages) / len(averages), 1) if averages else None
-    )
+    children_average = round(sum(averages) / len(averages), 1) if averages else None
 
     published_terms_count = 0
     if children_data:
-        child_ids = [c['student'].pk for c in children_data]
-        published_terms_count = Term.objects.filter(
-            school=request.school,
-            results_published=True,
-            scores__student_id__in=child_ids,
-        ).distinct().count()
+        child_ids = [c["student"].pk for c in children_data]
+        published_terms_count = (
+            Term.objects.filter(
+                school=request.school,
+                results_published=True,
+                scores__student_id__in=child_ids,
+            )
+            .distinct()
+            .count()
+        )
 
     child_chart_labels = [
-        c['student'].user.get_full_name() or c['student'].user.username
+        c["student"].user.get_full_name() or c["student"].user.username
         for c in children_data
     ]
-    child_chart_values = [float(c['total_owed']) for c in children_data]
+    child_chart_values = [float(c["total_owed"]) for c in children_data]
 
     return {
-        'total_children': total_children,
-        'total_owed_all': total_owed_all,
-        'unpaid_invoices': unpaid_invoices,
-        'results_published': results_published,
-        'children_average': children_average,
-        'published_terms_count': published_terms_count,
-        'child_chart_labels': child_chart_labels,
-        'child_chart_values': child_chart_values,
+        "total_children": total_children,
+        "total_owed_all": total_owed_all,
+        "unpaid_invoices": unpaid_invoices,
+        "results_published": results_published,
+        "children_average": children_average,
+        "published_terms_count": published_terms_count,
+        "child_chart_labels": child_chart_labels,
+        "child_chart_values": child_chart_values,
     }
 
 
@@ -197,16 +215,18 @@ def _parent_portal_context(request) -> dict:
     term_results = _term_results_for_children(student_ids, active_term)
 
     children_data = [
-        _build_child_data(link, invoices_by_student, owed_by_student, term_results, active_term)
+        _build_child_data(
+            link, invoices_by_student, owed_by_student, term_results, active_term
+        )
         for link in guardian_links
     ]
 
     summary = _build_portal_summary(children_data, active_term, request)
 
     return {
-        'children_data': children_data,
+        "children_data": children_data,
         **summary,
-        'current_term': active_term,
+        "current_term": active_term,
     }
 
 
@@ -218,7 +238,7 @@ class ParentDashboardView(RoleRequiredMixin, View):
     def get(self, request):
         return render(
             request,
-            'students/parent/dashboard.html',
+            "students/parent/dashboard.html",
             _parent_portal_context(request),
         )
 
@@ -231,7 +251,7 @@ class ParentChildrenListView(RoleRequiredMixin, View):
     def get(self, request):
         return render(
             request,
-            'students/parent/children_list.html',
+            "students/parent/children_list.html",
             _parent_portal_context(request),
         )
 
@@ -243,29 +263,48 @@ class ParentChildDetailView(RoleRequiredMixin, View):
 
     def get(self, request, pk):
         guardian_link = get_object_or_404(
-            StudentGuardianLink, guardian=request.user, student_id=pk,
+            StudentGuardianLink,
+            guardian=request.user,
+            student_id=pk,
         )
         student = guardian_link.student
 
-        current_enrollment = ClassEnrollment.objects.filter(
-            student=student, is_current=True,
-        ).select_related('school_class', 'session').first()
+        current_enrollment = (
+            ClassEnrollment.objects.filter(
+                student=student,
+                is_current=True,
+            )
+            .select_related("school_class", "session")
+            .first()
+        )
 
         active_term = current_term(request.school)
 
-        invoices = Invoice.objects.filter(
-            student=student,
-        ).prefetch_related('payments').order_by('-term__start_date')
-
-        scores = Score.objects.visible_to_user(request.user).filter(
-            student=student,
-        ).select_related('class_subject__subject', 'term').order_by(
-            'class_subject__subject__name'
+        invoices = (
+            Invoice.objects.filter(
+                student=student,
+            )
+            .prefetch_related("payments")
+            .order_by("-term__start_date")
         )
 
-        published_term_qs = Term.for_current_session(request.school).filter(
-            results_published=True, scores__student=student,
-        ).distinct()
+        scores = (
+            Score.objects.visible_to_user(request.user)
+            .filter(
+                student=student,
+            )
+            .select_related("class_subject__subject", "term")
+            .order_by("class_subject__subject__name")
+        )
+
+        published_term_qs = (
+            Term.for_current_session(request.school)
+            .filter(
+                results_published=True,
+                scores__student=student,
+            )
+            .distinct()
+        )
 
         # Terms with outstanding fees — results for those stay locked.
         # balance is a computed property (total − confirmed payments), so it
@@ -274,14 +313,18 @@ class ParentChildDetailView(RoleRequiredMixin, View):
         published_terms = [
             term for term in published_term_qs if term.pk not in owed_term_ids
         ]
-        locked_terms = [
-            term for term in published_term_qs if term.pk in owed_term_ids
-        ]
+        locked_terms = [term for term in published_term_qs if term.pk in owed_term_ids]
 
         # Academic trend — TermResults across all published terms
-        academic_trend = TermResult.objects.filter(
-            student=student, term__results_published=True,
-        ).exclude(term_id__in=owed_term_ids).select_related('term', 'term__session').order_by('term__start_date')
+        academic_trend = (
+            TermResult.objects.filter(
+                student=student,
+                term__results_published=True,
+            )
+            .exclude(term_id__in=owed_term_ids)
+            .select_related("term", "term__session")
+            .order_by("term__start_date")
+        )
 
         # Current term summary
         current_term_result = None
@@ -290,7 +333,8 @@ class ParentChildDetailView(RoleRequiredMixin, View):
                 current_term_result = None
             else:
                 current_term_result = TermResult.objects.filter(
-                    student=student, term=active_term,
+                    student=student,
+                    term=active_term,
                 ).first()
 
         # Fee summary
@@ -298,21 +342,25 @@ class ParentChildDetailView(RoleRequiredMixin, View):
         total_owed = sum(inv.balance for inv in unpaid_invoices)
         unpaid_count = len(unpaid_invoices)
 
-        return render(request, 'students/parent/child_detail.html', {
-            'student': student,
-            'current_enrollment': current_enrollment,
-            'current_term': active_term,
-            'invoices': invoices,
-            'scores': scores,
-            'published_terms': published_terms,
-            'academic_trend': academic_trend,
-            'current_term_result': current_term_result,
-            'current_term_locked': bool(
-                active_term and active_term.pk in owed_term_ids
-            ),
-            'total_owed': total_owed,
-            'unpaid_count': unpaid_count,
-        })
+        return render(
+            request,
+            "students/parent/child_detail.html",
+            {
+                "student": student,
+                "current_enrollment": current_enrollment,
+                "current_term": active_term,
+                "invoices": invoices,
+                "scores": scores,
+                "published_terms": published_terms,
+                "academic_trend": academic_trend,
+                "current_term_result": current_term_result,
+                "current_term_locked": bool(
+                    active_term and active_term.pk in owed_term_ids
+                ),
+                "total_owed": total_owed,
+                "unpaid_count": unpaid_count,
+            },
+        )
 
 
 class ParentInvoicesView(RoleRequiredMixin, View):
@@ -323,14 +371,18 @@ class ParentInvoicesView(RoleRequiredMixin, View):
     def get(self, request):
         student_ids = StudentGuardianLink.objects.filter(
             guardian=request.user,
-        ).values_list('student_id', flat=True)
+        ).values_list("student_id", flat=True)
 
-        invoices = Invoice.objects.filter(
-            student_id__in=student_ids,
-        ).select_related('student', 'student__user', 'term').order_by('-term__start_date')
+        invoices = (
+            Invoice.objects.filter(
+                student_id__in=student_ids,
+            )
+            .select_related("student", "student__user", "term")
+            .order_by("-term__start_date")
+        )
 
         # Filter by child if requested
-        child_filter = request.GET.get('child')
+        child_filter = request.GET.get("child")
         if child_filter:
             invoices = invoices.filter(student_id=child_filter)
 
@@ -340,14 +392,18 @@ class ParentInvoicesView(RoleRequiredMixin, View):
         # Children for filter dropdown
         children = Student.objects.filter(
             pk__in=student_ids,
-        ).select_related('user')
+        ).select_related("user")
 
-        return render(request, 'students/parent/invoices_list.html', {
-            'invoices': invoices,
-            'total_owed': total_owed,
-            'children': children,
-            'child_filter': child_filter,
-        })
+        return render(
+            request,
+            "students/parent/invoices_list.html",
+            {
+                "invoices": invoices,
+                "total_owed": total_owed,
+                "children": children,
+                "child_filter": child_filter,
+            },
+        )
 
 
 class ParentInvoiceDetailView(RoleRequiredMixin, View):
@@ -360,19 +416,24 @@ class ParentInvoiceDetailView(RoleRequiredMixin, View):
 
         # Guardian scope check
         if not StudentGuardianLink.objects.filter(
-            student=invoice.student, guardian=request.user,
+            student=invoice.student,
+            guardian=request.user,
         ).exists():
-            messages.error(request, 'You are not authorized to view this invoice.')
-            return redirect('parent-children')
+            messages.error(request, "You are not authorized to view this invoice.")
+            return redirect("parent-children")
 
-        payments = invoice.payments.all().order_by('-paid_on')
-        line_items = invoice.line_items.all().select_related('category')
+        payments = invoice.payments.all().order_by("-paid_on")
+        line_items = invoice.line_items.all().select_related("category")
 
-        return render(request, 'students/parent/invoice_detail.html', {
-            'invoice': invoice,
-            'payments': payments,
-            'line_items': line_items,
-        })
+        return render(
+            request,
+            "students/parent/invoice_detail.html",
+            {
+                "invoice": invoice,
+                "payments": payments,
+                "line_items": line_items,
+            },
+        )
 
 
 class ParentExtraLessonsView(RoleRequiredMixin, View):
@@ -389,36 +450,45 @@ class ParentExtraLessonsView(RoleRequiredMixin, View):
     def get(self, request):
         student_ids = StudentGuardianLink.objects.filter(
             guardian=request.user,
-        ).values_list('student_id', flat=True)
+        ).values_list("student_id", flat=True)
 
         redirect_response = _extra_lessons_guard_redirect(request, student_ids)
         if redirect_response:
             return redirect_response
 
         enrollments = _extra_lessons_base_qs(request.school, student_ids=student_ids)
-        enrollments = list(enrollments.order_by('student__user__last_name', '-registered_on'))
+        enrollments = list(
+            enrollments.order_by("student__user__last_name", "-registered_on")
+        )
 
         enrollments, total_outstanding = _extra_lessons_balance_data(enrollments)
 
         children = {}
         for e in enrollments:
-            child = children.setdefault(e.student_id, {
-                'student': e.student,
-                'enrollments': [],
-            })
-            child['enrollments'].append(e)
+            child = children.setdefault(
+                e.student_id,
+                {
+                    "student": e.student,
+                    "enrollments": [],
+                },
+            )
+            child["enrollments"].append(e)
 
-        return render(request, 'students/parent/extra_lessons.html', {
-            'children': list(children.values()),
-            'total_outstanding': total_outstanding,
-            'enrollment_count': len(enrollments),
-        })
+        return render(
+            request,
+            "students/parent/extra_lessons.html",
+            {
+                "children": list(children.values()),
+                "total_outstanding": total_outstanding,
+                "enrollment_count": len(enrollments),
+            },
+        )
 
 
 class _BaseMakePaymentView(RoleRequiredMixin, View):
     """Base pay page with shared invoice aggregation, checkout building, and rendering."""
 
-    template_name = 'students/make_payment.html'
+    template_name = "students/make_payment.html"
 
     def _get_role_students(self, request):
         raise NotImplementedError
@@ -430,33 +500,42 @@ class _BaseMakePaymentView(RoleRequiredMixin, View):
         raise NotImplementedError
 
     def get(self, request):
+        reference = (request.GET.get("reference") or "").strip()
+        if reference:
+            status_url = reverse("fees:payment-return")
+            return redirect(f"{status_url}?{urlencode({'reference': reference})}")
+
         role = request.user.role
         context = {
-            'role': role,
-            'reference': request.GET.get('reference'),
+            "role": role,
         }
 
         students = self._get_role_students(request)
         if role == Roles.PARENT:
-            context['children'] = students
+            context["children"] = students
         else:
-            context['student'] = students.first()
+            context["student"] = students.first()
 
         invoices = self._get_invoice_qs(request, students)
 
         balance_status_q = Q(status=Payment.Status.CONFIRMED)
         visible_status_q = balance_status_q | Q(
-            status=Payment.Status.PENDING, method=Payment.Method.BANK_TRANSFER,
+            status=Payment.Status.PENDING,
+            method=Payment.Method.BANK_TRANSFER,
         )
         invoices = invoices.select_related(
-            'term', 'student', 'student__user',
-        ).prefetch_related(Prefetch(
-            'payments',
-            queryset=Payment.objects.filter(balance_status_q),
-        ))
+            "term",
+            "student",
+            "student__user",
+        ).prefetch_related(
+            Prefetch(
+                "payments",
+                queryset=Payment.objects.filter(balance_status_q),
+            )
+        )
 
         invoices_by_child = {}
-        total_owed = Decimal('0.00')
+        total_owed = Decimal("0.00")
         unpaid_invoices_count = 0
         for inv in invoices:
             invoices_by_child.setdefault(inv.student_id, []).append(inv)
@@ -469,7 +548,7 @@ class _BaseMakePaymentView(RoleRequiredMixin, View):
         totals_by_child = {
             child_id: sum(
                 (inv.balance for inv in inv_list if inv.balance > 0),
-                Decimal('0.00'),
+                Decimal("0.00"),
             )
             for child_id, inv_list in invoices_by_child.items()
         }
@@ -484,7 +563,9 @@ class _BaseMakePaymentView(RoleRequiredMixin, View):
                 if inv.balance > 0 and inv.term
             ]
             term = max(
-                unpaid_terms, key=lambda t: t.start_date, default=checkout_term,
+                unpaid_terms,
+                key=lambda t: t.start_date,
+                default=checkout_term,
             )
             if term is None:
                 continue
@@ -500,13 +581,9 @@ class _BaseMakePaymentView(RoleRequiredMixin, View):
                 elif co.bundle is not None and not co.bundle.billed:
                     can_pay = True
                 else:
-                    payable = [
-                        o for o in co.extras if not o.billed
-                    ]
+                    payable = [o for o in co.extras if not o.billed]
                     if co.next_term is not None:
-                        payable += [
-                            o for o in co.next_term.options if not o.billed
-                        ]
+                        payable += [o for o in co.next_term.options if not o.billed]
                     if payable:
                         can_pay = True
             can_pay_by_child[child.pk] = can_pay
@@ -516,34 +593,39 @@ class _BaseMakePaymentView(RoleRequiredMixin, View):
         bank_details = None
         if school.account_number:
             bank_details = {
-                'bank': school.bank_name,
-                'account_name': school.account_name,
-                'account_number': school.account_number,
+                "bank": school.bank_name,
+                "account_name": school.account_name,
+                "account_number": school.account_number,
             }
 
         recent_payments = self._get_recent_payments_qs(
             request, students, visible_status_q
         ).select_related(
-            'student', 'student__user',
-            'invoice', 'invoice__student', 'invoice__student__user',
+            "student",
+            "student__user",
+            "invoice",
+            "invoice__student",
+            "invoice__student__user",
         )[:5]
 
-        context.update({
-            'invoices_by_child': invoices_by_child,
-            'totals_by_child': totals_by_child,
-            'total_owed': total_owed,
-            'fully_paid': fully_paid,
-            'unpaid_invoices_count': unpaid_invoices_count,
-            'recent_payments': recent_payments,
-            'checkouts_by_child': checkouts_by_child,
-            'can_pay_by_child': can_pay_by_child,
-            'any_payable': any_payable,
-            'bank_details': bank_details,
-            'paystack_enabled': bool(
-                getattr(settings, 'PAYSTACK_SECRET_KEY', '')
-                and getattr(settings, 'PAYSTACK_PUBLIC_KEY', '')
-            ),
-        })
+        context.update(
+            {
+                "invoices_by_child": invoices_by_child,
+                "totals_by_child": totals_by_child,
+                "total_owed": total_owed,
+                "fully_paid": fully_paid,
+                "unpaid_invoices_count": unpaid_invoices_count,
+                "recent_payments": recent_payments,
+                "checkouts_by_child": checkouts_by_child,
+                "can_pay_by_child": can_pay_by_child,
+                "any_payable": any_payable,
+                "bank_details": bank_details,
+                "paystack_enabled": bool(
+                    getattr(settings, "PAYSTACK_SECRET_KEY", "")
+                    and getattr(settings, "PAYSTACK_PUBLIC_KEY", "")
+                ),
+            }
+        )
         return render(request, self.template_name, context)
 
 
@@ -553,9 +635,13 @@ class ParentMakePaymentView(_BaseMakePaymentView):
     allowed_roles = [Roles.PARENT]
 
     def _get_role_students(self, request):
-        return Student.objects.filter(
-            guardian_links__guardian=request.user,
-        ).select_related('user').distinct()
+        return (
+            Student.objects.filter(
+                guardian_links__guardian=request.user,
+            )
+            .select_related("user")
+            .distinct()
+        )
 
     def _get_invoice_qs(self, request, students):
         return Invoice.objects.filter(student__in=students)
@@ -587,8 +673,7 @@ class StudentMakePaymentView(_BaseMakePaymentView):
         return Payment.objects.filter(
             school=request.school,
         ).filter(
-            visible_status_q
-            & (Q(student=student) | Q(invoice__student=student)),
+            visible_status_q & (Q(student=student) | Q(invoice__student=student)),
         )
 
 
@@ -598,33 +683,48 @@ class StudentOverviewView(RoleRequiredMixin, View):
     allowed_roles = [Roles.STUDENT]
 
     def get(self, request):
-        enrollment = ClassEnrollment.objects.filter(
-            student__user=request.user,
-            is_current=True,
-        ).select_related('school_class', 'session').first()
+        enrollment = (
+            ClassEnrollment.objects.filter(
+                student__user=request.user,
+                is_current=True,
+            )
+            .select_related("school_class", "session")
+            .first()
+        )
 
-        invoices = Invoice.objects.filter(
-            student__user=request.user,
-        ).select_related('term').prefetch_related('payments')
+        invoices = (
+            Invoice.objects.filter(
+                student__user=request.user,
+            )
+            .select_related("term")
+            .prefetch_related("payments")
+        )
 
-        scores = Score.objects.visible_to_user(request.user).filter(
-            student__user=request.user,
-        ).select_related('class_subject__subject', 'term').order_by(
-            'class_subject__subject__name'
+        scores = (
+            Score.objects.visible_to_user(request.user)
+            .filter(
+                student__user=request.user,
+            )
+            .select_related("class_subject__subject", "term")
+            .order_by("class_subject__subject__name")
         )
 
         # Published terms with scores for this student
-        published_terms = Term.for_current_session(request.school).filter(
-            results_published=True,
-            scores__student__user=request.user,
-        ).distinct()
+        published_terms = (
+            Term.for_current_session(request.school)
+            .filter(
+                results_published=True,
+                scores__student__user=request.user,
+            )
+            .distinct()
+        )
 
         # A term's booklet stays locked while the student owes fees for it.
         # balance is a computed property (total − confirmed payments), so
         # it must be evaluated per invoice, against the prefetched list.
         owed_term_ids = owed_term_ids_from(invoices)
         booklet_terms = [
-            {'term': term, 'locked': term.pk in owed_term_ids}
+            {"term": term, "locked": term.pk in owed_term_ids}
             for term in published_terms
         ]
 
@@ -638,7 +738,8 @@ class StudentOverviewView(RoleRequiredMixin, View):
                 results_locked = True
             else:
                 term_result = TermResult.objects.filter(
-                    student__user=request.user, term=active_term,
+                    student__user=request.user,
+                    term=active_term,
                 ).first()
 
         # Fee summary
@@ -649,8 +750,10 @@ class StudentOverviewView(RoleRequiredMixin, View):
         # Subject count for current term
         subject_count = 0
         if (
-            enrollment and enrollment.class_offering_id
-            and active_term and enrollment.session_id == active_term.session_id
+            enrollment
+            and enrollment.class_offering_id
+            and active_term
+            and enrollment.session_id == active_term.session_id
         ):
             subject_count = ClassSubject.objects.filter(
                 school=request.school,
@@ -658,36 +761,44 @@ class StudentOverviewView(RoleRequiredMixin, View):
             ).count()
 
         # Last confirmed payment
-        last_payment = Payment.objects.filter(
-            school=request.school,
-            student__user=request.user,
-            status=Payment.Status.CONFIRMED,
-        ).order_by('-paid_on').first()
+        last_payment = (
+            Payment.objects.filter(
+                school=request.school,
+                student__user=request.user,
+                status=Payment.Status.CONFIRMED,
+            )
+            .order_by("-paid_on")
+            .first()
+        )
 
         # One-time success toast when fees just became fully paid: fires only
         # when the balance transitions from owing → paid (once), so students
         # who were always paid don't get a spur-of-the-moment confirmation.
-        prev_owing = request.session.get('_fees_prev_owing', False)
+        prev_owing = request.session.get("_fees_prev_owing", False)
         if outstanding == 0:
             if prev_owing:
-                messages.success(request, 'All fees paid. Nice work!')
-            request.session['_fees_prev_owing'] = False
+                messages.success(request, "All fees paid. Nice work!")
+            request.session["_fees_prev_owing"] = False
         else:
-            request.session['_fees_prev_owing'] = True
+            request.session["_fees_prev_owing"] = True
 
-        return render(request, 'students/student/overview.html', {
-            'enrollment': enrollment,
-            'invoices': invoices,
-            'scores': scores,
-            'booklet_terms': booklet_terms,
-            'current_term': active_term,
-            'term_result': term_result,
-            'results_locked': results_locked,
-            'outstanding': outstanding,
-            'unpaid_count': unpaid_count,
-            'subject_count': subject_count,
-            'last_payment': last_payment,
-        })
+        return render(
+            request,
+            "students/student/overview.html",
+            {
+                "enrollment": enrollment,
+                "invoices": invoices,
+                "scores": scores,
+                "booklet_terms": booklet_terms,
+                "current_term": active_term,
+                "term_result": term_result,
+                "results_locked": results_locked,
+                "outstanding": outstanding,
+                "unpaid_count": unpaid_count,
+                "subject_count": subject_count,
+                "last_payment": last_payment,
+            },
+        )
 
 
 class StudentExtraLessonsView(RoleRequiredMixin, View):
@@ -702,19 +813,25 @@ class StudentExtraLessonsView(RoleRequiredMixin, View):
     def get(self, request):
         student = request.user.student_profile
 
-        redirect_response = _extra_lessons_guard_redirect(request, None, student=student)
+        redirect_response = _extra_lessons_guard_redirect(
+            request, None, student=student
+        )
         if redirect_response:
             return redirect_response
 
         enrollments = _extra_lessons_base_qs(request.school, student=student)
-        enrollments = list(enrollments.order_by('-registered_on'))
+        enrollments = list(enrollments.order_by("-registered_on"))
 
         enrollments, total_outstanding = _extra_lessons_balance_data(enrollments)
 
-        return render(request, 'students/student/extra_lessons.html', {
-            'enrollments': enrollments,
-            'total_outstanding': total_outstanding,
-        })
+        return render(
+            request,
+            "students/student/extra_lessons.html",
+            {
+                "enrollments": enrollments,
+                "total_outstanding": total_outstanding,
+            },
+        )
 
 
 class StudentResultBookletView(RoleRequiredMixin, View):
@@ -724,25 +841,27 @@ class StudentResultBookletView(RoleRequiredMixin, View):
 
     def get(self, request, term_id):
         student = request.user.student_profile
-        term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
+        term = get_object_or_404(
+            Term, pk=term_id, school=request.school, results_published=True
+        )
 
         if Invoice.owes_for_term(student, term):
             messages.error(
                 request,
-                f'Results for {term.name} are locked until outstanding fees '
-                'for that term are cleared.',
+                f"Results for {term.name} are locked until outstanding fees "
+                "for that term are cleared.",
             )
-            return redirect('student-overview')
+            return redirect("student-overview")
 
         from academics.booklet import build_booklet_context
 
         context, enrollment = build_booklet_context(student, term, request.school)
         if not enrollment:
-            messages.error(request, 'No enrollment found for this term.')
-            return redirect('student-overview')
+            messages.error(request, "No enrollment found for this term.")
+            return redirect("student-overview")
 
-        context['booklet_back_url'] = reverse('student-overview')
-        return render(request, 'students/result_booklet.html', context)
+        context["booklet_back_url"] = reverse("student-overview")
+        return render(request, "students/result_booklet.html", context)
 
 
 class ParentChildResultBookletView(RoleRequiredMixin, View):
@@ -752,29 +871,35 @@ class ParentChildResultBookletView(RoleRequiredMixin, View):
 
     def get(self, request, child_pk, term_id):
         child = get_object_or_404(Student, school=request.school, pk=child_pk)
-        if not StudentGuardianLink.objects.filter(student=child, guardian=request.user).exists():
-            messages.error(request, 'You are not linked to this student.')
-            return redirect('parent-children')
+        if not StudentGuardianLink.objects.filter(
+            student=child, guardian=request.user
+        ).exists():
+            messages.error(request, "You are not linked to this student.")
+            return redirect("parent-children")
 
-        term = get_object_or_404(Term, pk=term_id, school=request.school, results_published=True)
+        term = get_object_or_404(
+            Term, pk=term_id, school=request.school, results_published=True
+        )
 
         if Invoice.owes_for_term(child, term):
             messages.error(
                 request,
-                f'Results for {term.name} for {child.user.get_full_name() or child.user.username} '
-                'are locked until outstanding fees for that term are cleared.',
+                f"Results for {term.name} for {child.user.get_full_name() or child.user.username} "
+                "are locked until outstanding fees for that term are cleared.",
             )
-            return redirect('parent-child-detail', pk=child_pk)
+            return redirect("parent-child-detail", pk=child_pk)
 
         from academics.booklet import build_booklet_context
 
         context, enrollment = build_booklet_context(child, term, request.school)
         if not enrollment:
-            messages.error(request, 'No enrollment found for this term.')
-            return redirect('parent-child-detail', pk=child_pk)
+            messages.error(request, "No enrollment found for this term.")
+            return redirect("parent-child-detail", pk=child_pk)
 
-        context['booklet_back_url'] = reverse('parent-child-detail', kwargs={'pk': child_pk})
-        return render(request, 'students/result_booklet.html', context)
+        context["booklet_back_url"] = reverse(
+            "parent-child-detail", kwargs={"pk": child_pk}
+        )
+        return render(request, "students/result_booklet.html", context)
 
 
 class StudentResultsHistoryView(RoleRequiredMixin, View):
@@ -785,11 +910,16 @@ class StudentResultsHistoryView(RoleRequiredMixin, View):
     def get(self, request):
         student = request.user.student_profile
 
-        published_terms = Term.objects.filter(
-            school=request.school,
-            results_published=True,
-            scores__student=student,
-        ).distinct().order_by('-start_date').select_related('session')
+        published_terms = (
+            Term.objects.filter(
+                school=request.school,
+                results_published=True,
+                scores__student=student,
+            )
+            .distinct()
+            .order_by("-start_date")
+            .select_related("session")
+        )
 
         owed_term_ids = owed_term_ids_for(student)
 
@@ -797,20 +927,28 @@ class StudentResultsHistoryView(RoleRequiredMixin, View):
         locked_terms = []
         for term in published_terms:
             if term.pk in owed_term_ids:
-                locked_terms.append({'term': term})
+                locked_terms.append({"term": term})
                 continue
-            enrollment = ClassEnrollment.objects.filter(
-                student=student, session=term.session
-            ).select_related('school_class').first()
-            results.append({
-                'term': term,
-                'class_name': enrollment.school_class.name if enrollment else '—',
-            })
+            enrollment = (
+                ClassEnrollment.objects.filter(student=student, session=term.session)
+                .select_related("school_class")
+                .first()
+            )
+            results.append(
+                {
+                    "term": term,
+                    "class_name": enrollment.school_class.name if enrollment else "—",
+                }
+            )
 
-        return render(request, 'students/student/results_history.html', {
-            'results': results,
-            'locked_terms': locked_terms,
-        })
+        return render(
+            request,
+            "students/student/results_history.html",
+            {
+                "results": results,
+                "locked_terms": locked_terms,
+            },
+        )
 
 
 class StudentSubjectsView(RoleRequiredMixin, View):
@@ -825,34 +963,47 @@ class StudentSubjectsView(RoleRequiredMixin, View):
     def get(self, request):
         student = request.user.student_profile
 
-        enrollment = ClassEnrollment.objects.filter(
-            student=student, is_current=True,
-        ).select_related('school_class', 'session').first()
+        enrollment = (
+            ClassEnrollment.objects.filter(
+                student=student,
+                is_current=True,
+            )
+            .select_related("school_class", "session")
+            .first()
+        )
 
         active_term = current_term(request.school)
 
         subjects = []
         if (
-            enrollment and enrollment.class_offering_id and active_term
+            enrollment
+            and enrollment.class_offering_id
+            and active_term
             and enrollment.session_id == active_term.session_id
         ):
-            configurations = ClassSubject.objects.filter(
-                school=request.school,
-                class_offering=enrollment.class_offering,
-                teacher_assignments__school=request.school,
-            ).select_related('subject').prefetch_related(
-                Prefetch(
-                    'teacher_assignments',
-                    queryset=TeacherAssignment.objects.filter(
-                        school=request.school,
-                    ).select_related('teacher'),
+            configurations = (
+                ClassSubject.objects.filter(
+                    school=request.school,
+                    class_offering=enrollment.class_offering,
+                    teacher_assignments__school=request.school,
                 )
-            ).distinct().order_by('subject__name')
+                .select_related("subject")
+                .prefetch_related(
+                    Prefetch(
+                        "teacher_assignments",
+                        queryset=TeacherAssignment.objects.filter(
+                            school=request.school,
+                        ).select_related("teacher"),
+                    )
+                )
+                .distinct()
+                .order_by("subject__name")
+            )
 
             subjects = [
                 {
-                    'subject': config.subject,
-                    'teachers': [
+                    "subject": config.subject,
+                    "teachers": [
                         assignment.teacher.get_full_name()
                         or assignment.teacher.username
                         for assignment in config.teacher_assignments.all()
@@ -861,11 +1012,15 @@ class StudentSubjectsView(RoleRequiredMixin, View):
                 for config in configurations
             ]
 
-        return render(request, 'students/student/subjects.html', {
-            'subjects': subjects,
-            'enrollment': enrollment,
-            'term': active_term,
-        })
+        return render(
+            request,
+            "students/student/subjects.html",
+            {
+                "subjects": subjects,
+                "enrollment": enrollment,
+                "term": active_term,
+            },
+        )
 
 
 class StudentSelfPasswordChangeView(RoleRequiredMixin, View):
@@ -874,34 +1029,34 @@ class StudentSelfPasswordChangeView(RoleRequiredMixin, View):
     allowed_roles = [Roles.STUDENT]
 
     def get(self, request):
-        return render(request, 'students/student/password_change.html')
+        return render(request, "students/student/password_change.html")
 
     def post(self, request):
-        current_password = request.POST.get('current_password', '').strip()
-        new_password = request.POST.get('new_password', '').strip()
-        confirm_password = request.POST.get('confirm_password', '').strip()
+        current_password = request.POST.get("current_password", "").strip()
+        new_password = request.POST.get("new_password", "").strip()
+        confirm_password = request.POST.get("confirm_password", "").strip()
 
         if not current_password:
-            messages.error(request, 'Please enter your current password.')
-            return redirect('student-password-change')
+            messages.error(request, "Please enter your current password.")
+            return redirect("student-password-change")
 
         if not request.user.check_password(current_password):
-            messages.error(request, 'Current password is incorrect.')
-            return redirect('student-password-change')
+            messages.error(request, "Current password is incorrect.")
+            return redirect("student-password-change")
 
         if not new_password:
-            messages.error(request, 'Please enter a new password.')
-            return redirect('student-password-change')
+            messages.error(request, "Please enter a new password.")
+            return redirect("student-password-change")
 
         if new_password != confirm_password:
-            messages.error(request, 'New passwords do not match.')
-            return redirect('student-password-change')
+            messages.error(request, "New passwords do not match.")
+            return redirect("student-password-change")
 
         if len(new_password) < 6:
-            messages.error(request, 'Password must be at least 6 characters.')
-            return redirect('student-password-change')
+            messages.error(request, "Password must be at least 6 characters.")
+            return redirect("student-password-change")
 
         request.user.set_password(new_password)
         request.user.save()
-        messages.success(request, 'Password changed successfully.')
-        return redirect('student-overview')
+        messages.success(request, "Password changed successfully.")
+        return redirect("student-overview")

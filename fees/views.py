@@ -3,7 +3,7 @@ import uuid
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from django.shortcuts import get_object_or_404, render, redirect
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -17,6 +17,7 @@ from .checkout import reconcile_checkout, current_term
 from .models import Invoice, Payment, PaymentLineItem, InvoiceLineItem, FeePrice
 from .pricing import resolve_prices, resolve_price_for_student
 from .paystack import initiate_payment as paystack_initiate
+from .utils import generate_transfer_reference
 from .visibility import (
     is_default_checked,
     is_onboarding_total,
@@ -46,7 +47,10 @@ def _check_student_access(user, student, *, default_redirect="parent-pay"):
         return "student-pay"
     if (
         user.role == Roles.PARENT
-        and not student.guardian_links.filter(guardian=user).exists()
+        and not student.guardian_links.filter(
+            school=student.school,
+            guardian=user,
+        ).exists()
     ):
         return "parent-pay"
     return None
@@ -257,9 +261,9 @@ class InitiatePaymentView(RoleRequiredMixin, View):
         if existing is not None and existing.amount != amount:
             existing = None
 
-        # Call Paystack. The callback URL points at the pay page — Paystack
-        # appends ?reference=XXX automatically.
-        callback_url = request.build_absolute_uri(reverse(back_url))
+        # Paystack appends ?reference=XXX to this URL. The return view resolves
+        # the payment and redirects to the shared payment-status page.
+        callback_url = request.build_absolute_uri(reverse("fees:payment-return"))
         result = paystack_initiate(
             invoice if invoice_id is not None else None,
             request.user.email,
@@ -354,17 +358,109 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
 
             paid_by_name = request.POST.get("paid_by_name", "").strip()
             paid_by_relation = request.POST.get("paid_by_relation", "").strip()
+            idempotency_key_raw = request.POST.get("idempotency_key", "").strip()
+            resubmission_of_id = request.POST.get("resubmission_of", "").strip()
+
+            idempotency_key = None
+            if idempotency_key_raw:
+                from uuid import UUID
+
+                try:
+                    idempotency_key = UUID(idempotency_key_raw)
+                except (ValueError, TypeError):
+                    idempotency_key = None
+
+            resubmission_of = None
+            if resubmission_of_id:
+                try:
+                    resubmission_of = Payment.objects.filter(
+                        pk=int(resubmission_of_id), school=student.school
+                    ).first()
+                except (ValueError, TypeError):
+                    resubmission_of = None
+
+            # Idempotency: when the same form is submitted twice (double
+            # click, retry after a network glitch) the client sends the same
+            # idempotency_key. Reuse the existing PENDING row(s) for matching
+            # invoices instead of creating duplicates; rows for other
+            # invoices in a split batch are created fresh.
+            idempotent_reused = False
+            existing_by_invoice = {}
+            if idempotency_key:
+                existing_rows = Payment.objects.filter(
+                    school=student.school,
+                    student=student,
+                    idempotency_key=idempotency_key,
+                    status=Payment.Status.PENDING,
+                    method=Payment.Method.BANK_TRANSFER,
+                ).select_related("invoice")
+                existing_by_invoice = {p.invoice_id: p for p in existing_rows}
+
+            # Phase 4: soft duplicate warning — if any allocation targets an
+            # invoice that already has a PENDING bank transfer (regardless of
+            # idempotency_key), surface the existing reference and skip
+            # creating a duplicate.
+            duplicate_warning_payment = None
+            if not idempotency_key:
+                for alloc in result.allocations:
+                    dup = Payment.objects.filter(
+                        school=student.school,
+                        student=student,
+                        invoice=alloc.invoice,
+                        status=Payment.Status.PENDING,
+                        method=Payment.Method.BANK_TRANSFER,
+                    ).first()
+                    if dup is not None:
+                        duplicate_warning_payment = dup
+                        break
+            if duplicate_warning_payment is not None:
+                messages.warning(
+                    request,
+                    f"A bank transfer ({duplicate_warning_payment.reference}) of "
+                    f"₦{duplicate_warning_payment.amount:,.2f} is already awaiting "
+                    f"confirmation for {student}. No new payment was created — "
+                    f"submit a new transfer only after it is confirmed or rejected.",
+                )
+                return redirect(
+                    reverse(
+                        "fees:transfer-return",
+                        kwargs={"payment_id": duplicate_warning_payment.pk},
+                    )
+                )
 
             with transaction.atomic():
                 payments = []
                 for alloc in result.allocations:
+                    existing = existing_by_invoice.get(alloc.invoice.pk)
+                    if existing is not None:
+                        # Same logical payment re-submitted — refresh amount
+                        # and proof so the row reflects the latest submit.
+                        if (
+                            existing.amount != alloc.amount
+                            or existing.proof_image != proof
+                        ):
+                            existing.amount = alloc.amount
+                            existing.proof_image = proof
+                            existing.paid_by_name = paid_by_name
+                            existing.paid_by_relation = paid_by_relation
+                            existing.save(
+                                update_fields=[
+                                    "amount",
+                                    "proof_image",
+                                    "paid_by_name",
+                                    "paid_by_relation",
+                                ]
+                            )
+                        idempotent_reused = True
+                        payments.append(existing)
+                        continue
                     payment = Payment.objects.create(
                         school=student.school,
                         invoice=alloc.invoice,
                         student=student,
                         amount=alloc.amount,
                         method=Payment.Method.BANK_TRANSFER,
-                        reference=None,
+                        reference=generate_transfer_reference(),
                         status=Payment.Status.PENDING,
                         paid_on=timezone.now(),
                         recorded_by=None,
@@ -372,6 +468,8 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
                         proof_image=proof,
                         paid_by_name=paid_by_name,
                         paid_by_relation=paid_by_relation,
+                        idempotency_key=idempotency_key,
+                        resubmission_of=resubmission_of,
                     )
                     payments.append(payment)
                 selected_items = result.selected_items
@@ -395,7 +493,13 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
                 "fees:transfer-return", kwargs={"payment_id": payments[0].pk}
             )
 
-            if result.is_split:
+            if idempotent_reused:
+                messages.warning(
+                    request,
+                    f"Your previous transfer ({payments[0].reference}) is still pending. "
+                    "We've re-submitted the same request to avoid duplicates.",
+                )
+            elif result.is_split:
                 messages.success(
                     request,
                     "2 payments will be recorded — one for this term, "
@@ -404,13 +508,13 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
             else:
                 messages.success(
                     request,
-                    "Transfer submitted — awaiting school confirmation.",
+                    f"Transfer {payments[0].reference} submitted — awaiting school confirmation.",
                 )
             return redirect(transfer_return_url)
 
-        # Paystack branch — the callback URL points at the pay page, which
-        # appends ?reference= automatically.
-        callback_url = request.build_absolute_uri(reverse(back_url))
+        # Paystack appends ?reference= automatically. Route every Paystack
+        # payment through the same status surface used by bank transfers.
+        callback_url = request.build_absolute_uri(reverse("fees:payment-return"))
 
         if result.is_split:
             first_alloc, second_alloc = result.allocations
@@ -427,7 +531,7 @@ class CheckoutSubmitView(RoleRequiredMixin, View):
                     recorded_by=None,
                     description="Fee checkout",
                 )
-                Payment.objects.create(
+                second_payment = Payment.objects.create(
                     school=student.school,
                     invoice=second_alloc.invoice,
                     student=student,
@@ -557,7 +661,7 @@ class CheckoutContinueView(RoleRequiredMixin, View):
         ):
             return redirect(back_url)
 
-        callback_url = request.build_absolute_uri(reverse(back_url))
+        callback_url = request.build_absolute_uri(reverse("fees:payment-return"))
         result = paystack_initiate(
             payment.invoice,
             request.user.email,
@@ -574,88 +678,89 @@ class CheckoutContinueView(RoleRequiredMixin, View):
 
 
 class PaymentReturnView(RoleRequiredMixin, View):
-    """Return page after Paystack redirect. Shows waiting state, polls via htmx.
-
-    Works both for invoice-backed payments (legacy ?invoice_id= links) and
-    invoice-less payments — when invoice_id is absent the payment is resolved
-    by reference alone (template is null-safe for invoice=None).
-    """
+    """Resolve a Paystack callback to the shared payment-status page."""
 
     allowed_roles = [Roles.PARENT, Roles.STUDENT]
 
     def get(self, request):
-        invoice_id = request.GET.get("invoice_id")
-        reference = request.GET.get("reference")
+        reference = (request.GET.get("reference") or "").strip()
+        if not reference:
+            raise Http404
 
-        invoice = None
-        if invoice_id:
-            invoice = get_object_or_404(Invoice, pk=invoice_id, school=request.school)
-
-            redirect_name = _check_student_access(
-                request.user, invoice.student, default_redirect="parent-pay"
-            )
-            if redirect_name:
-                return redirect(redirect_name)
-
-        payment = None
-        if reference:
-            payment = Payment.objects.filter(
-                reference=reference,
-                school=request.school,
-            ).first()
-
-        return render(
-            request,
-            "fees/payment_return.html",
-            {
-                "invoice": invoice,
-                "payment": payment,
-                "reference": reference,
-            },
+        payment = get_object_or_404(
+            Payment.objects.select_related("student", "invoice", "invoice__student"),
+            reference=reference,
+            school=request.school,
         )
+        student = payment.student
+        if student is None and payment.invoice is not None:
+            student = payment.invoice.student
+        redirect_name = _check_student_access(
+            request.user,
+            student,
+            default_redirect=(
+                "parent-pay" if request.user.role == Roles.PARENT else "student-pay"
+            ),
+        )
+        if redirect_name:
+            messages.error(request, "You are not authorized to view this payment.")
+            return redirect(redirect_name)
+
+        return redirect("fees:transfer-return", payment_id=payment.pk)
 
 
 class PaymentStatusPartialView(RoleRequiredMixin, View):
-    """Lightweight status check for htmx polling on the return page.
-
-    invoice_id is optional — the payment is resolved by reference + school.
-    When absent (invoice-less payments) the partial renders with invoice=None.
-    """
+    """Secure, school-scoped status check for htmx polling."""
 
     allowed_roles = [Roles.PARENT, Roles.STUDENT]
 
     def get(self, request):
         reference = request.GET.get("reference")
-        invoice_id = request.GET.get("invoice_id")
 
         if not reference:
             return HttpResponse('<span class="text-gray-500">Invalid request.</span>')
 
-        payment = Payment.objects.filter(
-            reference=reference,
-            school=request.school,
-        ).first()
+        payment = (
+            Payment.objects.filter(
+                reference=reference,
+                school=request.school,
+            )
+            .select_related("student", "invoice", "invoice__student")
+            .first()
+        )
 
         if not payment:
             return HttpResponse('<span class="text-gray-500">Payment not found.</span>')
 
-        invoice = None
-        if invoice_id:
-            invoice = Invoice.objects.filter(
-                pk=invoice_id,
-                school=request.school,
-            ).first()
+        student = payment.student
+        if student is None and payment.invoice is not None:
+            student = payment.invoice.student
+        redirect_name = _check_student_access(
+            request.user,
+            student,
+            default_redirect=(
+                "parent-pay" if request.user.role == Roles.PARENT else "student-pay"
+            ),
+        )
+        if redirect_name:
+            return redirect(redirect_name)
+
+        invoice = payment.invoice
 
         # Fallback confirmation: if the webhook hasn't arrived (not yet
         # configured / delayed) verify against Paystack once and confirm when
         # the charge succeeded. Only fires for mature PENDING payments.
         if (
-            payment.status == Payment.Status.PENDING
+            payment.method == Payment.Method.PAYSTACK
+            and payment.status == Payment.Status.PENDING
             and payment.initiated_at is not None
             and timezone.now() - payment.initiated_at >= timedelta(seconds=5)
             and not payment.verify_attempted
         ):
-            Payment.objects.filter(pk=payment.pk).update(verify_attempted=True)
+            Payment.objects.filter(
+                pk=payment.pk,
+                school=payment.school,
+            ).update(verify_attempted=True)
             from fees.paystack import verify_transaction, confirm_payment_from_verify
 
             result = verify_transaction(reference)
@@ -674,6 +779,7 @@ class PaymentStatusPartialView(RoleRequiredMixin, View):
         if sibling_student is not None:
             sibling_pending = (
                 Payment.objects.filter(
+                    school=payment.school,
                     student=sibling_student,
                     method=Payment.Method.PAYSTACK,
                     status=Payment.Status.PENDING,
@@ -711,40 +817,35 @@ class VerifyPaymentView(RoleRequiredMixin, View):
 
     def get(self, request):
         reference = request.GET.get("reference")
-        invoice_id = request.GET.get("invoice_id")
 
         if not reference:
             return HttpResponse('<span class="text-gray-500">Invalid request.</span>')
 
-        payment = Payment.objects.filter(
-            reference=reference,
-            school=request.school,
-        ).first()
+        payment = (
+            Payment.objects.filter(
+                reference=reference,
+                school=request.school,
+            )
+            .select_related("student", "invoice", "invoice__student")
+            .first()
+        )
         if not payment:
             return HttpResponse('<span class="text-gray-500">Payment not found.</span>')
 
-        # Optional invoice — resolves the student for scope checks. When the
-        # invoice is absent (invoice-less payments) scope is checked against
-        # payment.student instead.
-        invoice = None
-        if invoice_id:
-            invoice = Invoice.objects.filter(
-                pk=invoice_id,
-                school=request.school,
-            ).first()
-
-        student = None
-        if invoice is not None:
+        invoice = payment.invoice
+        student = payment.student
+        if student is None and invoice is not None:
             student = invoice.student
-        elif payment.student is not None:
-            student = payment.student
 
-        if student is not None:
-            redirect_name = _check_student_access(
-                request.user, student, default_redirect="parent-pay"
-            )
-            if redirect_name:
-                return redirect(redirect_name)
+        redirect_name = _check_student_access(
+            request.user,
+            student,
+            default_redirect=(
+                "parent-pay" if request.user.role == Roles.PARENT else "student-pay"
+            ),
+        )
+        if redirect_name:
+            return redirect(redirect_name)
 
         # Split checkout support: surface the latest sibling PENDING Paystack
         # row so the return page can offer to continue paying it.
@@ -752,6 +853,7 @@ class VerifyPaymentView(RoleRequiredMixin, View):
         if student is not None:
             sibling_pending = (
                 Payment.objects.filter(
+                    school=payment.school,
                     student=student,
                     method=Payment.Method.PAYSTACK,
                     status=Payment.Status.PENDING,
@@ -1262,7 +1364,11 @@ class TransferReturnView(RoleRequiredMixin, View):
     template_name = "fees/transfer_return.html"
 
     def get(self, request, payment_id):
-        payment = get_object_or_404(Payment, pk=payment_id, school=request.school)
+        payment = get_object_or_404(
+            Payment.objects.select_related("student", "invoice", "invoice__student"),
+            pk=payment_id,
+            school=request.school,
+        )
         student = payment.student
         if student is None and payment.invoice is not None:
             student = payment.invoice.student
@@ -1272,4 +1378,29 @@ class TransferReturnView(RoleRequiredMixin, View):
         if redirect_name:
             messages.error(request, "You are not authorized to view this payment.")
             return redirect(redirect_name)
-        return render(request, self.template_name, {"payment": payment})
+
+        sibling_pending = None
+        if student is not None:
+            sibling_pending = (
+                Payment.objects.filter(
+                    school=request.school,
+                    student=student,
+                    method=Payment.Method.PAYSTACK,
+                    status=Payment.Status.PENDING,
+                    authorization_url="",
+                )
+                .exclude(pk=payment.pk)
+                .select_related("invoice", "invoice__student")
+                .first()
+            )
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "payment": payment,
+                "invoice": payment.invoice,
+                "reference": payment.reference,
+                "sibling_pending": sibling_pending,
+            },
+        )

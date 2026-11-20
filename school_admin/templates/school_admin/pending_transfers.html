@@ -96,9 +96,10 @@
                   <i data-lucide="check" class="w-3.5 h-3.5 mr-1"></i>Confirm
                 </button>
               </form>
-              <form method="POST" action="{% url 'school_admin:pending_transfer_reject' p.pk %}" class="inline ml-1">
+              <form method="POST" action="{% url 'school_admin:pending_transfer_reject' p.pk %}" class="inline ml-1 reject-form">
                 {% csrf_token %}
-                <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-red-50 hover:bg-danger-tint text-danger text-xs font-medium rounded-xl transition-colors border border-red-100">
+                <input type="hidden" name="rejection_reason" id="reject-reason-{{ p.pk }}" value="">
+                <button type="button" onclick="openRejectModal({{ p.pk }})" class="inline-flex items-center px-3 py-1.5 bg-red-50 hover:bg-danger-tint text-danger text-xs font-medium rounded-xl transition-colors border border-red-100">
                   <i data-lucide="x" class="w-3.5 h-3.5 mr-1"></i>Reject
                 </button>
               </form>
@@ -114,6 +115,84 @@
           {% endfor %}
         </tbody>
       </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function openRejectModal(paymentPk) {
+  const modal = document.getElementById('reject-modal');
+  if (!modal) return;
+  modal.dataset.paymentPk = paymentPk;
+  modal.classList.remove('hidden');
+  const select = document.getElementById('reject-reason-select');
+  const textarea = document.getElementById('reject-reason-text');
+  if (select) select.value = '';
+  if (textarea) textarea.value = '';
+  if (textarea) textarea.focus();
+}
+
+function closeRejectModal() {
+  const modal = document.getElementById('reject-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function confirmReject() {
+  const modal = document.getElementById('reject-modal');
+  if (!modal) return;
+  const pk = modal.dataset.paymentPk;
+  const select = document.getElementById('reject-reason-select');
+  const textarea = document.getElementById('reject-reason-text');
+  let reason = '';
+  if (select && select.value) {
+    reason = select.options[select.selectedIndex].text;
+  }
+  if (textarea && textarea.value.trim()) {
+    reason = textarea.value.trim();
+  }
+  if (!reason) {
+    if (textarea) textarea.focus();
+    return;
+  }
+  document.getElementById('reject-reason-' + pk).value = reason;
+  const form = document.querySelector('.reject-form[action$="/reject/' + pk + '/"]');
+  if (form) form.submit();
+  closeRejectModal();
+}
+</script>
+
+{# ── Reject modal — common reasons + free text ── #}
+<div id="reject-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+  <div class="bg-surface rounded-2xl border border-line shadow-xl max-w-md w-full p-6">
+    <div class="flex items-start gap-3 mb-4">
+      <div class="w-10 h-10 rounded-full bg-danger-tint flex items-center justify-center flex-shrink-0">
+        <i data-lucide="circle-x" class="w-5 h-5 text-danger"></i>
+      </div>
+      <div>
+        <h3 class="text-base font-semibold text-ink">Reject transfer</h3>
+        <p class="text-sm text-ink-muted mt-0.5">Choose a reason or enter your own.</p>
+      </div>
+    </div>
+
+    <div class="space-y-3">
+      <select id="reject-reason-select" class="w-full px-3 py-2 rounded-xl border border-line bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+        <option value="">Select a common reason…</option>
+        <option value="INCORRECT_AMOUNT">Incorrect amount paid</option>
+        <option value="EXPIRED_TRANSFER">Transfer has expired</option>
+        <option value="INVALID_PROOF">Proof is not clearly legible</option>
+        <option value="CUSTOM">Custom reason</option>
+      </select>
+      <textarea id="reject-reason-text" rows="3" placeholder="Or type your own reason…" class="w-full px-3 py-2 rounded-xl border border-line bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"></textarea>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 mt-5">
+      <button type="button" onclick="closeRejectModal()" class="px-4 py-2 rounded-xl border border-line text-ink-muted text-sm font-medium hover:bg-surface-muted transition-colors">
+        Cancel
+      </button>
+      <button type="button" onclick="confirmReject()" class="px-4 py-2 rounded-xl bg-danger text-white text-sm font-medium hover:bg-danger/90 transition-colors">
+        Reject payment
+      </button>
     </div>
   </div>
 </div>
