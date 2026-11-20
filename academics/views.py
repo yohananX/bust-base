@@ -305,7 +305,13 @@ class TeacherScoreGridView(RoleRequiredMixin, View):
             )
             scores.append(score)
 
-        scores.sort(key=lambda s: s.student.admission_number)
+        scores.sort(
+            key=lambda score: (
+                score.moderation_status != Score.MODERATION_REJECTED,
+                score.is_complete,
+                score.student.admission_number,
+            )
+        )
 
         score_limits = request.school.score_component_maxima()
         test_columns = [k for k in score_limits if k != "exam_score"]

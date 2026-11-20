@@ -3,6 +3,7 @@ from datetime import date
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
+from django.urls import reverse
 
 from accounts.models import Roles, User
 from academics.models import ClassSubject, Score, Subject, TeacherAssignment
@@ -1265,3 +1266,82 @@ class TeacherDashboardSmokeTests(BaseTest):
 
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "0/1 scored")
+
+
+class TeacherScoreGridOrderingTests(BaseTest):
+    """The score grid puts the teacher's next actions first."""
+
+    def _add_student(self, username, admission_number):
+        user = User.objects.create_user(
+            username=username,
+            email=f"{username}@test.com",
+            password="pass",
+            school=self.school,
+            role=Roles.STUDENT,
+        )
+        student = StudentProfile.objects.create(
+            school=self.school,
+            user=user,
+            admission_number=admission_number,
+            date_of_birth=date(2010, 1, 1),
+            gender=StudentProfile.MALE,
+            admission_date=date(2025, 9, 1),
+        )
+        ClassEnrollment.objects.create(
+            school=self.school,
+            student=student,
+            school_class=self.school_class,
+            session=self.session,
+            class_offering=self.offering,
+            is_current=True,
+        )
+        return student
+
+    def test_score_grid_prioritizes_rejected_then_incomplete_scores(self):
+        complete = self._add_student("complete", "002")
+        incomplete = self._add_student("incomplete", "003")
+        rejected = self._add_student("rejected", "004")
+
+        Score.objects.create(
+            school=self.school,
+            student=complete,
+            class_subject=self.class_subject,
+            term=self.term,
+            test_1=8,
+            test_2=7,
+            test_3=9,
+            exam_score=60,
+            entered_by=self.teacher_user,
+            moderation_status=Score.MODERATION_APPROVED,
+        )
+        Score.objects.create(
+            school=self.school,
+            student=incomplete,
+            class_subject=self.class_subject,
+            term=self.term,
+            test_1=8,
+            entered_by=self.teacher_user,
+        )
+        Score.objects.create(
+            school=self.school,
+            student=rejected,
+            class_subject=self.class_subject,
+            term=self.term,
+            test_1=8,
+            test_2=7,
+            test_3=9,
+            exam_score=60,
+            entered_by=self.teacher_user,
+            moderation_status=Score.MODERATION_REJECTED,
+        )
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(
+            reverse("score_grid", args=[self.assignment.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [score.student.admission_number for score in response.context["scores"]],
+            ["004", "001", "003", "002"],
+        )
